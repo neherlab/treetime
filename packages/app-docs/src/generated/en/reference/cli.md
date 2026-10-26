@@ -104,15 +104,19 @@ treetime timetree --config timetree.yaml -O results
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILE>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
 
-   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
+* `-a`, `--alignment <FILE>` — Aligned FASTA input
+
+   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin); `-` may appear at most once.
 * `--partition <ENTRY>` — One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each partition
 
    Without `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML or JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of its `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered from 1: `a`, `a-b`, or `a-b\k` for every k-th site from a to b), `model` (the substitution model, default `infer`) and `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model, so `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one entry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries of its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or without quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition "{name: cp1, sites: ['101-1600\3']}" --partition "{name: cp2, sites: ['102-1600\3']}" --partition "{name: cp3, sites: ['103-1600\3'], model: hky85, model_params: ['kappa=4']}" --partition "{name: noncoding}"`.
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -126,7 +130,7 @@ treetime timetree --config timetree.yaml -O results
    Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
 * `-m`, `--metadata <FILE>` — Metadata table (CSV or TSV) with one row per sample
 
-   `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
+   `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--metadata-id-columns <COLUMN>` — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
 
    The first listed column that is present in the header is used. Matching is case-insensitive.
@@ -172,13 +176,13 @@ treetime timetree --config timetree.yaml -O results
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
 * `--prune-filtered-tips` — Remove the tips that the clock filter flags from the tree.
 
-   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
+   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
 * `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
 
-   Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time inference dates it from the tree. Names that match no tip are ignored.
+   Accepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and timetree dates it from the tree. Names that match no tip are ignored.
 * `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per line
 
-   Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. Use '-' to read from standard input (stdin).
+   Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `--reroot <REROOT>` — Method that chooses the root of the tree
 
    `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
@@ -381,10 +385,10 @@ treetime timetree --config timetree.yaml -O results
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`
@@ -441,15 +445,19 @@ treetime ancestral -t tree.nwk -a aln.fasta.xz --annotation genome.gff3 --transl
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILE>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
 
-   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
+* `-a`, `--alignment <FILE>` — Aligned FASTA input
+
+   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin); `-` may appear at most once.
 * `--partition <ENTRY>` — One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each partition
 
    Without `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML or JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of its `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered from 1: `a`, `a-b`, or `a-b\k` for every k-th site from a to b), `model` (the substitution model, default `infer`) and `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model, so `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one entry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries of its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or without quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition "{name: cp1, sites: ['101-1600\3']}" --partition "{name: cp2, sites: ['102-1600\3']}" --partition "{name: cp3, sites: ['103-1600\3'], model: hky85, model_params: ['kappa=4']}" --partition "{name: noncoding}"`.
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -472,10 +480,10 @@ treetime ancestral -t tree.nwk -a aln.fasta.xz --annotation genome.gff3 --transl
    Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
 * `--annotation <FILE>` — Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data
 
-   Also supplies the CDSs to reconstruct when `--cds-selection` is not given.
+   Also supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--translations <FILE>` — Path template of the amino-acid alignments, one FASTA file per CDS
 
-   The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.
+   The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--cds-selection <CDS>` — Names of the CDSs to reconstruct from `--translations`
 
    Without this setting, the run reconstructs every CDS of `--annotation`.
@@ -551,7 +559,7 @@ treetime ancestral -t tree.nwk -a aln.fasta.xz --annotation genome.gff3 --transl
 
 * `--aa-root-sequence <FILE>` — FASTA file with one amino-acid reference sequence of the root per CDS
 
-   The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and always omit `X` and gaps.
+   The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and always omit `X` and gaps. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `-O`, `--output-all <DIR>` — Folder that receives the default outputs of the command
 
    Writes the default outputs of the command as `<dir>/<command>.<ext>`. `--output-selection` restricts the outputs that the folder receives. The per-file flags (`--output-*`) override or supplement the files of the folder.
@@ -625,10 +633,10 @@ treetime ancestral -t tree.nwk -a aln.fasta.xz --annotation genome.gff3 --transl
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`
@@ -672,9 +680,13 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
+
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -685,7 +697,7 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
 
 * `-m`, `--metadata <FILE>` — Metadata table (CSV or TSV) with one row per sample
 
-   `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
+   `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--metadata-id-columns <COLUMN>` — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
 
    The first listed column that is present in the header is used. Matching is case-insensitive.
@@ -710,13 +722,13 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
 * `--prune-filtered-tips` — Remove the tips that the clock filter flags from the tree.
 
-   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
+   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
 * `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
 
-   Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time inference dates it from the tree. Names that match no tip are ignored.
+   Accepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and timetree dates it from the tree. Names that match no tip are ignored.
 * `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per line
 
-   Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. Use '-' to read from standard input (stdin).
+   Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `--reroot <REROOT>` — Method that chooses the root of the tree
 
    `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
@@ -788,10 +800,10 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`
@@ -822,9 +834,13 @@ treetime mugration -t tree.nwk -m metadata.tsv --attribute country --weights wei
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
+
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -835,7 +851,7 @@ treetime mugration -t tree.nwk -m metadata.tsv --attribute country --weights wei
 
 * `-m`, `--metadata <FILE>` — Metadata table (CSV or TSV) with one row per sample
 
-   `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
+   `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--metadata-id-columns <COLUMN>` — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
 
    The first listed column that is present in the header is used. Matching is case-insensitive.
@@ -849,10 +865,10 @@ treetime mugration -t tree.nwk -m metadata.tsv --attribute country --weights wei
 * `--attribute <COLUMN>` — Metadata column with the discrete trait to reconstruct, for example `country`
 * `--weights <FILE>` — Table (CSV or TSV) with the equilibrium probability of each state
 
-   The weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for example the population of each country. The first column holds the state and the second its weight, such as the row `micronesia,0.1` under the header `country,weight`.
+   The weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for example the population of each country. The first column holds the state and the second its weight, such as the row `micronesia,0.1` under the header `country,weight`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--lat-longs <FILE>` — Table with the coordinates of the trait values, which give the Auspice tree a map
 
-   The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with the fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute` name, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces an earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in -180 to 180 degrees.
+   The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with the fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute` name, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces an earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in -180 to 180 degrees. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--missing-data <MISSING_DATA>` — Value of the trait column that marks missing data
 
   Default value: `?`
@@ -946,10 +962,10 @@ treetime mugration -t tree.nwk -m metadata.tsv --attribute country --weights wei
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`
@@ -982,12 +998,16 @@ treetime homoplasy -t tree.nwk -a aln.fasta.xz --drms drms.tsv --detailed --outp
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILE>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
 
-   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
+* `-a`, `--alignment <FILE>` — Aligned FASTA input
+
+   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin); `-` may appear at most once.
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -1084,7 +1104,7 @@ treetime homoplasy -t tree.nwk -a aln.fasta.xz --drms drms.tsv --detailed --outp
    The statistics JSON always contains them.
 * `--drms <FILE>` — TSV file of drug resistance mutations (DRM) that annotates the report.
 
-   Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`. A mutation at a listed position gets the gene and the drug, and the substitution when its derived base is a listed `ALT_BASE`.
+   Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`. A mutation at a listed position gets the gene and the drug, and the substitution when its derived base is a listed `ALT_BASE`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `-n`, `--num-mut <N>` — Number of rows of each list in the report.
 
    The statistics JSON always contains the complete lists.
@@ -1142,10 +1162,10 @@ treetime homoplasy -t tree.nwk -a aln.fasta.xz --drms drms.tsv --detailed --outp
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`
@@ -1179,15 +1199,19 @@ treetime optimize -t tree.nwk -a aln.fasta.xz --model hky85 --reroot min-dev --o
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILE>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
 
-   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
+* `-a`, `--alignment <FILE>` — Aligned FASTA input
+
+   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin); `-` may appear at most once.
 * `--partition <ENTRY>` — One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each partition
 
    Without `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML or JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of its `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered from 1: `a`, `a-b`, or `a-b\k` for every k-th site from a to b), `model` (the substitution model, default `infer`) and `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model, so `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one entry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries of its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or without quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition "{name: cp1, sites: ['101-1600\3']}" --partition "{name: cp2, sites: ['102-1600\3']}" --partition "{name: cp3, sites: ['103-1600\3'], model: hky85, model_params: ['kappa=4']}" --partition "{name: noncoding}"`.
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -1385,10 +1409,10 @@ treetime optimize -t tree.nwk -a aln.fasta.xz --model hky85 --reroot min-dev --o
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`
@@ -1420,12 +1444,16 @@ treetime prune -t tree.nwk --remove-file outliers.txt --output-tree-nwk pruned.n
 
 ###### **Options:**
 
-* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILE>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `--config <FILE>` — Config file (YAML or JSON) with the settings of the command
 
-   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
+   Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
+* `-a`, `--alignment <FILE>` — Aligned FASTA input
+
+   Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin); `-` may appear at most once.
 * `-t`, `--tree <FILE>` — Tree in Newick format
+
+   A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -1472,7 +1500,7 @@ treetime prune -t tree.nwk --remove-file outliers.txt --output-tree-nwk pruned.n
    Accepts several names, separated by commas or spaces.
 * `--remove-file <FILE>` — File with names of nodes to remove from the tree, one name per line
 
-   Surrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).
+   Surrounding whitespace is trimmed and empty lines are ignored. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `-O`, `--output-all <DIR>` — Folder that receives the default outputs of the command
 
    Writes the default outputs of the command as `<dir>/<command>.<ext>`. `--output-selection` restricts the outputs that the folder receives. The per-file flags (`--output-*`) override or supplement the files of the folder.
@@ -1519,10 +1547,10 @@ treetime prune -t tree.nwk --remove-file outliers.txt --output-tree-nwk pruned.n
 
 * `--topology-order-tree <FILE>` — Tree whose leaf order sets the target order
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-list <FILE>` — File with leaf names in the target order, one name per line
 
-   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order.
+   Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--topology-order-aggregate <TOPOLOGY_ORDER_AGGREGATE>` — Aggregate used to map a subtree to a target-order position
 
   Default value: `mean`

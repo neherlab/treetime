@@ -6057,7 +6057,7 @@
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
+            "description": "Aligned FASTA input\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,\n`.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);\n`-` may appear at most once.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6095,7 +6095,7 @@
             "x-cli-flag": "--partition"
           },
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6126,7 +6126,7 @@
             "x-cli-flag": "--allow-missing-sequences"
           },
           "metadata": {
-            "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
+            "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6224,12 +6224,12 @@
             "x-cli-flag": "--allow-negative-rate"
           },
           "prune_filtered_tips": {
-            "description": "Remove the tips that the clock filter flags from the tree.\n\nThe clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips\nafter the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.\nEvery output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree,\nflagged. Requires the clock filter (--clock-filter above 0).",
+            "description": "Remove the tips that the clock filter flags from the tree.\n\nThe clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips\nafter the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.\nEvery output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and\n--keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).",
             "type": "boolean",
             "x-cli-flag": "--prune-filtered-tips"
           },
           "keep_tips": {
-            "description": "Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips\n\nAccepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time\ninference dates it from the tree. Names that match no tip are ignored.",
+            "description": "Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips\n\nAccepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and\ntimetree dates it from the tree. Names that match no tip are ignored.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6237,7 +6237,7 @@
             "x-cli-flag": "--keep-tips"
           },
           "keep_tips_file": {
-            "description": "File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per\nline\n\nSurrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file\ncan list samples of several datasets. Use '-' to read from standard input (stdin).",
+            "description": "File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per\nline\n\nSurrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file\ncan list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.\nUse `-` to read uncompressed input from standard input (stdin).",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6572,14 +6572,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6622,7 +6622,7 @@
         "type": "object",
         "properties": {
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6648,7 +6648,7 @@
             "x-cli-flag": "--newick-dialect"
           },
           "metadata": {
-            "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
+            "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6695,12 +6695,12 @@
             "x-cli-flag": "--allow-negative-rate"
           },
           "prune_filtered_tips": {
-            "description": "Remove the tips that the clock filter flags from the tree.\n\nThe clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips\nafter the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.\nEvery output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree,\nflagged. Requires the clock filter (--clock-filter above 0).",
+            "description": "Remove the tips that the clock filter flags from the tree.\n\nThe clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips\nafter the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.\nEvery output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and\n--keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).",
             "type": "boolean",
             "x-cli-flag": "--prune-filtered-tips"
           },
           "keep_tips": {
-            "description": "Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips\n\nAccepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time\ninference dates it from the tree. Names that match no tip are ignored.",
+            "description": "Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips\n\nAccepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and\ntimetree dates it from the tree. Names that match no tip are ignored.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6708,7 +6708,7 @@
             "x-cli-flag": "--keep-tips"
           },
           "keep_tips_file": {
-            "description": "File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per\nline\n\nSurrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file\ncan list samples of several datasets. Use '-' to read from standard input (stdin).",
+            "description": "File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per\nline\n\nSurrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file\ncan list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.\nUse `-` to read uncompressed input from standard input (stdin).",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6835,14 +6835,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -6927,7 +6927,7 @@
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
+            "description": "Aligned FASTA input\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,\n`.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);\n`-` may appear at most once.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6965,7 +6965,7 @@
             "x-cli-flag": "--partition"
           },
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7007,14 +7007,14 @@
             "x-cli-flag": "--zero-based"
           },
           "annotation": {
-            "description": "Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data\n\nAlso supplies the CDSs to reconstruct when `--cds-selection` is not given.",
+            "description": "Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data\n\nAlso supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`,\n`.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--annotation"
           },
           "translations": {
-            "description": "Path template of the amino-acid alignments, one FASTA file per CDS\n\nThe template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS\nof `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.",
+            "description": "Path template of the amino-acid alignments, one FASTA file per CDS\n\nThe template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS\nof `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input-template",
             "x-unset": true,
@@ -7089,7 +7089,7 @@
             "x-cli-flag": "--impute-missing-data"
           },
           "aa_root_sequence": {
-            "description": "FASTA file with one amino-acid reference sequence of the root per CDS\n\nThe root `aa_muts` of augur node data list the differences between this reference and the inferred root, and\nalways omit `X` and gaps.",
+            "description": "FASTA file with one amino-acid reference sequence of the root per CDS\n\nThe root `aa_muts` of augur node data list the differences between this reference and the inferred root, and\nalways omit `X` and gaps. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7215,14 +7215,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7264,7 +7264,7 @@
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
+            "description": "Aligned FASTA input\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,\n`.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);\n`-` may appear at most once.",
             "type": "array",
             "items": {
               "type": "string"
@@ -7273,7 +7273,7 @@
             "x-path": "input"
           },
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7373,7 +7373,7 @@
             "x-cli-flag": "--detailed"
           },
           "drms": {
-            "description": "TSV file of drug resistance mutations (DRM) that annotates the report.\n\nColumns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`.\nA mutation at a listed position gets the gene and the drug, and the substitution when its\nderived base is a listed `ALT_BASE`.",
+            "description": "TSV file of drug resistance mutations (DRM) that annotates the report.\n\nColumns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`. A mutation at a listed\nposition gets the gene and the drug, and the substitution when its derived base is a listed `ALT_BASE`. A path\nthat ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7476,14 +7476,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7546,7 +7546,7 @@
         "type": "object",
         "properties": {
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7572,7 +7572,7 @@
             "x-cli-flag": "--newick-dialect"
           },
           "metadata": {
-            "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
+            "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7603,14 +7603,14 @@
             "x-cli-flag": "--attribute"
           },
           "weights": {
-            "description": "Table (CSV or TSV) with the equilibrium probability of each state\n\nThe weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for\nexample the population of each country. The first column holds the state and the second its weight, such as\nthe row `micronesia,0.1` under the header `country,weight`.",
+            "description": "Table (CSV or TSV) with the equilibrium probability of each state\n\nThe weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for\nexample the population of each country. The first column holds the state and the second its weight, such as the\nrow `micronesia,0.1` under the header `country,weight`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads\na compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--weights"
           },
           "lat_longs": {
-            "description": "Table with the coordinates of the trait values, which give the Auspice tree a map\n\nThe format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with\nthe fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute`\nname, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces\nan earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in\n-180 to 180 degrees.",
+            "description": "Table with the coordinates of the trait values, which give the Auspice tree a map\n\nThe format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with the\nfields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute` name, and\n`<name>` a value of the trait; both match in lower case. A later line for the same location replaces an earlier\none, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in -180 to 180\ndegrees. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7782,14 +7782,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7873,7 +7873,7 @@
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
+            "description": "Aligned FASTA input\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,\n`.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);\n`-` may appear at most once.",
             "type": "array",
             "items": {
               "type": "string"
@@ -7911,7 +7911,7 @@
             "x-cli-flag": "--partition"
           },
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -8151,14 +8151,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -8190,7 +8190,7 @@
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
+            "description": "Aligned FASTA input\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,\n`.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);\n`-` may appear at most once.",
             "type": "array",
             "items": {
               "type": "string"
@@ -8199,7 +8199,7 @@
             "x-path": "input"
           },
           "tree": {
-            "description": "Tree in Newick format.",
+            "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -8271,7 +8271,7 @@
             "x-cli-flag": "--remove"
           },
           "remove_file": {
-            "description": "File with names of nodes to remove from the tree, one name per line\n\nSurrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).",
+            "description": "File with names of nodes to remove from the tree, one name per line\n\nSurrounding whitespace is trimmed and empty lines are ignored. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst`\nreads a compressed file. Use `-` to read uncompressed input from standard input (stdin).",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -8353,14 +8353,14 @@
             "x-cli-flag": "--topology-order"
           },
           "topology_order_tree": {
-            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+            "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--topology-order-tree"
           },
           "topology_order_list": {
-            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+            "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,

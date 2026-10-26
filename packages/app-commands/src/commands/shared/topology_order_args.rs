@@ -37,7 +37,8 @@ pub struct TopologyOrderArgs {
   /// Tree whose leaf order sets the target order
   ///
   /// Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
-  /// the leaf order of the input tree is the target order.
+  /// the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a
+  /// compressed file.
   #[cfg_attr(
     feature = "clap",
     clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, value_name = "FILE", conflicts_with = "topology_order_list", help_heading = "Tree ordering")
@@ -48,7 +49,8 @@ pub struct TopologyOrderArgs {
   /// File with leaf names in the target order, one name per line
   ///
   /// Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
-  /// the leaf order of the input tree is the target order.
+  /// the leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a
+  /// compressed file.
   #[cfg_attr(
     feature = "clap",
     clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Tree ordering")

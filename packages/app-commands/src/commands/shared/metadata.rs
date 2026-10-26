@@ -20,7 +20,8 @@ pub struct MetadataArgs {
   /// Metadata table (CSV or TSV) with one row per sample
   ///
   /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
-  /// sample, such as its sampling date or its traits.
+  /// sample, such as its sampling date or its traits. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a
+  /// compressed file.
   #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
+      "description": "Aligned FASTA input\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,\n`.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);\n`-` may appear at most once.",
       "type": "array",
       "items": {
         "type": "string"
@@ -45,7 +45,7 @@
       "x-cli-flag": "--partition"
     },
     "tree": {
-      "description": "Tree in Newick format.",
+      "description": "Tree in Newick format\n\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,
@@ -90,14 +90,14 @@
       "x-cli-flag": "--zero-based"
     },
     "annotation": {
-      "description": "Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data\n\nAlso supplies the CDSs to reconstruct when `--cds-selection` is not given.",
+      "description": "Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data\n\nAlso supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`,\n`.xz`, or `.zst` reads a compressed file.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,
       "x-cli-flag": "--annotation"
     },
     "translations": {
-      "description": "Path template of the amino-acid alignments, one FASTA file per CDS\n\nThe template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS\nof `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.",
+      "description": "Path template of the amino-acid alignments, one FASTA file per CDS\n\nThe template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS\nof `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
       "type": "string",
       "x-path": "input-template",
       "x-unset": true,
@@ -184,7 +184,7 @@
       "x-cli-flag": "--impute-missing-data"
     },
     "aa_root_sequence": {
-      "description": "FASTA file with one amino-acid reference sequence of the root per CDS\n\nThe root `aa_muts` of augur node data list the differences between this reference and the inferred root, and\nalways omit `X` and gaps.",
+      "description": "FASTA file with one amino-acid reference sequence of the root per CDS\n\nThe root `aa_muts` of augur node data list the differences between this reference and the inferred root, and\nalways omit `X` and gaps. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,
@@ -313,14 +313,14 @@
       "x-cli-flag": "--topology-order"
     },
     "topology_order_tree": {
-      "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
+      "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,
       "x-cli-flag": "--topology-order-tree"
     },
     "topology_order_list": {
-      "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+      "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a\ncompressed file.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,

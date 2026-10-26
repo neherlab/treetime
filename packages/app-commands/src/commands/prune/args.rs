@@ -253,7 +253,8 @@ pub struct TreetimePruneArgsRaw {
 
   /// File with names of nodes to remove from the tree, one name per line
   ///
-  /// Surrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).
+  /// Surrounding whitespace is trimmed and empty lines are ignored. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst`
+  /// reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Pruning"))]
   #[schemars(extend("x-path" = "input"))]
   pub remove_file: Option<PathBuf>,

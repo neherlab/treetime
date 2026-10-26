@@ -381,7 +381,8 @@ pub struct TreetimeAncestralArgsRaw {
 
   /// Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data
   ///
-  /// Also supplies the CDSs to reconstruct when `--cds-selection` is not given.
+  /// Also supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`,
+  /// `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
@@ -391,6 +392,7 @@ pub struct TreetimeAncestralArgsRaw {
   ///
   /// The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS
   /// of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.
+  /// A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input-template"))]
@@ -455,7 +457,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// FASTA file with one amino-acid reference sequence of the root per CDS
   ///
   /// The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and
-  /// always omit `X` and gaps.
+  /// always omit `X` and gaps. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

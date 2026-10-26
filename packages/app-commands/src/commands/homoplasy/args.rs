@@ -346,9 +346,9 @@ pub struct TreetimeHomoplasyArgsRaw {
 
   /// TSV file of drug resistance mutations (DRM) that annotates the report.
   ///
-  /// Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`.
-  /// A mutation at a listed position gets the gene and the drug, and the substitution when its
-  /// derived base is a listed `ALT_BASE`.
+  /// Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`. A mutation at a listed
+  /// position gets the gene and the drug, and the substitution when its derived base is a listed `ALT_BASE`. A path
+  /// that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Homoplasy"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

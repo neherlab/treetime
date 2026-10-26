@@ -47,7 +47,9 @@ pub fn read_input_tree(path: &Path, dialect: NewickDialect, log: &dyn LogSink) -
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TreeArgs {
-  /// Tree in Newick format.
+  /// Tree in Newick format
+  ///
+  /// A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(
     feature = "clap",
     clap(long, short = 't', value_hint = ValueHint::FilePath, help_heading = "Input data")

@@ -250,19 +250,20 @@ pub struct TreetimeMugrationArgsRaw {
   /// Table (CSV or TSV) with the equilibrium probability of each state
   ///
   /// The weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for
-  /// example the population of each country. The first column holds the state and the second its weight, such as
-  /// the row `micronesia,0.1` under the header `country,weight`.
+  /// example the population of each country. The first column holds the state and the second its weight, such as the
+  /// row `micronesia,0.1` under the header `country,weight`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads
+  /// a compressed file.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub weights: Option<PathBuf>,
   /// Table with the coordinates of the trait values, which give the Auspice tree a map
   ///
-  /// The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with
-  /// the fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute`
-  /// name, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces
-  /// an earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in
-  /// -180 to 180 degrees.
+  /// The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with the
+  /// fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute` name, and
+  /// `<name>` a value of the trait; both match in lower case. A later line for the same location replaces an earlier
+  /// one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in -180 to 180
+  /// degrees. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(
     feature = "clap",
     clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Input data")

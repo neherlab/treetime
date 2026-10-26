@@ -27,11 +27,12 @@ use treetime_schema::schema_defaults;
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
-  /// Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+  /// Aligned FASTA input
   ///
   /// Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless
-  /// `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed
-  /// FASTA from standard input; `-` may appear at most once.
+  /// `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. A path that ends in `.gz`,
+  /// `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin);
+  /// `-` may appear at most once.
   #[cfg_attr(
     feature = "clap",
     clap(

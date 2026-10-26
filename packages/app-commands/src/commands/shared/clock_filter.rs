@@ -50,15 +50,15 @@ pub struct ClockFilterArgs {
   ///
   /// The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips
   /// after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.
-  /// Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree,
-  /// flagged. Requires the clock filter (--clock-filter above 0).
+  /// Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and
+  /// --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub prune_filtered_tips: bool,
 
   /// Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
   ///
-  /// Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time
-  /// inference dates it from the tree. Names that match no tip are ignored.
+  /// Accepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and
+  /// timetree dates it from the tree. Names that match no tip are ignored.
   #[cfg_attr(
     feature = "clap",
     clap(
@@ -76,7 +76,8 @@ pub struct ClockFilterArgs {
   /// line
   ///
   /// Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file
-  /// can list samples of several datasets. Use '-' to read from standard input (stdin).
+  /// can list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+  /// Use `-` to read uncompressed input from standard input (stdin).
   #[cfg_attr(
     feature = "clap",
     clap(
