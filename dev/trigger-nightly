@@ -5,22 +5,18 @@
 # Trigger a nightly build and release via GitHub Actions.
 #
 # Dispatches the default-branch scheduler, which builds rust and publishes the
-# CLI binaries and the desktop apps in the release repository.
+# CLI binaries in the release repository.
 #
 # Options:
 #   -h, --help                         Show this help
 #   -f, --force                        Build even when source has not changed since the latest nightly
-#   -o, --only <cli|desktop|all>       Run only the CLI release (cli), only the desktop app release
-#                                      (desktop), or all (default). Desktop-only runs also run when the
-#                                      source is unchanged
 #
 # Environment:
 #   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.
 #
 # Examples:
 #   $0
-#   $0 --only desktop
-#   $0 --force --only cli
+#   $0 --force
 #
 set -euo pipefail
 trap "exit" INT
@@ -33,7 +29,6 @@ main() {
   }
 
   local force="false"
-  local only="all"
 
   # shfmt:off
   while (($# > 0)); do
@@ -45,14 +40,6 @@ main() {
     -f | --force)
       force="true"
       shift
-      ;;
-    -o | --only)
-      if (($# < 2)); then
-        printf "Missing value of %s\n" "${1}" >&2
-        exit 1
-      fi
-      only="${2}"
-      shift 2
       ;;
     --)
       shift
@@ -67,14 +54,6 @@ main() {
   done
   # shfmt:on
 
-  case "${only}" in
-  cli | desktop | all) ;;
-  *)
-    printf "Invalid value of --only: '%s'. Expected cli, desktop, or all\n" "${only}" >&2
-    exit 1
-    ;;
-  esac
-
   local source_repo
   source_repo=$(git -C "${THIS_DIR}" remote get-url origin | sed 's|.*github\.com[:/]||; s|\.git$||')
 
@@ -87,14 +66,8 @@ main() {
     exit 1
   }
 
-  # The default is left out of the dispatch, so it also works with a scheduler
-  # that does not declare the `only` input.
   local input_args=()
   local label=""
-  if [[ "${only}" != "all" ]]; then
-    input_args+=(-f "only=${only}")
-    label+=" (only ${only})"
-  fi
   if [[ "${force}" == "true" ]]; then
     input_args+=(-f "force=true")
     label+=" (force)"

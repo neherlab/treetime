@@ -1,8 +1,7 @@
 name: "Nightly release"
 
 # Runs on every push to rust, and when the daily scheduler of
-# schedule-nightly.yml on master or dev/trigger-nightly calls it. A push run
-# has no inputs and releases the CLI and the desktop apps.
+# schedule-nightly.yml on master or dev/trigger-nightly calls it.
 on:
   push:
     branches:
@@ -15,11 +14,6 @@ on:
         required: false
         type: boolean
         default: false
-      only:
-        description: "What to run: cli (CLI release), desktop (desktop app release), or all"
-        required: false
-        type: string
-        default: "all"
 
 permissions:
   contents: read
@@ -40,7 +34,6 @@ jobs:
     name: "Resolve rust revision"
     runs-on: ubuntu-24.04
     outputs:
-      only: ${{ steps.prepare.outputs.only }}
       should_build: ${{ steps.prepare.outputs.should_build }}
       source_sha: ${{ steps.prepare.outputs.source_sha }}
       version_suffix: ${{ steps.prepare.outputs.version_suffix }}
@@ -49,53 +42,31 @@ jobs:
         id: prepare
         env:
           GH_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}
-          ONLY: ${{ inputs.only || 'all' }}
+          FORCE: ${{ inputs.force == true }}
         run: |
-          case "${ONLY}" in
-          cli | desktop | all) ;;
-          *)
-            printf 'Invalid input only: "%s". Expected cli, desktop, or all\n' "${ONLY}" >&2
-            exit 1
-            ;;
-          esac
-
           source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
           short_sha="${source_sha:0:7}"
-          # Only a release with CLI binaries counts, so a desktop-only release
-          # does not make the next scheduled run skip the CLI.
-          latest_tag=$(gh api "repos/${RELEASE_REPOSITORY}/releases?per_page=100" --jq '[.[] | select((.draft | not) and (.tag_name | contains("-nightly.")) and any(.assets[]; .name | startswith("treetime-") and (startswith("treetime-desktop-") | not)))][0].tag_name // ""')
+          latest_tag=$(gh api "repos/${RELEASE_REPOSITORY}/releases?per_page=100" --jq '[.[] | select((.draft | not) and (.tag_name | contains("-nightly.")))][0].tag_name // ""')
 
           should_build=true
-          if [[ "${{ inputs.force }}" != "true" && "${ONLY}" != "desktop" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
+          if [[ "${FORCE}" != "true" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
             should_build=false
           fi
 
           timestamp=$(date -u "+%Y%m%dT%H%M%SZ")
           version_suffix="nightly.${timestamp}+${short_sha}"
 
-          printf "Source: %s\nVersion suffix: %s\nOnly: %s\nBuild: %s\n" "${source_sha}" "${version_suffix}" "${ONLY}" "${should_build}"
-          printf "only=%s\nshould_build=%s\nsource_sha=%s\nversion_suffix=%s\n" \
-            "${ONLY}" "${should_build}" "${source_sha}" "${version_suffix}" >> "${GITHUB_OUTPUT}"
+          printf "Source: %s\nVersion suffix: %s\nBuild: %s\n" "${source_sha}" "${version_suffix}" "${should_build}"
+          printf "should_build=%s\nsource_sha=%s\nversion_suffix=%s\n" \
+            "${should_build}" "${source_sha}" "${version_suffix}" >> "${GITHUB_OUTPUT}"
 
+  # The build jobs continue on error in nightly mode, so a failed target never
+  # blocks the others: the release contains every CLI binary that builds.
   build:
     name: "Build"
     needs: prepare
-    if: needs.prepare.outputs.should_build == 'true' && (needs.prepare.outputs.only == 'cli' || needs.prepare.outputs.only == 'all')
+    if: needs.prepare.outputs.should_build == 'true'
     uses: neherlab/treetime/.github/workflows/cli-build.yml@rust
-    with:
-      source_ref: ${{ needs.prepare.outputs.source_sha }}
-      build_mode: nightly
-      version_suffix: ${{ needs.prepare.outputs.version_suffix }}
-    secrets: inherit
-
-  # The build jobs continue on error in nightly mode, so a failed target never
-  # blocks the others: the release contains every CLI binary and desktop
-  # package that builds.
-  build-desktop:
-    name: "Build desktop app"
-    needs: prepare
-    if: needs.prepare.outputs.should_build == 'true' && (needs.prepare.outputs.only == 'desktop' || needs.prepare.outputs.only == 'all')
-    uses: neherlab/treetime/.github/workflows/desktop-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
       build_mode: nightly
@@ -104,7 +75,7 @@ jobs:
 
   publish:
     name: "Publish nightly release"
-    needs: [prepare, build, build-desktop]
+    needs: [prepare, build]
     if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' }}
     runs-on: ubuntu-24.04
     # The attest action signs with the identity of this workflow. A called workflow can only lower the
@@ -166,7 +137,7 @@ jobs:
   docker:
     name: "Publish to Docker Hub"
     needs: [prepare, publish]
-    if: ${{ !cancelled() && needs.publish.result == 'success' && (needs.prepare.outputs.only == 'cli' || needs.prepare.outputs.only == 'all') }}
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     outputs:

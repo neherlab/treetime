@@ -2,8 +2,7 @@
 #
 # Usage: $0 [options]
 #
-# Upload the CLI and desktop app artifacts as a nightly release in the release
-# repository.
+# Upload the CLI artifacts as a nightly release in the release repository.
 # The release tag combines the workspace version and supplied nightly suffix.
 #
 # Options:
@@ -117,10 +116,9 @@ generate_install_subtable() {
 }
 
 # Emit the install table: the CLI subtable and links to every other uploaded
-# asset except the desktop packages, the source code, the issue tracker, and
-# the footnotes of the marked entries. The desktop packages stay in the asset
-# list of the release only. An asset of no known platform is listed under
-# "Other", so a new target appears even before its entry is added to CLI_ROWS.
+# asset, the source code, the issue tracker, and the footnotes of the marked
+# entries. An asset of no known platform is listed under "Other", so a new
+# target appears even before its entry is added to CLI_ROWS.
 generate_install_table() {
   local source_repo="${1}"
   local git_sha="${2}"
@@ -145,10 +143,6 @@ generate_install_table() {
   done
 
   printf "\n### Installation and usage\n\n<table>\n"
-  local name
-  for name in "${!unlisted[@]}"; do
-    [[ "${name}" != treetime-desktop-* ]] || unset "unlisted[${name}]"
-  done
   generate_install_subtable "⌨️ <b>CLI</b>" "treetime-" "${CLI_ROWS[@]}"
   if ((docker_binaries == 4)); then
     printf "<tr><td>🐳 <b>Docker</b></td><td><code>docker pull %s:%s</code> (<a href=\"https://hub.docker.com/r/%s/tags\">all tags</a>)</td></tr>\n" \
@@ -168,7 +162,7 @@ generate_install_table() {
     unset "unlisted[${CHECKSUMS_ASSET}]"
   fi
 
-  local other=""
+  local other="" name
   while IFS= read -r name; do
     [[ -n "${name}" ]] || continue
     other+="${other:+<br>}<a href=\"${base_url}/${name}\">${name}</a> ($(format_size "$(wc -c <"${unlisted[${name}]}")"))"
