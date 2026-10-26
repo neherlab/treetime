@@ -540,9 +540,33 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 3. `nightly.yml` writes `SHA256SUMS` over every asset of the release and attests these checksums with `actions/attest`, which signs with the identity of the workflow run. The attestation needs the `id-token: write` and `attestations: write` permissions. A called workflow can only lower the permissions of its caller, so the `nightly` job of `schedule-nightly.yml` grants them too
 4. `dev/publish-nightly` creates the prerelease with the built binaries, the desktop packages, `examples.zip`, which holds the files that `data/index.json` lists and the index itself, and `SHA256SUMS`. Its notes list the changelog since the previous nightly, followed by a downloads table that links every asset, one row per platform, and the command that verifies a download: `gh attestation verify <file> --repo neherlab/treetime`
 
+5. After the release, the `docker` job of `nightly.yml` publishes the Docker images `neherlab/treetime` of the nightly with `dev/docker/prod-images --run --push`, and `verify-docker` pulls the image of the version on `linux/amd64` and `linux/arm64` and compares `treetime --version`. A missing Linux binary fails the job and publishes no images; the release stays
+
 `./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 
 `./dev/trigger-nightly --only cli` runs only the CLI release, `--only desktop` only the desktop release; push runs and the scheduled run do both. A desktop-only release has no CLI binaries, so the next scheduled run still builds the CLI for the same commit, and a desktop-only run also runs when `rust` is unchanged.
+
+### Docker images
+
+`dev/docker/prod-images --version-suffix <suffix> [--run] [--push]` (host only) builds the images `neherlab/treetime` for `linux/amd64` and `linux/arm64` from the four Linux CLI binaries of a nightly in `.out/` (`treetime-{x86_64,aarch64}-unknown-linux-{gnu,musl}`):
+
+- **Debian** (`dev/docker/prod-debian.dockerfile`): the glibc build, with `bash`, `ca-certificates`, `curl`, `procps`, and `wget`, which workflow managers such as Nextflow need in task containers
+- **Alpine** (`dev/docker/prod-alpine.dockerfile`): the static musl build
+- **Scratch** (`dev/docker/prod-scratch.dockerfile`): only the static musl build
+
+Each image exists on every base of `dev/docker/prod-bases.json`. The tags name the nightly and the base: `nightly` and `nightly-<distro>` follow the latest nightly on the newest base, `nightly-<distro><version>` (such as `nightly-alpine3.24`) on each base, and the version of the nightly selects one nightly, with `_` in place of the `+` that a Docker tag cannot hold: `1.0.0-nightly.20261026T040000Z_abc1234`, `1.0.0-nightly.20261026T040000Z_abc1234-debian13`. Plain `nightly` is the newest Debian image; there is no `latest` tag until stable releases exist. With `--run`, the script loads each platform and runs `treetime --version` and an ancestral reconstruction of `data/zika/20` in every image before `--push` pushes them. Usage:
+
+```sh
+docker run --rm --user="$(id -u):$(id -g)" --volume="$PWD:/data" --workdir=/data neherlab/treetime:nightly treetime ancestral --tree=tree.nwk --alignment=aln.fasta.xz --output-all=results
+```
+
+`dev/docker/prod-bases.json` pins each base image to the digest of its Docker Hub tag, so the images of one nightly and a re-run use the same base. `./dev/docker/run dev/docker/prod-bases-update` rewrites it from the release lines of endoflife.date (the six newest Alpine and the three newest Debian releases) and the tags of Docker Hub, with the seven-day rule of the project:
+
+- a release line released less than seven days ago is skipped
+- when the tag of a line was pushed less than seven days ago, the line takes the newest dated tag of the same line that is at least seven days old: Debian keeps every build as `<codename>-YYYYMMDD`, such as `trixie-20260918`; Alpine has no dated tags, so an Alpine line keeps the digest that the file already has
+- a line without such a digest fails the run, with the date from which a re-run succeeds
+
+Run it from time to time and commit the file, so the images get the security fixes of their bases. The images of Debian 11, which is end-of-life, install their packages from `archive.debian.org` and the last security snapshot. The repository page on Docker Hub is edited by hand. The `docker` job logs in with `NEHERLAB_BOT_DOCKERHUB_USERNAME` and `NEHERLAB_BOT_DOCKERHUB_TOKEN`, the account that also pushes the build images, which needs write access to `neherlab/treetime`.
 
 ### Web app deploys
 

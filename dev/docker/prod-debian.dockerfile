@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+# check=experimental=all
+#
+# Production image neherlab/treetime on Debian: the glibc build of the CLI as
+# /usr/bin/treetime, with bash, ca-certificates, curl, procps, and wget, because
+# workflow managers such as Nextflow need bash and ps in task containers.
+# dev/docker/prod-images builds it for each Debian base of
+# dev/docker/prod-bases.json, passed as BASE_IMAGE with its digest, and stages
+# the binary of each platform under .out/docker/<arch>/gnu/.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+SHELL ["bash", "-euxo", "pipefail", "-c"]
+
+# Debian 11 is end-of-life: its packages moved to archive.debian.org, which has
+# no bullseye-security suite. Security updates come from the snapshot taken
+# right after the final update (2026-08-31).
+RUN set -euxo pipefail >/dev/null \
+&& source "/etc/os-release" \
+&& if [[ "${VERSION_CODENAME}" == "bullseye" ]]; then \
+  printf "%s\n" \
+    "deb http://archive.debian.org/debian bullseye main" \
+    "deb http://archive.debian.org/debian bullseye-updates main" \
+    "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260901T000000Z bullseye-security main" \
+  > "/etc/apt/sources.list"; \
+fi
+
+RUN set -euxo pipefail >/dev/null \
+&& export DEBIAN_FRONTEND=noninteractive \
+&& apt-get update -qq \
+&& apt-get install --no-install-recommends --yes -qq \
+  bash \
+  ca-certificates \
+  curl \
+  procps \
+  wget \
+>/dev/null \
+&& apt-get clean autoclean >/dev/null \
+&& apt-get autoremove --yes >/dev/null \
+&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+ARG TARGETARCH
+COPY ".out/docker/${TARGETARCH}/gnu/treetime" "/usr/bin/treetime"

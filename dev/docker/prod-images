@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [options] --version-suffix <suffix>
+#
+# Build the production images neherlab/treetime of a nightly for linux/amd64
+# and linux/arm64 from the Linux CLI binaries of the nightly in .out/: Debian
+# with the glibc build (dev/docker/prod-debian.dockerfile), Alpine and scratch
+# with the static musl build (prod-alpine, prod-scratch), on every base of
+# dev/docker/prod-bases.json, each pinned to its digest. Without --run or
+# --push, the images are built for both platforms and kept in the build cache
+# only.
+#
+# The version of the images is the workspace version of Cargo.toml and the
+# suffix, as in the binaries (TREETIME_VERSION_SUFFIX). A Docker tag cannot
+# hold the `+` of the build metadata, so the version tags have `_` in its
+# place. Tags, for version 1.0.0-nightly.20261026T040000Z+abc1234 with Debian
+# 13 and Alpine 3.24 as the newest bases:
+#   nightly-debian13 1.0.0-nightly.20261026T040000Z_abc1234-debian13
+#                                      each base, here Debian 13
+#   nightly-debian 1.0.0-nightly.20261026T040000Z_abc1234-debian
+#                                      the newest base of each distribution
+#   nightly 1.0.0-nightly.20261026T040000Z_abc1234
+#                                      the newest Debian
+#
+# Every build uses one docker-container builder, treetime-prod, so a push after
+# --run reuses the layers of the tested builds. The binaries are staged with
+# mode 0755 under .out/docker/<amd64|arm64>/<gnu|musl>/. The log of each build
+# and the outputs of each image test go to tmp/docker-prod/.
+#
+# Runs on the host and needs Docker with buildx, QEMU user emulation for the
+# platform that the host does not run (binfmt_misc), yq, jq, and the binaries
+# treetime-{x86_64,aarch64}-unknown-linux-{gnu,musl} of the nightly in .out/.
+#
+# Options:
+#   -h, --help                  Show this help
+#   --version-suffix <suffix>   Nightly version suffix of the binaries, such as
+#                               nightly.20261026T040000Z+abc1234 (required)
+#   --run                       Load each platform into Docker and run, in every
+#                               image, `treetime --version`, which must report the
+#                               version, and an ancestral reconstruction of
+#                               data/zika/20
+#   --push                      Push the images of both platforms to Docker Hub
+#                               (log in first); with --run, only after every image
+#                               ran
+#
+# Examples:
+#   $0 --version-suffix nightly.20261026T040000Z+abc1234 --run
+#   $0 --version-suffix nightly.20261026T040000Z+abc1234 --run --push
+#
+set -euo pipefail
+trap "exit" INT
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+
+IMAGE="neherlab/treetime"
+PLATFORMS="linux/amd64,linux/arm64"
+BUILDER="treetime-prod"
+DISTROS=(debian alpine scratch)
+LOG_DIR="tmp/docker-prod"
+TEST_DATASET="data/zika/20"
+
+# Print the tags of an image variant for a suffix such as debian13 or alpine.
+# Reads IMAGE and docker_version.
+generate_tags() {
+  local suffix="${1}"
+  printf "%s" "${IMAGE}:nightly-${suffix} ${IMAGE}:${docker_version}-${suffix}"
+}
+
+# Print the tags without a base suffix, of the default image.
+# Reads IMAGE and docker_version.
+generate_bare_tags() {
+  printf "%s" "${IMAGE}:nightly ${IMAGE}:${docker_version}"
+}
+
+# Print one line per image variant: distribution, base tag (empty for
+# scratch), base image reference with digest (empty for scratch), and whether
+# it is the newest base of its distribution, separated by '|'. A tab would not
+# work: read merges consecutive tabs, so an empty field would vanish.
+variants() {
+  local distro
+  for distro in "${DISTROS[@]}"; do
+    if [[ "${distro}" == scratch ]]; then
+      printf 'scratch|||true\n'
+      continue
+    fi
+    jq -r --arg distro "${distro}" \
+      '.bases[$distro] | to_entries[] | [$distro, .value.tag, "\($distro):\(.value.tag)@\(.value.digest)", (.key == 0 | tostring)] | join("|")' \
+      dev/docker/prod-bases.json
+  done
+}
+
+# Build one image variant with an output option of buildx: --load for one
+# platform, --push or --output=type=cacheonly for both.
+build_one() {
+  local output="${1}" platform="${2}" distro="${3}" tag="${4}" base="${5}" newest="${6}"
+
+  local tags=""
+  [[ -z "${tag}" ]] || tags="$(generate_tags "${distro}${tag}")"
+  [[ "${newest}" != "true" ]] || tags="${tags} $(generate_tags "${distro}")"
+  [[ "${newest}" != "true" || "${distro}" != debian ]] || tags="${tags} $(generate_bare_tags)"
+
+  local args=() name
+  for name in ${tags}; do
+    args+=(--tag="${name}")
+  done
+  [[ -z "${base}" ]] || args+=(--build-arg="BASE_IMAGE=${base}")
+
+  docker buildx build \
+    --builder="${BUILDER}" \
+    --platform="${platform}" \
+    "${output}" \
+    --file="dev/docker/prod-${distro}.dockerfile" \
+    --progress=plain \
+    "${args[@]}" \
+    .
+}
+
+# Build every image variant in parallel; fail when any build fails.
+build_all() {
+  local output="${1}" platform="${2}"
+  local pids=() labels=() logs=() distro tag base newest label list
+
+  list="$(variants)"
+  mkdir -p "${LOG_DIR}"
+  while IFS='|' read -r distro tag base newest; do
+    label="${distro}${tag}"
+    labels+=("${label}")
+    logs+=("${LOG_DIR}/${label}-${platform//\//-}.log")
+    build_one "${output}" "${platform}" "${distro}" "${tag}" "${base}" "${newest}" >"${logs[${#logs[@]} - 1]}" 2>&1 &
+    pids+=("$!")
+  done <<<"${list}"
+  printf 'Building %s image variants for %s (%s); logs in %s/\n' "${#pids[@]}" "${platform}" "${output}" "${LOG_DIR}" >&2
+
+  local failed=0 i
+  for i in "${!pids[@]}"; do
+    if wait "${pids[${i}]}"; then
+      printf 'Built %s\n' "${labels[${i}]}" >&2
+    else
+      printf 'FAIL %s (%s)\n' "${labels[${i}]}" "${logs[${i}]}" >&2
+      failed=$((failed + 1))
+    fi
+  done
+  if ((failed > 0)); then
+    printf '%s builds failed\n' "${failed}" >&2
+    exit 1
+  fi
+}
+
+# Run every loaded image variant of a platform: `treetime --version` must
+# report the version, and the ancestral reconstruction of the test dataset
+# must succeed, because a binary can print its version and still crash in its
+# numeric libraries (BLAS, LAPACK).
+run_all() {
+  local platform="${1}" distro tag base newest name label output list failed=0
+
+  list="$(variants)"
+  while IFS='|' read -r distro tag base newest; do
+    name="${IMAGE}:nightly-${distro}${tag}"
+    label="$(printf '%s' "${distro}${tag}-${platform}" | tr '/:@' '---')"
+    if ! output="$(run_version "${platform}" "${name}" "${label}" 2>&1)"; then
+      printf 'FAIL %s (%s): %s\n' "${name}" "${platform}" "${output}" >&2
+      failed=$((failed + 1))
+    elif [[ "${output}" != "treetime ${version}" ]]; then
+      printf 'FAIL %s (%s): reports "%s", expected "treetime %s"\n' "${name}" "${platform}" "${output}" "${version}" >&2
+      failed=$((failed + 1))
+    elif ! output="$(run_analysis "${platform}" "${name}" "${label}" 2>&1)"; then
+      printf 'FAIL %s (%s): ancestral reconstruction of %s:\n%s\n' "${name}" "${platform}" "${TEST_DATASET}" "${output}" >&2
+      failed=$((failed + 1))
+    else
+      printf 'PASS %s (%s)\n' "${name}" "${platform}" >&2
+    fi
+  done <<<"${list}"
+  if ((failed > 0)); then
+    printf '%s images failed to run\n' "${failed}" >&2
+    exit 1
+  fi
+}
+
+# Print the output of `treetime --version` in an image.
+run_version() {
+  local platform="${1}" name="${2}" label="${3}"
+
+  docker run --rm \
+    --name="treetime-prod-${label}-version-$$" \
+    --platform="${platform}" \
+    --cap-drop=ALL \
+    "${name}" \
+    treetime --version
+}
+
+# Run the ancestral reconstruction of the test dataset in an image, with the
+# dataset mounted read-only and the outputs in tmp/docker-prod/run/<label>/.
+run_analysis() {
+  local platform="${1}" name="${2}" label="${3}"
+  local out_dir="${root}/${LOG_DIR}/run/${label}"
+
+  rm -rf "${out_dir}"
+  declare -A volumes=(
+    ["${root}/${TEST_DATASET}"]="/data:ro"
+    ["${out_dir}"]="/out"
+  )
+  mkdir -p "${!volumes[@]}"
+
+  local volume_flags=() src
+  for src in "${!volumes[@]}"; do
+    volume_flags+=(--volume="${src}:${volumes[${src}]}")
+  done
+
+  docker run --rm \
+    --name="treetime-prod-${label}-ancestral-$$" \
+    --platform="${platform}" \
+    --cap-drop=ALL \
+    --user="$(id -u):$(id -g)" \
+    "${volume_flags[@]}" \
+    "${name}" \
+    treetime ancestral --tree=/data/tree.nwk --alignment=/data/aln.fasta.xz --output-all=/out
+}
+
+# Copy the binaries to the paths that TARGETARCH selects in the Dockerfiles.
+stage_binaries() {
+  local arch target libc source
+  for arch in amd64 arm64; do
+    target="x86_64"
+    [[ "${arch}" == amd64 ]] || target="aarch64"
+    for libc in gnu musl; do
+      source=".out/treetime-${target}-unknown-linux-${libc}"
+      if [[ ! -f "${source}" ]]; then
+        printf 'Missing %s; build it with dev/cross/build or download it from the nightly release\n' "${source}" >&2
+        exit 1
+      fi
+      mkdir -p ".out/docker/${arch}/${libc}"
+      install -m 0755 "${source}" ".out/docker/${arch}/${libc}/treetime"
+    done
+  done
+}
+
+main() {
+  local run="" push="" version_suffix=""
+  while (($# > 0)); do
+    case "${1}" in
+    -h | --help)
+      sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+      exit 0
+      ;;
+    --version-suffix)
+      if (($# < 2)); then
+        printf 'Missing value of %s\n' "${1}" >&2
+        exit 1
+      fi
+      version_suffix="${2}"
+      shift
+      ;;
+    --run) run=1 ;;
+    --push) push=1 ;;
+    *)
+      printf 'Unknown argument: %s\n' "${1}" >&2
+      exit 1
+      ;;
+    esac
+    shift
+  done
+
+  if [[ ! "${version_suffix}" =~ ^nightly\.[0-9A-Za-z.+-]+$ ]]; then
+    printf 'Expected --version-suffix nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>, got "%s"\n' "${version_suffix}" >&2
+    exit 1
+  fi
+
+  local tool
+  for tool in docker jq yq; do
+    command -v "${tool}" >/dev/null || {
+      printf 'Required command not found: %s\n' "${tool}" >&2
+      exit 1
+    }
+  done
+
+  cd "${root}"
+  version="$(yq -p toml -o yaml '.workspace.package.version' Cargo.toml)-${version_suffix}"
+  docker_version="${version//+/_}"
+
+  stage_binaries
+  docker buildx inspect "${BUILDER}" >/dev/null 2>&1 || docker buildx create --name="${BUILDER}" --driver=docker-container >/dev/null
+
+  # A docker-container builder loads one platform at a time.
+  if [[ -n "${run}" ]]; then
+    local platform
+    for platform in ${PLATFORMS//,/ }; do
+      build_all --load "${platform}"
+      run_all "${platform}"
+    done
+  fi
+  if [[ -n "${push}" ]]; then
+    build_all --push "${PLATFORMS}"
+  elif [[ -z "${run}" ]]; then
+    build_all --output=type=cacheonly "${PLATFORMS}"
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

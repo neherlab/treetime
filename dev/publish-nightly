@@ -27,6 +27,7 @@ MAX_LISTED_COMMITS=300
 
 EXAMPLES_ASSET="examples.zip"
 CHECKSUMS_ASSET="SHA256SUMS"
+DOCKER_IMAGE="neherlab/treetime"
 
 # Resolve the source commit of the most recent published nightly, used as the
 # lower bound of the changelog. Always succeeds: on any lookup or resolution
@@ -142,9 +143,21 @@ generate_install_table() {
     unlisted["${artifact##*/}"]="${artifact}"
   done
 
+  # The docker job of the nightly workflow builds the images from these four binaries after the release.
+  local libc arch docker_binaries=0
+  for arch in x86_64 aarch64; do
+    for libc in gnu musl; do
+      [[ -z "${unlisted[treetime - ${arch} - unknown - linux - ${libc}]:-}" ]] || docker_binaries=$((docker_binaries + 1))
+    done
+  done
+
   printf "\n### Installation and usage\n\n<table>\n"
   generate_install_subtable "🖥️ <b>Desktop app</b>" "treetime-desktop-" "${DESKTOP_ROWS[@]}"
   generate_install_subtable "⌨️ <b>CLI</b>" "treetime-" "${CLI_ROWS[@]}"
+  if ((docker_binaries == 4)); then
+    printf "<tr><td>🐳 <b>Docker</b></td><td><code>docker pull %s:%s</code> (<a href=\"https://hub.docker.com/r/%s/tags\">all tags</a>)</td></tr>\n" \
+      "${DOCKER_IMAGE}" "${tag//+/_}" "${DOCKER_IMAGE}"
+  fi
 
   if [[ -n "${unlisted[${EXAMPLES_ASSET}]:-}" ]]; then
     printf "<tr><td>🧬 <b>Example datasets</b></td><td><a href=\"%s/%s\">%s</a> (%s)</td></tr>\n" \
