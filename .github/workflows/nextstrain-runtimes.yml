@@ -1,0 +1,58 @@
+name: "Rebuild Nextstrain runtimes"
+
+# Rebuilds the Nextstrain runtimes after a release, so that they ship the new
+# TreeTime as `treetime1`: the image nextstrain/base (nextstrain/docker-base)
+# and the Conda package nextstrain-base (nextstrain/conda-base) download the
+# latest TreeTime release when they build. Every workflow that publishes a
+# release calls this workflow after the release is published.
+#
+# A runtime build that is queued but not yet started downloads the release when
+# it starts, so a second build is not started for it. A build that is already
+# running may have downloaded an older release, so a new build is started.
+# This workflow never waits for the runtime builds, so it never delays a release.
+#
+# GH_TOKEN_NEXTSTRAIN_BOT_WORKFLOW_DISPATCH_NEHERLAB is a classic token of the
+# Nextstrain bot account with the public_repo scope, stored as an organization
+# secret of neherlab that only this repository can read. It allows starting the
+# CI workflows of the two runtime repositories, which build and publish them.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+jobs:
+  rebuild:
+    name: "Rebuild ${{ matrix.repo }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: nextstrain/docker-base
+            workflow: ci.yml
+            branch: master
+          - repo: nextstrain/conda-base
+            workflow: ci.yaml
+            branch: main
+    steps:
+      - name: "Start a build unless one is queued"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_NEXTSTRAIN_BOT_WORKFLOW_DISPATCH_NEHERLAB }}
+          REPO: ${{ matrix.repo }}
+          WORKFLOW: ${{ matrix.workflow }}
+          BRANCH: ${{ matrix.branch }}
+        run: |
+          queued=$(gh run list --repo "${REPO}" --workflow "${WORKFLOW}" --branch "${BRANCH}" --limit 20 --json status \
+            --jq '[.[] | select(.status == "queued" or .status == "requested" or .status == "waiting" or .status == "pending")] | length')
+          if (( queued > 0 )); then
+            echo "${REPO}: a queued build of ${WORKFLOW} on ${BRANCH} will download the new release"
+            exit 0
+          fi
+          gh workflow run "${WORKFLOW}" --repo "${REPO}" --ref "${BRANCH}"
+          echo "${REPO}: started ${WORKFLOW} on ${BRANCH}"

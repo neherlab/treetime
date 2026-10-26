@@ -141,6 +141,16 @@ jobs:
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
             --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
 
+  # The Nextstrain runtimes download the latest release as treetime1 when they
+  # build, so they are rebuilt once the release is published.
+  nextstrain-runtimes:
+    name: "Rebuild Nextstrain runtimes"
+    needs: publish
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    permissions: {}
+    uses: neherlab/treetime/.github/workflows/nextstrain-runtimes.yml@rust
+    secrets: inherit
+
   compat:
     name: "Test CLI compatibility"
     needs: [prepare, build]
