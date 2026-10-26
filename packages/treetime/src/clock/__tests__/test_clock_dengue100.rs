@@ -127,6 +127,7 @@ mod tests {
         clock_filter,
         allow_negative_rate: false,
         reroot_spec: (!keep_root).then(RerootSpec::default),
+        prune_filtered_tips: None,
       };
       let input = ClockInput {
         graph: nwk_parsed.graph,

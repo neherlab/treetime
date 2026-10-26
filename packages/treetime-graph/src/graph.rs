@@ -8,7 +8,7 @@ use std::ops::Index;
 use std::sync::OnceLock;
 use treetime_utils::{make_internal_error, make_internal_report};
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Graph {
   nodes: Vec<Option<Node>>,
   edges: Vec<Option<Edge>>,

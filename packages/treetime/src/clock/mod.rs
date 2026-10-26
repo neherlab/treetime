@@ -8,6 +8,7 @@ pub mod date_constraints;
 pub mod divergence;
 pub(crate) mod gaussian;
 pub mod pipeline;
+pub mod prune_filtered;
 pub mod rtt;
 
 #[cfg(test)]

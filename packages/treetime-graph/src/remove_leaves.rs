@@ -39,7 +39,7 @@ fn remove_trivial_node(
 ) -> Result<(), Report> {
   let node = &graph[node_key];
   match (node.inbound(), node.outbound()) {
-    ([_], []) | ([], []) => remove_leaf(graph, branch_lengths, node_key),
+    ([_] | [], []) => remove_leaf(graph, branch_lengths, node_key),
     ([parent_edge], [child_edge]) => {
       let (parent_edge, child_edge) = (*parent_edge, *child_edge);
       let grandparent = graph[parent_edge].source();

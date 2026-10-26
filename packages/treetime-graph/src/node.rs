@@ -4,7 +4,7 @@ use deser::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Node {
   key: GraphNodeKey,
   outbound_edges: Vec<GraphEdgeKey>,

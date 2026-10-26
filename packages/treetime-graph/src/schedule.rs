@@ -122,7 +122,7 @@ impl<'g> TreeSchedule<'g> {
   }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ScheduleIndex {
   roots: Vec<GraphNodeKey>,
   leaves: Vec<GraphNodeKey>,
@@ -235,7 +235,7 @@ enum Frame {
   Exit(GraphNodeKey),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 struct Adjacency {
   offsets: Vec<usize>,
   entries: Vec<(GraphNodeKey, GraphEdgeKey)>,

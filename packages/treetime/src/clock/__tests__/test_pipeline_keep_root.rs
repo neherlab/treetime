@@ -32,6 +32,7 @@ mod tests {
       clock_filter: 0.0,
       allow_negative_rate: true,
       reroot_spec: None,
+      prune_filtered_tips: None,
     };
 
     let output = pipeline::run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;

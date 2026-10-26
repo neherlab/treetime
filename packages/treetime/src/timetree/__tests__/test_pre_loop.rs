@@ -18,7 +18,7 @@ mod tests {
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
   use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
-  use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
+  use crate::timetree::pre_loop::{ClockOutliers, PreLoopInputs, PreLoopState, run_pre_loop};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -81,6 +81,7 @@ mod tests {
       params: &params,
       context: &context,
       has_alignment: true,
+      outliers: ClockOutliers::Filter,
     };
     let clock_fit = ClockFit {
       model: ClockModel::for_testing(0.001, 0.0),
@@ -140,6 +141,7 @@ mod tests {
       params: &params,
       context: &context,
       has_alignment: false,
+      outliers: ClockOutliers::Filter,
     };
     let clock_fit = ClockFit {
       model: ClockModel::for_testing(0.001, 0.0),

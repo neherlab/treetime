@@ -10,7 +10,7 @@ use treetime_graph::key_map::NodeMap;
 use treetime_utils::fmt::string::counted;
 use treetime_utils::{make_internal_error, make_internal_report};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SequenceInput {
   pub alignments: Vec<SequenceSource>,
   pub partitions: Vec<PartitionPlan>,

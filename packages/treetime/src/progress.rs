@@ -65,6 +65,8 @@ pub enum RunWarningKind {
   BranchLengthsNotConverged,
   /// Some final dates lie outside the input dates: a tip outside its own input date range, or an internal node after the latest input date. The clock alone dates these nodes, as it does for the tips that the clock filter flagged.
   DatesOutsideInputDates,
+  /// The run removed the tips that the clock filter flagged from the tree (`--prune-filtered-tips`); the outputs leave them out.
+  FilteredTipsRemoved,
   /// The coordinates file of a mugration run has no coordinates for some values of the trait; the map of the Auspice tree leaves these locations out.
   LocationsWithoutCoordinates,
 }

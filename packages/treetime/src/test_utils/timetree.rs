@@ -82,6 +82,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     reroot_spec: None,
     allow_negative_rate: false,
     clock_filter: 0.0,
+    prune_filtered_tips: None,
     max_iter: 1,
     resolve_polytomies: false,
     relax: vec![],

@@ -7,6 +7,7 @@ use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
+use crate::clock::prune_filtered::{PruneFilteredTips, remove_filtered_tips};
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::coalescent::population_size::effective_population_size;
@@ -38,7 +39,7 @@ use crate::timetree::init::{
 };
 use crate::timetree::optimization::reroot::{DatedFit, reroot_and_fit_to_dates};
 use crate::timetree::params::{BranchLengthMode, FinalSequences, TimetreeContext, TimetreeParams};
-use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
+use crate::timetree::pre_loop::{ClockOutliers, PreLoopInputs, PreLoopState, find_clock_outliers, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times};
 use crate::{progress_info, progress_warn};
@@ -65,6 +66,10 @@ pub fn run(
 ) -> Result<TimetreeOutput, OperationError> {
   progress_info!(log, "# TreeTime Timetree Estimation");
   validate_params(params, seq_sink.is_some())?;
+  let (input, outliers) = match &params.prune_filtered_tips {
+    None => (input, ClockOutliers::Filter),
+    Some(prune) => prune_filtered_tips(params, prune, input, cancel, log)?,
+  };
   let TimetreeInput {
     graph,
     sequences,
@@ -86,6 +91,7 @@ pub fn run(
     params,
     context: &context,
     has_alignment,
+    outliers,
   };
   let pre_loop_state = PreLoopState::new(graph, names, branch_lengths, branch_model, clock_fit);
   let pre_loop =
@@ -180,6 +186,77 @@ fn assemble_output(
   })
 }
 
+fn prune_filtered_tips(
+  params: &TimetreeParams,
+  prune: &PruneFilteredTips,
+  input: TimetreeInput,
+  cancel: &dyn Cancel,
+  log: &dyn LogSink,
+) -> Result<(TimetreeInput, ClockOutliers), OperationError> {
+  progress_info!(log, "## Clock filter on the full tree, to remove the flagged tips");
+  let outliers = find_filtered_tips(params, &input, log)?;
+  cancel.check().map_err(OperationError::classify)?;
+  let tips = prune.split(outliers);
+  let TimetreeInput {
+    mut graph,
+    names,
+    mut sequences,
+    mut dates,
+    mut branch_lengths,
+  } = input;
+  remove_filtered_tips(
+    &mut graph,
+    &mut branch_lengths,
+    &tips,
+    params.reroot_spec.as_ref(),
+    &names,
+    log,
+  )
+  .map_err(OperationError::InvalidInput)?;
+  sequences.retain_nodes(&graph);
+  if let Some(dates) = &mut dates {
+    dates.retain(|key, _| graph.get_node(key).is_some());
+  }
+  progress_info!(log, "## Time inference on the tree without the removed tips");
+  let input = TimetreeInput {
+    graph,
+    names,
+    sequences,
+    dates,
+    branch_lengths,
+  };
+  Ok((input, ClockOutliers::Given(tips.kept)))
+}
+
+fn find_filtered_tips(
+  params: &TimetreeParams,
+  input: &TimetreeInput,
+  log: &dyn LogSink,
+) -> Result<BTreeSet<GraphNodeKey>, OperationError> {
+  let context = prepare_inputs(params, &input.graph, &input.sequences, input.dates.as_ref(), log)?;
+  let mut names = input.names.clone();
+  let (graph, branch_lengths, clock_fit) = estimate_initial_clock(
+    params,
+    &context,
+    input.graph.clone(),
+    &mut names,
+    input.branch_lengths.clone(),
+    log,
+  )
+  .map_err(OperationError::classify)?;
+  let has_alignment = matches!(input.sequences, TimetreeSequences::Alignments(_));
+  let (_, _, branch_model) =
+    initialize_branch_model(params, &context, &graph, &branch_lengths, input.sequences.clone(), log)?;
+  let inputs = PreLoopInputs {
+    params,
+    context: &context,
+    has_alignment,
+    outliers: ClockOutliers::Filter,
+  };
+  let state = PreLoopState::new(graph, names, branch_lengths, branch_model, clock_fit);
+  find_clock_outliers(&inputs, state, log).map_err(OperationError::classify)
+}
+
 pub struct TimetreeInput {
   pub graph: Graph,
   pub names: NodeNames,
@@ -207,6 +284,11 @@ pub struct TimetreeOutput {
 }
 
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
+  if params.prune_filtered_tips.is_some() && params.clock_filter <= 0.0 {
+    return Err(OperationError::InvalidParams(make_report!(
+      "--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"
+    )));
+  }
   if has_seq_sink && params.branch_length_mode == BranchLengthMode::Input {
     return Err(OperationError::InvalidParams(make_report!(
       "Reconstructed sequence output requires ancestral reconstruction; \
@@ -370,11 +452,23 @@ fn initialize_branch_model(
   }
 }
 
+#[derive(Clone)]
 pub enum TimetreeSequences {
   Alignments(SequenceInput),
   Length(SequenceLength),
 }
 
+impl TimetreeSequences {
+  fn retain_nodes(&mut self, graph: &Graph) {
+    if let Self::Alignments(input) = self {
+      for source in &mut input.alignments {
+        source.nodes.retain(|key, _| graph.get_node(key).is_some());
+      }
+    }
+  }
+}
+
+#[derive(Clone)]
 pub struct SequenceLength {
   pub length: Option<usize>,
   pub model: GtrModel,

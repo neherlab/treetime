@@ -9,5 +9,6 @@ mod test_divergence;
 mod test_gaussian;
 mod test_pipeline_errors;
 mod test_pipeline_keep_root;
+mod test_pipeline_prune;
 mod test_pipeline_reroot;
 mod test_rtt;

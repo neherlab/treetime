@@ -6,6 +6,7 @@ use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
+use crate::clock::prune_filtered::{PruneFilteredTips, remove_filtered_tips};
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::{NoPositiveRateRoot, OperationError};
 use crate::progress::{LogSink, StageSink};
@@ -133,7 +134,17 @@ fn estimate_clock_model_with_prefilter(
       clock_filter_threshold,
       log,
     )?;
-    Some(filtered.outliers)
+    Some(match &params.prune_filtered_tips {
+      None => filtered.outliers,
+      Some(prune) => prune_tree(
+        &mut tree,
+        prune,
+        filtered.outliers,
+        params.reroot_spec.as_ref(),
+        names,
+        log,
+      )?,
+    })
   } else {
     None
   };
@@ -147,6 +158,26 @@ fn estimate_clock_model_with_prefilter(
   };
   let result = reroot_and_fit(&mut tree, reroot_spec, outliers, !allow_negative_rate, names, log).wrap_err(failure)?;
   Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
+}
+
+fn prune_tree(
+  tree: &mut ClockTree,
+  prune: &PruneFilteredTips,
+  outliers: BTreeSet<GraphNodeKey>,
+  reroot_spec: Option<&RerootSpec>,
+  names: &NodeNames,
+  log: &dyn LogSink,
+) -> Result<BTreeSet<GraphNodeKey>, Report> {
+  let tips = prune.split(outliers);
+  let ClockTree {
+    graph,
+    branch_lengths,
+    inputs,
+  } = tree;
+  remove_filtered_tips(graph, branch_lengths, &tips, reroot_spec, names, log)?;
+  inputs.nodes.retain(|key, _| graph.get_node(key).is_some());
+  inputs.edges.retain(|key, _| graph.get_edge(key).is_some());
+  Ok(tips.kept)
 }
 
 fn reroot_clock_tree_date_free(
@@ -212,4 +243,5 @@ pub struct ClockParams {
   pub clock_filter: f64,
   pub allow_negative_rate: bool,
   pub reroot_spec: Option<RerootSpec>,
+  pub prune_filtered_tips: Option<PruneFilteredTips>,
 }

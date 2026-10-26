@@ -117,6 +117,7 @@ mod tests {
         clock_filter: CLOCK_FILTER_IQD,
         allow_negative_rate: false,
         reroot_spec: Some(spec.reroot_spec(&tree)),
+        prune_filtered_tips: None,
       };
       let input = ClockInput {
         dates: dates_by_node(DATASET.dates()?, &tree.graph, &tree.names),
@@ -134,6 +135,7 @@ mod tests {
       let params = TimetreeParams {
         reroot_spec: Some(spec.reroot_spec(&tree)),
         clock_filter: CLOCK_FILTER_IQD,
+        prune_filtered_tips: None,
         ..marginal_timetree_params()
       };
       let input = TimetreeInput {

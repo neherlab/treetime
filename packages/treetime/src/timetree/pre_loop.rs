@@ -37,24 +37,14 @@ pub(crate) fn run_pre_loop(
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   let mut convergence = ConvergenceSummary::default();
-  let state = if inputs.has_alignment {
-    ml_optimize(state, params, "pre-reroot", &mut convergence, log)?
-  } else {
-    state
-  };
-  let state = match &params.reroot_spec {
-    None => state,
-    Some(spec) => {
-      let label = format!("{} (pre-ancestral)", step_label(spec, "First reroot"));
-      progress_info!(log, "{label}");
-      reroot(inputs, spec, &label, state, RerootOutliers::None, log)
-        .wrap_err("Failed to reroot tree (pre-ancestral)")?
+  let state = reroot_before_filter(inputs, state, &mut convergence, log)?;
+  let state = match &inputs.outliers {
+    ClockOutliers::Filter if params.clock_filter > 0.0 => filter_clock_outliers(inputs, state, log)?,
+    ClockOutliers::Filter => state,
+    ClockOutliers::Given(outliers) => PreLoopState {
+      outliers: outliers.clone(),
+      ..state
     },
-  };
-  let state = if params.clock_filter > 0.0 {
-    filter_clock_outliers(inputs, state, log)?
-  } else {
-    state
   };
   let state = if !inputs.has_alignment {
     state
@@ -73,6 +63,39 @@ pub(crate) fn run_pre_loop(
   let label = format!("{} (post-ancestral)", step_label(spec, "Reroot"));
   progress_info!(log, "{label}");
   reroot(inputs, spec, &label, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
+}
+
+pub(crate) fn find_clock_outliers(
+  inputs: &PreLoopInputs<'_>,
+  state: PreLoopState,
+  log: &dyn LogSink,
+) -> Result<BTreeSet<GraphNodeKey>, Report> {
+  let mut convergence = ConvergenceSummary::default();
+  let state = reroot_before_filter(inputs, state, &mut convergence, log)?;
+  convergence.report(BranchOptMethod::Brent, log);
+  Ok(filter_clock_outliers(inputs, state, log)?.outliers)
+}
+
+fn reroot_before_filter(
+  inputs: &PreLoopInputs<'_>,
+  state: PreLoopState,
+  convergence: &mut ConvergenceSummary,
+  log: &dyn LogSink,
+) -> Result<PreLoopState, Report> {
+  let params = inputs.params;
+  let state = if inputs.has_alignment {
+    ml_optimize(state, params, "pre-reroot", convergence, log)?
+  } else {
+    state
+  };
+  match &params.reroot_spec {
+    None => Ok(state),
+    Some(spec) => {
+      let label = format!("{} (pre-ancestral)", step_label(spec, "First reroot"));
+      progress_info!(log, "{label}");
+      reroot(inputs, spec, &label, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")
+    },
+  }
 }
 
 fn ml_optimize(
@@ -236,6 +259,12 @@ pub(crate) struct PreLoopInputs<'a> {
   pub params: &'a TimetreeParams,
   pub context: &'a TimetreeContext,
   pub has_alignment: bool,
+  pub outliers: ClockOutliers,
+}
+
+pub(crate) enum ClockOutliers {
+  Filter,
+  Given(BTreeSet<GraphNodeKey>),
 }
 
 pub(crate) struct PreLoopState {

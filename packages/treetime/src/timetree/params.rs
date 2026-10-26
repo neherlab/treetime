@@ -1,4 +1,5 @@
 use crate::clock::date_constraints::DateConstraints;
+use crate::clock::prune_filtered::PruneFilteredTips;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::reroot::params::RerootSpec;
@@ -17,6 +18,7 @@ pub struct TimetreeParams {
   pub reroot_spec: Option<RerootSpec>,
   pub allow_negative_rate: bool,
   pub clock_filter: f64,
+  pub prune_filtered_tips: Option<PruneFilteredTips>,
   pub max_iter: usize,
   pub resolve_polytomies: bool,
   pub relax: Vec<f64>,

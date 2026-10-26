@@ -64,10 +64,18 @@ mod tests {
   fn test_remove_leaves_rejects_internal_node() -> Result<(), Report> {
     let mut tree = Tree::new(
       "R",
-      &[("R", "X", Some(1.0)), ("R", "C", Some(2.0)), ("X", "A", Some(1.0)), ("X", "B", Some(1.0))],
+      &[
+        ("R", "X", Some(1.0)),
+        ("R", "C", Some(2.0)),
+        ("X", "A", Some(1.0)),
+        ("X", "B", Some(1.0)),
+      ],
     )?;
 
-    assert_error!(tree.remove(&["X"]), "Node 1 to remove is not a leaf. This is an internal error. Please report it to developers.");
+    assert_error!(
+      tree.remove(&["X"]),
+      "Node 1 to remove is not a leaf. This is an internal error. Please report it to developers."
+    );
     Ok(())
   }
 
@@ -80,6 +88,7 @@ mod tests {
     use eyre::Report;
     use itertools::Itertools;
     use std::collections::{BTreeMap, BTreeSet};
+    use std::iter;
 
     pub(crate) type LengthEdge = (&'static str, &'static str, Option<f64>);
 
@@ -96,17 +105,18 @@ mod tests {
           .iter()
           .flat_map(|(source, target, _)| [*source, *target])
           .filter(|name| *name != root);
-        let keys: BTreeMap<_, _> = [root]
-          .into_iter()
+        let keys: BTreeMap<_, _> = iter::once(root)
           .chain(names)
           .unique()
           .map(|name| (name, graph.add_node()))
           .collect();
         let branch_lengths = edges
           .iter()
-          .map(|(source, target, length)| -> Result<(GraphEdgeKey, Option<f64>), Report> {
-            Ok((graph.add_edge(keys[source], keys[target])?, *length))
-          })
+          .map(
+            |(source, target, length)| -> Result<(GraphEdgeKey, Option<f64>), Report> {
+              Ok((graph.add_edge(keys[source], keys[target])?, *length))
+            },
+          )
           .collect::<Result<EdgeMap<_>, Report>>()?;
         graph.build()?;
         Ok(Self {

@@ -124,6 +124,7 @@ mod tests {
         clock_filter,
         allow_negative_rate: true,
         reroot_spec: Some(spec.clone()),
+        prune_filtered_tips: None,
       };
       Ok(pipeline::run(
         &params,

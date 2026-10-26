@@ -36,6 +36,7 @@ mod tests {
       clock_filter: 3.0,
       allow_negative_rate: false,
       reroot_spec: None,
+      prune_filtered_tips: None,
     };
     let input = ClockInput {
       graph: parsed.graph,
@@ -100,6 +101,7 @@ mod tests {
         clock_filter,
         allow_negative_rate: true,
         reroot_spec: Some(RerootSpec::default()),
+        prune_filtered_tips: None,
       };
       let input = ClockInput {
         dates: dates_by_node(dates, &parsed.graph, &names),

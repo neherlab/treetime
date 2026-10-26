@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::cancel::NoopCancel;
   use crate::clock::divergence::root_to_node_divergences;
+  use crate::clock::prune_filtered::PruneFilteredTips;
   use crate::error::OperationError;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::result::{AlignmentResult, AlignmentSequences};
@@ -20,7 +21,7 @@ mod tests {
   use crate::timetree::pipeline::{self, SequenceLength, TimetreeInput, TimetreeOutput, TimetreeSequences};
   use eyre::Report;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -110,6 +111,7 @@ mod tests {
     let input = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
     let params = TimetreeParams {
       clock_filter: CLOCK_FILTER_IQD,
+      prune_filtered_tips: None,
       clock_rate: Some(ZIKA_CLOCK_RATE),
       ..marginal_timetree_params()
     };
@@ -152,6 +154,7 @@ mod tests {
     let input = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
     let params = TimetreeParams {
       clock_filter: CLOCK_FILTER_IQD,
+      prune_filtered_tips: None,
       clock_rate: Some(ZIKA_CLOCK_RATE),
       ..marginal_timetree_params()
     };
@@ -177,6 +180,85 @@ mod tests {
       .filter(|warning| warning.kind == RunWarningKind::DatesOutsideInputDates)
       .collect_vec();
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::marginal_branch_lengths(true)]
+  #[case::input_branch_lengths(false)]
+  #[trace]
+  fn test_pipeline_prune_filtered_tips_removes_the_flagged_tips_that_the_keep_list_does_not_name(
+    #[case] with_alignment: bool,
+  ) -> Result<(), Report> {
+    let dates = helpers::dates_with_forced_outliers(2)?;
+    let params = TimetreeParams {
+      branch_length_mode: if with_alignment {
+        BranchLengthMode::Marginal
+      } else {
+        BranchLengthMode::Input
+      },
+      clock_filter: CLOCK_FILTER_IQD,
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      ..marginal_timetree_params()
+    };
+    let [kept_name, removed_name] = <[String; 2]>::try_from(helpers::forced_outlier_names(2)?).expect("two names");
+    let input = helpers::zika_input(&helpers::zika_newick()?, dates, with_alignment)?;
+    let expected_leaves: BTreeSet<String> = helpers::leaf_names(&input.graph, &input.names)
+      .into_iter()
+      .filter(|name| *name != removed_name)
+      .collect();
+    let kept = find_node_key_by_name(&input.graph, &input.names, &kept_name).expect("the kept tip is a leaf");
+    let params = TimetreeParams {
+      prune_filtered_tips: Some(PruneFilteredTips { keep: btreeset! {kept} }),
+      ..params
+    };
+    let log = RecordingLog::default();
+
+    let output = pipeline::run(&params, input, None, None, &NoopCancel, &NoopProgress, &log)
+      .map_err(OperationError::into_report)?;
+
+    let expected_warning = RunWarning {
+      kind: RunWarningKind::FilteredTipsRemoved,
+      message: format!("Removed 1 tip that the clock filter flagged from the tree ({removed_name})"),
+      names: vec![removed_name],
+    };
+    let dated_nodes_in_graph = output
+      .dates
+      .as_ref()
+      .expect("the run has dates")
+      .keys()
+      .all(|key| output.graph.get_node(key).is_some());
+    let warnings = log
+      .run_warnings()
+      .into_iter()
+      .filter(|warning| warning.kind == RunWarningKind::FilteredTipsRemoved)
+      .collect_vec();
+    assert_eq!(
+      (expected_leaves, btreeset! {kept_name}, vec![expected_warning], true),
+      (
+        helpers::leaf_names(&output.graph, &output.names),
+        helpers::names_of(&output.outliers, &output.names),
+        warnings,
+        dated_nodes_in_graph,
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_prune_filtered_tips_requires_the_clock_filter() -> Result<(), Report> {
+    let params = TimetreeParams {
+      clock_filter: 0.0,
+      prune_filtered_tips: Some(PruneFilteredTips::default()),
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      ..marginal_timetree_params()
+    };
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, false)?;
+
+    assert_error!(
+      helpers::run(&params, input, None),
+      "--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"
+    );
     Ok(())
   }
 
@@ -206,6 +288,7 @@ mod tests {
       branch_length_mode: BranchLengthMode::Input,
       reroot_spec: Some(RerootSpec::default()),
       clock_filter: CLOCK_FILTER_IQD,
+      prune_filtered_tips: None,
       ..marginal_timetree_params()
     };
 
@@ -417,6 +500,7 @@ mod tests {
     let params = TimetreeParams {
       reroot_spec: Some(RerootSpec::default()),
       clock_filter: CLOCK_FILTER_IQD,
+      prune_filtered_tips: None,
       ..marginal_timetree_params()
     };
 
@@ -541,6 +625,22 @@ mod tests {
         branch_lengths: nwk_parsed.branch_lengths,
       };
       Ok(input)
+    }
+
+    pub(super) fn forced_outlier_names(count: usize) -> Result<Vec<String>, Report> {
+      Ok(zika_dates()?.keys().take(count).cloned().collect_vec())
+    }
+
+    pub(super) fn dates_with_forced_outliers(count: usize) -> Result<BTreeMap<String, Option<DateConstraint>>, Report> {
+      let mut dates = zika_dates()?;
+      for name in forced_outlier_names(count)? {
+        dates.insert(name, Some(DateConstraint::exact(FORCED_OUTLIER_DATE)));
+      }
+      Ok(dates)
+    }
+
+    pub(super) fn names_of(keys: &BTreeSet<GraphNodeKey>, names: &NodeNames) -> BTreeSet<String> {
+      keys.iter().map(|&key| names[key].to_owned()).collect()
     }
 
     pub(super) fn sequence_length(length: Option<usize>) -> TimetreeSequences {

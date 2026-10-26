@@ -133,6 +133,7 @@ mod tests {
         branch_length_mode: BranchLengthMode::Input,
         reroot_spec: Some(spec(&tree)),
         clock_filter: CLOCK_FILTER_IQD,
+        prune_filtered_tips: None,
         ..marginal_timetree_params()
       };
       let dates = DATES
