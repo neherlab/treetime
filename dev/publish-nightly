@@ -147,7 +147,7 @@ generate_install_table() {
   local libc arch docker_binaries=0
   for arch in x86_64 aarch64; do
     for libc in gnu musl; do
-      [[ -z "${unlisted[treetime - ${arch} - unknown - linux - ${libc}]:-}" ]] || docker_binaries=$((docker_binaries + 1))
+      [[ -z "${unlisted["treetime-${arch}-unknown-linux-${libc}"]:-}" ]] || docker_binaries=$((docker_binaries + 1))
     done
   done
 
