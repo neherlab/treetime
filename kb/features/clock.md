@@ -47,7 +47,7 @@
 - [x] IQD calculation (Q3-Q1)
 - [x] Outlier marking (threshold \* IQD)
 - [ ] Local clock filter method (`--clock-filter-method=local` in v0)
-- [ ] `--prune-outliers` (v0 clock command removes outliers from output tree)
+- [x] `--prune-filtered-tips` removes the flagged tips before the final clock fit, except the tips of `--keep-tips` and `--keep-tips-file` (v0 `clock --prune-outliers`, which the CLI reads as `--prune-filtered-tips`)
 
 ## Clock Model Output
 

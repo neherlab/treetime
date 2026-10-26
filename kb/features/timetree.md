@@ -24,6 +24,7 @@
   - [x] Cuts the parent to the times that can reach the node before convolving
 - [x] Backward pass lifts the fixed input date constraint back into the time distribution each round
 - [x] Bad branch exclusion (outliers, dateless leaves)
+- [x] `--prune-filtered-tips` (off by default): removes the tips that the clock filter flags before the time inference, as `augur refine --clock-filter-iqd` does; the tips of `--keep-tips` and `--keep-tips-file` stay in the tree, flagged, as with augur `--keep-ids`. The run finds the flagged tips with the steps up to the clock filter, then infers the time tree on the tree without the removed tips and runs no second filter
 - [x] Build branch distributions from partitions when present
 - [x] Build branch distributions from input lengths when partitions absent: Poisson for short branches, saturation-corrected Gaussian for long ones (v0 `BranchLenInterpolator` input mode); the first Poisson cell follows v0's cost exactly, the other cells interpolate it within a stated bound ([kb/decisions/timetree-input-branch-likelihood-first-cell-and-bounds.md](../decisions/timetree-input-branch-likelihood-first-cell-and-bounds.md))
 - [x] Optional coalescent contribution calculation
