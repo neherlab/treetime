@@ -63,7 +63,7 @@ details_close() {
   printf "\n</details>\n"
 }
 
-# Rows of the CLI and desktop subtables of the install table, in display order:
+# Rows of the CLI subtable of the install table, in display order:
 # the platform label, then one "triple=text" entry per asset sharing the row.
 # The link text of an asset with a file extension starts with the extension.
 # Trailing asterisks of the text mark a footnote and are printed after the
@@ -75,14 +75,6 @@ CLI_ROWS=(
   "<b>macOS</b>** Intel|x86_64-apple-darwin=executable"
   "<b>Windows</b> x86_64|x86_64-pc-windows-gnullvm=.exe"
   "<b>Windows</b> ARM64|aarch64-pc-windows-gnullvm=.exe"
-)
-DESKTOP_ROWS=(
-  "<b>Linux</b> x86_64|x86_64-unknown-linux-gnu="
-  "<b>Linux</b> ARM64|aarch64-unknown-linux-gnu="
-  "<b>macOS</b>** Apple Silicon|aarch64-apple-darwin="
-  "<b>macOS</b>** Intel|x86_64-apple-darwin="
-  "<b>Windows</b> x86_64|x86_64-pc-windows-gnullvm="
-  "<b>Windows</b> ARM64|aarch64-pc-windows-gnullvm="
 )
 
 # Size in binary megabytes, labeled "MB" as in the asset list of the GitHub
@@ -124,10 +116,11 @@ generate_install_subtable() {
   [[ -z "${rows}" ]] || printf "<tr><td>%s</td><td><table>\n%s</table></td></tr>\n" "${title}" "${rows}"
 }
 
-# Emit the install table: desktop and CLI subtables linking every uploaded
-# asset, the source code, the issue tracker, and the footnotes of the marked
-# entries. An asset of no known platform is listed under "Other", so a new
-# target appears even before its entry is added to CLI_ROWS or DESKTOP_ROWS.
+# Emit the install table: the CLI subtable and links to every other uploaded
+# asset except the desktop packages, the source code, the issue tracker, and
+# the footnotes of the marked entries. The desktop packages stay in the asset
+# list of the release only. An asset of no known platform is listed under
+# "Other", so a new target appears even before its entry is added to CLI_ROWS.
 generate_install_table() {
   local source_repo="${1}"
   local git_sha="${2}"
@@ -152,7 +145,10 @@ generate_install_table() {
   done
 
   printf "\n### Installation and usage\n\n<table>\n"
-  generate_install_subtable "🖥️ <b>Desktop app</b>" "treetime-desktop-" "${DESKTOP_ROWS[@]}"
+  local name
+  for name in "${!unlisted[@]}"; do
+    [[ "${name}" != treetime-desktop-* ]] || unset "unlisted[${name}]"
+  done
   generate_install_subtable "⌨️ <b>CLI</b>" "treetime-" "${CLI_ROWS[@]}"
   if ((docker_binaries == 4)); then
     printf "<tr><td>🐳 <b>Docker</b></td><td><code>docker pull %s:%s</code> (<a href=\"https://hub.docker.com/r/%s/tags\">all tags</a>)</td></tr>\n" \
@@ -172,7 +168,7 @@ generate_install_table() {
     unset "unlisted[${CHECKSUMS_ASSET}]"
   fi
 
-  local other="" name
+  local other=""
   while IFS= read -r name; do
     [[ -n "${name}" ]] || continue
     other+="${other:+<br>}<a href=\"${base_url}/${name}\">${name}</a> ($(format_size "$(wc -c <"${unlisted[${name}]}")"))"
@@ -185,7 +181,7 @@ generate_install_table() {
 </table>
 
 <sub>* glibc builds are faster and recommended. musl builds are static, run on older Linux distributions, and are slightly slower</sub>
-<sub>** macOS executables and apps are not signed by a registered developer. If macOS refuses to open one, right-click it and select "Open", or run <code>xattr -d com.apple.quarantine &lt;file&gt;</code></sub>
+<sub>** macOS executables are not signed by a registered developer. If macOS refuses to run one, run <code>xattr -d com.apple.quarantine &lt;file&gt;</code></sub>
 EOF
 }
 
