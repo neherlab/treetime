@@ -244,6 +244,7 @@
   },
   "patchedDependencies": {
     "auspice@3.1.0": "patches/auspice@3.1.0.patch",
+    "@base-ui/react@1.8.0": "patches/@base-ui%2Freact@1.8.0.patch",
     "unplugin-icons@24.0.0": "patches/unplugin-icons@24.0.0.patch",
   },
   "overrides": {

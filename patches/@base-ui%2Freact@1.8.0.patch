@@ -1,0 +1,61 @@
+diff --git a/floating-ui-react/hooks/useListNavigation.js b/floating-ui-react/hooks/useListNavigation.js
+index 9b6ae19bae3981c2280cc32efeb90f4295349279..298757d65c317c4e46a2ef3165528f4c1e58d6f3 100644
+--- a/floating-ui-react/hooks/useListNavigation.js
++++ b/floating-ui-react/hooks/useListNavigation.js
+@@ -339,17 +339,10 @@ function useListNavigation(context, props) {
+     const currentIndex = indexRef.current;
+     const minIndex = (0, _composite.getMinListIndex)(listRef, disabledIndices);
+     const maxIndex = (0, _composite.getMaxListIndex)(listRef, disabledIndices);
+-    if (!typeableComboboxReference) {
+-      if (event.key === 'Home') {
+-        (0, _event.stopEvent)(event);
+-        indexRef.current = minIndex;
+-        onNavigate(event);
+-      }
+-      if (event.key === 'End') {
+-        (0, _event.stopEvent)(event);
+-        indexRef.current = maxIndex;
+-        onNavigate(event);
+-      }
++    if ((event.key === 'Home' || event.key === 'End') && !typeableComboboxReference && !(0, _element.isTypeableElement)((0, _element.getTarget)(event.nativeEvent))) {
++      (0, _event.stopEvent)(event);
++      indexRef.current = event.key === 'Home' ? minIndex : maxIndex;
++      onNavigate(event);
+     }
+ 
+     // Grid navigation is injected by grid-capable consumers so non-grid
+diff --git a/floating-ui-react/hooks/useListNavigation.mjs b/floating-ui-react/hooks/useListNavigation.mjs
+index 3533b48b2a8fa43e311f68c179b38d21bbbab89f..15901c5941950041eaac7c7569b50d889574424c 100644
+--- a/floating-ui-react/hooks/useListNavigation.mjs
++++ b/floating-ui-react/hooks/useListNavigation.mjs
+@@ -13,7 +13,7 @@ import { REASONS } from "../../internals/reasons.mjs";
+ import { useFloatingParentNodeId, useFloatingTree } from "../components/FloatingTree.mjs";
+ import { findNonDisabledListIndex, getMaxListIndex, getMinListIndex, isIndexOutOfListBounds } from "../utils/composite.mjs";
+ import { ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP } from "../utils/constants.mjs";
+-import { activeElement, contains, getFloatingFocusElement, getTarget, isTypeableCombobox } from "../utils/element.mjs";
++import { activeElement, contains, getFloatingFocusElement, getTarget, isTypeableCombobox, isTypeableElement } from "../utils/element.mjs";
+ import { enqueueFocus } from "../utils/enqueueFocus.mjs";
+ import { isVirtualClick, isVirtualPointerEvent, stopEvent } from "../utils/event.mjs";
+ export const ESCAPE = 'Escape';
+@@ -332,17 +332,10 @@ export function useListNavigation(context, props) {
+     const currentIndex = indexRef.current;
+     const minIndex = getMinListIndex(listRef, disabledIndices);
+     const maxIndex = getMaxListIndex(listRef, disabledIndices);
+-    if (!typeableComboboxReference) {
+-      if (event.key === 'Home') {
+-        stopEvent(event);
+-        indexRef.current = minIndex;
+-        onNavigate(event);
+-      }
+-      if (event.key === 'End') {
+-        stopEvent(event);
+-        indexRef.current = maxIndex;
+-        onNavigate(event);
+-      }
++    if ((event.key === 'Home' || event.key === 'End') && !typeableComboboxReference && !isTypeableElement(getTarget(event.nativeEvent))) {
++      stopEvent(event);
++      indexRef.current = event.key === 'Home' ? minIndex : maxIndex;
++      onNavigate(event);
+     }
+ 
+     // Grid navigation is injected by grid-capable consumers so non-grid

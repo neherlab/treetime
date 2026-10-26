@@ -31,6 +31,37 @@ describe("docs search", () => {
     expect([page().getByText("Math").textContent, marked]).toStrictEqual(["Math", ["clock"]]);
   });
 
+  test("leaves Shift+Home and Shift+End in the search box to the browser, which extends the text selection", async () => {
+    render(
+      <LocaleProvider locale="en">
+        <DocsSearch loadSearch={loadFakeSearch} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup({ document });
+    const keys: KeyboardEvent[] = [];
+    const recording = new AbortController();
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(page().getByRole("combobox", { name: "Search the docs" }), "clock");
+    await pWaitFor(() => page().queryByText("Math") !== null);
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key !== "Shift") {
+          keys.push(event);
+        }
+      },
+      { capture: true, signal: recording.signal },
+    );
+    await user.keyboard("{Shift>}{Home}{/Shift}{Shift>}{End}{/Shift}");
+    recording.abort();
+
+    expect(keys.map((event) => [event.key, event.defaultPrevented])).toStrictEqual([
+      ["Home", false],
+      ["End", false],
+    ]);
+  });
+
   test("says that search works on the built site when the index does not load", async () => {
     render(
       <LocaleProvider locale="en">
