@@ -700,7 +700,7 @@ export type RunWarning = {
 /**
  * Kind of a run warning.
  */
-export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'duplicate-partition-names' | 'branch-lengths-not-converged' | 'dates-outside-input-dates' | 'locations-without-coordinates';
+export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'duplicate-partition-names' | 'branch-lengths-not-converged' | 'dates-outside-input-dates' | 'filtered-tips-removed' | 'locations-without-coordinates';
 
 /**
  * Error of a failed run.
@@ -2988,6 +2988,30 @@ export type TimetreeConfig = {
    */
   allow_negative_rate?: boolean;
   /**
+   * Remove the tips that the clock filter flags from the tree.
+   *
+   * The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips
+   * after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.
+   * Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree,
+   * flagged. Requires the clock filter (--clock-filter above 0).
+   */
+  prune_filtered_tips?: boolean;
+  /**
+   * Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
+   *
+   * Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time
+   * inference dates it from the tree. Names that match no tip are ignored.
+   */
+  keep_tips?: Array<string>;
+  /**
+   * File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per
+   * line
+   *
+   * Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file
+   * can list samples of several datasets. Use '-' to read from standard input (stdin).
+   */
+  keep_tips_file?: string;
+  /**
    * Method that chooses the root of the tree
    *
    * `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root
@@ -3426,6 +3450,30 @@ export type ClockConfig = {
    * gives essentially mid-point rooting.
    */
   allow_negative_rate?: boolean;
+  /**
+   * Remove the tips that the clock filter flags from the tree.
+   *
+   * The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips
+   * after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit.
+   * Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree,
+   * flagged. Requires the clock filter (--clock-filter above 0).
+   */
+  prune_filtered_tips?: boolean;
+  /**
+   * Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
+   *
+   * Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time
+   * inference dates it from the tree. Names that match no tip are ignored.
+   */
+  keep_tips?: Array<string>;
+  /**
+   * File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per
+   * line
+   *
+   * Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file
+   * can list samples of several datasets. Use '-' to read from standard input (stdin).
+   */
+  keep_tips_file?: string;
   /**
    * Method that chooses the root of the tree
    *

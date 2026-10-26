@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+  use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
   use crate::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
   use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
@@ -8,6 +9,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::{o, vec_of_owned};
+
+  const KEEP_TIPS: &str = "applies only with --prune-filtered-tips: it names flagged tips that the run keeps";
 
   const COALESCENT_SKYLINE: &str = "applies only to --coalescent skyline, but --coalescent is";
 
@@ -53,6 +56,10 @@ mod tests {
   #[case::representation_in_marginal_mode( &["--representation", "dense", "--branch-length-mode", "marginal"], None)]
   #[case::model_in_input_mode(             &["--model", "jc69", "--model-params", "mu=2", "--branch-length-mode", "input"], None)]
   #[case::sequence_length_with_alignment(  &["--sequence-length", "1000"],                                    Some((o!("--sequence-length applies only without --alignment: the run takes the sequence length from the alignment, and an alignment of variable sites with a separate genome length is not supported"), ["sequence_length", "alignment"])))]
+  #[case::keep_tips_without_pruning(       &["--keep-tips", "A"],                                             Some((format!("--keep-tips {KEEP_TIPS}"),                               ["keep_tips", "prune_filtered_tips"])))]
+  #[case::keep_tips_file_without_pruning(  &["--keep-tips-file", "keep.txt"],                                 Some((format!("--keep-tips-file {KEEP_TIPS}"),                          ["keep_tips_file", "prune_filtered_tips"])))]
+  #[case::pruning_without_clock_filter(    &["--prune-filtered-tips", "--clock-filter", "0"],                 Some((o!("--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"), ["prune_filtered_tips", "clock_filter"])))]
+  #[case::pruning_with_keep_list(          &["--prune-filtered-tips", "--keep-tips", "A,B", "--keep-tips-file", "keep.txt"], None)]
   #[case::documented_defaults(             &[],                                                               None)]
   #[trace]
   fn test_dependent_settings_timetree(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {
@@ -60,6 +67,20 @@ mod tests {
     assert_eq!(
       expected.map(helpers::owned),
       argument_error_of::<TreetimeTimetreeArgsRaw, TreetimeTimetreeArgs>(&argv)
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::keep_tips_without_pruning(    &["--keep-tips", "A"],                             Some((format!("--keep-tips {KEEP_TIPS}"), ["keep_tips", "prune_filtered_tips"])))]
+  #[case::pruning_without_clock_filter( &["--prune-filtered-tips", "--clock-filter", "0"], Some((o!("--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"), ["prune_filtered_tips", "clock_filter"])))]
+  #[case::pruning_with_keep_list(       &["--prune-filtered-tips", "--keep-tips", "A"],    None)]
+  #[trace]
+  fn test_dependent_settings_clock(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {
+    let argv = [&["clock", "--tree", "t.nwk", "--metadata", "m.tsv"][..], extra].concat();
+    assert_eq!(
+      expected.map(helpers::owned),
+      argument_error_of::<TreetimeClockArgsRaw, TreetimeClockArgs>(&argv)
     );
   }
 

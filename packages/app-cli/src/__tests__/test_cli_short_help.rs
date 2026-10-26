@@ -30,14 +30,14 @@ mod tests {
   #[rustfmt::skip]
   const SHORT_HELP: &[(&str, &[&str])] = &[
     (TT, &["--tree", "--alignment", "--metadata", "--date-column", "--sequence-length", "--clock-rate", "--clock-std-dev",
-           "--clock-filter", "--relax", "--reroot", "--outgroup", "--keep-root", "--branch-length-mode", "--confidence",
+           "--clock-filter", "--prune-filtered-tips", "--relax", "--reroot", "--outgroup", "--keep-root", "--branch-length-mode", "--confidence",
            "--keep-polytomies", "--max-iter", "--coalescent", "--n-skyline", "--model", "--output-all",
            "--output-selection", "--config", "--dry-run", "--seed", "--jobs", "--verbose", "--quiet", "--help"]),
     (AN, &["--tree", "--alignment", "--model", "--method-anc", "--include-leaves", "--impute-missing-data",
            "--reconstruct-tip-states", "--report-ambiguous", "--annotation", "--translations", "--cds-selection",
            "--aa-root-sequence", "--aa-model", "--output-all", "--output-selection", "--config", "--dry-run", "--seed",
            "--jobs", "--verbose", "--quiet", "--help"]),
-    (CL, &["--tree", "--metadata", "--date-column", "--clock-filter", "--reroot", "--outgroup", "--keep-root",
+    (CL, &["--tree", "--metadata", "--date-column", "--clock-filter", "--prune-filtered-tips", "--reroot", "--outgroup", "--keep-root",
            "--output-all", "--output-selection", "--config", "--dry-run", "--jobs", "--verbose", "--quiet", "--help"]),
     (MU, &["--tree", "--metadata", "--attribute", "--weights", "--missing-data", "--confidence", "--pc",
            "--sampling-bias-correction", "--output-all", "--output-selection", "--config", "--dry-run", "--jobs",

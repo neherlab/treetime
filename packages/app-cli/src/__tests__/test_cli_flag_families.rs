@@ -36,7 +36,7 @@ pub(crate) mod tests {
     Family { name: "Metadata",                 commands: &[TT, CL, MU],        flags: &["--metadata", "--metadata-id-columns", "--metadata-delimiters"] },
     Family { name: "Dates",                    commands: &[TT, CL],            flags: &["--date-column", "--date-format"] },
     Family { name: "Rooting",                  commands: &[TT, CL, OP],        flags: &["--reroot", "--outgroup", "--keep-root"] },
-    Family { name: "Clock filter",             commands: &[TT, CL],            flags: &["--clock-filter", "--allow-negative-rate"] },
+    Family { name: "Clock filter",             commands: &[TT, CL],            flags: &["--clock-filter", "--allow-negative-rate", "--prune-filtered-tips", "--keep-tips", "--keep-tips-file"] },
     Family { name: "Random steps",             commands: &[TT, AN, HO],        flags: &["--seed"] },
     Family { name: "Uncertainty",              commands: &[TT, MU],            flags: &["--confidence"] },
   ];

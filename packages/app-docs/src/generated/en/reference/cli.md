@@ -170,6 +170,15 @@ treetime timetree --config timetree.yaml -O results
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
+* `--prune-filtered-tips` — Remove the tips that the clock filter flags from the tree.
+
+   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
+* `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
+
+   Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time inference dates it from the tree. Names that match no tip are ignored.
+* `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per line
+
+   Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. Use '-' to read from standard input (stdin).
 * `--reroot <REROOT>` — Method that chooses the root of the tree
 
    `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
@@ -699,6 +708,15 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
+* `--prune-filtered-tips` — Remove the tips that the clock filter flags from the tree.
+
+   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
+* `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
+
+   Accepts several names, separated by commas. A kept tip stays flagged: the clock fit leaves it out, and the time inference dates it from the tree. Names that match no tip are ignored.
+* `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per line
+
+   Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. Use '-' to read from standard input (stdin).
 * `--reroot <REROOT>` — Method that chooses the root of the tree
 
    `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.

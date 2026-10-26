@@ -1,4 +1,4 @@
-use crate::commands::shared::clock_filter::ClockFilterArgs;
+use crate::commands::shared::clock_filter::{ClockFilterArgs, FilteredTipPruning};
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::dates_input::DatesInput;
 use crate::commands::shared::jobs::JobsArgs;
@@ -36,6 +36,7 @@ pub struct TreetimeClockArgs {
   pub(crate) dates: DatesInput,
   pub(crate) clock_filter: f64,
   pub(crate) allow_negative_rate: bool,
+  pub(crate) prune_filtered_tips: Option<FilteredTipPruning>,
   pub(crate) reroot: Option<RerootTarget>,
   pub(crate) topology_order: TopologyOrder,
   pub(crate) outputs: OutputRequest,
@@ -63,10 +64,14 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
         date_column,
         date_format,
       },
-      clock_filter: ClockFilterArgs {
-        clock_filter,
-        allow_negative_rate,
-      },
+      clock_filter:
+        ClockFilterArgs {
+          clock_filter,
+          allow_negative_rate,
+          prune_filtered_tips,
+          keep_tips,
+          keep_tips_file,
+        },
       reroot: RerootArgs { reroot },
       rooting: RootingArgs { outgroup, keep_root },
       output,
@@ -100,6 +105,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       },
       clock_filter,
       allow_negative_rate,
+      prune_filtered_tips: FilteredTipPruning::new(clock_filter, prune_filtered_tips, keep_tips, keep_tips_file)?,
       reroot: RerootTarget::unless_keep_root(keep_root, reroot.map(Into::into), outgroup),
       topology_order: clock_topology_order(topology_order)?,
       outputs: clock_outputs(output, output_selection, clock_output, output_rtt_chart),

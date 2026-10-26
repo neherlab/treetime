@@ -429,6 +429,7 @@ export const zRunWarningKind = z.union([
   z.literal('duplicate-partition-names'),
   z.literal('branch-lengths-not-converged'),
   z.literal('dates-outside-input-dates'),
+  z.literal('filtered-tips-removed'),
   z.literal('locations-without-coordinates')
 ]);
 
@@ -1485,6 +1486,9 @@ export const zTimetreeConfig = z.strictObject({
   relax: z.array(z.number()).optional(),
   clock_filter: z.number().optional(),
   allow_negative_rate: z.boolean().optional(),
+  prune_filtered_tips: z.boolean().optional(),
+  keep_tips: z.array(z.string()).optional(),
+  keep_tips_file: z.string().optional(),
   reroot: zRerootMethod.optional(),
   outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
@@ -1582,6 +1586,9 @@ export const zClockConfig = z.strictObject({
   date_format: z.string().optional(),
   clock_filter: z.number().optional(),
   allow_negative_rate: z.boolean().optional(),
+  prune_filtered_tips: z.boolean().optional(),
+  keep_tips: z.array(z.string()).optional(),
+  keep_tips_file: z.string().optional(),
   reroot: zRerootMethod.optional(),
   outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),

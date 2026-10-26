@@ -113,7 +113,7 @@ pub(crate) const V0_SPELLINGS: &[Entry] = &[
   Entry { flag: "--covariation",          arity: Arity::None,      commands: &[TIMETREE, CLOCK], rules: &[always(Then::Stop(COVARIATION_REMOVED))] },
   Entry { flag: "--tip-slack",            arity: Arity::One,       commands: &[TIMETREE, CLOCK], rules: &[always(Then::Stop(COVARIATION_REMOVED))] },
   Entry { flag: "--clock-filter-method",  arity: Arity::One,       commands: &[TIMETREE, CLOCK], rules: &[always(Then::Unavailable)] },
-  Entry { flag: "--prune-outliers",       arity: Arity::None,      commands: &[CLOCK],          rules: &[always(Then::Unavailable)] },
+  Entry { flag: "--prune-outliers",       arity: Arity::None,      commands: &[TIMETREE, CLOCK], rules: &[always(Then::Rename("--prune-filtered-tips"))] },
   Entry { flag: "--plot-tree",            arity: Arity::One,       commands: &[TIMETREE],       rules: &[always(Then::Unavailable)] },
   Entry { flag: "--plot-rtt",             arity: Arity::One,       commands: &[TIMETREE, CLOCK], rules: &[always(Then::Unavailable)] },
   Entry { flag: "--tip-labels",           arity: Arity::None,      commands: &[TIMETREE],       rules: &[always(Then::Unavailable)] },
