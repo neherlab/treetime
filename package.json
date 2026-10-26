@@ -29,7 +29,8 @@
       "katex": "0.19.0",
       "@tanstack/react-hotkeys": "0.10.0",
       "zustand": "5.0.15",
-      "ts-pattern": "5.9.0"
+      "ts-pattern": "5.9.0",
+      "unplugin-icons": "24.0.0"
     }
   },
   "type": "module",

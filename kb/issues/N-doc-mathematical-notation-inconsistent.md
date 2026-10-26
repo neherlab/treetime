@@ -4,16 +4,16 @@ Algorithm Markdown and the generated CLI reference write mathematical expression
 
 - [kb/algo/ancestral.md#L48-L52](../algo/ancestral.md#L48-L52): the partial likelihood `w_k(X) = [sum_Y P(X->Y|t_i) * w_i(Y)] * ...` in a code block
 - [kb/algo/timetree.md#L90-L92](../algo/timetree.md#L90-L92): the skyline cost in a code block; the confidence interval formulas at [kb/algo/timetree.md#L252-L257](../algo/timetree.md#L252-L257) and [kb/algo/timetree.md#L267-L270](../algo/timetree.md#L267-L270) as well
-- [packages/app-docs/src/content/docs/reference/cli.md#L389](../../packages/app-docs/src/content/docs/reference/cli.md#L389): the skyline stiffness help writes `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2` in a code span. The text comes from the doc comment of the `--skyline-stiffness` flag [packages/app-commands/src/commands/timetree/args.rs#L276](../../packages/app-commands/src/commands/timetree/args.rs#L276), which `--help` also prints in a terminal
+- [packages/app-docs/src/generated/en/reference/cli.md#L389](../../packages/app-docs/src/generated/en/reference/cli.md#L389): the skyline stiffness help writes `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2` in a code span. The text comes from the doc comment of the `--skyline-stiffness` flag [packages/app-commands/src/commands/timetree/args.rs#L276](../../packages/app-commands/src/commands/timetree/args.rs#L276), which `--help` also prints in a terminal
 
 ## Scope
 
 - `kb/algo/ancestral.md`
 - `kb/algo/timetree.md`
-- The CLI help of `--skyline-stiffness` and the generated `packages/app-docs/src/content/docs/reference/cli.md`
+- The CLI help of `--skyline-stiffness` and the generated `packages/app-docs/src/generated/en/reference/cli.md`
 
 > [!IMPORTANT]
-> **Decision required.** The CLI reference is generated from the clap doc comments, which `--help` prints as plain text in a terminal. KaTeX in these comments renders in `packages/app-docs/src/content/docs/reference/cli.md` but shows as raw TeX (`$\frac{s}{2} \sum_i ...$`) in `--help`. Options:
+> **Decision required.** The CLI reference is generated from the clap doc comments, which `--help` prints as plain text in a terminal. KaTeX in these comments renders in `packages/app-docs/src/generated/en/reference/cli.md` but shows as raw TeX (`$\frac{s}{2} \sum_i ...$`) in `--help`. Options:
 >
 > - **KaTeX in the doc comments**: the reference renders the formula; `--help` shows raw TeX
 > - **Plain text in the doc comments**: `--help` stays readable; the reference keeps a plain-text formula

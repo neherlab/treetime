@@ -1,0 +1,115 @@
+---
+title: Writing guide
+description: The syntax of each docs feature, to copy into new pages.
+---
+
+:::note
+This page lists the syntax of the docs features. Its examples use placeholder text.
+:::
+
+## Pages
+
+Pages are files in the `docs/` folder at the top of the repository, one folder per language: English in `docs/en/`, German in `docs/de/`. A page is a `.md` file, or an `.mdx` file when it uses components. The front matter sets `title`, and optionally `description`, `template` (`doc` or `splash`), and `tableOfContents`. A `meta.json` file sets the title of a folder and the order of its pages; `"..."` in `pages` adds the remaining pages in alphabetical order.
+
+Run `just docs` and open the address it prints: the dev server shows each change when you save the file.
+
+## Links
+
+Write links from the root of the docs, without the version and the language: `[math](/showcase/math)` links to the math page of the version and the language of the page. Files of the public folder work the same way: `![logo](/logo.svg)`.
+
+## Callouts
+
+```md
+:::note
+A note.
+:::
+
+:::tip[A custom title]
+A tip with a title.
+:::
+```
+
+The types are `note`, `tip`, `warning`, and `danger`. Another type stops the build.
+
+## Steps
+
+Each heading that starts with a number and a dot becomes a step:
+
+```md
+### 1. Prepare the inputs
+
+### 2. Run the analysis
+```
+
+## Synced tabs
+
+Each tab is one named slot, `tab-0`, `tab-1`, and so on, in the order of the labels:
+
+```mdx
+<SyncedTabs syncKey="surface" labels={["CLI", "Web app"]}>
+  <div slot="tab-0">Text for the CLI.</div>
+  <div slot="tab-1">Text for the web app.</div>
+</SyncedTabs>
+```
+
+Groups with the same `syncKey` switch together.
+
+## Disclosures
+
+```mdx
+<Disclosure title="A question">The answer.</Disclosure>
+```
+
+## File trees and cards
+
+```mdx
+<FileTree entries={[{ name: "out", children: [{ name: "dates.tsv", note: "node dates" }] }]} />
+
+<CardGrid>
+  <LinkCard title="Math" description="Inline and display math." href="/showcase/math" />
+</CardGrid>
+```
+
+## Math
+
+Write inline math as `$\mu$` and display math in `$$` blocks. Number an equation with `\tag{1}`, and put an anchor before the block so a sentence can link to it:
+
+```mdx
+<a id="eq-jc69"></a>
+
+$$
+P_{ii}(t) = \tfrac{1}{4} + \tfrac{3}{4} e^{-4t/3} \tag{1}
+$$
+
+Equation [(1)](#eq-jc69) gives the transition probabilities.
+```
+
+Shared macros, such as `\Tc` for $\Tc$, are in `packages/app-docs/src/math/macros.ts`. Follow each display equation with a list that declares its symbols.
+
+## Code
+
+A code block takes a `title`, `frame="terminal"`, line markers such as `{2}`, `ins={3}`, and `del={4}`, and `wrap` for long lines. A `diff` block takes `lang` for the highlighting of its lines.
+
+## Components
+
+Pages use components without an import. The site provides these: `Badge`, `Card` with `CardHeader`, `CardTitle`, `CardDescription`, and `CardAction`, `CardGrid`, `Disclosure`, `FileTree`, `Kbd`, `LinkButton`, `LinkCard`, and `SyncedTabs`. The interactive ones, `Disclosure` and `SyncedTabs`, load their JavaScript in the browser by themselves; the others render at build time and ship no JavaScript. Another component name stops the build.
+
+A button that is a link:
+
+```mdx
+<LinkButton href="/reference/cli" variant="outline">
+  Command-line reference
+</LinkButton>
+```
+
+## Icons
+
+Write an icon as `Icon`, the name of the Iconify set, and the name of the icon, in PascalCase: `<IconLucideClock aria-hidden />` shows the `clock` icon of Lucide. Give a decorative icon `aria-hidden`, and an icon that carries meaning an `aria-label`.
+
+## Generated pages
+
+The settings pages and the command-line reference are generated and have no file in `docs/`. Change the help texts in the Rust source and run `just gen`.
+
+## Translations
+
+Translation agents write the German pages. Each translated file records the `sourceHash` of the English file it was translated from, and `just docs-i18n-status` lists the translations that are missing or that an English change made stale. See the developer page [Docs site](/development/docs-site#translations).

@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     {
+      "path": "./docs/tsconfig.json"
+    },
+    {
       "path": "./dev/lints/oxlint/tsconfig.json"
     },
     {

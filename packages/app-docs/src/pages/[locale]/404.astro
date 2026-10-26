@@ -1,0 +1,13 @@
+---
+import { locales } from "@neherlab/app-ui/i18n";
+
+import NotFoundPage from "../../components/NotFoundPage.astro";
+
+export function getStaticPaths() {
+  return locales.map((locale) => ({ params: { locale }, props: { locale } }));
+}
+
+const { locale } = Astro.props;
+---
+
+<NotFoundPage locale={locale} />

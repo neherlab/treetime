@@ -9,7 +9,7 @@ The server never deletes finished runs and has no limit on the number of runs or
 
 - `RunStore` in `packages/app-backend/src/runs/store.rs` creates one folder per run under `--runs-dir`. Its only removal is `RunStore::remove_unstarted()` [packages/app-backend/src/runs/store.rs#L133-L144](../../packages/app-backend/src/runs/store.rs#L133-L144), which deletes runs that were created for an upload and never started. `RunManager::open()` calls it once at startup for runs older than one day [packages/app-backend/src/runs/manager.rs#L67-L69](../../packages/app-backend/src/runs/manager.rs#L67-L69). Runs that started are never removed, by age or by size
 - The upload limit (`--max-upload-size`, 50 MB per run on the nightly server) bounds the inputs of one run, not the outputs or the number of runs
-- `docs/dev/developer_guide.md`, section "Nightly web deploy", states that the server never deletes runs
+- `docs/en/development/web-app.md`, section "Storage", states that the server never deletes runs
 
 ## Possible changes
 

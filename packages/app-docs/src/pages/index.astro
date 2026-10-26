@@ -1,0 +1,12 @@
+---
+import { baseLocale } from "@neherlab/app-ui/i18n";
+
+import { redirectPage } from "../lib/redirect-page";
+import { docsUrl } from "../lib/urls";
+
+export const partial = true;
+
+const html = redirectPage(Astro.site?.href ?? Astro.url.origin, docsUrl([], baseLocale));
+---
+
+<Fragment set:html={html} />

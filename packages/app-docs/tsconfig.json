@@ -7,7 +7,7 @@
     "noEmit": true
   },
   "include": ["src", "../../test-matchers.d.ts"],
-  "exclude": ["src/integrations", "src/preview"],
+  "exclude": ["src/integrations", "src/markdown", "src/preview", "src/translations"],
   "references": [
     {
       "path": "../app-contracts/tsconfig.generated.json"

@@ -104,13 +104,13 @@ describe("version banner", () => {
     expect([
       banner?.textContent?.split(" Open")[0] ?? null,
       banner?.querySelector("a")?.getAttribute("href") ?? null,
-    ]).toStrictEqual(expected === null ? [null, null] : [expected, "/dev/showcase/math"]);
+    ]).toStrictEqual(expected === null ? [null, null] : [expected, "/dev/en/showcase/math"]);
   });
 });
 
 const RESULTS: SearchResult[] = [
   {
-    url: "/dev/showcase/math",
+    url: "/dev/en/showcase/math",
     excerpt: "The <mark>clock</mark> rate &amp; dates",
     meta: { title: "Math" },
     sub_results: [],

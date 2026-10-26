@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "types": [],
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": [
+    "**/*.mdx",
+    "../packages/app-docs/src/components/provided-components.ts",
+    "../packages/app-ui/src/icons.d.ts"
+  ],
+  "mdx": {
+    "checkMdx": true,
+    "plugins": [
+      ["../packages/app-docs/node_modules/remark-frontmatter/index.js", ["yaml"]],
+      "../packages/app-docs/node_modules/remark-gfm/index.js",
+      "../packages/app-docs/node_modules/remark-directive/index.js",
+      "../packages/app-docs/node_modules/remark-math/index.js"
+    ]
+  }
+}

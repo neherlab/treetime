@@ -6,8 +6,8 @@ The `rust` branch has no root README and no user-facing page that says how to in
 
 ## Evidence
 
-- The repository root holds no `README.md`; `docs/` holds `cli_overview.md` (command overview), and the docs site `packages/app-docs` holds the generated command-line reference `packages/app-docs/src/content/docs/reference/cli.md`; none of them covers installation.
-- The floors exist only in the developer guide: [docs/dev/developer_guide.md#L443](../../docs/dev/developer_guide.md#L443) lists the CPU baselines of the release binaries (x86-64-v2, Armv8.0 on Linux aarch64, Armv8.1 LSE on Windows aarch64, Apple M1).
+- The repository root holds no `README.md`; the docs site holds a command overview with placeholder text (`docs/en/guide/commands.md`) and the generated command-line reference (`packages/app-docs/src/generated/en/reference/cli.md`); none of them covers installation.
+- The floors exist only in the developer guide: [docs/en/development/releases.md#L22](../../docs/en/development/releases.md#L22) lists the CPU baselines of the release binaries (x86-64-v2, Armv8.0 on Linux aarch64, Armv8.1 LSE on Windows aarch64, Apple M1).
 - The desktop app adds its own floors through Electron 44.4.1 ([packages/app-desktop/package.json#L25](../../packages/app-desktop/package.json#L25)), which are higher than those of the CLI for macOS and Linux.
 
 > [!IMPORTANT]

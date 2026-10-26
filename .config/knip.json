@@ -39,9 +39,10 @@
       "project": ["src/**/*.{ts,tsx,css}!"]
     },
     "packages/app-docs": {
-      "entry": ["src/pages/**/*.astro", "src/content/**/*.mdx"],
-      "project": ["*.ts", "src/**/*.{ts,tsx,astro,mdx,css}", "!src/**/__tests__/**"],
-      "ignoreUnresolved": ["^~icons/"]
+      "entry": ["src/pages/**/*.astro", "src/translations/status.ts"],
+      "project": ["*.ts", "src/**/*.{ts,tsx,astro,css}", "!src/**/__tests__/**"],
+      "ignoreUnresolved": ["^~icons/"],
+      "ignoreDependencies": ["remark-frontmatter", "remark-gfm"]
     },
     "packages/app-desktop": {
       "entry": ["src/main.ts!", "src/backend.ts!", "src/preload.ts!", "renderer/index.html!"],

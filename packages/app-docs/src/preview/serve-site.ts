@@ -10,7 +10,7 @@ const FOLDERS: SiteFolders = {
   base: `/${process.env["TREETIME_DOCS_VERSION"] ?? "dev"}`,
   build: fileURLToPath(new URL("../../dist", import.meta.url)),
   root: fileURLToPath(new URL("../../dist-root", import.meta.url)),
-  locales: locales.filter((locale) => locale !== "en"),
+  locales,
 };
 
 const server = Bun.serve({

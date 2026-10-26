@@ -5,14 +5,14 @@ import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkMath from "remark-math";
 
-import { CONTENT_ROOT } from "../lib/docs-source";
 import { TEX_MACROS } from "../math/macros";
 import { rehypeBaseUrls } from "./rehype-base-urls";
+import { remarkProvidedComponents } from "./remark-provided-components";
 import { restoreDirectives } from "./restore-directives";
 
 const CALLOUT_TYPES = { note: "info", tip: "success", warning: "warning", danger: "error" };
 
-export function docsMarkdownProcessor(base: string) {
+export function docsMarkdownProcessor(base: string, contentRoots: readonly string[]) {
   return unified({
     remarkPlugins: [
       remarkDirective,
@@ -20,10 +20,11 @@ export function docsMarkdownProcessor(base: string) {
       restoreDirectives,
       remarkSteps,
       remarkMath,
+      remarkProvidedComponents,
     ],
     rehypePlugins: [
       [rehypeKatex, { macros: TEX_MACROS }],
-      [rehypeBaseUrls, { base, contentRoot: CONTENT_ROOT }],
+      [rehypeBaseUrls, { base, contentRoots }],
     ],
   });
 }

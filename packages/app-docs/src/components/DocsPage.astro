@@ -1,14 +1,16 @@
 ---
 import { m, type Locale } from "@neherlab/app-ui/i18n";
+import { commandSettings } from "@neherlab/app-ui/settings/catalog";
 import { render } from "astro:content";
 
 import DocsLayout from "../layouts/DocsLayout.astro";
 import type { DocsSource } from "../lib/docs-source";
 import { pageView } from "../lib/page-view";
-import { entriesById, source } from "../lib/source";
+import { entriesByKey, source } from "../lib/source";
 import { FallbackNotice } from "./FallbackNotice";
 import { mdxComponents } from "./mdx";
 import { PageFooter } from "./PageFooter";
+import { SettingsReference } from "./SettingsReference";
 import { TableOfContents } from "./TableOfContents";
 import { VersionBanner } from "./VersionBanner";
 
@@ -19,13 +21,15 @@ interface Props {
 
 const { page, locale } = Astro.props;
 
-const entry = entriesById.get(page.data.entryId);
+const { body } = page.data;
 
-if (entry === undefined) {
-  throw new Error(`the docs page ${page.path} has no content entry ${page.data.entryId}`);
+const entry = body.kind === "entry" ? entriesByKey.get(body.key) : undefined;
+
+if (body.kind === "entry" && entry === undefined) {
+  throw new Error(`the docs page ${page.path} has no content entry ${body.key}`);
 }
 
-const { Content, headings } = await render(entry);
+const { Content, headings } = entry === undefined ? { Content: undefined, headings: [] } : await render(entry);
 
 const view = pageView({ page, locale, tree: source.getPageTree(locale), headings, base: import.meta.env.BASE_URL });
 ---
@@ -54,7 +58,12 @@ const view = pageView({ page, locale, tree: source.getPageTree(locale), headings
   }
   <VersionBanner slot="banner" client:idle version={view.version} page={view.slug} locale={locale} />
   {view.fallback && <FallbackNotice slot="notice" locale={locale} />}
-  <Content locale={locale} components={mdxComponents} />
+  {Content !== undefined && <Content locale={locale} components={mdxComponents} />}
+  {
+    body.kind === "settings" && (
+      <SettingsReference client:visible settings={commandSettings(body.command)} locale={locale} />
+    )
+  }
   <PageFooter slot="footer" previous={view.previous} next={view.next} editUrl={view.editUrl} locale={locale} />
   {
     view.showToc && (

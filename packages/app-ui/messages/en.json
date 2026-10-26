@@ -45,6 +45,7 @@
   "docs_search_loading": "Loading the search index",
   "docs_search_unavailable": "Search works on the built site. Run `just docs-prod` to use it.",
   "docs_search_results": "Search results",
+  "docs_settings_description": "Settings of treetime {command} ({title}), with their flags, config keys, and defaults.",
   "docs_toc": "On this page",
   "docs_previous": "Previous",
   "docs_next": "Next",

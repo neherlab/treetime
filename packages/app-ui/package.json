@@ -97,7 +97,7 @@
     "@types/styled-components": "5.1.36",
     "p-wait-for": "catalog:",
     "tinyglobby": "0.2.17",
-    "unplugin-icons": "24.0.0",
+    "unplugin-icons": "catalog:",
     "vite": "catalog:",
     "vite-plugin-static-copy": "4.1.1"
   }

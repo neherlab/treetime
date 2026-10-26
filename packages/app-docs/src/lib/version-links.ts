@@ -9,7 +9,11 @@ export function versionPageUrl(
   locale: Locale,
   page: string,
 ): string {
-  const listed = manifest?.pages[locale]?.includes(page) === true;
+  const pages = manifest?.pages[locale];
 
-  return docsPath(`/${version}`, listed ? page.split("/") : [], listed ? locale : baseLocale);
+  if (pages?.includes(page) === true) {
+    return docsPath(`/${version}`, page.split("/"), locale);
+  }
+
+  return docsPath(`/${version}`, [], pages?.includes("") === true ? locale : baseLocale);
 }

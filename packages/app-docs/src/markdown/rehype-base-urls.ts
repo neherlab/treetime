@@ -11,9 +11,9 @@ const PAGE_FILE = /\.(?:md|mdx)$/u;
 
 const PUBLIC_FILE = /\.[a-z0-9]+$/iu;
 
-export function rehypeBaseUrls({ base, contentRoot }: { base: string; contentRoot: string }) {
+export function rehypeBaseUrls({ base, contentRoots }: { base: string; contentRoots: readonly string[] }) {
   return (tree: Root, file: VFile): void => {
-    const locale = pageLocale(file.path, contentRoot);
+    const locale = pageLocale(file.path, contentRoots);
 
     visit(tree, (node) => {
       if (node.type === "element") {
@@ -78,8 +78,8 @@ function splitUrl(url: string): { pathname: string; rest: string } {
   return end === -1 ? { pathname: url, rest: "" } : { pathname: url.slice(0, end), rest: url.slice(end) };
 }
 
-function pageLocale(path: string, contentRoot: string): string | undefined {
-  const index = path.indexOf(contentRoot);
+function pageLocale(path: string, contentRoots: readonly string[]): string | undefined {
+  const root = contentRoots.find((candidate) => path.startsWith(candidate));
 
-  return index === -1 ? undefined : path.slice(index + contentRoot.length).split("/")[0];
+  return root === undefined ? undefined : path.slice(root.length).split("/")[0];
 }

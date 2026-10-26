@@ -23,6 +23,16 @@ describe("docs source", () => {
     ]);
   });
 
+  test("an English page lies below the English language segment", () => {
+    const source = createDocsSource(FILES, "/dev");
+    const math = source.getPage(["showcase", "math"], "en");
+
+    expect([math?.url, math === undefined ? undefined : isFallbackPage(math, "en")]).toStrictEqual([
+      "/dev/en/showcase/math",
+      false,
+    ]);
+  });
+
   test("the page tree links to the docs urls of its locale, in the order of meta.json", () => {
     const source = createDocsSource(FILES, "/dev");
     const folder = source.getPageTree("de").children.find((node) => node.type === "folder");
@@ -35,17 +45,24 @@ describe("docs source", () => {
 
 const FILES = {
   pages: [
-    { path: "index.mdx", data: pageData("Home", "index.mdx") },
+    { path: "en/index.mdx", data: pageData("Home", "en/index.mdx") },
     { path: "de/index.mdx", data: pageData("Startseite", "de/index.mdx") },
-    { path: "showcase/math.mdx", data: pageData("Math", "showcase/math.mdx") },
-    { path: "showcase/typography.mdx", data: pageData("Typography", "showcase/typography.mdx") },
+    { path: "en/showcase/math.mdx", data: pageData("Math", "en/showcase/math.mdx") },
+    { path: "en/showcase/typography.mdx", data: pageData("Typography", "en/showcase/typography.mdx") },
   ],
   metas: [
-    { path: "meta.json", data: { pages: ["index", "showcase"] } },
-    { path: "showcase/meta.json", data: { title: "Showcase", pages: ["typography", "math"] } },
+    { path: "en/meta.json", data: { pages: ["index", "showcase"] } },
+    { path: "de/meta.json", data: { pages: ["index", "showcase"] } },
+    { path: "en/showcase/meta.json", data: { title: "Showcase", pages: ["typography", "math"] } },
   ],
 };
 
 function pageData(title: string, file: string): DocsPageData {
-  return { title, template: "doc", tableOfContents: true, entryId: file, file: `src/content/docs/${file}` };
+  return {
+    title,
+    template: "doc",
+    tableOfContents: true,
+    body: { kind: "entry", key: `docs:${file}` },
+    editPath: file,
+  };
 }

@@ -1,10 +1,9 @@
+import type { AppCommand } from "@neherlab/app-contracts";
 import { baseLocale, locales, type Locale } from "@neherlab/app-ui/i18n";
 import { defineI18n } from "fumadocs-core/i18n";
 import { loader, type StaticSource } from "fumadocs-core/source";
 
 import { docsLocale, docsPath } from "./urls";
-
-export const CONTENT_ROOT = "src/content/docs/";
 
 export const docsI18n = defineI18n({
   languages: [...locales],
@@ -36,8 +35,13 @@ export function isFallbackPage(page: { path: string }, locale: Locale): boolean 
 }
 
 export interface DocsFiles {
-  pages: ReadonlyArray<{ path: string; data: DocsPageData }>;
+  pages: readonly DocsPageFile[];
   metas: ReadonlyArray<{ path: string; data: DocsMetaData }>;
+}
+
+export interface DocsPageFile {
+  path: string;
+  data: DocsPageData;
 }
 
 export interface DocsPageData {
@@ -45,10 +49,11 @@ export interface DocsPageData {
   description?: string | undefined;
   template: "doc" | "splash";
   tableOfContents: boolean;
-  editUrl?: false | undefined;
-  entryId: string;
-  file: string;
+  body: PageBody;
+  editPath: string | undefined;
 }
+
+export type PageBody = { kind: "entry"; key: string } | { kind: "settings"; command: AppCommand };
 
 export interface DocsMetaData {
   title?: string | undefined;

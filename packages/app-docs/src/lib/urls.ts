@@ -9,10 +9,9 @@ export function assetUrl(path: string): string {
 }
 
 export function docsPath(base: string, slugs: readonly string[], locale: Locale): string {
-  const segments = [...(locale === baseLocale ? [] : [locale]), ...slugs].filter((segment) => segment !== "");
-  const root = trimTrailingSlashes(base);
+  const segments = [locale, ...slugs].filter((segment) => segment !== "");
 
-  return segments.length === 0 ? root || "/" : `${root}/${segments.join("/")}`;
+  return `${trimTrailingSlashes(base)}/${segments.join("/")}`;
 }
 
 export function assetPath(base: string, path: string): string {

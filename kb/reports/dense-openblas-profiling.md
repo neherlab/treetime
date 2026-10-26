@@ -206,7 +206,7 @@ Log/exp arithmetic (36%), per-column GTR inference (13%), and per-column argmax 
 ## 5. Out-of-Docker builds
 
 > [!NOTE]
-> Sections 5.1 to 5.4 describe the build setup at the report commit. The current builds link OpenBLAS through the build script of `packages/treetime-openblas` and pkg-config: the project archives of `.config/mise.toml` (hosts) and `.config/mise.image.toml` (containers), single-threaded on every native target, or the OpenBLAS of the system. The section "Host" of [docs/dev/developer_guide.md](../../docs/dev/developer_guide.md) describes host builds and `OPENBLAS_NUM_THREADS=1` for a threaded system OpenBLAS.
+> Sections 5.1 to 5.4 describe the build setup at the report commit. The current builds link OpenBLAS through the build script of `packages/treetime-openblas` and pkg-config: the project archives of `.config/mise.toml` (hosts) and `.config/mise.image.toml` (containers), single-threaded on every native target, or the OpenBLAS of the system. The section "Host" of [docs/en/development/setup.md](../../docs/en/development/setup.md) describes host builds and `OPENBLAS_NUM_THREADS=1` for a threaded system OpenBLAS.
 
 The Docker fix (switching to `openblas-static-0.3.28`) only affects Docker-based builds. Developers building on the host are affected by a separate configuration path.
 
@@ -225,7 +225,7 @@ The `system` feature means "link to whatever OpenBLAS is installed on the system
 
 ### 5.2 What the developer guide recommends
 
-The [developer guide](../../docs/dev/developer_guide.md) instructs developers to install `libopenblas-dev`:
+The [developer guide](../../docs/en/development/setup.md) instructs developers to install `libopenblas-dev`:
 
 ```bash
 sudo apt-get install libopenblas-dev
@@ -282,7 +282,7 @@ Three approaches, from least to most invasive:
 
 1. Runtime environment variable. `OPENBLAS_NUM_THREADS=1` disables OpenBLAS internal threading regardless of which variant is linked. Developers can set it in their shell profile, or the treetime binary can set it at startup via `std::env::set_var` before any BLAS call. This is a safety net that works for all users on all platforms without any installation changes.
 
-2. Developer guide change. Replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md). This installs the sequential variant system-wide. Developers who already have `libopenblas-dev` installed can switch with:
+2. Developer guide change. Replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/en/development/setup.md). This installs the sequential variant system-wide. Developers who already have `libopenblas-dev` installed can switch with:
 
    ```bash
    sudo apt-get install libopenblas-serial-dev
@@ -333,7 +333,7 @@ If `blas_thread_server` does not appear in the profile output, the mitigation is
 
 - Switch Docker builds to sequential OpenBLAS: download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28`. No code changes required. Eliminates 49.5% CPU waste for Docker-based builds. Done: the containers and the mise archives of hosts link the sequential `openblas-static-` archives of build_openblas.
 - Set `OPENBLAS_NUM_THREADS=1` at startup -- add a one-line `std::env::set_var("OPENBLAS_NUM_THREADS", "1")` early in `main()`. Mitigates threaded OpenBLAS for all users on all platforms, including host builds and pre-built binaries distributed to end users.
-- Update developer guide -- replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md) dependency list.
+- Update developer guide -- replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/en/development/setup.md) dependency list.
 
 ### 6.2 Near-term investigation
 

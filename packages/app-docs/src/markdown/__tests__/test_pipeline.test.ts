@@ -1,8 +1,12 @@
 import { docsMarkdownProcessor } from "../pipeline";
 
-const ENGLISH_PAGE = new URL("file:///docs/src/content/docs/showcase/code.md");
+const CONTENT_ROOTS = ["/repo/docs/", "/repo/packages/app-docs/src/generated/"];
 
-const GERMAN_PAGE = new URL("file:///docs/src/content/docs/de/showcase/code.md");
+const ENGLISH_PAGE = new URL("file:///repo/docs/en/showcase/code.md");
+
+const GERMAN_PAGE = new URL("file:///repo/docs/de/showcase/code.md");
+
+const GENERATED_PAGE = new URL("file:///repo/packages/app-docs/src/generated/en/reference/cli.md");
 
 describe("docs markdown pipeline", () => {
   test("keeps text and leaf directives that no step handles as written", async () => {
@@ -12,9 +16,10 @@ describe("docs markdown pipeline", () => {
   });
 
   test.each([
-    ["an English page", ENGLISH_PAGE, '<p><a href="/dev/showcase/math#eq">math</a></p>'],
+    ["an English page", ENGLISH_PAGE, '<p><a href="/dev/en/showcase/math#eq">math</a></p>'],
     ["a German page", GERMAN_PAGE, '<p><a href="/dev/de/showcase/math#eq">math</a></p>'],
-  ])("puts the version base before a root-relative link on %s", async (_, file, expected) => {
+    ["a generated page", GENERATED_PAGE, '<p><a href="/dev/en/showcase/math#eq">math</a></p>'],
+  ])("puts the version and the language of the page before a root-relative link on %s", async (_, file, expected) => {
     expect(await renderMarkdown("[math](/showcase/math#eq)", file)).toBe(expected);
   });
 
@@ -30,7 +35,7 @@ describe("docs markdown pipeline", () => {
 });
 
 async function renderMarkdown(markdown: string, fileURL: URL): Promise<string> {
-  const renderer = await docsMarkdownProcessor("/dev").createRenderer({ syntaxHighlight: false });
+  const renderer = await docsMarkdownProcessor("/dev", CONTENT_ROOTS).createRenderer({ syntaxHighlight: false });
 
   return (await renderer.render(markdown, { fileURL })).code;
 }

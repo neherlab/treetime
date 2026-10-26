@@ -6,7 +6,15 @@
     "jsx": "react-jsx",
     "noEmit": true
   },
-  "include": ["astro.config.ts", "src/integrations", "src/preview", "src/env.d.ts", "../../test-matchers.d.ts"],
+  "include": [
+    "astro.config.ts",
+    "src/integrations",
+    "src/markdown",
+    "src/preview",
+    "src/translations",
+    "src/env.d.ts",
+    "../../test-matchers.d.ts"
+  ],
   "references": [
     {
       "path": "../app-contracts/tsconfig.generated.json"

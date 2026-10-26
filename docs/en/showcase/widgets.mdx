@@ -1,0 +1,41 @@
+---
+title: Widgets
+description: App components in the docs, rendered at build time or hydrated as islands.
+---
+
+:::note
+This page demonstrates the features of the docs site. Its text is a placeholder.
+:::
+
+## Rendered at build time
+
+These app components render to HTML at build time, and the page ships no JavaScript for them.
+
+<div className="not-prose grid gap-4 sm:grid-cols-2">
+  <Card size="sm">
+    <CardHeader>
+      <CardTitle>Static card</CardTitle>
+      <CardDescription>A card of the app, rendered once at build time.</CardDescription>
+    </CardHeader>
+  </Card>
+  <div className="flex flex-wrap items-center gap-2">
+    <Badge variant="secondary">marginal</Badge>
+    <Badge variant="outline">dense</Badge>
+    <span className="text-sm">
+      Open the search with <Kbd>Ctrl</Kbd> <Kbd>K</Kbd>
+    </span>
+  </div>
+</div>
+
+## Hydrated island
+
+The browser loads the JavaScript of this disclosure when it scrolls into view. It is the collapsible of the app.
+
+<Disclosure title="What the clock rate means">
+  The clock rate is the number of substitutions per site per year. TreeTime estimates it from the sampling dates of the
+  tips.
+</Disclosure>
+
+## When a page needs an island
+
+A component needs an island only when it reacts to the reader: it opens, filters, switches, or remembers a choice. A component that only shows content renders at build time and costs the reader nothing.

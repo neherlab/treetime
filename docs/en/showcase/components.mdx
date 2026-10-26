@@ -1,0 +1,105 @@
+---
+title: Components
+description: Callouts, tabs, steps, file trees, cards, and badges.
+---
+
+:::note
+This page demonstrates the features of the docs site. Its text is a placeholder.
+:::
+
+## Callouts
+
+:::note
+A note adds context that a reader may want to know.
+:::
+
+:::tip
+A tip shows a shorter or better way to reach a result.
+:::
+
+:::warning
+A warning names a result that can mislead a reader.
+:::
+
+:::danger
+A danger notice names a step that loses data or gives wrong results.
+:::
+
+:::note[Custom title]
+A callout can carry a title of its own.
+:::
+
+## Synced tabs
+
+The two groups below share one sync key, so a choice in one group switches the other, and the site remembers it.
+
+<SyncedTabs syncKey="surface" labels={["CLI", "Web app", "Desktop app"]}>
+  <div slot="tab-0">Run `treetime timetree` with a tree, a metadata table, and an alignment.</div>
+  <div slot="tab-1">Open the web app, choose the files, and start the run.</div>
+  <div slot="tab-2">Open the desktop app, drop the files on the window, and start the run.</div>
+</SyncedTabs>
+
+<SyncedTabs syncKey="surface" labels={["CLI", "Web app", "Desktop app"]}>
+  <div slot="tab-0">The command writes its outputs into the folder of `--output-all`.</div>
+  <div slot="tab-1">The web app shows the results next to the run.</div>
+  <div slot="tab-2">The desktop app stores the results in the runs folder.</div>
+</SyncedTabs>
+
+## Steps
+
+### 1. Prepare the inputs
+
+Collect the tree, the sampling dates, and the alignment.
+
+### 2. Run the analysis
+
+Start `treetime timetree` with the three inputs.
+
+### 3. Read the results
+
+Open the dated tree and the dates table.
+
+## File tree
+
+<FileTree
+  entries={[
+    {
+      name: "tmp/timetree/flu/h3n2/20",
+      children: [
+        { name: "timetree.nexus", note: "dated tree" },
+        { name: "dates.tsv", note: "node dates" },
+        { name: "ancestral_sequences.fasta" },
+        { name: "root_to_tip_regression.svg" },
+      ],
+    },
+  ]}
+/>
+
+## Cards
+
+<CardGrid>
+  <LinkCard title="Typography" description="Headings, lists, and tables." href="/showcase/typography" />
+  <LinkCard title="Math" description="Inline and display math." href="/showcase/math" />
+</CardGrid>
+
+## Badges, icons, and buttons
+
+<div className="not-prose flex flex-wrap items-center gap-3">
+  <Badge>default</Badge>
+  <Badge variant="secondary">secondary</Badge>
+  <Badge variant="outline">outline</Badge>
+  <Badge variant="destructive">destructive</Badge>
+  <IconLucideClock aria-hidden className="text-primary size-5" />
+  <IconLucideGitBranch aria-hidden className="text-primary size-5" />
+  <LinkButton href="/reference/cli" variant="outline">
+    <IconLucideBookOpen aria-hidden />
+    Command-line reference
+  </LinkButton>
+</div>
+
+## Details
+
+<details>
+  <summary>A native details element</summary>
+  The content of a details element opens without JavaScript.
+</details>

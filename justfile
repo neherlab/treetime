@@ -204,7 +204,7 @@ build-dist bin="treetime" *args:
 build-profiling bin="treetime" *args:
     source dev/lib/dist-flags.sh && export_dist_flags binary && cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
-# Build the CLI with jemalloc heap profiling (profiling-heap profile); see "Heap profiles" in docs/dev/developer_guide.md
+# Build the CLI with jemalloc heap profiling (profiling-heap profile); see "Heap profiles" in docs/en/development/performance.md
 [group("build")]
 build-profiling-heap *args:
     source dev/lib/dist-flags.sh && export_dist_flags binary && cargo build --locked --profile=profiling-heap --package=app-cli --features=heap-profiling --bin=treetime "$@"
@@ -653,6 +653,11 @@ docs: _js
 [group("app")]
 docs-prod: _js
     dev/app docs-prod
+
+# List the docs translations to write: missing, stale (the English page changed), or orphan (no English page), each with the `sourceHash` of its English page
+[group("app")]
+docs-i18n-status: _js
+    bun packages/app-docs/src/translations/status.ts
 
 # Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]

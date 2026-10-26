@@ -45,6 +45,7 @@
   "docs_search_loading": "Suchindex wird geladen",
   "docs_search_unavailable": "Die Suche funktioniert auf der gebauten Seite. Führen Sie `just docs-prod` aus, um sie zu nutzen.",
   "docs_search_results": "Suchergebnisse",
+  "docs_settings_description": "Einstellungen von treetime {command} ({title}), mit ihren Optionen, Konfigurationsschlüsseln und Standardwerten.",
   "docs_toc": "Auf dieser Seite",
   "docs_previous": "Zurück",
   "docs_next": "Weiter",

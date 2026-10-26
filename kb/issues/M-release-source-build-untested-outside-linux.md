@@ -8,7 +8,7 @@ A source build outside the project containers links the OpenBLAS of the system t
 
 - `packages/treetime-openblas/build.rs` names the install commands for Debian and Ubuntu, macOS (Homebrew), FreeBSD, and Windows (MSYS2, conda-forge). Only the Linux commands were tested
 - Linux, verified on Ubuntu 24.04 without mise, the project archives, or mold, with `build-essential`, `pkg-config`, `protobuf-compiler`, and the Rust toolchain of `rust-toolchain.toml`:
-  - Without `libopenblas-dev`, `cargo build --locked -p app-cli` stops in the build script of `treetime-openblas` with the text of pkg-config, the install commands of each platform, and a pointer to the section "Host" of `docs/dev/developer_guide.md`
+  - Without `libopenblas-dev`, `cargo build --locked -p app-cli` stops in the build script of `treetime-openblas` with the text of pkg-config, the install commands of each platform, and a pointer to the section "Host" of `docs/en/development/setup.md`
   - With `libopenblas-dev`, pkg-config finds `openblas.pc` without extra `PKG_CONFIG_PATH` (through the alternatives link of Ubuntu; `-L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas`). The build passes, the binary links `libopenblas.so.0` and `libgfortran.so.5`, `treetime debug` reports OpenBLAS 0.3.26 with 16 threads on a 16-CPU machine, and `treetime --version` and `ancestral` on `data/flu/h3n2/20` run
   - With mise 2026.9.10 after `mise install openblas liblzma`, `mise exec -- cargo build --locked -p app-cli` gives a binary that links no OpenBLAS and no liblzma (`ldd` lists `libgcc_s`, `libm`, `libc`), and `treetime debug` reports the single-threaded `DYNAMIC_ARCH` OpenBLAS 0.3.34 of the project archive
   - The UShER protobuf schemas (`packages/util-usher-mat/build.rs`, `prost-build`) need `protoc`, which mise provides and which a build without mise takes from the system
@@ -22,4 +22,4 @@ A source build outside the project containers links the OpenBLAS of the system t
 
 ## Potential solutions
 
-- Run the source build once on each of these systems, correct the install commands of `packages/treetime-openblas/build.rs` and the section "Host" of `docs/dev/developer_guide.md` where they fail, and record the result here
+- Run the source build once on each of these systems, correct the install commands of `packages/treetime-openblas/build.rs` and the section "Host" of `docs/en/development/setup.md` where they fail, and record the result here

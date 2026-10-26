@@ -2,14 +2,13 @@ import { locales, type Locale } from "@neherlab/app-ui/i18n";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { findNeighbour } from "fumadocs-core/page-tree";
 
+import { EDIT_ROOT } from "./content-roots";
 import type { DocsPageData } from "./docs-source";
 import { isFallbackPage } from "./docs-source";
 import { navNodes, type NavNode } from "./nav";
 import { docsPath } from "./urls";
 
 const FOOTNOTE_LABEL = "footnote-label";
-
-const EDIT_ROOT = "https://github.com/neherlab/treetime/edit/rust/packages/app-docs/";
 
 export function pageView({ page, locale, tree, headings, base }: PageViewInput): PageView {
   const neighbours = findNeighbour(tree, page.url);
@@ -29,7 +28,7 @@ export function pageView({ page, locale, tree, headings, base }: PageViewInput):
     fallback: isFallbackPage(page, locale),
     previous: footerLink(neighbours.previous),
     next: footerLink(neighbours.next),
-    editUrl: page.data.editUrl === false ? undefined : `${EDIT_ROOT}${page.data.file}`,
+    editUrl: page.data.editPath === undefined ? undefined : `${EDIT_ROOT}${page.data.editPath}`,
   };
 }
 

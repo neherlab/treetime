@@ -10,7 +10,7 @@ const INSTALL_HELP: &str = r#"TreeTime links OpenBLAS through pkg-config, which 
   Windows (MSVC):   conda install -c conda-forge openblas pkg-config
 
 Homebrew keeps OpenBLAS out of its main prefix, so pkg-config finds it only through PKG_CONFIG_PATH.
-See the section "Host" in docs/dev/developer_guide.md for builds outside the build container."#;
+See the section "Host" in docs/en/development/setup.md for builds outside the build container."#;
 
 fn main() -> ExitCode {
   match pkg_config::Config::new().probe("openblas") {

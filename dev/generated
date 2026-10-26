@@ -14,7 +14,7 @@
 #   napi-types  packages/app-napi/index.d.ts, from the #[napi] exports of the Node addon
 #   wasm-types  packages/app-wasm/pkg/app_wasm.d.ts, from the #[wasm_bindgen] exports of the
 #               WebAssembly back end
-#   cli-docs    packages/app-docs/src/content/docs/reference/cli.md, from the CLI help tree
+#   cli-docs    packages/app-docs/src/generated/en/reference/cli.md, from the CLI help tree
 #   data-index  data/index.json, the index of the example data, from the files git tracks in data/
 #   i18n        packages/app-ui/src/i18n/generated/, the Paraglide message modules, from the inlang
 #               project packages/app-ui/project.inlang and packages/app-ui/messages/
@@ -73,9 +73,9 @@ produce_wasm_types() {
 
 produce_cli_docs() {
   cargo build --locked --quiet --bin treetime >&2
-  docs/generate-reference-docs "${CARGO_TARGET_DIR:-target}/debug/treetime" \
-    "${1}/packages/app-docs/src/content/docs/reference/cli.md"
-  printf 'packages/app-docs/src/content/docs/reference/cli.md\n'
+  dev/generate-reference-docs "${CARGO_TARGET_DIR:-target}/debug/treetime" \
+    "${1}/packages/app-docs/src/generated/en/reference/cli.md"
+  printf 'packages/app-docs/src/generated/en/reference/cli.md\n'
 }
 
 produce_data_index() {

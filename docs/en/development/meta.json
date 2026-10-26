@@ -1,0 +1,21 @@
+{
+  "title": "Development",
+  "pages": [
+    "index",
+    "setup",
+    "commands",
+    "lint-settings",
+    "apps",
+    "web-app",
+    "web2-app",
+    "docs-site",
+    "desktop-app",
+    "generated-files",
+    "testing",
+    "build-profiles",
+    "performance",
+    "dependencies",
+    "releases",
+    "ci"
+  ]
+}

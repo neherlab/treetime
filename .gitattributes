@@ -20,4 +20,4 @@ packages/app-napi/index.d.ts linguist-generated=true -diff
 packages/app-ui/src/i18n/generated/** linguist-generated=true -diff
 packages/app-ui/public/basemap/** linguist-generated=true -diff
 packages/schemas/*.schema.json linguist-generated=true -diff
-packages/app-docs/src/content/docs/reference/cli.md linguist-generated=true -diff
+packages/app-docs/src/generated/en/reference/cli.md linguist-generated=true -diff

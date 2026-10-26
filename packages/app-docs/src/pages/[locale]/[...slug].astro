@@ -1,0 +1,19 @@
+---
+import { locales } from "@neherlab/app-ui/i18n";
+
+import DocsPage from "../../components/DocsPage.astro";
+import { source } from "../../lib/source";
+
+export function getStaticPaths() {
+  return locales.flatMap((locale) =>
+    source.getPages(locale).map((page) => ({
+      params: { locale, slug: page.slugs.length > 0 ? page.slugs.join("/") : undefined },
+      props: { page, locale },
+    })),
+  );
+}
+
+const { page, locale } = Astro.props;
+---
+
+<DocsPage page={page} locale={locale} />

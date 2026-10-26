@@ -1,23 +1,19 @@
-import { baseLocale, locales, type Locale } from "@neherlab/app-ui/i18n";
+import { locales, type Locale } from "@neherlab/app-ui/i18n";
 
-import { assetPath, docsPath } from "../lib/urls";
+import { assetPath } from "../lib/urls";
 
 const NOT_FOUND_PAGE = "404";
 
 export function pageUrl(base: string, file: string): string {
-  const path = withoutHtml(file);
-
-  return path === "index" ? docsPath(base, [], baseLocale) : assetPath(base, path);
+  return assetPath(base, withoutHtml(file));
 }
 
 export function isContentPage(file: string): boolean {
-  const path = withoutHtml(file);
-
-  return file.endsWith(".html") && path !== NOT_FOUND_PAGE && !path.endsWith(`/${NOT_FOUND_PAGE}`);
+  return pageEntry(file) !== undefined;
 }
 
 export function manifestPages(files: readonly string[]): Record<string, string[]> {
-  const entries = files.flatMap((file) => (isContentPage(file) ? [pageEntry(withoutHtml(file))] : []));
+  const entries = files.flatMap((file) => pageEntry(file) ?? []);
 
   return Object.fromEntries(
     locales.map((locale) => [
@@ -27,14 +23,16 @@ export function manifestPages(files: readonly string[]): Record<string, string[]
   );
 }
 
-function pageEntry(path: string): PageEntry {
-  const locale =
-    locales.find((candidate) => candidate !== baseLocale && (path === candidate || path.startsWith(`${candidate}/`))) ??
-    baseLocale;
+function pageEntry(file: string): PageEntry | undefined {
+  if (!file.endsWith(".html")) {
+    return undefined;
+  }
 
-  const page = locale === baseLocale ? path : path.slice(locale.length + 1);
+  const [first = "", ...rest] = withoutHtml(file).split("/");
+  const locale = locales.find((candidate) => candidate === first);
+  const page = rest.join("/");
 
-  return { locale, page: page === "index" ? "" : page };
+  return locale === undefined || page === NOT_FOUND_PAGE ? undefined : { locale, page };
 }
 
 interface PageEntry {

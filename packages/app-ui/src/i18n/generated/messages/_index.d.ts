@@ -28,6 +28,7 @@ export * from './docs_search_loading.js';
 export * from './docs_search_placeholder.js';
 export * from './docs_search_results.js';
 export * from './docs_search_unavailable.js';
+export * from './docs_settings_description.js';
 export * from './docs_site_name.js';
 export * from './docs_toc.js';
 export * from './docs_version.js';

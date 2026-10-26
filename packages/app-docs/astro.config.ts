@@ -1,11 +1,9 @@
 import { createHash } from "node:crypto";
-import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
-import { settingCatalog } from "@neherlab/app-contracts/catalog";
 import { contentSecurityPolicyDirectives } from "@neherlab/app-ui/build/content-security-policy-vite";
 import { icons } from "@neherlab/app-ui/build/icons-vite";
 import { publicDir } from "@neherlab/app-ui/build/public-dir";
@@ -15,6 +13,7 @@ import expressiveCode from "astro-expressive-code";
 import { defineConfig } from "astro/config";
 
 import { postBuild } from "./src/integrations/post-build";
+import { CONTENT_ROOTS } from "./src/lib/content-roots";
 import { versionListSchema } from "./src/lib/versions";
 import { docsMarkdownProcessor } from "./src/markdown/pipeline";
 import { THEME_SCRIPT } from "./src/theme/theme-script";
@@ -28,7 +27,7 @@ const BASE = `/${DOCS_VERSION}`;
 
 const VERSIONS = versionListSchema.parse(versionsFile);
 
-const SETTINGS_PAGES = new URL("src/content/docs/reference/settings/", import.meta.url);
+const CONTENT_ROOT_PATHS = Object.values(CONTENT_ROOTS).map((root) => fileURLToPath(new URL(root, import.meta.url)));
 
 const HASHED_ASSET = "assets/[name]-[hash][extname]";
 
@@ -38,18 +37,17 @@ const DIRECTIVES = contentSecurityPolicyDirectives(false, { webAssembly: true })
 
 checkVersion();
 
-checkSettingsPages();
-
 export default defineConfig({
   site: SITE,
   base: BASE,
   trailingSlash: "never",
+  experimental: { contentIntellisense: true },
   publicDir,
   build: { format: "file", assets: "assets" },
   i18n: {
     locales: [...locales],
     defaultLocale: baseLocale,
-    routing: { prefixDefaultLocale: false },
+    routing: { prefixDefaultLocale: true, redirectToDefaultLocale: false },
   },
   server: ({ command }) => ({
     port: Number(
@@ -71,7 +69,7 @@ export default defineConfig({
   },
   markdown: {
     syntaxHighlight: false,
-    processor: docsMarkdownProcessor(BASE),
+    processor: docsMarkdownProcessor(BASE, CONTENT_ROOT_PATHS),
   },
   integrations: [
     expressiveCode({
@@ -132,25 +130,6 @@ function checkVersion(): void {
   if (!VERSIONS.some((entry) => entry.version === DOCS_VERSION)) {
     throw new Error(
       `The docs version ${DOCS_VERSION} has no entry in versions.json, which lists ${VERSIONS.map((entry) => entry.version).join(", ")}`,
-    );
-  }
-}
-
-function checkSettingsPages(): void {
-  const pages = new Set(
-    readdirSync(fileURLToPath(SETTINGS_PAGES))
-      .filter((file) => file.endsWith(".mdx"))
-      .map((file) => file.replace(/\.mdx$/u, "")),
-  );
-
-  const commands = new Set<string>(settingCatalog.commands.map((command) => command.command));
-  const missing = [...commands].filter((command) => !pages.has(command));
-  const extra = [...pages].filter((page) => !commands.has(page));
-
-  if (missing.length > 0 || extra.length > 0) {
-    throw new Error(
-      `The settings reference pages in ${fileURLToPath(SETTINGS_PAGES)} do not match the setting catalog: ` +
-        `missing pages for ${missing.join(", ") || "none"}, pages without a command: ${extra.join(", ") || "none"}`,
     );
   }
 }

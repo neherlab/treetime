@@ -113,6 +113,12 @@ export default projectConfig({
       allow: ["zod"],
     },
     {
+      files: ["packages/app-docs/src/translations/translation-status.ts"],
+      dir: "app-docs",
+      web: true,
+      allow: ["zod", "jsonParse"],
+    },
+    {
       files: [
         "packages/app-ui/src/host.ts",
         "packages/app-ui/src/port.ts",
@@ -179,7 +185,12 @@ export default projectConfig({
       },
     },
     {
-      files: ["packages/app-docs/src/integrations/**", "packages/app-docs/src/preview/**"],
+      files: [
+        "packages/app-docs/src/integrations/**",
+        "packages/app-docs/src/markdown/**",
+        "packages/app-docs/src/preview/**",
+        "packages/app-docs/src/translations/**",
+      ],
       rules: {
         "import/no-nodejs-modules": "off",
       },

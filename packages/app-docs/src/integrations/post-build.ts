@@ -2,15 +2,17 @@ import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { baseLocale } from "@neherlab/app-ui/i18n";
 import type { AstroIntegration } from "astro";
 
+import { redirectPage } from "../lib/redirect-page";
+import { docsPath } from "../lib/urls";
 import type { PageManifest, VersionList } from "../lib/versions";
 import { preferredVersion } from "../lib/versions";
 import { isContentPage, manifestPages } from "./built-pages";
 import { writeCompressedCopies } from "./compress";
 import { cspViolations } from "./csp-check";
 import { writeSearchIndex } from "./search-index";
-import { rootRedirectPage } from "./site-root";
 
 const SEARCH_FOLDER = "pagefind";
 
@@ -63,7 +65,7 @@ async function writeSiteRoot(folder: string, options: PostBuildOptions): Promise
   await writeFile(join(folder, "versions.json"), `${JSON.stringify(options.versions)}\n`);
   await writeFile(
     join(folder, "index.html"),
-    rootRedirectPage(options.site, preferredVersion(options.versions).version),
+    redirectPage(options.site, docsPath(`/${preferredVersion(options.versions).version}`, [], baseLocale)),
   );
 }
 
