@@ -1,0 +1,200 @@
+name: "Test CLI compatibility"
+
+# Runs the CLI binaries of the calling run (the artifacts treetime-<target> of
+# cli-build.yml) where users run them: Linux distributions, the oldest CPU of
+# each Linux baseline, macOS, and Windows. A missing binary fails only the jobs
+# of its target.
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: "Commit of the binaries, for the scripts and the example data"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  CARGO_INCREMENTAL: "0"
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+  FORCE_COLOR: "1"
+
+jobs:
+  # The compat jobs run real analyses rather than only --help: a binary can start
+  # and print help but still crash in its numeric libraries (BLAS, LAPACK).
+  compat-linux:
+    name: "Compat test (${{ matrix.target }})"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+            script: dev/test-linux-distros-gnu
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+            script: dev/test-linux-distros-musl
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            script: dev/test-linux-distros-gnu
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+            script: dev/test-linux-distros-musl
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: treetime-${{ matrix.target }}
+          path: .out
+
+      - name: "Run on Linux distributions"
+        run: |
+          chmod +x ".out/treetime-${{ matrix.target }}"
+          ${{ matrix.script }} ".out/treetime-${{ matrix.target }}" \
+            pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all /tmp/zika
+
+  # Every Linux binary runs under QEMU on the oldest CPU of its baseline
+  # (dev/lib/dist-flags.sh), with every compression format, so that an
+  # instruction above the baseline in our code or in a prebuilt archive fails
+  # here instead of on a user's machine.
+  cpu-baseline:
+    name: "CPU baseline test (${{ matrix.target }})"
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: "Prepare the cross image"
+        uses: ./.github/actions/prepare
+        with:
+          image: ${{ matrix.target }}
+          cache: cpu-baseline
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name != 'pull_request' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: treetime-${{ matrix.target }}
+          path: .out
+
+      - name: "Run on the oldest CPU of the baseline"
+        env:
+          CROSS_COMPILE: ${{ matrix.target }}
+        run: |
+          chmod +x ".out/treetime-${{ matrix.target }}"
+          dev/docker/run dev/cross/check-cpus treetime
+
+  compat-macos:
+    name: "Compat test (macOS, ${{ matrix.name }})"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "x86_64, macos-15-intel"
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            arch: x86_64
+          - name: "x86_64, macos-26-intel"
+            runner: macos-26-intel
+            target: x86_64-apple-darwin
+            arch: x86_64
+          - name: "aarch64, macos-15"
+            runner: macos-15
+            target: aarch64-apple-darwin
+            arch: arm64
+          - name: "aarch64, macos-latest"
+            runner: macos-latest
+            target: aarch64-apple-darwin
+            arch: arm64
+    env:
+      TREETIME: .out/treetime-${{ matrix.target }}
+    steps:
+      - name: "Check out the example data"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            data/zika
+            data/flu/h3n2/500
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: treetime-${{ matrix.target }}
+          path: .out
+
+      - name: "Run the binary"
+        run: |
+          test "$(uname -m)" = "${{ matrix.arch }}"
+          chmod +x "${TREETIME}"
+          "${TREETIME}" --help
+          "${TREETIME}" pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all out/zika
+          "${TREETIME}" pipeline --config data/flu/h3n2/500/pipeline-nextstrain.yaml --output-all out/flu
+
+  compat-windows:
+    name: "Compat test (Windows, ${{ matrix.name }})"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "x86_64, windows-2022"
+            runner: windows-2022
+            target: x86_64-pc-windows-gnullvm
+            arch: AMD64
+          - name: "aarch64, windows-11-arm"
+            runner: windows-11-arm
+            target: aarch64-pc-windows-gnullvm
+            arch: ARM64
+    env:
+      TREETIME: .out/treetime-${{ matrix.target }}.exe
+    steps:
+      - name: "Check out the example data"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            data/flu/h3n2/20
+            data/zika
+            data/flu/h3n2/500
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: treetime-${{ matrix.target }}
+          path: .out
+
+      - name: "Run the binary"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ($env:PROCESSOR_ARCHITECTURE -ne "${{ matrix.arch }}") { throw "Runner architecture is $env:PROCESSOR_ARCHITECTURE" }
+          & $env:TREETIME --help
+          & $env:TREETIME ancestral --tree=data/flu/h3n2/20/tree.nwk --alignment=data/flu/h3n2/20/aln.fasta.xz --output-all=out/ancestral
+          & $env:TREETIME pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all out/zika
+          & $env:TREETIME pipeline --config data/flu/h3n2/500/pipeline-nextstrain.yaml --output-all out/flu

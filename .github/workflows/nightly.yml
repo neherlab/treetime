@@ -1,7 +1,9 @@
 name: "Nightly release"
 
 # Runs on every push to rust, and when the daily scheduler of
-# schedule-nightly.yml on master or dev/trigger-nightly calls it.
+# schedule-nightly.yml on master or dev/trigger-nightly calls it. Each run builds
+# the CLI once and deploys every binary that builds. The compatibility tests run
+# on the same binaries and report problems without holding back a deployment.
 on:
   push:
     branches:
@@ -14,6 +16,13 @@ on:
         required: false
         type: boolean
         default: false
+      # The scheduler on master passes this input. Every nightly releases the CLI,
+      # so the value has no effect.
+      only:
+        description: "Ignored: every nightly releases the CLI"
+        required: false
+        type: string
+        default: "all"
 
 permissions:
   contents: read
@@ -130,6 +139,15 @@ jobs:
             --release_repo "${RELEASE_REPOSITORY}" \
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
             --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
+
+  compat:
+    name: "Test CLI compatibility"
+    needs: [prepare, build]
+    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' }}
+    uses: neherlab/treetime/.github/workflows/cli-compat.yml@rust
+    with:
+      source_ref: ${{ needs.prepare.outputs.source_sha }}
+    secrets: inherit
 
   # The images copy the Linux CLI binaries of this run without a new compilation,
   # and each image runs before the push. The job runs after the release is

@@ -533,13 +533,14 @@ The release binaries run on these CPUs; on an older x86_64 CPU they stop with a 
 
 ### Nightly releases
 
-Prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases). A nightly publishes every CLI binary that builds, without the linkage checks of the CI workflow. No workflow builds the desktop app; `just package-desktop` packages it locally (see [Desktop app](#desktop-app)).
+Prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases). The nightly is the only workflow that builds the CLI on `rust`, and it deploys every binary that builds: checks and tests report problems but never hold back a deployment. No workflow builds the desktop app; `just package-desktop` packages it locally (see [Desktop app](#desktop-app)).
 
-1. `.github/workflows/nightly.yml` on `rust` runs on every push to `rust` and releases its tip. Runs do not overlap: a push during a running nightly waits, and only the newest waiting run starts, so one release can cover several commits. `.github/workflows/schedule-nightly.yml` on `master` also calls `nightly.yml` daily at 04:00 UTC, which skips when the latest nightly already has the tip of `rust`, so it releases only a commit whose push run failed
-2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`. A failed target does not block the others
+1. `.github/workflows/nightly.yml` on `rust` runs on every push to `rust` and releases its tip. Runs do not overlap: a push during a running nightly waits, and only the newest waiting run starts, so one release can cover several commits. `.github/workflows/schedule-nightly.yml` on `master` also calls `nightly.yml` daily at 04:00 UTC, which skips when the latest nightly already has the tip of `rust`, so it releases only a commit whose push run failed. The scheduler passes the inputs `force` and `only`; `nightly.yml` accepts both and ignores `only`, so the scheduler on `master` works unchanged
+2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`. A failed target does not block the others. Each binary is uploaded before `dev/cross/check` checks its linkage, so a linkage problem is reported and the binary still ships
 3. `nightly.yml` writes `SHA256SUMS` over every asset of the release and attests these checksums with `actions/attest`, which signs with the identity of the workflow run. The attestation needs the `id-token: write` and `attestations: write` permissions. A called workflow can only lower the permissions of its caller, so the `nightly` job of `schedule-nightly.yml` grants them too
 4. `dev/publish-nightly` creates the prerelease with the built binaries, `examples.zip`, which holds the files that `data/index.json` lists and the index itself, and `SHA256SUMS`. Its notes list the changelog since the previous nightly, followed by a downloads table: the CLI binaries, one row per platform, the `docker pull` command of the nightly image, the other assets, and the command that verifies a download: `gh attestation verify <file> --repo neherlab/treetime`
 5. After the release, the `docker` job of `nightly.yml` publishes the Docker images `neherlab/treetime` of the nightly with `dev/docker/prod-images --run --push`, from the Linux binaries of the same run. A missing Linux binary fails the job and publishes no images; the release stays
+6. In parallel with the release, `.github/workflows/cli-compat.yml` runs the same binaries on Linux distributions, on the oldest CPU of each Linux baseline, on macOS, and on Windows
 
 `./dev/trigger-nightly` starts a nightly by hand; `--force` builds also when the latest nightly already has the tip of `rust`. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 
@@ -587,11 +588,14 @@ Each upload also stores the site root files of `dist-root/`: `versions.json`, th
 
 ## Continuous integration
 
-`.github/workflows/cli.yml` runs on pull requests and on pushes to `rust`:
+The workflows in `.github/workflows/` run the same `just` recipes and scripts as a developer, in the same containers. Deployments never wait for checks or tests: a check reports a problem, and a failed target, image, or test never holds back the others.
 
-- The check groups of `just check-all` in parallel jobs, except `hawk`, which needs a second full compilation; run it locally
-- On pushes to `rust`: the release builds of every target and compatibility runs on Linux distributions, macOS, and Windows
+- **Pull request**: `cli.yml` runs the check groups of `just check-all` in parallel jobs, except `hawk`, which needs a second full compilation; run it locally. `web.yml` and `docs.yml` build the web2 app and the docs site and publish them to the preview site of the pull request (see [Web app deploys](#web-app-deploys) and [Docs deploys](#docs-deploys)). Pull requests from forks build without an upload, because they get no secrets
+- **Push to any branch**: `web.yml` and `docs.yml` publish the preview sites of the commit, of the branch, and of each open pull request of the branch. A pull request starts a run of its own only when it is opened or reopened
+- **Push to `rust`**: the check groups, the production web app and docs site, and the nightly: `nightly.yml` builds the CLI for every target once, releases it, publishes the Docker images, and tests the binaries (see [Nightly releases](#nightly-releases))
+- **Manual run of `CI` on a branch** (`gh workflow run cli.yml --ref <branch>`; the Actions page shows no button, because the workflow is not on `master`): the check groups, and the CLI build of every target in dev mode with the compatibility tests of `cli-compat.yml`, to test a change of the build before it lands
+- **Daily at 04:00 UTC**: `schedule-nightly.yml` on `master` calls the nightly, which skips when the latest nightly already has the tip of `rust`
 
-`.github/workflows/web.yml` builds and uploads the web2 app on every push (see Web app deploys), and `.github/workflows/docs.yml` the docs site (see Docs deploys).
+`master` holds TreeTime 0.x and its own workflows. No workflow of `rust` runs on `master` or changes it; `schedule-nightly.yml` is there only because GitHub runs scheduled workflows from the default branch.
 
-The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Only pushes to `rust` publish images, with zstd-compressed layers, which compress and unpack faster than gzip and need Docker 23 or later to pull. The layers of each image go from the inputs that change least to those that change most, so a tool update in `.config/mise.toml` rebuilds only the last layers.
+The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Pull requests never publish images; pushes to `rust`, the nightly, and manual runs publish them, with zstd-compressed layers, which compress and unpack faster than gzip and need Docker 23 or later to pull. The layers of each image go from the inputs that change least to those that change most, so a tool update in `.config/mise.toml` rebuilds only the last layers.

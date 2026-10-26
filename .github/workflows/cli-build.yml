@@ -69,12 +69,6 @@ jobs:
         run: |
           dev/docker/run dev/cross/build treetime
 
-      - name: "Check linkage"
-        if: inputs.build_mode != 'nightly'
-        env:
-          CROSS_COMPILE: ${{ matrix.target }}
-        run: dev/docker/run dev/cross/check treetime
-
       - name: "Upload"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -83,3 +77,10 @@ jobs:
           # The action skips paths under a directory whose name starts with a dot, such as .out/.
           include-hidden-files: true
           if-no-files-found: error
+
+      # After the upload, so a binary with a linkage problem is still deployed and
+      # the check reports the problem.
+      - name: "Check linkage"
+        env:
+          CROSS_COMPILE: ${{ matrix.target }}
+        run: dev/docker/run dev/cross/check treetime
