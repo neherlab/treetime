@@ -8,6 +8,7 @@ pub mod node;
 pub mod node_names;
 pub mod pair_by_name;
 pub mod reachability;
+pub mod remove_leaves;
 pub mod reroot;
 pub mod schedule;
 pub mod schedule_scan;

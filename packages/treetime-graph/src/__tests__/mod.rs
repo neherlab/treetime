@@ -16,6 +16,7 @@ mod test_prop_split_fraction;
 mod test_prop_topology_order;
 mod test_prop_tree_schedule;
 mod test_reachability;
+mod test_remove_leaves;
 mod test_reroot;
 mod test_schedule;
 mod test_schedule_cache;
