@@ -42,6 +42,7 @@ export default defineConfig({
   base: BASE,
   trailingSlash: "never",
   experimental: { contentIntellisense: true },
+  devToolbar: { enabled: false },
   publicDir,
   build: { format: "file", assets: "assets" },
   i18n: {
