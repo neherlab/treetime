@@ -6,6 +6,8 @@
 
 v1 follows v0: the clock filter of `timetree` flags tips (`fn filter_clock_outliers()` [packages/treetime/src/timetree/pre_loop.rs#L166](../../packages/treetime/src/timetree/pre_loop.rs#L166)), the flagged tips become bad branches (`fn bad_leaves()` [packages/treetime/src/timetree/inference/bad_branches.rs#L7](../../packages/treetime/src/timetree/inference/bad_branches.rs#L7)), and they stay in every output tree. A run that reproduces a Nextstrain build keeps tips that augur removes; ncov, dengue, rsv and seasonal-flu pass `--clock-filter-iqd` (8 for ncov, 4 for the others). On `data/sc2/4500` the clock filter flags at least 270 tips.
 
+The time inference dates a kept outlier and the ancestors above flagged tips from the clock alone, so a clade of outliers can be dated after the samples ([M-clock-filter-outlier-clade-dated-after-the-samples.md](M-clock-filter-outlier-clade-dated-after-the-samples.md)). A run with pruning on removes these tips and their clades; this issue owns the pruning work for both issues.
+
 The maintainer approved adding the pruning as an option: off by default, so the default run keeps the v0 behavior, with a list of tips that stay even when flagged.
 
 ## Fix direction
