@@ -99,13 +99,7 @@ fn build_mutation_index(
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
     for (pi, reconstruction) in partitions.iter().enumerate() {
-      let empty_subs: &[Sub] = &[];
-      let edge = reconstruction.partition.obs_edges.get(edge_key);
-      let subs = edge.map_or(empty_subs, |e| e.fitch_subs());
-      for sub in subs
-        .iter()
-        .filter(|sub| reconstruction.supports_fitch_sub(edge_key, sub))
-      {
+      for sub in reconstruction.supported_fitch_subs(edge_key) {
         index
           .entry(MutationKey::Sub(pi, sub.clone()))
           .or_default()
