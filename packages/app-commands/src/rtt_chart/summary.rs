@@ -126,7 +126,10 @@ fn root_date_decimals(span: f64) -> usize {
 }
 
 fn root_month(root: f64, span: f64) -> Option<String> {
-  (root >= 1.0 && span < ROOT_MONTH_MAX_SPAN).then(|| year_fraction_to_date(root).format("%B %Y").to_string())
+  (root >= 1.0 && span < ROOT_MONTH_MAX_SPAN)
+    .then(|| year_fraction_to_date(root))
+    .flatten()
+    .map(|date| date.format("%B %Y").to_string())
 }
 
 fn samples_text(data: &RttChartData) -> String {

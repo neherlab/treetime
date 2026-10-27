@@ -54,7 +54,10 @@ fn date_fields(dates: &TreeDates<'_>, key: GraphNodeKey, with_confidence: bool) 
     let columns = if with_confidence { 4 } else { 2 };
     return vec![MISSING_DATE.to_owned(); columns];
   };
-  let date = [year_fraction_to_datestring(numdate), numeric_date(numdate)];
+  let date = [
+    year_fraction_to_datestring(numdate).unwrap_or_else(|| MISSING_DATE.to_owned()),
+    numeric_date(numdate),
+  ];
   if !with_confidence {
     return date.to_vec();
   }

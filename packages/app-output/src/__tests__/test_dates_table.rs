@@ -107,6 +107,26 @@ mod tests {
   }
 
   #[test]
+  fn test_dates_table_writes_dates_before_year_zero_and_dashes_outside_the_calendar() -> Result<(), Report> {
+    let actual = dates_table(&DatesCase {
+      dated: &[("root", -1909.59), ("C", 1e9)],
+      ..DatesCase::default()
+    })?;
+    assert_eq!(
+      indoc! {"
+        #node\tdate\tnumeric date
+        root\t-01910-05-30\t-1909.590000
+        C\t--\t1000000000.000000
+        A\t2016-06-13\t2016.450000
+        B\t2015-12-31\t2015.999000
+        D\t2016-02-01\t2016.085000
+      "},
+      actual
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_dates_table_writes_the_date_of_a_node_without_bounds() -> Result<(), Report> {
     let actual = dates_table(&DatesCase {
       confidence: true,
@@ -167,6 +187,7 @@ mod tests {
       pub(super) confidence: bool,
       pub(super) excluded: &'static [&'static str],
       pub(super) undated: &'static [&'static str],
+      pub(super) dated: &'static [(&'static str, f64)],
       pub(super) unbounded: &'static [&'static str],
       pub(super) commas: bool,
     }
@@ -183,6 +204,11 @@ mod tests {
       }
       .into_iter()
       .map(|(node, date)| {
+        let date = case
+          .dated
+          .iter()
+          .find(|&&(name, _)| key(name) == node)
+          .map_or(date, |&(_, date)| date);
         (
           node,
           (!case.undated.iter().any(|&name| key(name) == node)).then_some(date),

@@ -102,7 +102,7 @@ pub fn compare_estimates(first: TimetreeEstimates, second: TimetreeEstimates) ->
       .root_date
       .as_ref()
       .zip(second.root_date.as_ref())
-      .map(|(a, b)| year_fraction_days_between(a.year, b.year)),
+      .and_then(|(a, b)| year_fraction_days_between(a.year, b.year)),
     root_interval_change_days: first
       .root_interval
       .as_ref()
@@ -151,7 +151,7 @@ pub fn compare_ancestors(first: &ResultTree, second: &ResultTree) -> AncestorCom
       Some(AncestorShift {
         name: node.name.clone(),
         tips: node.tips,
-        shift_days: year_fraction_days_between(date_first.year, date_second.year),
+        shift_days: year_fraction_days_between(date_first.year, date_second.year)?,
         date_first: date_first.clone(),
       })
     })

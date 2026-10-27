@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
   use treetime_utils::pretty_assert_relative_eq;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -90,6 +91,17 @@ mod tests {
     pretty_assert_relative_eq!(root.numdate.unwrap(), 2000.0);
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::before_year_zero(       -1909.59, Some("-01910-05-30"))]
+  #[case::outside_calendar_range(  1e9,     None                )]
+  #[trace]
+  fn test_augur_node_data_timetree_root_date_string(#[case] numdate: f64, #[case] expected: Option<&str>) {
+    let data = helpers::sample_case().with_root_date(numdate).write_and_read();
+    let root = &data.nodes["root"];
+    assert_eq!((Some(numdate), expected), (root.numdate, root.date.as_deref()));
+  }
+
   #[test]
   fn test_augur_node_data_timetree_roundtrip() {
     let case = helpers::sample_case();
@@ -168,6 +180,17 @@ mod tests {
     }
 
     impl SampleCase {
+      pub(crate) fn with_root_date(mut self, numdate: f64) -> Self {
+        let root = self
+          .graph
+          .get_nodes()
+          .map(|node| node.key())
+          .find(|&key| &self.names[key] == "root")
+          .unwrap();
+        self.times.insert(root, Some(numdate));
+        self
+      }
+
       pub(crate) fn write_json(&self) -> String {
         json_write_str(&self.build(None, &BTreeSet::new()), JsonPretty(true)).unwrap()
       }

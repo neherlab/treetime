@@ -50,7 +50,7 @@ allow-wildcard-paths = true
 deny = [
   { crate = "openblas-src", reason = "treetime-openblas owns the OpenBLAS link through pkg-config" },
   { crate = "serde_yaml", reason = "upstream is archived; YAML is parsed with serde-saphyr" },
-  { crate = "time", reason = "dates are owned by chrono and chronoutil" },
+  { crate = "time", reason = "dates are owned by chrono" },
   { crate = "xml", reason = "XML is serialized and parsed with quick-xml" },
 ]
 skip = [

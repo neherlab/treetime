@@ -18,7 +18,6 @@ doctest = false
 approx = { workspace = true }
 bzip2 = { workspace = true }
 chrono = { workspace = true }
-chronoutil = { workspace = true }
 clap = { workspace = true }
 color-eyre = { workspace = true }
 deser = { workspace = true }

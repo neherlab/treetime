@@ -194,8 +194,9 @@ pub struct DateInterval {
 
 impl DateInterval {
   pub fn new(lower: f64, upper: f64) -> Option<Self> {
-    (upper > lower).then(|| Self {
-      days: year_fraction_days_between(lower, upper),
+    let days = year_fraction_days_between(lower, upper).filter(|_| upper > lower)?;
+    Some(Self {
+      days,
       lower: YearDate::new(lower),
       upper: YearDate::new(upper),
       level: CI_FRACTION,

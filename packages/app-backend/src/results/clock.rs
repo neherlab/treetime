@@ -79,7 +79,7 @@ pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: 
         predicted_date: YearDate::new(row.predicted_date),
         residual_days: row
           .date
-          .map(|date| year_fraction_days_between(row.predicted_date, date)),
+          .and_then(|date| year_fraction_days_between(row.predicted_date, date)),
         outlier: row.is_outlier,
       })
     })
