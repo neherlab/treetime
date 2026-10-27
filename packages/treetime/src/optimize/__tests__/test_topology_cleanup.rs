@@ -5,7 +5,7 @@ pub(super) mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
   use crate::optimize::gather::{InitialGuessEvidence, gather_edge_contributions};
-  use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::indel::{EdgeIndels, IndelPolicy};
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::OptimizeLoopSettings;
@@ -42,8 +42,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = Graph::new();
-    let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
-    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &EdgeMap::new());
+    let edges = find_zero_optimal_internal_edges(&graph, &EdgeIndels::Excluded, &EdgeMap::new());
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -54,8 +53,8 @@ pub(super) mod tests {
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
-    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+    let indels = EdgeIndels::Excluded;
+    let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -66,8 +65,8 @@ pub(super) mod tests {
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
-    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+    let indels = EdgeIndels::Excluded;
+    let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -78,8 +77,8 @@ pub(super) mod tests {
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
-    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+    let indels = EdgeIndels::Excluded;
+    let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
     assert_eq!(edges.len(), 1);
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
@@ -90,13 +89,37 @@ pub(super) mod tests {
   }
 
   #[test]
+  fn test_optimize_find_zero_optimal_internal_edges_skips_indel_edges_only_when_indels_are_included()
+  -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.0,C:0.3)root;".as_slice())?;
+    let names = nwk_parsed.names.clone();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
+    let indel_edge = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let included = EdgeIndels::Included {
+      counts: graph
+        .get_edges()
+        .map(|edge| (edge.key(), usize::from(edge.key() == indel_edge)))
+        .collect(),
+      alignment_rates: [(0, 1.0)].into(),
+    };
+
+    let with_indels = find_zero_optimal_internal_edges(&graph, &included, &branch_lengths);
+    let without_indels = find_zero_optimal_internal_edges(&graph, &EdgeIndels::Excluded, &branch_lengths);
+
+    assert_eq!(with_indels, vec![]);
+    assert_eq!(without_indels, vec![indel_edge]);
+    Ok(())
+  }
+
+  #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;".as_slice())?;
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
-    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+    let indels = EdgeIndels::Excluded;
+    let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
     assert_eq!(edges.len(), 2);
     Ok(())
   }
@@ -158,7 +181,7 @@ pub(super) mod tests {
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
-        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
       let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
@@ -195,9 +218,9 @@ pub(super) mod tests {
         >B
         TCGTACGTACGT
         >C
-        ACGTACGTACGG
+        ACGTACGTACCA
         >D
-        ACGTACGTACGA
+        ACGTACGTAAGA
       "#}.as_bytes(),
       &nuc,
     )?
@@ -205,7 +228,7 @@ pub(super) mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;".as_slice())?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.05,C:0.1,D:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -237,7 +260,7 @@ pub(super) mod tests {
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
-        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
       let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
@@ -405,7 +428,7 @@ pub(super) mod tests {
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
-        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
       let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
@@ -579,6 +602,74 @@ pub(super) mod tests {
         "branch length must be finite and non-negative: {bl}"
       );
     }
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_optimize_loop_collapses_a_zero_length_edge_that_carries_a_fitch_substitution() -> Result<(), Report> {
+    let nuc = Alphabet::new(AlphabetName::Nuc)?;
+    let aln: Vec<AlignmentRecord> = fasta_read(
+      indoc! {r#"
+        >A
+        ACGTACGTACGT
+        >B
+        TCGTACGTACGT
+        >C
+        ACGTACGTACGG
+        >D
+        ACGTACGTACGA
+      "#}
+      .as_bytes(),
+      &nuc,
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
+
+    // Only the sum of the two root edges is identifiable, so ML puts one of them at zero; Fitch places the last-site
+    // change (T in A and B, G or A in C and D) on one of them.
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;".as_slice())?;
+    let names = nwk_parsed.names.clone();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+
+    let fitch = create_fitch_partition(&graph, nuc, leaf_seq_inputs(&graph, &names, aln))?;
+    let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
+      sp_partition,
+      jc69(JC69Params::default())?,
+      sp_node_states,
+    )]);
+    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
+    guess_initial_branch_lengths(
+      &graph,
+      &indels,
+      &evidence,
+      ExistingBranchLengths::Overwrite,
+      &mut branch_lengths,
+    )?;
+    let initial_node_count = graph.get_nodes().count();
+
+    run_optimize_loop(
+      &mut graph,
+      reconstruction,
+      &OptimizeLoopSettings {
+        max_iter: 10,
+        dp: 1e-2,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
+      },
+      branch_lengths,
+      names,
+      &NoopProgress,
+    )?;
+
+    assert_eq!(graph.get_nodes().count(), initial_node_count - 1);
     Ok(())
   }
 
