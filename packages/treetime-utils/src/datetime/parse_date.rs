@@ -1,39 +1,19 @@
 use crate::datetime::date_range::DateRange;
 use crate::datetime::datetime::{LAST_NANOSECOND, NOON};
 use crate::datetime::options::{DateParserOptions, TimeOfDay};
-use crate::datetime::year_fraction::year_fraction_to_date;
 use crate::make_error;
 use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use regex::Regex;
 use std::sync::LazyLock;
 
-#[cfg_attr(
-  dylint_lib = "custom",
-  expect(
-    error_dropped_by_pattern,
-    reason = "each accepted format is tried in turn; the final error names the unrecognized input"
-  )
-)]
 pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Result<DateTime<Utc>, Report> {
-  let date_str = date_str.as_ref();
-
   let formats = options
     .date_format
     .as_deref()
     .into_iter()
     .chain(DATE_FORMATS.iter().copied());
-  if let Ok(date) = parse_date_with_formats(date_str, formats, options) {
-    return Ok(date);
-  }
-
-  if let Ok(year_fraction) = date_str.parse::<f64>()
-    && year_fraction.is_finite()
-  {
-    return Ok(year_fraction_to_date(year_fraction));
-  }
-
-  make_error!("Unrecognized date format: {date_str}")
+  parse_date_with_formats(date_str, formats, options)
 }
 
 #[cfg_attr(

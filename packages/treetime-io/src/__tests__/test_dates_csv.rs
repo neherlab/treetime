@@ -44,6 +44,27 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::negative_whole_year(   "-500",      -500.0 )]
+  #[case::negative_fraction(     "-500.5",    -500.5 )]
+  #[case::year_below_1000(       "500.25",     500.25)]
+  #[case::far_future(            "1e9",        1e9   )]
+  #[trace]
+  fn test_date_read_number_as_written(#[case] input: &str, #[case] expected: f64) -> Result<(), Report> {
+    let constraint = read_date(input, &DateParserOptions::default())?.unwrap();
+    assert_eq!(DateValue::Exact(DateExact { value: expected }), constraint.value);
+    Ok(())
+  }
+
+  #[test]
+  fn test_date_read_compact_date_before_number() -> Result<(), Report> {
+    let constraint = read_date("20200315", &DateParserOptions::default())?.unwrap();
+    assert!(constraint.is_exact());
+    pretty_assert_ulps_eq!(2020.0 + (75.0 - 0.5) / 366.0, constraint.mean(), max_ulps = 4);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::uncertain_day_dash(  "2024-07-XX",  2024.5396174863)]
   #[case::uncertain_day_slash( "2024/07/XX",  2024.5396174863)]
   #[case::uncertain_day_dot(   "2024.07.XX",  2024.5396174863)]

@@ -160,6 +160,15 @@ pub(crate) fn read_date(date_str: &str, options: &DateParserOptions) -> Result<O
     }));
   }
 
+  if let Ok(year_fraction) = trimmed.parse::<f64>()
+    && year_fraction.is_finite()
+  {
+    return Ok(Some(DateConstraint {
+      raw: trimmed.to_owned(),
+      value: DateValue::Exact(DateExact { value: year_fraction }),
+    }));
+  }
+
   if let Ok(date_range) = parse_date_uncertain(trimmed, options) {
     let (start, end) = date_range_to_year_fraction_range(&date_range);
     return Ok(Some(DateConstraint {
