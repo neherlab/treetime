@@ -1,7 +1,7 @@
 import type { RootToTip } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
-import { formatRate } from "../format";
+import { formatRate, yearDateText } from "../format";
 import type { RttLine, RttPoint } from "./RootToTipPlot";
 
 export function useRootToTip(regression: RootToTip | undefined): {
@@ -25,7 +25,7 @@ function rttPoints(regression: RootToTip): RttPoint[] {
           {
             name: point.name,
             date: point.date.year,
-            dateText: point.date.date,
+            dateText: yearDateText(point.date),
             div: point.div,
             excluded: point.outlier,
             inferred: point.date_source === "inferred",

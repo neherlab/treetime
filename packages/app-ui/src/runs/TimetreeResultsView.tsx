@@ -2,7 +2,7 @@ import type { RunRecord, CoalescentPrior, TimetreeResults, TimetreeEstimates } f
 import { useCallback, useMemo } from "react";
 
 import { Panel, SummaryStrip, type SummaryEntry } from "../components/Panel";
-import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
+import { formatDuration, formatLevel, formatRate, rSquaredText, yearDateText } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
@@ -163,11 +163,11 @@ function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
 
   return {
     label: "Root date",
-    value: date.date,
+    value: yearDateText(date),
     detail:
       interval === undefined
         ? "No interval computed"
-        : `${formatLevel(interval.level)}: ${interval.lower.date} to ${interval.upper.date}${edge ? "; the estimate lies at the interval edge" : ""}`,
+        : `${formatLevel(interval.level)}: ${yearDateText(interval.lower)} to ${yearDateText(interval.upper)}${edge ? "; the estimate lies at the interval edge" : ""}`,
     tone: edge ? "caution" : undefined,
   };
 }

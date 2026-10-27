@@ -15,7 +15,7 @@ import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
 import { LoadingState, PageShell } from "../components/PageShell";
 import { Panel } from "../components/Panel";
-import { formatLevel, formatRate, formatSignedDays } from "../format";
+import { formatLevel, formatRate, formatSignedDays, yearDateText } from "../format";
 import { useLocale } from "../i18n/locale";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { commandSettings } from "../settings/catalog";
@@ -455,7 +455,7 @@ function EstimateRow({
 }
 
 function dateText(date: YearDate | undefined): string {
-  return date === undefined ? "not dated" : date.date;
+  return date === undefined ? "not dated" : yearDateText(date);
 }
 
 function daysText(days: number | undefined): string {

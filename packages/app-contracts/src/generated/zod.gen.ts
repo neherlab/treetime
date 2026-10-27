@@ -302,7 +302,7 @@ export const zRunStatus = z.union([
  */
 export const zYearDate = z.object({
   year: z.number(),
-  date: z.string()
+  date: z.string().optional()
 });
 
 /**

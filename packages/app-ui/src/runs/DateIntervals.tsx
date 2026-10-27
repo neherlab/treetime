@@ -2,6 +2,7 @@ import type { DateInterval, YearDate } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { Bar, ComposedChart, Scatter, XAxis, YAxis } from "recharts";
 
+import { yearDateText } from "../format";
 import { ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { CHART, niceAxis, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 
@@ -105,10 +106,10 @@ function IntervalTooltip({
   return (
     <ChartTooltipFrame>
       <div className="font-bold">{row.label}</div>
-      <div>{row.date.date}</div>
+      <div>{yearDateText(row.date)}</div>
       {row.interval !== undefined && (
         <div className="text-muted-foreground">
-          {row.interval.lower.date} to {row.interval.upper.date}
+          {yearDateText(row.interval.lower)} to {yearDateText(row.interval.upper)}
         </div>
       )}
     </ChartTooltipFrame>

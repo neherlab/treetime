@@ -7,7 +7,7 @@ import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { Panel } from "../components/Panel";
-import { formatLevel } from "../format";
+import { formatLevel, yearDateText } from "../format";
 import { Button } from "../ui/button";
 import { DateIntervals, type DateRow } from "./DateIntervals";
 import type { TreeLink } from "./TreeWorkspace";
@@ -86,12 +86,12 @@ export function SelectionPanel({
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3.5 py-3 text-sm">
         <dt className="text-muted-foreground">{isTip ? "Date in tree" : "Date"}</dt>
-        <dd className="tabular-nums">{node.date === undefined ? "not dated" : node.date.date}</dd>
+        <dd className="tabular-nums">{node.date === undefined ? "not dated" : yearDateText(node.date)}</dd>
         {interval !== undefined && (
           <>
             <dt className="text-muted-foreground">{formatLevel(interval.level)} interval</dt>
             <dd className="tabular-nums">
-              {interval.lower.date} to {interval.upper.date} ({Math.round(interval.days)} days)
+              {yearDateText(interval.lower)} to {yearDateText(interval.upper)} ({Math.round(interval.days)} days)
             </dd>
           </>
         )}

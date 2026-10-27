@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 
-import { dayLabel, formatBytes, formatDuration, headlineText } from "../format";
+import { dayLabel, formatBytes, formatDuration, headlineText, yearDateText } from "../format";
 
 describe("format", () => {
   test("the root date of the headline shows as its calendar month", () => {
@@ -8,6 +8,21 @@ describe("format", () => {
       headlineText({ root_date: { year: 2015.5, date: "2015-07-02" } }),
       headlineText({ root_date: { year: 2016, date: "2016-01-01" } }),
     ]).toStrictEqual(["Jul 2015", "Jan 2016"]);
+  });
+
+  test("a root date outside the four-digit years shows its calendar day or decimal year", () => {
+    expect([
+      headlineText({ root_date: { year: -1909.59, date: "-01910-05-30" } }),
+      headlineText({ root_date: { year: 1e9 } }),
+    ]).toStrictEqual(["-01910-05-30", "1000000000.00"]);
+  });
+
+  test("a date shows its calendar day, or its decimal year without one", () => {
+    expect([
+      yearDateText({ year: 2015.5, date: "2015-07-02" }),
+      yearDateText({ year: -1909.59, date: "-01910-05-30" }),
+      yearDateText({ year: -300_000.456 }),
+    ]).toStrictEqual(["2015-07-02", "-01910-05-30", "-300000.46"]);
   });
 
   test("sizes use binary kilobytes and megabytes", () => {

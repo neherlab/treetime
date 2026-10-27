@@ -2296,13 +2296,13 @@
             "format": "double"
           },
           "date": {
-            "description": "The calendar day of the date, as `YYYY-MM-DD`.",
-            "type": "string"
+            "description": "The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "required": [
-          "year",
-          "date"
+          "year"
         ]
       },
       "JsonFloat": {

@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
-import { formatRate, formatSignedDays, rSquaredText } from "../format";
+import { formatRate, formatSignedDays, rSquaredText, yearDateText } from "../format";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
@@ -13,7 +13,7 @@ interface SampleRow {
   name: string;
   date: YearDate;
   predictedDate: YearDate;
-  residualDays: number;
+  residualDays: number | undefined;
   outlier: boolean;
 }
 
@@ -34,19 +34,20 @@ const SAMPLE_COLUMNS = sampleColumn.columns([
     id: "date",
     header: "Date",
     meta: { width: 110, numeric: true },
-    cell: ({ row }) => row.original.date.date,
+    cell: ({ row }) => yearDateText(row.original.date),
   }),
   sampleColumn.accessor((row) => row.predictedDate.year, {
     id: "predicted",
     header: "Clock prediction",
     meta: { width: 130, numeric: true },
-    cell: ({ row }) => row.original.predictedDate.date,
+    cell: ({ row }) => yearDateText(row.original.predictedDate),
   }),
-  sampleColumn.accessor((row) => Math.abs(row.residualDays), {
+  sampleColumn.accessor((row) => (row.residualDays === undefined ? undefined : Math.abs(row.residualDays)), {
     id: "residual",
     header: "Residual",
     meta: { width: 100, numeric: true },
-    cell: ({ row }) => formatSignedDays(row.original.residualDays),
+    sortUndefined: "last",
+    cell: ({ row }) => (row.original.residualDays === undefined ? "" : formatSignedDays(row.original.residualDays)),
   }),
   sampleColumn.accessor((row) => (row.outlier ? "outlier" : "kept"), {
     id: "outlier",
@@ -121,7 +122,7 @@ function sampleTone(row: SampleRow): string | undefined {
 
 function sampleRows(data: ClockResults): SampleRow[] {
   return (data.root_to_tip?.points ?? []).flatMap((point) =>
-    point.date === undefined || point.residual_days === undefined
+    point.date === undefined
       ? []
       : [
           {

@@ -2,7 +2,7 @@ import { zAncestorShift, type AncestorShift } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 import { CartesianGrid, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts";
 
-import { formatSignedDays } from "../format";
+import { formatSignedDays, yearDateText } from "../format";
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import {
   bottomAxisLabel,
@@ -63,7 +63,7 @@ function ShiftTooltip({ active, payload }: { active?: boolean; payload?: Readonl
       <div className="font-bold">
         {shift.name}, {shift.tips} samples
       </div>
-      <div>Date {shift.date_first.date}</div>
+      <div>Date {yearDateText(shift.date_first)}</div>
       <div>Shift {formatSignedDays(shift.shift_days)}</div>
     </ChartTooltipFrame>
   );
