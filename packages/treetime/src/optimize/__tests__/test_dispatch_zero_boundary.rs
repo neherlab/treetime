@@ -264,13 +264,13 @@ pub(super) mod tests {
 
     assert_eq!(
       0,
-      find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths).len(),
+      find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths).len(),
       "precondition: no zero-length internal edges before optimization"
     );
 
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
-    let zero_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
+    let zero_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
     assert_eq!(
       2,
       zero_edges.len(),

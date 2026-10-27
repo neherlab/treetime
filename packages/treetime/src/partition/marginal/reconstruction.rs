@@ -319,17 +319,6 @@ impl<'a> ReconstructionRef<'a> {
     }
   }
 
-  pub(crate) fn edge_has_fitch_mutations(self, edge_key: GraphEdgeKey) -> bool {
-    match self {
-      Self::Dense(_) => false,
-      Self::Sparse(reconstruction) => reconstruction
-        .partition
-        .obs_edges
-        .get(edge_key)
-        .is_some_and(|edge| !edge.fitch_subs().is_empty() || !edge.indels.is_empty()),
-    }
-  }
-
   pub(crate) fn edge_indel_count(self, edge_key: GraphEdgeKey) -> usize {
     match self {
       Self::Dense(reconstruction) => reconstruction
