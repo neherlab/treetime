@@ -274,10 +274,10 @@ class GTR(object):
         else:
             W = np.array(W)
 
-        self._W = 0.5 * (W + W.T)
-        np.fill_diagonal(W, 0)
-        average_rate = avg_transition(W, self.Pi, gap_index=self.gap_index)
-        self._W = W / average_rate
+        Wtmp = 0.5 * (W + W.T)
+        np.fill_diagonal(Wtmp, 0)
+        average_rate = avg_transition(Wtmp, self.Pi, gap_index=self.gap_index)
+        self._W = Wtmp / average_rate
         self._mu *= average_rate
 
         self._eig()
