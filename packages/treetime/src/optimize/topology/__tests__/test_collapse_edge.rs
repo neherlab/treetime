@@ -107,6 +107,42 @@ mod tests {
   }
 
   #[test]
+  fn test_topology_collapse_edge_composes_marginal_estimates() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
+    let names = nwk_parsed.names.clone();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
+    let mut recon = make_sparse_reconstruction(100)?;
+    populate_test_nodes(&mut recon, &graph);
+    for key in [ri_key, ia_key, ib_key] {
+      recon.obs_edges.insert(key, SparseEdgeObs::default());
+    }
+    let mut sparse = sparse_topology_partitions(vec![recon]);
+    let estimates = &mut sparse[0].edges.estimates;
+    estimates.insert(ri_key, vec![sub(b'A', 0, b'T')]);
+    estimates.insert(ia_key, vec![sub(b'G', 5, b'C')]);
+
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
+
+    let estimates = &sparse[0].edges.estimates;
+    assert_eq!(
+      estimates.get(ia_key),
+      Some(&vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')])
+    );
+    assert_eq!(
+      estimates.get(ib_key),
+      None,
+      "B had no estimate, so its composed edge has none"
+    );
+    assert_eq!(estimates.get(ri_key), None);
+    Ok(())
+  }
+
+  #[test]
   fn test_topology_collapse_edge_graph_cleanup() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names.clone();

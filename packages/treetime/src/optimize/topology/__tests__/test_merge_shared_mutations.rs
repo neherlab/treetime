@@ -198,6 +198,54 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[case::no_marginal_estimates(None, 1)]
+  #[case::marginal_estimates_agree(Some((true, true)), 1)]
+  #[case::marginal_estimate_disagrees(Some((true, false)), 0)]
+  fn test_merge_reads_a_fitch_substitution_only_where_the_marginal_estimate_has_it(
+    #[case] estimate_has_shared: Option<(bool, bool)>,
+    #[case] expected_merged: usize,
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
+    let mut names = nwk_parsed.names.clone();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+    let shared = sub(b'A', 0, b'T');
+    let partition = make_partition(
+      &graph,
+      &names,
+      100,
+      &[
+        ("root", "A", vec![shared.clone()]),
+        ("root", "B", vec![shared.clone()]),
+        ("root", "C", vec![sub(b'T', 10, b'A')]),
+      ],
+    )?;
+    let mut partitions = sparse_topology_partitions(vec![partition]);
+    if let Some((on_a, on_b)) = estimate_has_shared {
+      for (leaf, has_shared) in [("A", on_a), ("B", on_b)] {
+        let edge_key = find_edge_key(&graph, &names, "root", leaf).unwrap();
+        let estimate = if has_shared { vec![shared.clone()] } else { vec![] };
+        partitions[0].edges.estimates.insert(edge_key, estimate);
+      }
+    }
+
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
+
+    assert_eq!(merged, expected_merged);
+    if estimate_has_shared == Some((true, true)) {
+      graph.build()?;
+      let new_node = find_generated_internal_nodes(&graph, &names)[0];
+      let estimates = &partitions[0].edges.estimates;
+      let parent_edge = graph[new_node].inbound()[0];
+      assert_eq!(estimates.get(parent_edge), Some(&vec![shared]));
+      for &child_edge in graph[new_node].outbound() {
+        assert_eq!(estimates.get(child_edge), Some(&vec![]));
+      }
+    }
+    Ok(())
+  }
+
   #[test]
   fn test_merge_polytomy_partial_overlap() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
