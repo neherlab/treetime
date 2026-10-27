@@ -177,8 +177,8 @@ mod tests {
   }
 
   #[test]
-  fn test_optimize_restore_of_the_best_iteration_returns_its_rates_branch_lengths_and_indel_rates() -> Result<(), Report>
-  {
+  fn test_optimize_restore_of_the_best_iteration_returns_its_tree_rates_branch_lengths_and_indel_rates()
+  -> Result<(), Report> {
     let SmallSet {
       mut graph,
       mut names,
@@ -191,6 +191,7 @@ mod tests {
     let state = LoopState::new(branch_lengths.clone(), names.clone());
     record_if_best(&mut best, 0, log_lh, &graph, &state, &partitions, &indels);
     let recorded = (partitions.rates(), branch_lengths.clone(), indels.alignment_rates());
+    let recorded_node_count = graph.get_nodes().count();
 
     let mut current_branch_lengths = branch_lengths;
     let partitions = update_partition_rates(
@@ -204,7 +205,9 @@ mod tests {
     assert_ne!(recorded.0, partitions.rates());
 
     let best = best.expect("the first iteration is recorded");
+    graph.add_node();
     let partitions = best.restore(&mut graph, &mut names, &mut current_branch_lengths, &mut indels);
+    assert_eq!(recorded_node_count, graph.get_nodes().count());
     assert_eq!(
       recorded,
       (

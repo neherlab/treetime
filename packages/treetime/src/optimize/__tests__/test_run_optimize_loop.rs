@@ -132,14 +132,15 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(Some((1, ConvergenceReason::Converged)), result.stopped_at);
-    assert_eq!(2, result.lh_history.len());
+    // The first iteration collapses zero-length edges, so the second is not judged.
+    assert_eq!(Some((2, ConvergenceReason::Converged)), result.stopped_at);
+    assert_eq!(3, result.lh_history.len());
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::converged(      (50, f64::INFINITY), "Optimization loop stopped at iteration 2: the log-likelihood changed by less than inf")]
+  #[case::converged(      (50, f64::INFINITY), "Optimization loop stopped at iteration 3: the log-likelihood changed by less than inf")]
   #[case::iteration_limit((1,  0.0),           "Optimization loop reached the iteration limit of 1")]
   #[case::zero_max_iter(  (0,  1e-2),          "Optimization loop skipped: the iteration limit is 0")]
   #[trace]
