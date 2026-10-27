@@ -24,16 +24,17 @@
 #   shared libraries, so every library links statically.
 #   ZSTD_SYS_USE_PKG_CONFIG makes zstd-sys link the archive instead of
 #   compiling its bundled sources; liblzma-sys asks pkg-config by default
-# - The threaded WebAssembly module links its own OpenBLAS: the same variables
-#   with the threaded archive go to /.cargo/wasm-mt-env.toml, which every
-#   threaded cargo call passes with --config after dev/cargo/wasm-mt.toml
+# - The threaded WebAssembly module links its own OpenBLAS, liblzma, and
+#   libzstd (the mt variants, compiled with atomics): the same variables with
+#   the threaded archives go to /.cargo/wasm-mt-env.toml, which every threaded
+#   cargo call passes with --config after dev/cargo/wasm-mt.toml
 # - The build records of the archives (share/build_openblas/build.json,
 #   share/staticbourg/build.json) must name the llvm release, the target
 #   toolchain (GCC, osxcross, llvm-mingw, or Emscripten) at the URL of the
 #   lockfile, and the C CPU flags of export_dist_flags (dev/lib/dist-flags.sh)
-#   for C, Fortran, and the Fortran runtime. Windows 7 links liblzma and
-#   libzstd built by its MinGW GCC, and an OpenBLAS built by clang and flang on
-#   the sysroot of that GCC. Emscripten gives no ABI guarantee between
+#   for C, Fortran, and the Fortran runtime. Windows 7 links liblzma, libzstd,
+#   and OpenBLAS built by clang (and flang) on the sysroot of its MinGW GCC
+#   toolchain. Emscripten gives no ABI guarantee between
 #   versions, so a WebAssembly archive must come from the installed Emscripten.
 #   Any mismatch fails the image build: a toolchain or CPU flag change needs
 #   new archives first
@@ -69,7 +70,7 @@ main() {
   for target in "$@"; do
     entries+=("openblas-${target}" "liblzma-${target}" "libzstd-${target}")
     if [[ "${target}" == "${wasm}" ]]; then
-      entries+=("openblas-mt-${target}")
+      entries+=("openblas-mt-${target}" "liblzma-mt-${target}" "libzstd-mt-${target}")
     fi
   done
   "${this_dir%/}/install-image-tools" yq "${entries[@]}"
@@ -82,14 +83,18 @@ main() {
     lzma="$(where "liblzma-${target}")"
     zstd="$(where "libzstd-${target}")"
     check_openblas "${target}" "${openblas}" plain
-    check_compression "${target}" "${lzma}" lzma
-    check_compression "${target}" "${zstd}" zstd
+    check_compression "${target}" "${lzma}" lzma plain
+    check_compression "${target}" "${zstd}" zstd plain
     env_lines+=("$(pkg_config_env "${target}" "${openblas}" "${lzma}" "${zstd}")")
     if [[ "${target}" == "${wasm}" ]]; then
-      local openblas_mt
+      local openblas_mt lzma_mt zstd_mt
       openblas_mt="$(where "openblas-mt-${target}")"
+      lzma_mt="$(where "liblzma-mt-${target}")"
+      zstd_mt="$(where "libzstd-mt-${target}")"
       check_openblas "${target}" "${openblas_mt}" mt
-      mt_lines+=("$(pkg_config_env "${target}" "${openblas_mt}" "${lzma}" "${zstd}")")
+      check_compression "${target}" "${lzma_mt}" lzma mt
+      check_compression "${target}" "${zstd_mt}" zstd mt
+      mt_lines+=("$(pkg_config_env "${target}" "${openblas_mt}" "${lzma_mt}" "${zstd_mt}")")
     fi
   done
   if ((failures > 0)); then
@@ -150,15 +155,17 @@ check_openblas() {
   expect "${record}" .flang_rt.cpu_flags "${flags}"
 }
 
-# liblzma or libzstd of staticbourg. Windows 7 uses the x86_64-pc-windows-gnu
-# archives, which the MinGW GCC of its image builds.
+# liblzma or libzstd of staticbourg: the plain archive, or for the threaded
+# WebAssembly module the threaded one. Windows 7 uses the x86_64-pc-windows-gnu
+# archives, which clang compiles on the sysroot of the MinGW GCC of its image.
 check_compression() {
-  local target="$1" dir="$2" library="$3"
+  local target="$1" dir="$2" library="$3" variant="$4"
   local record="${dir}/share/staticbourg/build.json" archive_target="${1}"
   require_file "${dir}/lib/pkgconfig/lib${library}.pc"
   require_file "${dir}/lib/lib${library}.a"
   require_file "${record}"
   expect "${record}" .library "${library}"
+  expect "${record}" .variant "${variant}"
   if [[ "${target}" == x86_64-win7-windows-gnu ]]; then
     archive_target="x86_64-pc-windows-gnu"
   fi
@@ -169,15 +176,7 @@ check_compression() {
     return
   fi
   check_toolchain "${target}" "${record}"
-  if [[ "${target}" == x86_64-win7-windows-gnu ]]; then
-    local gcc
-    gcc="$(lock_url gcc-x86_64-w64-mingw32)"
-    gcc="${gcc##*/gcc-}"
-    expect_prefix "${record}" .compiler "x86_64-w64-mingw32-gcc "
-    expect_suffix "${record}" .compiler " ${gcc%%-*}"
-  else
-    expect_prefix "${record}" .compiler "clang version $(llvm_version) "
-  fi
+  expect_prefix "${record}" .compiler "clang version $(llvm_version) "
 }
 
 # The llvm release, the target toolchain, and the C CPU flags of a native
@@ -284,15 +283,6 @@ expect_prefix() {
   actual="$(record_value "$1" "$2")"
   if [[ "${actual}" != "$3"* ]]; then
     printf '%s: %s is "%s", expected to start with "%s"\n' "$1" "$2" "${actual}" "$3" >&2
-    failures=$((failures + 1))
-  fi
-}
-
-expect_suffix() {
-  local actual
-  actual="$(record_value "$1" "$2")"
-  if [[ "${actual}" != *"$3" ]]; then
-    printf '%s: %s is "%s", expected to end with "%s"\n' "$1" "$2" "${actual}" "$3" >&2
     failures=$((failures + 1))
   fi
 }

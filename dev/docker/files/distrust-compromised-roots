@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Remove the roots emSign ECC Root CA - G3 and AAA Certificate Services from the
+# trust store of a Debian or Ubuntu image. In October 2026 the private keys of
+# eight eMudhra intermediate CAs below these roots (directly, and through
+# Sectigo cross-signatures) turned out to be trivially recoverable, so anyone
+# can issue certificates for any host that chain to them. Debian and Ubuntu keep
+# trusting both roots until their ca-certificates packages drop them; curl and
+# git in the image would accept such certificates until then.
+#
+# Fail when the trust store still holds either root afterwards.
+#
+set -euo pipefail
+
+sed -i -E \
+  's#^(mozilla/(emSign_ECC_Root_CA_-_G3|Comodo_AAA_Services_root)\.crt)$#!\1#' \
+  "/etc/ca-certificates.conf"
+update-ca-certificates --fresh >/dev/null
+
+remaining="$(
+  openssl crl2pkcs7 -nocrl -certfile "/etc/ssl/certs/ca-certificates.crt" |
+    openssl pkcs7 -print_certs -noout |
+    awk '/CN ?= ?(AAA Certificate Services|emSign ECC Root CA - G3)$/ { n++ } END { print n + 0 }'
+)"
+if ((remaining > 0)); then
+  printf 'The trust store still holds %d of the compromised roots\n' "${remaining}" >&2
+  exit 1
+fi

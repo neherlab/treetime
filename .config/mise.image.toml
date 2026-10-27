@@ -20,6 +20,7 @@ liblzma-aarch64-apple-darwin = "github:binarylandia/staticbourg"
 liblzma-aarch64-pc-windows-gnullvm = "github:binarylandia/staticbourg"
 liblzma-aarch64-unknown-linux-gnu = "github:binarylandia/staticbourg"
 liblzma-aarch64-unknown-linux-musl = "github:binarylandia/staticbourg"
+liblzma-mt-wasm32-unknown-emscripten = "github:binarylandia/staticbourg"
 liblzma-wasm32-unknown-emscripten = "github:binarylandia/staticbourg"
 liblzma-x86_64-apple-darwin = "github:binarylandia/staticbourg"
 liblzma-x86_64-pc-windows-gnullvm = "github:binarylandia/staticbourg"
@@ -30,6 +31,7 @@ libzstd-aarch64-apple-darwin = "github:binarylandia/staticbourg"
 libzstd-aarch64-pc-windows-gnullvm = "github:binarylandia/staticbourg"
 libzstd-aarch64-unknown-linux-gnu = "github:binarylandia/staticbourg"
 libzstd-aarch64-unknown-linux-musl = "github:binarylandia/staticbourg"
+libzstd-mt-wasm32-unknown-emscripten = "github:binarylandia/staticbourg"
 libzstd-wasm32-unknown-emscripten = "github:binarylandia/staticbourg"
 libzstd-x86_64-apple-darwin = "github:binarylandia/staticbourg"
 libzstd-x86_64-pc-windows-gnullvm = "github:binarylandia/staticbourg"
@@ -50,12 +52,11 @@ openblas-x86_64-unknown-linux-gnu = "github:binarylandia/build_openblas"
 openblas-x86_64-unknown-linux-musl = "github:binarylandia/build_openblas"
 openblas-x86_64-win7-windows-gnu = "github:binarylandia/build_openblas"
 osxcross = "github:binarylandia/build_osxcross"
-wine-bcryptprimitives = "github:binarylandia/wine_bcryptprimitives_dll_mock"
 
 # clang, lld, and the LLVM binary tools. The pattern excludes the llvm-mingw
 # archive of the same release.
 [tools.llvm]
-version = "22.1.8-2026-10-18_10-26-24"
+version = "23.1.4-2026-10-27_17-07-15"
 version_prefix = "llvm-"
 
 [tools.llvm.platforms]
@@ -66,7 +67,7 @@ linux-x64 = { asset_pattern = "llvm-[0-9]*.tar.zst" }
 # sysroot, compiler-rt, libunwind, and lld from the <triple>.cfg files next to
 # them. The Windows images copy it over the LLVM install.
 [tools.llvm-mingw]
-version = "22.1.8-2026-10-18_10-26-24"
+version = "23.1.4-2026-10-27_17-07-15"
 version_prefix = "llvm-"
 
 [tools.llvm-mingw.platforms]
@@ -77,35 +78,35 @@ linux-x64 = { asset_pattern = "llvm-mingw-*.tar.zst" }
 # clang compiles and links on them (dev/docker/files/install-clang-target);
 # the Windows 7 image compiles with the MinGW GCC itself.
 [tools.gcc-aarch64-unknown-linux-gnu]
-version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version = "12.5.0_14.4.0_15.3.0_16.2.0-2026-10-27_02-49-55"
 version_prefix = "gcc-"
 
 [tools.gcc-aarch64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "gcc-16.2.0-aarch64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.gcc-aarch64-unknown-linux-musl]
-version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version = "12.5.0_14.4.0_15.3.0_16.2.0-2026-10-27_02-49-55"
 version_prefix = "gcc-"
 
 [tools.gcc-aarch64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "gcc-16.2.0-aarch64-unknown-linux-musl-*.tar.xz" }
 
 [tools.gcc-x86_64-unknown-linux-gnu]
-version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version = "12.5.0_14.4.0_15.3.0_16.2.0-2026-10-27_02-49-55"
 version_prefix = "gcc-"
 
 [tools.gcc-x86_64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "gcc-16.2.0-x86_64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.gcc-x86_64-unknown-linux-musl]
-version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version = "12.5.0_14.4.0_15.3.0_16.2.0-2026-10-27_02-49-55"
 version_prefix = "gcc-"
 
 [tools.gcc-x86_64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "gcc-16.2.0-x86_64-unknown-linux-musl-*.tar.xz" }
 
 [tools.gcc-x86_64-w64-mingw32]
-version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version = "12.5.0_14.4.0_15.3.0_16.2.0-2026-10-27_02-49-55"
 version_prefix = "gcc-"
 
 [tools.gcc-x86_64-w64-mingw32.platforms]
@@ -114,7 +115,7 @@ linux-x64 = { asset_pattern = "gcc-16.2.0-x86_64-w64-mingw32-*.tar.xz" }
 # osxcross (llvm flavor) with the macOS 11.1 SDK and compiler-rt. Its
 # <apple-triple>-clang wrappers run the clang, ld64.lld, and LLVM tools on PATH.
 [tools.osxcross]
-version = "27d21e4-sdk11.1-2026-10-18_09-15-29"
+version = "27d21e4-sdk11.1-2026-10-27_18-18-20"
 version_prefix = "osxcross-"
 
 [tools.osxcross.platforms]
@@ -125,22 +126,10 @@ linux-x64 = { asset_pattern = "osxcross-*.tar.zst" }
 # is the entry of the version in emscripten-releases-tags.json of emsdk. Google
 # publishes no checksum, so the reviewed sha256 is given here.
 [tools."http:emscripten"]
-version = "6.0.10"
-url = "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/666337b525e673e769121856d175f6f52b8ead64/wasm-binaries.tar.xz"
-checksum = "sha256:a51dd2829bdf725d268974728e032533b106ea01cb482a62288ec12627a7abbe"
+version = "6.0.13"
+url = "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/eb132757325583b787fe9414b09afea9442b72ad/wasm-binaries.tar.xz"
+checksum = "sha256:cda6801012ff3319a539111826ed02a9abd7eff135c2ef261c8941caf5a3763e"
 strip_components = 1
-
-# A bcryptprimitives.dll stub, which Rust programs need to start under Wine;
-# dev/cross/run copies it into the Wine prefix. The release publishes no
-# checksum, so the reviewed sha256 is given here; the lockfile holds the blake3
-# that mise computed from the download that matched it.
-[tools.wine-bcryptprimitives]
-version = "2024-11-04_16-27-34"
-bin = "bcryptprimitives.dll"
-checksum = "sha256:507925300ab075f09f6aa20db3eb004fe0aec0dbc5565ef1abb4ad35499c2961"
-
-[tools.wine-bcryptprimitives.platforms]
-linux-x64 = { asset_pattern = "bcryptprimitives.dll-*.gz" }
 
 # yq reads the lockfile and the build records of the prebuilt libraries in
 # dev/docker/files/install-image-libraries; the same version as in
@@ -157,206 +146,219 @@ version = "4.53.6"
 # binarylandia/staticbourg, each built with the toolchain and the CPU flags of
 # its target here and in dev/lib/dist-flags.sh, which the install checks against
 # the build record of every archive. Windows 7 links the liblzma and libzstd of
-# x86_64-pc-windows-gnu, which the MinGW GCC builds for msvcrt and Windows 7.
-# WebAssembly links the archives that emcc of the Emscripten entry builds,
-# because Emscripten gives no ABI guarantee between versions; the threaded
-# module links its own OpenBLAS (`-pthread`, `USE_LOCKING=1`), because wasm-ld
-# rejects the single-threaded archive in a threaded link. The xz and zstd
+# x86_64-pc-windows-gnu, which clang compiles for msvcrt and Windows 7 on the
+# sysroot of the MinGW GCC toolchain. WebAssembly links the archives that emcc
+# of the Emscripten entry builds, because Emscripten gives no ABI guarantee
+# between versions; the threaded module links its own OpenBLAS, liblzma, and
+# libzstd (the mt variants, compiled with atomics), because wasm-ld rejects a
+# single-threaded archive in a threaded link. The xz and zstd
 # versions equal those that liblzma-sys and zstd-sys bundle
 # (dev/prebuilt-libs-check).
 
 [tools.liblzma-aarch64-apple-darwin]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-aarch64-apple-darwin.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-apple-darwin-*.tar.xz" }
 
 [tools.libzstd-aarch64-apple-darwin]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-aarch64-apple-darwin.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-aarch64-apple-darwin-*.tar.xz" }
 
 [tools.openblas-aarch64-apple-darwin]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-aarch64-apple-darwin.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-apple-darwin-*.tar.xz" }
 
 [tools.liblzma-aarch64-pc-windows-gnullvm]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-aarch64-pc-windows-gnullvm.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-pc-windows-gnullvm-*.tar.xz" }
 
 [tools.libzstd-aarch64-pc-windows-gnullvm]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-aarch64-pc-windows-gnullvm.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-aarch64-pc-windows-gnullvm-*.tar.xz" }
 
 [tools.openblas-aarch64-pc-windows-gnullvm]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-aarch64-pc-windows-gnullvm.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-pc-windows-gnullvm-*.tar.xz" }
 
 [tools.liblzma-aarch64-unknown-linux-gnu]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-aarch64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.libzstd-aarch64-unknown-linux-gnu]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-aarch64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.openblas-aarch64-unknown-linux-gnu]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-aarch64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.liblzma-aarch64-unknown-linux-musl]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-aarch64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-musl-*.tar.xz" }
 
 [tools.libzstd-aarch64-unknown-linux-musl]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-aarch64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-aarch64-unknown-linux-musl-*.tar.xz" }
 
 [tools.openblas-aarch64-unknown-linux-musl]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-aarch64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-unknown-linux-musl-*.tar.xz" }
 
 [tools.liblzma-wasm32-unknown-emscripten]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-wasm32-unknown-emscripten.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-wasm32-unknown-emscripten.*.tar.xz" }
 
 [tools.libzstd-wasm32-unknown-emscripten]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-wasm32-unknown-emscripten.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-wasm32-unknown-emscripten.*.tar.xz" }
 
 [tools.openblas-wasm32-unknown-emscripten]
-version = "0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45"
+version = "0.3.34-432-gde5d4914-emscripten-6.0.13-2026-10-27_23-01-15"
 version_prefix = "openblas-"
 
 [tools.openblas-wasm32-unknown-emscripten.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-wasm32-unknown-emscripten.*.tar.xz" }
 
+[tools.liblzma-mt-wasm32-unknown-emscripten]
+version = "2026-10-27_19-17-50"
+
+[tools.liblzma-mt-wasm32-unknown-emscripten.platforms]
+linux-x64 = { asset_pattern = "lzma-[0-9]*-static-mt-wasm32-unknown-emscripten.*.tar.xz" }
+
+[tools.libzstd-mt-wasm32-unknown-emscripten]
+version = "2026-10-27_19-17-50"
+
+[tools.libzstd-mt-wasm32-unknown-emscripten.platforms]
+linux-x64 = { asset_pattern = "zstd-[0-9]*-static-mt-wasm32-unknown-emscripten.*.tar.xz" }
+
 [tools.openblas-mt-wasm32-unknown-emscripten]
-version = "0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45"
+version = "0.3.34-432-gde5d4914-emscripten-6.0.13-2026-10-27_23-01-15"
 version_prefix = "openblas-"
 
 [tools.openblas-mt-wasm32-unknown-emscripten.platforms]
 linux-x64 = { asset_pattern = "openblas-static-mt-[0-9]*-wasm32-unknown-emscripten.*.tar.xz" }
 
 [tools.liblzma-x86_64-apple-darwin]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-x86_64-apple-darwin.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-apple-darwin-*.tar.xz" }
 
 [tools.libzstd-x86_64-apple-darwin]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-x86_64-apple-darwin.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-x86_64-apple-darwin-*.tar.xz" }
 
 [tools.openblas-x86_64-apple-darwin]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-x86_64-apple-darwin.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-apple-darwin-*.tar.xz" }
 
 [tools.liblzma-x86_64-pc-windows-gnullvm]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-x86_64-pc-windows-gnullvm.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-pc-windows-gnullvm-*.tar.xz" }
 
 [tools.libzstd-x86_64-pc-windows-gnullvm]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-x86_64-pc-windows-gnullvm.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-x86_64-pc-windows-gnullvm-*.tar.xz" }
 
 [tools.openblas-x86_64-pc-windows-gnullvm]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-x86_64-pc-windows-gnullvm.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-pc-windows-gnullvm-*.tar.xz" }
 
 [tools.liblzma-x86_64-unknown-linux-gnu]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-x86_64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.libzstd-x86_64-unknown-linux-gnu]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-x86_64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.openblas-x86_64-unknown-linux-gnu]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-x86_64-unknown-linux-gnu.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-unknown-linux-gnu-*.tar.xz" }
 
 [tools.liblzma-x86_64-unknown-linux-musl]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-x86_64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-musl-*.tar.xz" }
 
 [tools.libzstd-x86_64-unknown-linux-musl]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-x86_64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-x86_64-unknown-linux-musl-*.tar.xz" }
 
 [tools.openblas-x86_64-unknown-linux-musl]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-x86_64-unknown-linux-musl.platforms]
 linux-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-unknown-linux-musl-*.tar.xz" }
 
 [tools.liblzma-x86_64-win7-windows-gnu]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma-x86_64-win7-windows-gnu.platforms]
 linux-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-pc-windows-gnu-*.tar.xz" }
 
 [tools.libzstd-x86_64-win7-windows-gnu]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.libzstd-x86_64-win7-windows-gnu.platforms]
 linux-x64 = { asset_pattern = "zstd-[0-9]*-static-x86_64-pc-windows-gnu-*.tar.xz" }
 
 [tools.openblas-x86_64-win7-windows-gnu]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas-x86_64-win7-windows-gnu.platforms]

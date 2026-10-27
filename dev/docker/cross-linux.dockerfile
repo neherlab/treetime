@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
 #
-# Cross image of a Linux release target. clang and lld of LLVM 22 compile and
+# Cross image of a Linux release target. clang and lld of LLVM 23 compile and
 # link for the target and for the build machine, each on the sysroot, crt files,
 # libgcc, and libstdc++ of a crosstool-NG GCC 16 toolchain: glibc 2.17 for the
 # gnu targets and the build machine, musl 1.2.6 for the musl targets. QEMU runs
 # the binaries of the target.
-FROM debian:12.15-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
+FROM debian:13.7-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
@@ -47,6 +47,10 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get clean autoclean >/dev/null \
 && apt-get autoremove --yes >/dev/null \
 && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Distrust the eMudhra roots whose intermediate keys are public (see the script).
+COPY dev/docker/files/distrust-compromised-roots /
+RUN /distrust-compromised-roots
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 

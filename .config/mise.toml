@@ -13,7 +13,6 @@ minimum_release_age_excludes = [
   "github:binarylandia/build_openblas",
   "github:binarylandia/build_osxcross",
   "github:binarylandia/staticbourg",
-  "github:binarylandia/wine_bcryptprimitives_dll_mock",
 ]
 
 [tool_alias]

@@ -23,12 +23,6 @@ if [[ -z "${CROSS_RUNNER:-}" ]]; then
 fi
 if [[ "${target}" == *windows* ]]; then
   export WINEPREFIX="${HOME}/wine"
-  mkdir -p "${WINEPREFIX}/drive_c/windows/system32"
-  # Programs of the Windows 10 targets need the bcryptprimitives.dll stub to
-  # start under Wine (.config/mise.image.toml); the Windows 7 image has
-  # none, because its programs do not import that DLL.
-  if [[ -f /opt/wine/bcryptprimitives.dll ]]; then
-    cp /opt/wine/bcryptprimitives.dll "${WINEPREFIX}/drive_c/windows/system32/"
-  fi
+  mkdir -p "${WINEPREFIX}"
 fi
 exec "${CROSS_RUNNER}" ".out/${bin}-${target}${ext}" "$@"

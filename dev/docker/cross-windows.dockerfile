@@ -2,12 +2,12 @@
 # check=experimental=all
 #
 # Cross image of a Windows release target (*-pc-windows-gnullvm). The
-# llvm-mingw toolchain of LLVM 22 compiles and links for the target: clang and
+# llvm-mingw toolchain of LLVM 23 compiles and links for the target: clang and
 # lld on the static mingw-w64 sysroot with the Universal C Runtime (UCRT),
 # compiler-rt, and libunwind, so the binaries import only Windows system DLLs.
 # clang compiles and links for the build machine on the glibc 2.17 sysroot of a
 # crosstool-NG GCC 16 toolchain. Wine runs the x86_64 binaries.
-FROM debian:12.15-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
+FROM debian:13.7-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
@@ -45,6 +45,10 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get clean autoclean >/dev/null \
 && apt-get autoremove --yes >/dev/null \
 && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Distrust the eMudhra roots whose intermediate keys are public (see the script).
+COPY dev/docker/files/distrust-compromised-roots /
+RUN /distrust-compromised-roots
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
@@ -118,13 +122,9 @@ RUN set -euxo pipefail >/dev/null \
 && mkdir -p "/tmp/home" \
 && chmod 1777 "/tmp/home"
 
-# Windows binaries run under Wine; dev/cross/run creates the Wine prefix and
-# copies the bcryptprimitives.dll stub from /opt/wine into it.
+# Windows binaries run under Wine; dev/cross/run creates the Wine prefix.
 ENV WINEARCH="win64"
 ENV WINEDEBUG="err+all,err-winediag,err-ole,fixme-all"
-RUN set -euxo pipefail >/dev/null \
-&& /install-image-tools "wine-bcryptprimitives=/opt/wine" \
-&& test -f "/opt/wine/bcryptprimitives.dll"
 
 # kache, the optional compiler cache of dev/cross/build, and protoc, which
 # prost-build runs for the UShER protobuf schemas, at the versions, URLs, and

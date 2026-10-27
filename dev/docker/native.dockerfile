@@ -41,6 +41,10 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get autoremove --yes >/dev/null \
 && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
+# Distrust the eMudhra roots whose intermediate keys are public (see the script).
+COPY dev/docker/files/distrust-compromised-roots /
+RUN /distrust-compromised-roots
+
 # Runtime libraries of Electron, for the desktop app in development.
 RUN set -euxo pipefail >/dev/null \
 && export DEBIAN_FRONTEND=noninteractive \
@@ -115,7 +119,7 @@ COPY dev/docker/files/install-image-tools /
 COPY .config/mise.image.toml /mise-image/mise.toml
 COPY .config/mise.image.lock /mise-image/mise.lock
 
-# clang of LLVM 22 compiles and links x86_64-unknown-linux-gnu code on the
+# clang of LLVM 23 compiles and links x86_64-unknown-linux-gnu code on the
 # sysroot (glibc 2.17), crt files, libgcc, and libstdc++ of the GCC 16.2.0
 # toolchain, as in dev/docker/cross-linux.dockerfile. install-clang-target
 # writes the configuration x86_64-unknown-linux-gnu.cfg next to clang, which
