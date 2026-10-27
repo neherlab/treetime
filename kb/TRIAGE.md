@@ -158,7 +158,6 @@ These issues give wrong scientific results or crashes on default settings or exa
 - **[kb/issues/H-timetree-sparse-dense-node-times-differ.md](issues/H-timetree-sparse-dense-node-times-differ.md)**: compare the sparse and dense per-edge log-likelihoods on edges whose parent is not the root, where they differ at fixed branch lengths, starting with the sparse message from the parent
 - **[kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](issues/H-ancestral-sparse-dense-internal-residues-diverge.md)**: trace `NODE_0000002` at 0-based position 5437 of `rsv/a/20` through both backends, starting with the `EPS = 1e-4` site demotion
 - **[kb/issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)**: find why the sparse message of a tip without sequence data depends on its branch length, starting in the sparse leaf message
-- **[kb/issues/H-io-negative-numdate-panics-in-date-string-conversion.md](issues/H-io-negative-numdate-panics-in-date-string-conversion.md)**: compute dates before year 1 with signed calendar arithmetic, as v0 does, instead of panicking
 
 ## Next
 
