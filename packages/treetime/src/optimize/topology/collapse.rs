@@ -1,6 +1,7 @@
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::{composed_edge_pieces, store_edge_pieces};
+use crate::seq::mutation::compose_substitutions;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -31,6 +32,17 @@ pub(crate) fn collapse_edge(
       let child_edge = obs_edges.entry(new_edge_key).or_default();
       let merged_subs = removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())?;
       child_edge.set_fitch_subs(merged_subs);
+
+      let estimates = &mut reconstruction.edges.estimates;
+      match (estimates.get(edge_key), estimates.get(new_edge_key)) {
+        (Some(removed), Some(child)) => {
+          let composed = compose_substitutions(removed, child)?;
+          estimates.insert(new_edge_key, composed);
+        },
+        _ => {
+          estimates.remove(new_edge_key);
+        },
+      }
     }
     for group in groups {
       let pieces = composed_edge_pieces(group, sparse, edge_key, new_edge_key)?;
@@ -41,6 +53,7 @@ pub(crate) fn collapse_edge(
   for reconstruction in sparse.iter_mut() {
     reconstruction.partition.obs_nodes.remove(target_node_key);
     reconstruction.partition.obs_edges.remove(edge_key);
+    reconstruction.edges.estimates.remove(edge_key);
   }
 
   branch_lengths.remove(edge_key);

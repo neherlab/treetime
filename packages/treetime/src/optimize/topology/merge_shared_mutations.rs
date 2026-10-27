@@ -98,10 +98,14 @@ fn build_mutation_index(
 ) -> Result<MutationIndex, Report> {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
-    for (pi, SparseReconstruction { partition, .. }) in partitions.iter().enumerate() {
+    for (pi, reconstruction) in partitions.iter().enumerate() {
       let empty_subs: &[Sub] = &[];
-      let edge = partition.obs_edges.get(edge_key);
-      for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
+      let edge = reconstruction.partition.obs_edges.get(edge_key);
+      let subs = edge.map_or(empty_subs, |e| e.fitch_subs());
+      for sub in subs
+        .iter()
+        .filter(|sub| reconstruction.supports_fitch_sub(edge_key, sub))
+      {
         index
           .entry(MutationKey::Sub(pi, sub.clone()))
           .or_default()
@@ -249,7 +253,20 @@ fn merge_sibling_group(
     new_child_edge_keys.push(new_ek);
   }
 
-  for (pi, SparseReconstruction { partition, .. }) in partitions.iter_mut().enumerate() {
+  for (pi, SparseReconstruction { partition, edges, .. }) in partitions.iter_mut().enumerate() {
+    // The shared substitutions are marginal estimates on every grouped edge, so the estimates split like the Fitch
+    // substitutions. Without an estimate on every grouped edge the new edges get none.
+    let old_estimates: Option<Vec<Vec<Sub>>> = group.edges.iter().map(|&ek| edges.estimates.remove(ek)).collect();
+    if let Some(old_estimates) = old_estimates {
+      edges
+        .estimates
+        .insert(new_parent_edge_key, group.shared_subs[pi].clone());
+      for (&new_ek, old) in izip!(&new_child_edge_keys, &old_estimates) {
+        let remaining = iterator_difference(old, &group.shared_subs[pi]).cloned().collect_vec();
+        edges.estimates.insert(new_ek, remaining);
+      }
+    }
+
     let mut new_node = SparseNodeObs::empty(&partition.alphabet);
     new_node.composition = partition.obs_nodes[&parent_key].composition.clone();
     partition.obs_nodes.entry(new_node_key).or_insert(new_node);
