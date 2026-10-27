@@ -349,6 +349,12 @@ impl SparseReconstruction {
     }
   }
 
+  /// Whether the marginal reconstruction places the Fitch substitution `sub` on the edge. An edge without a marginal
+  /// estimate, as in a parsimony-only reconstruction, keeps its Fitch substitutions.
+  pub(crate) fn supports_fitch_sub(&self, edge_key: GraphEdgeKey, sub: &Sub) -> bool {
+    self.edges.estimates.get(edge_key).is_none_or(|subs| subs.contains(sub))
+  }
+
   #[must_use]
   pub(crate) fn with_layout(self, layout: PartitionLayout) -> Self {
     Self {
