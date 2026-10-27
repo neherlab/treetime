@@ -5,7 +5,7 @@ use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::izip;
+use itertools::{Itertools, izip};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -25,19 +25,16 @@ pub(crate) fn count_child_reversions(
 ) -> usize {
   sparse
     .iter()
-    .map(|SparseReconstruction { partition, .. }| {
-      let parent_subs: &[Sub] = partition.obs_edges.get(parent_edge_key).map_or(&[], |e| e.fitch_subs());
-      let child_subs: &[Sub] = partition.obs_edges.get(child_edge_key).map_or(&[], |e| e.fitch_subs());
+    .map(|reconstruction| {
+      let supported = |edge_key| reconstruction.supported_fitch_subs(edge_key).cloned().collect_vec();
+      let parent_subs = supported(parent_edge_key);
+      let child_subs = supported(child_edge_key);
       match sibling_edge_key {
         Some(sibling_edge_key) => {
-          let sibling_subs: &[Sub] = partition
-            .obs_edges
-            .get(sibling_edge_key)
-            .map_or(&[], |e| e.fitch_subs());
-          let (augmented, _) = augment_parent_with_sibling(parent_subs, sibling_subs);
-          count_reversions(&augmented, child_subs)
+          let (augmented, _) = augment_parent_with_sibling(&parent_subs, &supported(sibling_edge_key));
+          count_reversions(&augmented, &child_subs)
         },
-        None => count_reversions(parent_subs, child_subs),
+        None => count_reversions(&parent_subs, &child_subs),
       }
     })
     .sum()
@@ -68,7 +65,10 @@ pub(crate) fn slide_bifurcating_root_for_child(
   child_edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
   for SparseReconstruction {
-    partition, node_states, ..
+    partition,
+    node_states,
+    edges,
+    ..
   } in sparse.iter_mut()
   {
     let parent_subs = partition
@@ -116,6 +116,10 @@ pub(crate) fn slide_bifurcating_root_for_child(
       continue;
     }
     hoisted_parent.sort_by_key(Sub::pos);
+    // The slide moves Fitch substitutions across the root, which the marginal estimates do not follow; both edges
+    // fall back to their Fitch substitutions.
+    edges.estimates.remove(parent_edge_key);
+    edges.estimates.remove(sibling_edge_key);
 
     if let Some(sibling_edge) = partition.obs_edges.get_mut(sibling_edge_key) {
       sibling_edge.set_fitch_subs(remaining_sibling);
@@ -188,7 +192,18 @@ pub(crate) fn hoist_reverting_child(
   branch_lengths.insert(parent_edge_key, Some(bl_nv));
   branch_lengths.insert(child_edge_key, Some(bl_nc));
 
-  for (SparseReconstruction { partition, .. }, split) in sparse.iter_mut().zip(splits) {
+  for (SparseReconstruction { partition, edges, .. }, split) in sparse.iter_mut().zip(splits) {
+    // The marginal estimates of the two edges split like their Fitch substitutions; without both, the edges get none.
+    let estimates = &mut edges.estimates;
+    if let (Some(parent_estimate), Some(child_estimate)) =
+      (estimates.remove(parent_edge_key), estimates.remove(child_edge_key))
+    {
+      let estimate_split = split_subs(&parent_estimate, &child_estimate)?;
+      estimates.insert(un_edge_key, estimate_split.hoisted);
+      estimates.insert(parent_edge_key, estimate_split.kept);
+      estimates.insert(child_edge_key, estimate_split.composed);
+    }
+
     let mut node_n = SparseNodeObs::empty(&partition.alphabet);
     node_n.composition = partition.obs_nodes[&u_key].composition.clone();
     partition.obs_nodes.entry(n_key).or_insert(node_n);
