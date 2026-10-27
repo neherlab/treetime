@@ -224,14 +224,15 @@ mod tests {
     assert_error!(result, "At least one metadata delimiter is required");
   }
 
-  #[test]
-  fn test_csv_detect_delimiter_rejects_multibyte_candidate() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::beyond_one_byte('‣', "Metadata delimiter '‣' must be an ASCII character")]
+  #[case::latin1(         'é', "Metadata delimiter 'é' must be an ASCII character")]
+  #[trace]
+  fn test_csv_detect_delimiter_rejects_non_ascii_candidate(#[case] delimiter: char, #[case] expected: &str) {
     let mut reader = BufReader::new(Cursor::new(b"strain,date"));
-    let result = detect_csv_delimiter(&mut reader, delimiter_from_path("metadata.csv"), &['‣'], |_| true);
-    assert_error!(
-      result,
-      "Metadata delimiter '‣' must fit in one byte: out of range integral type conversion attempted"
-    );
+    let result = detect_csv_delimiter(&mut reader, delimiter_from_path("metadata.csv"), &[delimiter], |_| true);
+    assert_error!(result, expected);
   }
 
   #[rustfmt::skip]
