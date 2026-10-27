@@ -86,7 +86,7 @@ macos-x64 = { asset_pattern = "wasm-bindgen-*-static-x86_64-apple-darwin-*.tar.g
 # pkg-config paths in /.cargo/config.toml (dev/docker/files/install-image-libraries)
 # and disable these two tools.
 [tools.openblas]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 version_prefix = "openblas-"
 
 [tools.openblas.platforms]
@@ -96,7 +96,7 @@ macos-arm64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-apple-darwin-*.t
 macos-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-apple-darwin-*.tar.xz" }
 
 [tools.liblzma]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 
 [tools.liblzma.platforms]
 linux-arm64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz" }

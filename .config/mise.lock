@@ -516,56 +516,56 @@ url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64
 url_api = "https://api.github.com/repos/casey/just/releases/assets/500510084"
 
 [[tools.liblzma]]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 backend = "github:binarylandia/staticbourg"
-specifiers = ["2026-10-22_23-12-40"]
+specifiers = ["2026-10-27_19-17-50"]
 
 [tools.liblzma.options]
 asset_pattern = "lzma-[0-9]*-static-aarch64-apple-darwin-*.tar.xz"
 
 [tools.liblzma."platforms.macos-arm64"]
-checksum = "sha256:7fcaf578a9bac5e96b66fd596bddf679a92bfa9cc1001d84fbf36519a55614ba"
-url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-aarch64-apple-darwin-2026-10-22_23-12-40.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462707"
+checksum = "sha256:bdf0959bb63830e8e82b61dac3a07f65631f657db5ecb32a85fd9dd93dfa07b7"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-27_19-17-50/lzma-5.8.4-static-aarch64-apple-darwin-2026-10-27_19-17-50.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/682744104"
 
 [[tools.liblzma]]
-version = "2026-10-22_23-12-40"
+version = "2026-10-27_19-17-50"
 backend = "github:binarylandia/staticbourg"
-specifiers = ["2026-10-22_23-12-40"]
-
-[tools.liblzma.options]
-asset_pattern = "lzma-[0-9]*-static-x86_64-apple-darwin-*.tar.xz"
-
-[tools.liblzma."platforms.macos-x64"]
-checksum = "sha256:855cc9d9ae6f5a3ae0d68f59eb948a056a66f77c4dc055db1c39900961149112"
-url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-apple-darwin-2026-10-22_23-12-40.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462778"
-
-[[tools.liblzma]]
-version = "2026-10-22_23-12-40"
-backend = "github:binarylandia/staticbourg"
-specifiers = ["2026-10-22_23-12-40"]
-
-[tools.liblzma.options]
-asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz"
-
-[tools.liblzma."platforms.linux-x64"]
-checksum = "sha256:859b41561a0be0aca1e591e5c9fcafc68260c781438727d8f91a31d51758580d"
-url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-unknown-linux-gnu-2026-10-22_23-12-40.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462809"
-
-[[tools.liblzma]]
-version = "2026-10-22_23-12-40"
-backend = "github:binarylandia/staticbourg"
-specifiers = ["2026-10-22_23-12-40"]
+specifiers = ["2026-10-27_19-17-50"]
 
 [tools.liblzma.options]
 asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz"
 
 [tools.liblzma."platforms.linux-arm64"]
-checksum = "sha256:0e4f2705596c9cbbdd20bed0ac68076651d476a10d62ca9542ead9137a5e85d8"
-url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-aarch64-unknown-linux-gnu-2026-10-22_23-12-40.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462731"
+checksum = "sha256:ef799196086652dd5d2e2fac8fc8e5f669fad9593e265cb42af1595fbce2aab2"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-27_19-17-50/lzma-5.8.4-static-aarch64-unknown-linux-gnu-2026-10-27_19-17-50.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/682744163"
+
+[[tools.liblzma]]
+version = "2026-10-27_19-17-50"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-27_19-17-50"]
+
+[tools.liblzma.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz"
+
+[tools.liblzma."platforms.linux-x64"]
+checksum = "sha256:e6c67d7281c4b453720f2ffc1bf1c4814620015d183c09f4ab621c2ed2a27dd8"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-27_19-17-50/lzma-5.8.4-static-x86_64-unknown-linux-gnu-2026-10-27_19-17-50.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/682744318"
+
+[[tools.liblzma]]
+version = "2026-10-27_19-17-50"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-27_19-17-50"]
+
+[tools.liblzma.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-apple-darwin-*.tar.xz"
+
+[tools.liblzma."platforms.macos-x64"]
+checksum = "sha256:a9a4d778a3383dcadd13f1e567dfd0cbcaaa55cfc10ad19f369df5318d7cba2d"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-27_19-17-50/lzma-5.8.4-static-x86_64-apple-darwin-2026-10-27_19-17-50.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/682744246"
 
 [[tools.mold]]
 version = "2.42.1"
@@ -604,60 +604,60 @@ checksum = "sha256:d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b
 url = "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz"
 
 [[tools.openblas]]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 backend = "github:binarylandia/build_openblas"
-specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
-
-[tools.openblas.options]
-asset_pattern = "openblas-static-[0-9]*-aarch64-apple-darwin-*.tar.xz"
-version_prefix = "openblas-"
-
-[tools.openblas."platforms.macos-arm64"]
-checksum = "sha256:ef9c8045e143f3f01533451d4189a1649099b91b4823c7214f809e7bacf2145c"
-url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-aarch64-apple-darwin-2026-10-22_23-18-58.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172533"
-
-[[tools.openblas]]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
-backend = "github:binarylandia/build_openblas"
-specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
-
-[tools.openblas.options]
-asset_pattern = "openblas-static-[0-9]*-x86_64-apple-darwin-*.tar.xz"
-version_prefix = "openblas-"
-
-[tools.openblas."platforms.macos-x64"]
-checksum = "sha256:14b76de9fa888ae508391da544e4924aca6fec42f242aa1c53396345bd91f6a6"
-url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-apple-darwin-2026-10-22_23-18-58.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172531"
-
-[[tools.openblas]]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
-backend = "github:binarylandia/build_openblas"
-specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+specifiers = ["0.3.34-432-gde5d4914-2026-10-27_20-39-30"]
 
 [tools.openblas.options]
 asset_pattern = "openblas-static-[0-9]*-aarch64-unknown-linux-gnu-*.tar.xz"
 version_prefix = "openblas-"
 
 [tools.openblas."platforms.linux-arm64"]
-checksum = "sha256:0c685c6bc149e0c8556cb4df5bfdaa82180475fe93d5addb5e3194da85421748"
-url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-aarch64-unknown-linux-gnu-2026-10-22_23-18-58.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172526"
+checksum = "sha256:94b83eb43f6b86d81b3676ac66c88e6fdf64519cc078a940a3f5cd65e6da05e9"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-27_20-39-30/openblas-static-0.3.34-432-gde5d4914-aarch64-unknown-linux-gnu-2026-10-27_20-39-30.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/683143081"
 
 [[tools.openblas]]
-version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
 backend = "github:binarylandia/build_openblas"
-specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+specifiers = ["0.3.34-432-gde5d4914-2026-10-27_20-39-30"]
+
+[tools.openblas.options]
+asset_pattern = "openblas-static-[0-9]*-aarch64-apple-darwin-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas."platforms.macos-arm64"]
+checksum = "sha256:9a7a46d848d689baedf9b615b41d6b78580f1c0f85531abdc9b2a2a84620ca9a"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-27_20-39-30/openblas-static-0.3.34-432-gde5d4914-aarch64-apple-darwin-2026-10-27_20-39-30.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/683143074"
+
+[[tools.openblas]]
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-27_20-39-30"]
+
+[tools.openblas.options]
+asset_pattern = "openblas-static-[0-9]*-x86_64-apple-darwin-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas."platforms.macos-x64"]
+checksum = "sha256:9b4b8edc2f99a76b038ffb90beb63cc8f005c8ea9393f52cd5a80b221c9a4cd7"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-27_20-39-30/openblas-static-0.3.34-432-gde5d4914-x86_64-apple-darwin-2026-10-27_20-39-30.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/683143082"
+
+[[tools.openblas]]
+version = "0.3.34-432-gde5d4914-2026-10-27_20-39-30"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-27_20-39-30"]
 
 [tools.openblas.options]
 asset_pattern = "openblas-static-[0-9]*-x86_64-unknown-linux-gnu-*.tar.xz"
 version_prefix = "openblas-"
 
 [tools.openblas."platforms.linux-x64"]
-checksum = "sha256:ab3b36c7303aad36be0dcd0bd5990b00313d6eb2f4e0168d0181d27e95ee13e5"
-url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-unknown-linux-gnu-2026-10-22_23-18-58.tar.xz"
-url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172569"
+checksum = "sha256:2371ccf4a1b7d7859fc50b39f26604792f0096b9f0e98897e9c8a64b3531a1b6"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-27_20-39-30/openblas-static-0.3.34-432-gde5d4914-x86_64-unknown-linux-gnu-2026-10-27_20-39-30.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/683143124"
 
 [[tools.pixi]]
 version = "0.81.0"
