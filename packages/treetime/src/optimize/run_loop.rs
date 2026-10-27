@@ -40,16 +40,13 @@ pub(crate) fn run_optimize_loop(
     indel_policy,
     ..
   } = *settings;
-  let mut state = LoopState {
-    branch_lengths,
-    names,
-    convergence: ConvergenceSummary::default(),
-  };
+  let mut state = LoopState::new(branch_lengths, names);
   let mut indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths)?;
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut best: Option<BestIteration> = None;
+  let mut after_topology_change = false;
 
   for i in 0..max_iter {
     let iteration = compute_iteration(graph, &state.branch_lengths, partitions, &indels)?;
@@ -63,17 +60,19 @@ pub(crate) fn run_optimize_loop(
       break;
     }
 
-    record_if_best(&mut best, i, lh, &state.branch_lengths, &partitions, &indels);
+    record_if_best(&mut best, i, lh, graph, &state, &partitions, &indels);
     let best_lh = best.as_ref().map_or(lh, |best| best.log_lh);
-    if let Some(reason) = stop_reason(&lh_history, best_lh, dp) {
+    // After a topology change the new edges still have their initial lengths, so convergence and a decrease are judged
+    // once they are optimized. An oscillation, as of a topology that changes back and forth, stops the loop at once.
+    if let Some(reason) = stop_reason(&lh_history, best_lh, dp)
+      && (!after_topology_change || reason == ConvergenceReason::Oscillating)
+    {
       stopped_at = Some((i, reason));
       break;
     }
 
     let cleanup = update_branch_lengths(graph, partitions, i, settings, &indels, &mut state)?;
-    if cleanup.topology_changed {
-      best = None;
-    }
+    after_topology_change = cleanup.topology_changed;
     partitions = update_partition_rates(
       graph,
       cleanup.partitions,
@@ -91,7 +90,7 @@ pub(crate) fn run_optimize_loop(
     lh_history.push(lh);
     log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
     if lh.value().is_finite() {
-      record_if_best(&mut best, max_iter, lh, &state.branch_lengths, &partitions, &indels);
+      record_if_best(&mut best, max_iter, lh, graph, &state, &partitions, &indels);
     }
   }
 
@@ -100,7 +99,7 @@ pub(crate) fn run_optimize_loop(
   if let Some(best) = best
     && best.iteration + 1 != lh_history.len()
   {
-    partitions = best.restore(graph, partitions, &mut state.branch_lengths, &mut indels)?;
+    partitions = best.restore(graph, &mut state.names, &mut state.branch_lengths, &mut indels);
   }
 
   Ok(OptimizeLoopResult {
@@ -133,11 +132,14 @@ pub(crate) struct OptimizeLoopResult {
   pub convergence: ConvergenceSummary,
 }
 
+/// Keeps the tree of the iteration with the highest likelihood. The partitions are the marginal update of that tree at
+/// its branch lengths, so a restore needs no further update.
 pub(super) fn record_if_best(
   best: &mut Option<BestIteration>,
   iteration: usize,
   log_lh: LogLh,
-  branch_lengths: &EdgeMap<Option<f64>>,
+  graph: &Graph,
+  state: &LoopState,
   partitions: &PartitionSet,
   indels: &EdgeIndels,
 ) {
@@ -145,8 +147,10 @@ pub(super) fn record_if_best(
     *best = Some(BestIteration {
       iteration,
       log_lh,
-      branch_lengths: branch_lengths.clone(),
-      rates: partitions.rates(),
+      graph: graph.clone(),
+      names: state.names.clone(),
+      partitions: partitions.clone(),
+      branch_lengths: state.branch_lengths.clone(),
       indels: indels.clone(),
     });
   }
@@ -155,32 +159,31 @@ pub(super) fn record_if_best(
 pub(super) struct BestIteration {
   iteration: usize,
   log_lh: LogLh,
+  graph: Graph,
+  names: NodeNames,
+  partitions: PartitionSet,
   branch_lengths: EdgeMap<Option<f64>>,
-  rates: Vec<f64>,
   indels: EdgeIndels,
 }
 
 impl BestIteration {
   pub(super) fn restore(
     self,
-    graph: &Graph,
-    mut partitions: PartitionSet,
+    graph: &mut Graph,
+    names: &mut NodeNames,
     branch_lengths: &mut EdgeMap<Option<f64>>,
     indels: &mut EdgeIndels,
-  ) -> Result<PartitionSet, Report> {
+  ) -> PartitionSet {
     debug!(
-      "Returning the branch lengths and rates of iteration {} with the highest likelihood {}",
+      "Returning the tree, branch lengths and rates of iteration {} with the highest likelihood {}",
       self.iteration + 1,
       float_to_significant_digits(self.log_lh.value(), 7)
     );
+    *graph = self.graph;
+    *names = self.names;
     *branch_lengths = self.branch_lengths;
-    partitions.set_rates(&self.rates)?;
     *indels = self.indels;
-    Ok(
-      partitions
-        .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
-        .0,
-    )
+    self.partitions
   }
 }
 
@@ -274,10 +277,20 @@ fn update_branch_lengths(
   )
 }
 
-struct LoopState {
+pub(super) struct LoopState {
   branch_lengths: EdgeMap<Option<f64>>,
   names: NodeNames,
   convergence: ConvergenceSummary,
+}
+
+impl LoopState {
+  pub(super) fn new(branch_lengths: EdgeMap<Option<f64>>, names: NodeNames) -> Self {
+    Self {
+      branch_lengths,
+      names,
+      convergence: ConvergenceSummary::default(),
+    }
+  }
 }
 
 fn log_iteration_likelihood(iteration_number: usize, likelihood: &OptimizeIterationLikelihood) {
