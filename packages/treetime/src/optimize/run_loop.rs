@@ -245,18 +245,19 @@ fn update_branch_lengths(
     convergence,
   } = state;
   let old_branch_lengths = branch_lengths.clone();
+  let indels = indels.recount(graph, &partitions)?;
   let unconverged = optimize_edge_lengths(
     graph,
     partitions.total_length(),
     &partitions,
-    &indels.recount(graph, &partitions)?,
+    &indels,
     settings.opt_method,
     branch_lengths,
   )?;
   convergence.record(&unconverged, graph, names);
 
   let zero_optimal_edges = if settings.topology_ops.collapse_short_branches {
-    find_zero_optimal_internal_edges(graph, &partitions, branch_lengths)
+    find_zero_optimal_internal_edges(graph, &indels, branch_lengths)
   } else {
     vec![]
   };
@@ -332,23 +333,20 @@ struct OptimizeIterationLikelihood {
   indel_rate: f64,
 }
 
+/// Internal edges whose ML length is zero. Collapsing composes their Fitch substitutions and indels into the child
+/// edges, so neither blocks the collapse; only indels that enter the likelihood (`EdgeIndels::Included`) do.
 pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
-  partitions: &PartitionSet,
+  indels: &EdgeIndels,
   branch_lengths: &EdgeMap<Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
     .filter_map(|edge| {
-      let bl = branch_lengths[&edge.key()].unwrap_or(f64::NAN);
-      if bl != 0.0 || graph.is_leaf(edge.target()) {
-        return None;
-      }
       let edge_key = edge.key();
-      let has_mutations = partitions
-        .iter()
-        .any(|partition| partition.edge_has_fitch_mutations(edge_key));
-      (!has_mutations).then_some(edge_key)
+      let bl = branch_lengths[&edge_key].unwrap_or(f64::NAN);
+      let is_zero_optimal = bl == 0.0 && !graph.is_leaf(edge.target());
+      (is_zero_optimal && !indels.term(edge_key).requires_positive_length()).then_some(edge_key)
     })
     .collect_vec()
 }
