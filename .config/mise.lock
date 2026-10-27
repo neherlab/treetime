@@ -810,60 +810,60 @@ url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-darwin-x8
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323116"
 
 [[tools.wasm-bindgen]]
-version = "0.2.129-2026-10-15_15-08-39"
+version = "0.2.129-2026-10-27_23-17-27"
 backend = "github:binarylandia/appville"
-specifiers = ["0.2.129-2026-10-15_15-08-39"]
+specifiers = ["0.2.129-2026-10-27_23-17-27"]
 
 [tools.wasm-bindgen.options]
 asset_pattern = "wasm-bindgen-*-static-aarch64-apple-darwin-*.tar.gz"
 version_prefix = "wasm-bindgen-"
 
 [tools.wasm-bindgen."platforms.macos-arm64"]
-checksum = "sha256:e5b8ffd185ba320d2409cabe2c7f36451444e416d58b85e73eca0617b463989e"
-url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-15_15-08-39/wasm-bindgen-0.2.129-static-aarch64-apple-darwin-2026-10-15_15-08-39.tar.gz"
-url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/644357467"
+checksum = "sha256:f79393b4439902cc9c83892404f3fcfb62ae0b45aa85acf030f87e772ef8fde7"
+url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-27_23-17-27/wasm-bindgen-0.2.129-static-aarch64-apple-darwin-2026-10-27_23-17-27.tar.gz"
+url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/683192502"
 
 [[tools.wasm-bindgen]]
-version = "0.2.129-2026-10-15_15-08-39"
+version = "0.2.129-2026-10-27_23-17-27"
 backend = "github:binarylandia/appville"
-specifiers = ["0.2.129-2026-10-15_15-08-39"]
+specifiers = ["0.2.129-2026-10-27_23-17-27"]
 
 [tools.wasm-bindgen.options]
 asset_pattern = "wasm-bindgen-*-static-x86_64-apple-darwin-*.tar.gz"
 version_prefix = "wasm-bindgen-"
 
 [tools.wasm-bindgen."platforms.macos-x64"]
-checksum = "sha256:7f70ca61a9f3008fecf467e4fe2660a3d8fb680d16d074fad3a2d8b4a29d7519"
-url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-15_15-08-39/wasm-bindgen-0.2.129-static-x86_64-apple-darwin-2026-10-15_15-08-39.tar.gz"
-url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/644357607"
+checksum = "sha256:38e5f58917095bbcc377686cc9ab2b6584a4e2d6cad55e27b05db41890df0ed3"
+url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-27_23-17-27/wasm-bindgen-0.2.129-static-x86_64-apple-darwin-2026-10-27_23-17-27.tar.gz"
+url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/683192626"
 
 [[tools.wasm-bindgen]]
-version = "0.2.129-2026-10-15_15-08-39"
+version = "0.2.129-2026-10-27_23-17-27"
 backend = "github:binarylandia/appville"
-specifiers = ["0.2.129-2026-10-15_15-08-39"]
-
-[tools.wasm-bindgen.options]
-asset_pattern = "wasm-bindgen-*-static-x86_64-unknown-linux-musl-*.tar.gz"
-version_prefix = "wasm-bindgen-"
-
-[tools.wasm-bindgen."platforms.linux-x64"]
-checksum = "sha256:8702f7917b1132d55a8c7088eb4cf6edfad85617493c5bd57e1ad3de5d24c40f"
-url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-15_15-08-39/wasm-bindgen-0.2.129-static-x86_64-unknown-linux-musl-2026-10-15_15-08-39.tar.gz"
-url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/644357770"
-
-[[tools.wasm-bindgen]]
-version = "0.2.129-2026-10-15_15-08-39"
-backend = "github:binarylandia/appville"
-specifiers = ["0.2.129-2026-10-15_15-08-39"]
+specifiers = ["0.2.129-2026-10-27_23-17-27"]
 
 [tools.wasm-bindgen.options]
 asset_pattern = "wasm-bindgen-*-static-aarch64-unknown-linux-musl-*.tar.gz"
 version_prefix = "wasm-bindgen-"
 
 [tools.wasm-bindgen."platforms.linux-arm64"]
-checksum = "sha256:a0c67acf6de0f4c9a3c0e4807baf74cff9c05c63fdceb5bbb976a3a977dfb2fb"
-url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-15_15-08-39/wasm-bindgen-0.2.129-static-aarch64-unknown-linux-musl-2026-10-15_15-08-39.tar.gz"
-url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/644357551"
+checksum = "sha256:114e83020947b1c08c5d2b04daf2b123409789355834b88c214ef63ec9844fb0"
+url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-27_23-17-27/wasm-bindgen-0.2.129-static-aarch64-unknown-linux-musl-2026-10-27_23-17-27.tar.gz"
+url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/683192596"
+
+[[tools.wasm-bindgen]]
+version = "0.2.129-2026-10-27_23-17-27"
+backend = "github:binarylandia/appville"
+specifiers = ["0.2.129-2026-10-27_23-17-27"]
+
+[tools.wasm-bindgen.options]
+asset_pattern = "wasm-bindgen-*-static-x86_64-unknown-linux-musl-*.tar.gz"
+version_prefix = "wasm-bindgen-"
+
+[tools.wasm-bindgen."platforms.linux-x64"]
+checksum = "sha256:ece82fc62c58a571bf3395ea191a44c4ba731841d5da1cd9e703b679dd8123ab"
+url = "https://github.com/binarylandia/appville/releases/download/wasm-bindgen-0.2.129-2026-10-27_23-17-27/wasm-bindgen-0.2.129-static-x86_64-unknown-linux-musl-2026-10-27_23-17-27.tar.gz"
+url_api = "https://api.github.com/repos/binarylandia/appville/releases/assets/683192723"
 
 [[tools.yq]]
 version = "4.53.6"

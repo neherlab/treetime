@@ -65,7 +65,7 @@ macos-x64 = { asset_pattern = "iqtree-{{ version }}-macOS-intel.zip" }
 # threaded Emscripten modules. The version is the release tag without its
 # prefix; its first part must equal the wasm-bindgen crate in Cargo.toml.
 [tools.wasm-bindgen]
-version = "0.2.129-2026-10-15_15-08-39"
+version = "0.2.129-2026-10-27_23-17-27"
 version_prefix = "wasm-bindgen-"
 bin_path = "bin"
 
