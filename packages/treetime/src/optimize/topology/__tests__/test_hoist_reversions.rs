@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::topology::hoist_reversions::{hoist_reverting_child, slide_bifurcating_root_for_child};
+  use crate::optimize::topology::hoist_reversions::{
+    count_child_reversions, hoist_reverting_child, slide_bifurcating_root_for_child,
+  };
   use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::indel::InDel;
@@ -11,6 +13,7 @@ mod tests {
   use eyre::Report;
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -64,6 +67,78 @@ mod tests {
     assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
 
     assert_eq!(graph.get_node(h.v).unwrap().degree_out(), 2);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::no_marginal_estimates(None, 1)]
+  #[case::marginal_estimates_agree(Some(true), 1)]
+  #[case::marginal_estimate_disagrees(Some(false), 0)]
+  fn test_hoist_reversions_counts_only_reversions_the_marginal_estimates_share(
+    #[case] child_estimate_reverts: Option<bool>,
+    #[case] expected: usize,
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
+    let names = nwk_parsed.names.clone();
+    let graph = nwk_parsed.graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
+    let (partition, _) = make_partition(
+      &graph,
+      &names,
+      100,
+      &[
+        ("U", "V", vec![sub(b'A', 0, b'T')]),
+        ("V", "A", vec![sub(b'T', 0, b'A')]),
+      ],
+    );
+    let mut sparse = sparse_topology_partitions(vec![partition]);
+    if let Some(reverts) = child_estimate_reverts {
+      let estimates = &mut sparse[0].edges.estimates;
+      estimates.insert(uv, vec![sub(b'A', 0, b'T')]);
+      estimates.insert(va, if reverts { vec![sub(b'T', 0, b'A')] } else { vec![] });
+    }
+
+    assert_eq!(count_child_reversions(&sparse, uv, None, va), expected);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hoist_reversions_splits_marginal_estimates_like_fitch_subs() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
+    let mut names = nwk_parsed.names.clone();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
+    let parent_subs = vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')];
+    let child_subs = vec![sub(b'T', 0, b'A')];
+    let (partition, _) = make_partition(
+      &graph,
+      &names,
+      100,
+      &[("U", "V", parent_subs.clone()), ("V", "A", child_subs.clone())],
+    );
+    let mut sparse = sparse_topology_partitions(vec![partition]);
+    sparse[0].edges.estimates.insert(uv, parent_subs);
+    sparse[0].edges.estimates.insert(va, child_subs);
+
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
+
+    let h = Hoisted::locate(&graph, &names, "V", "A");
+    let estimates = &sparse[0].edges.estimates;
+    assert_eq!(estimates.get(h.un), Some(&vec![sub(b'C', 5, b'G')]));
+    assert_eq!(estimates.get(h.nv), Some(&vec![sub(b'A', 0, b'T')]));
+    assert_eq!(estimates.get(h.nc), Some(&vec![]));
     Ok(())
   }
 
