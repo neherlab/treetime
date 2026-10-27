@@ -266,9 +266,10 @@ fn find_named_column(headers: &[String], normalized: &[String], name: &str) -> R
 }
 
 fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
-  u8::try_from(u32::from(delimiter))
-    .map_err(Report::from)
-    .wrap_err_with(|| format!("Metadata delimiter {delimiter:?} must fit in one byte"))
+  if !delimiter.is_ascii() {
+    return make_error!("Metadata delimiter {delimiter:?} must be an ASCII character");
+  }
+  Ok(u8::try_from(delimiter)?)
 }
 
 fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, Report> {
