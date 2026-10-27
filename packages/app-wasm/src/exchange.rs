@@ -135,13 +135,13 @@ impl PortExchange {
   }
 }
 
-#[wasm_bindgen(getter_with_clone)]
+#[wasm_bindgen]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResponseHead {
   pub status: u16,
-  #[wasm_bindgen(js_name = headerNames)]
+  #[wasm_bindgen(getter_with_clone, js_name = headerNames)]
   pub header_names: Vec<String>,
-  #[wasm_bindgen(js_name = headerValues)]
+  #[wasm_bindgen(getter_with_clone, js_name = headerValues)]
   pub header_values: Vec<String>,
 }
 

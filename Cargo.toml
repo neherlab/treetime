@@ -372,6 +372,8 @@ useless_let_if_seq = "allow"
 absolute_paths = "allow"
 allow_attributes = "warn"
 arbitrary_source_item_ordering = "allow"
+# Asks for `assert_eq!(x, [] as [T; 0])` in place of `assert!(x.is_empty())`.
+assert_is_empty = "allow"
 assign_op_pattern = "allow"
 assigning_clones = "allow"
 bool_to_int_with_if = "allow"
@@ -440,6 +442,9 @@ redundant_pub_crate = "allow"
 redundant_test_prefix = "allow"
 renamed_function_params = "allow"
 return_and_then = "allow"
+# `..` in struct patterns is the house style; naming every ignored field turns each new
+# field into edits of every pattern that does not read it.
+rest_pattern_accessible_field = "allow"
 self_named_module_files = "allow"
 semicolon_inside_block = "allow"
 semicolon_outside_block = "allow"
