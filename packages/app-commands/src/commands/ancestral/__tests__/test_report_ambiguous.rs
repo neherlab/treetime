@@ -84,7 +84,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "sparse imputation skips tips below an unknown node: kb/issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md"]
   fn test_report_ambiguous_sparse_reports_imputed_tips_below_unknown() -> Result<(), Report> {
     let (report_ambiguous, impute_missing_data) = (true, true);
     let written = written_mutations(
