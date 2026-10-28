@@ -184,7 +184,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     partition.obs_edges.insert(
@@ -263,7 +263,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     partition.obs_edges.insert(
@@ -325,7 +325,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     partition.obs_edges.insert(
@@ -385,7 +385,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
     partition1.obs_edges.insert(
       root_internal_edge_key,
@@ -406,7 +406,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
     partition2.obs_edges.insert(
       root_internal_edge_key,
@@ -684,7 +684,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     populate_test_nodes(&mut partition, &graph);
@@ -762,7 +762,7 @@ mod tests {
       root_sequence: seq![],
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());

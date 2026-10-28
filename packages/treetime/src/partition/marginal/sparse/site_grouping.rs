@@ -6,92 +6,77 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use smallvec::SmallVec;
 use treetime_primitives::{AsciiChar, AsciiTable, Seq};
+use treetime_utils::interval::range::range_contains_sorted;
 use treetime_utils::interval::range_difference::range_difference;
 
 pub(crate) fn group_sites(
-  layers: &[Vec<LabeledRange>],
+  layers: &[Vec<SourceRange>],
   excluded: &[(usize, usize)],
   sites: &CandidateSites,
   sequence: &Seq,
   alphabet: &Alphabet,
-) -> Vec<GroupSite> {
+) -> Vec<GroupedSites> {
   if layers.iter().all(Vec::is_empty) {
     return vec![];
   }
-  let segments = segment_labels(layers, excluded);
+  let segments = segment_sources(layers, excluded);
   segments
     .into_iter()
-    .filter_map(|(labels, ranges)| count_states(labels, &ranges, sites, sequence, alphabet))
+    .filter_map(|(sources, ranges)| count_states(sources, &ranges, sites, sequence, alphabet))
     .collect()
 }
 
-pub(crate) fn message_layer(groups: &SiteGroups) -> Vec<LabeledRange> {
+pub(crate) fn group_layer(groups: &SiteGroups) -> Vec<SourceRange> {
   groups
     .ranges()
-    .map(|(start, end, group)| LabeledRange {
+    .map(|(start, end, group)| SourceRange {
       start,
       end,
-      label: Label::Group(group),
+      source: ProfileSource::Group(group),
     })
     .collect()
 }
 
-pub(crate) fn missing_layer(missing: &[(usize, usize)], groups: &SiteGroups) -> Vec<LabeledRange> {
+pub(crate) fn missing_layer(missing: &[(usize, usize)], groups: &SiteGroups) -> Vec<SourceRange> {
   let group_ranges = groups.ranges().map(|(start, end, _)| (start, end)).collect_vec();
   range_difference(missing, &group_ranges)
     .into_iter()
-    .map(|(start, end)| LabeledRange {
+    .map(|(start, end)| SourceRange {
       start,
       end,
-      label: Label::Missing,
+      source: ProfileSource::Missing,
     })
-    .merge_by(message_layer(groups), |a, b| a.start <= b.start)
+    .merge_by(group_layer(groups), |a, b| a.start <= b.start)
     .collect()
 }
 
-pub(crate) fn positions_outside<'a>(
-  ranges: &'a [(usize, usize)],
-  sites: &'a CandidateSites,
-) -> impl Iterator<Item = usize> + 'a {
-  let candidates = sites.sites();
-  let mut next = 0;
-  ranges.iter().flat_map(|&(start, end)| start..end).filter(move |&pos| {
-    while candidates.get(next).is_some_and(|&(site, _)| site < pos) {
-      next += 1;
-    }
-    candidates.get(next).is_none_or(|&(site, _)| site != pos)
-  })
-}
-
-pub(crate) fn ranges_contain(ranges: &[(usize, usize)], pos: usize) -> bool {
-  let index = ranges.partition_point(|&(_, end)| end <= pos);
-  ranges.get(index).is_some_and(|&(start, _)| start <= pos)
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum Label {
+pub(crate) enum ProfileSource {
   Fixed,
   Missing,
   Group(usize),
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct LabeledRange {
+pub(crate) struct SourceRange {
   start: usize,
   end: usize,
-  label: Label,
+  source: ProfileSource,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct GroupSite {
-  pub(crate) labels: Labels,
+pub(crate) struct GroupedSites {
+  pub(crate) sources: ProfileSources,
   pub(crate) ranges: Vec<(usize, usize)>,
   pub(crate) counts: SmallVec<[(AsciiChar, usize); INLINE_STATES]>,
 }
 
-pub(crate) type Labels = SmallVec<[Label; 4]>;
+pub(crate) type ProfileSources = SmallVec<[ProfileSource; 4]>;
 
-fn segment_labels(layers: &[Vec<LabeledRange>], excluded: &[(usize, usize)]) -> IndexMap<Labels, Vec<(usize, usize)>> {
+fn segment_sources(
+  layers: &[Vec<SourceRange>],
+  excluded: &[(usize, usize)],
+) -> IndexMap<ProfileSources, Vec<(usize, usize)>> {
   let boundaries = layers
     .iter()
     .flatten()
@@ -101,12 +86,12 @@ fn segment_labels(layers: &[Vec<LabeledRange>], excluded: &[(usize, usize)]) -> 
     .dedup()
     .collect_vec();
   let mut cursors: SmallVec<[usize; 4]> = SmallVec::from_elem(0, layers.len());
-  let mut segments: IndexMap<Labels, Vec<(usize, usize)>> = IndexMap::new();
+  let mut segments: IndexMap<ProfileSources, Vec<(usize, usize)>> = IndexMap::new();
   for (&start, &end) in boundaries.iter().tuple_windows() {
-    if ranges_contain(excluded, start) {
+    if range_contains_sorted(excluded, start) {
       continue;
     }
-    let labels: Labels = layers
+    let sources: ProfileSources = layers
       .iter()
       .zip(cursors.iter_mut())
       .map(|(layer, cursor)| {
@@ -114,13 +99,13 @@ fn segment_labels(layers: &[Vec<LabeledRange>], excluded: &[(usize, usize)]) -> 
         layer
           .get(*cursor)
           .filter(|range| range.start <= start)
-          .map_or(Label::Fixed, |range| range.label)
+          .map_or(ProfileSource::Fixed, |range| range.source)
       })
       .collect();
-    if labels.iter().all(|label| *label == Label::Fixed) {
+    if sources.iter().all(|source| *source == ProfileSource::Fixed) {
       continue;
     }
-    let ranges = segments.entry(labels).or_default();
+    let ranges = segments.entry(sources).or_default();
     match ranges.last_mut() {
       Some(last) if last.1 == start => last.1 = end,
       _ => ranges.push((start, end)),
@@ -130,15 +115,15 @@ fn segment_labels(layers: &[Vec<LabeledRange>], excluded: &[(usize, usize)]) -> 
 }
 
 fn count_states(
-  labels: Labels,
+  sources: ProfileSources,
   ranges: &[(usize, usize)],
   sites: &CandidateSites,
   sequence: &Seq,
   alphabet: &Alphabet,
-) -> Option<GroupSite> {
+) -> Option<GroupedSites> {
   let mut counts = AsciiTable::<usize>::default();
   let mut kept: Vec<(usize, usize)> = Vec::with_capacity(ranges.len());
-  for pos in positions_outside(ranges, sites) {
+  for pos in sites.non_candidate_positions(ranges) {
     let state = sequence[pos];
     if !alphabet.is_canonical(state) {
       continue;
@@ -154,8 +139,8 @@ fn count_states(
     .map(|state| (state, counts[state]))
     .filter(|&(_, count)| count > 0)
     .collect();
-  (!counts.is_empty()).then_some(GroupSite {
-    labels,
+  (!counts.is_empty()).then_some(GroupedSites {
+    sources,
     ranges: kept,
     counts,
   })

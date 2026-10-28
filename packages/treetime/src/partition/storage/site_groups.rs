@@ -80,35 +80,35 @@ impl SiteGroups {
     })
   }
 
-  pub(crate) fn entries_where<'a>(
-    &'a self,
+  pub(crate) fn changed_states(
+    &self,
     sequence: &Seq,
-    select: impl Fn(&FixedProfile) -> bool,
-  ) -> Vec<(usize, &'a FixedProfile)> {
-    let selected: Vec<SmallVec<[AsciiChar; INLINE_STATES]>> = self
+    new_state: impl Fn(&FixedProfile) -> AsciiChar,
+  ) -> Vec<(usize, AsciiChar)> {
+    let changes = self
       .profiles
       .iter()
       .map(|profiles| {
         profiles
           .iter()
-          .filter(|entry| select(entry))
-          .map(|entry| entry.state)
-          .collect()
+          .filter_map(|entry| {
+            let state = new_state(entry);
+            (state != entry.state).then_some((entry.state, state))
+          })
+          .collect::<SmallVec<[(AsciiChar, AsciiChar); INLINE_STATES]>>()
       })
       .collect_vec();
     self
       .ranges
       .iter()
-      .filter(|range| !selected[range.group].is_empty())
+      .filter(|range| !changes[range.group].is_empty())
       .flat_map(|range| {
-        let states = &selected[range.group];
-        let profiles = &self.profiles[range.group];
+        let changes = &changes[range.group];
         (range.start..range.end).filter_map(move |pos| {
-          let state = sequence[pos];
-          profiles
-            .get(state)
-            .filter(|_| states.contains(&state))
-            .map(|entry| (pos, entry))
+          changes
+            .iter()
+            .find(|&&(old, _)| old == sequence[pos])
+            .map(|&(_, new)| (pos, new))
         })
       })
       .collect()

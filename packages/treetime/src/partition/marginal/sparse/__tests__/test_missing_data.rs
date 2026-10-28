@@ -96,7 +96,7 @@ mod tests {
   #[trace]
   fn test_missing_data_sparse_leaf_posteriors_at_n_sites_match_dense(#[case] case: Case) -> Result<(), Report> {
     let dense = MissingDataTree::new(case, Representation::Dense)?;
-    let sparse = MissingDataTree::new(case, Representation::Sparse)?.with_outside_at_no_data()?;
+    let sparse = MissingDataTree::new(case, Representation::Sparse)?.with_imputation()?;
 
     let expected = dense.leaf_posteriors_at_n_sites()?;
     let actual = sparse.leaf_posteriors_at_n_sites()?;
@@ -235,13 +235,13 @@ mod tests {
         })
       }
 
-      pub(super) fn with_outside_at_no_data(self) -> Result<Self, Report> {
+      pub(super) fn with_imputation(self) -> Result<Self, Report> {
         let MarginalReconstruction::Sparse(mut sparse) = self.reconstruction else {
           return Err(make_report!(
-            "outside messages at sites without data exist only in sparse mode"
+            "only sparse reconstructions impute missing data in the forward pass"
           ));
         };
-        sparse.partition.outside_at_no_data = true;
+        sparse.partition.impute_missing_data = true;
         let (reconstruction, _) = marginal_update_reconstruction(
           MarginalReconstruction::Sparse(sparse),
           &self.graph,

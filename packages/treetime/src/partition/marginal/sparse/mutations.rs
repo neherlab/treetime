@@ -2,7 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::reconstruct::{changed_group_positions, impute_state};
-use crate::partition::marginal::sparse::site_grouping::ranges_contain;
 use crate::partition::storage::sparse::{SparseEdgeForward, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::{make_internal_error, make_internal_report};
@@ -17,6 +16,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
+use treetime_utils::interval::range::range_contains_sorted;
 
 const COMPARED_BLOCK_LEN: usize = 64;
 
@@ -193,7 +193,7 @@ impl LeafImputation<'_> {
     let Some((down, parent)) = self.impute else {
       return state;
     };
-    let visits = usize::from(ranges_contain(&node_obs.unknown, pos)) + usize::from(ambiguous.is_some());
+    let visits = usize::from(range_contains_sorted(&node_obs.unknown, pos)) + usize::from(ambiguous.is_some());
     (0..visits).fold(state, |state, _| impute_state(state, pos, down, parent, alphabet))
   }
 }

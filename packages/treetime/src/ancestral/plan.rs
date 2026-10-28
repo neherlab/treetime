@@ -301,7 +301,7 @@ fn fit_reconstruction(
       layout,
       ..
     }) => {
-      let partition = partition.with_outside_at_no_data(impute);
+      let partition = partition.with_imputation(impute);
       let MarginalUpdate { node_states, edges, .. } =
         partition.marginal_update(&gtr, graph, branch_lengths, &node_states)?;
       MarginalReconstruction::Sparse(SparseReconstruction {

@@ -3,14 +3,14 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::normalize::divide_out_value;
 use crate::partition::marginal::sparse::candidate_sites::CandidateSites;
-use crate::partition::marginal::sparse::site_grouping::{GroupSite, Label};
+use crate::partition::marginal::sparse::site_grouping::{GroupedSites, ProfileSource};
 use crate::partition::storage::site_groups::SiteGroups;
 use crate::partition::storage::sparse::{FixedProfiles, INLINE_STATES, SiteProfile, SparseSeqDistribution};
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use itertools::izip;
+use itertools::{Itertools, izip};
 use ndarray::linalg::general_mat_vec_mul;
 use ndarray::{Array1, Array2, ArrayViewMut1, aview_mut1, aview1};
 use smallvec::{SmallVec, smallvec};
@@ -25,41 +25,83 @@ pub(crate) fn combine_messages(
   composition: &Composition,
   messages: &[&SparseSeqDistribution],
   sites: &CandidateSites,
-  groups: Vec<GroupSite>,
+  groups: Vec<GroupedSites>,
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDistribution, Report> {
-  let n_states = alphabet.n_canonical();
-  let mut seq_dis = SparseSeqDistribution {
-    variable: VarPosMap::with_capacity(sites.len()),
-    groups: SiteGroups::default(),
-    fixed: FixedProfiles::default(),
-    log_lh: messages.iter().map(|m| m.log_lh).sum(),
-  };
-
-  let canonical: SmallVec<[AsciiChar; INLINE_STATES]> = alphabet.canonical().collect();
-  let mut kept_counts = canonical
-    .iter()
-    .map(|&state| {
-      composition
-        .get(state)
-        .ok_or_else(|| make_internal_report!("Canonical state {state} has no count"))
-    })
-    .collect::<Result<SmallVec<[usize; INLINE_STATES]>, Report>>()?;
-  let mut weights: SmallVec<[f64; INLINE_STATES]> = kept_counts.iter().map(|count| count.to_f64_exact()).collect();
-
-  let initial_log: SiteProfile =
-    gtr_weight.map_or_else(|| smallvec![0.0; n_states], |w| w.iter().map(|p| p.ln()).collect());
-  let log_fixed: SmallVec<[FixedProfiles; 2]> = messages
-    .iter()
-    .map(|msg| msg.fixed.map_dis(|profile| profile.iter().map(|p| p.ln()).collect()))
-    .collect();
-
+  let mut product = MessageProduct::new(composition, messages, sites.len(), alphabet, gtr_weight)?;
   for (pos, state, references) in sites.iter() {
-    let mut all_states_equal = true;
-    let mut log_vec = initial_log.clone();
+    product.add_site(pos, state, references);
+  }
+  let group_profiles = groups
+    .into_iter()
+    .map(|group| product.add_group(group))
+    .filter_ok(|(_, profiles)| !profiles.is_empty())
+    .collect::<Result<Vec<_>, Report>>()?;
+  product.seq_dis.groups = SiteGroups::from_groups(group_profiles);
+  Ok(product.finish())
+}
 
-    for (msg, reference, log_fixed) in izip!(messages, references, &log_fixed) {
+struct MessageProduct<'a> {
+  messages: &'a [&'a SparseSeqDistribution],
+  alphabet: &'a Alphabet,
+  canonical: SmallVec<[AsciiChar; INLINE_STATES]>,
+  initial_log: SiteProfile,
+  log_fixed: SmallVec<[FixedProfiles; 2]>,
+  kept_counts: SmallVec<[usize; INLINE_STATES]>,
+  weights: SmallVec<[f64; INLINE_STATES]>,
+  seq_dis: SparseSeqDistribution,
+}
+
+impl<'a> MessageProduct<'a> {
+  fn new(
+    composition: &Composition,
+    messages: &'a [&'a SparseSeqDistribution],
+    n_sites: usize,
+    alphabet: &'a Alphabet,
+    gtr_weight: Option<&Array1<f64>>,
+  ) -> Result<Self, Report> {
+    let canonical: SmallVec<[AsciiChar; INLINE_STATES]> = alphabet.canonical().collect();
+    let kept_counts = canonical
+      .iter()
+      .map(|&state| {
+        composition
+          .get(state)
+          .ok_or_else(|| make_internal_report!("Canonical state {state} has no count"))
+      })
+      .collect::<Result<SmallVec<[usize; INLINE_STATES]>, Report>>()?;
+    let weights = kept_counts.iter().map(|count| count.to_f64_exact()).collect();
+    let initial_log = gtr_weight.map_or_else(
+      || smallvec![0.0; alphabet.n_canonical()],
+      |w| w.iter().map(|p| p.ln()).collect(),
+    );
+    let log_fixed = messages
+      .iter()
+      .map(|msg| msg.fixed.map_dis(|profile| profile.iter().map(|p| p.ln()).collect()))
+      .collect();
+    let seq_dis = SparseSeqDistribution {
+      variable: VarPosMap::with_capacity(n_sites),
+      groups: SiteGroups::default(),
+      fixed: FixedProfiles::default(),
+      log_lh: messages.iter().map(|m| m.log_lh).sum(),
+    };
+    Ok(Self {
+      messages,
+      alphabet,
+      canonical,
+      initial_log,
+      log_fixed,
+      kept_counts,
+      weights,
+      seq_dis,
+    })
+  }
+
+  fn add_site(&mut self, pos: usize, state: AsciiChar, references: &[Option<AsciiChar>]) {
+    let alphabet = self.alphabet;
+    let mut all_states_equal = true;
+    let mut log_vec = self.initial_log.clone();
+    for (msg, reference, log_fixed) in izip!(self.messages, references, &self.log_fixed) {
       if let Some(var) = msg.variable.get(pos) {
         add_log(&mut log_vec, var.dis.iter().map(|p| p.ln()));
         if var.state != state {
@@ -79,37 +121,43 @@ pub(crate) fn combine_messages(
 
     let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
     let dis = log_vec;
-    seq_dis.log_lh += LogLh::new(log_norm);
-    let index = canonical.iter().position(|&c| c == state);
+    self.seq_dis.log_lh += LogLh::new(log_norm);
+    let index = self.canonical.iter().position(|&c| c == state);
     if let Some(index) = index {
-      weights[index] -= 1.0;
+      self.weights[index] -= 1.0;
     }
 
     if !is_site_resolved(&dis, EPS) || !all_states_equal {
       let label = if let Some(index) = index {
-        kept_counts[index] = kept_counts[index].saturating_sub(1);
+        self.kept_counts[index] = self.kept_counts[index].saturating_sub(1);
         state
       } else {
         alphabet.char(most_likely_state(&aview1(&dis)).unwrap_or(0))
       };
-      seq_dis.variable.insert(pos, label, &dis);
+      self.seq_dis.variable.insert(pos, label, &dis);
     }
   }
 
-  let mut group_profiles = Vec::with_capacity(groups.len());
-  for GroupSite { labels, ranges, counts } in groups {
+  fn add_group(
+    &mut self,
+    GroupedSites {
+      sources,
+      ranges,
+      counts,
+    }: GroupedSites,
+  ) -> Result<(Vec<(usize, usize)>, FixedProfiles), Report> {
     let mut profiles = FixedProfiles::default();
     for (state, count) in counts {
-      let mut log_vec = initial_log.clone();
+      let mut log_vec = self.initial_log.clone();
       let mut shared = true;
       let mut all_states_equal = true;
-      for (msg, label, log_fixed) in izip!(messages, &labels, &log_fixed) {
-        match label {
-          Label::Missing => {
+      for (msg, source, log_fixed) in izip!(self.messages, &sources, &self.log_fixed) {
+        match source {
+          ProfileSource::Missing => {
             shared = false;
             all_states_equal = false;
           },
-          Label::Group(group) => {
+          ProfileSource::Group(group) => {
             if let Some(entry) = msg.groups.profiles(*group).get(state) {
               shared = false;
               add_log(&mut log_vec, entry.dis.iter().map(|p| p.ln()));
@@ -117,43 +165,41 @@ pub(crate) fn combine_messages(
               add_log(&mut log_vec, log_fixed[state].dis.iter().copied());
             }
           },
-          Label::Fixed => add_log(&mut log_vec, log_fixed[state].dis.iter().copied()),
+          ProfileSource::Fixed => add_log(&mut log_vec, log_fixed[state].dis.iter().copied()),
         }
       }
       if shared {
         continue;
       }
-      let index = canonical
+      let index = self
+        .canonical
         .iter()
         .position(|&c| c == state)
         .ok_or_else(|| make_internal_report!("Grouped state {state} is not canonical"))?;
       let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
       let multiplicity = count.to_f64_exact();
-      seq_dis.log_lh += LogLh::new(multiplicity * log_norm);
-      weights[index] -= multiplicity;
+      self.seq_dis.log_lh += LogLh::new(multiplicity * log_norm);
+      self.weights[index] -= multiplicity;
       if !is_site_resolved(&log_vec, EPS) || !all_states_equal {
-        kept_counts[index] = kept_counts[index].saturating_sub(count);
+        self.kept_counts[index] = self.kept_counts[index].saturating_sub(count);
         profiles.insert(state, count, log_vec);
       }
     }
-    if !profiles.is_empty() {
-      group_profiles.push((ranges, profiles));
-    }
+    Ok((ranges, profiles))
   }
-  seq_dis.groups = SiteGroups::from_groups(group_profiles);
 
-  for (index, &state) in canonical.iter().enumerate() {
-    let mut log_vec = initial_log.clone();
-
-    for log_fixed in &log_fixed {
-      add_log(&mut log_vec, log_fixed[state].dis.iter().copied());
+  fn finish(mut self) -> SparseSeqDistribution {
+    for (index, &state) in self.canonical.iter().enumerate() {
+      let mut log_vec = self.initial_log.clone();
+      for log_fixed in &self.log_fixed {
+        add_log(&mut log_vec, log_fixed[state].dis.iter().copied());
+      }
+      let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
+      self.seq_dis.log_lh += LogLh::new(self.weights[index] * log_norm);
+      self.seq_dis.fixed.insert(state, self.kept_counts[index], log_vec);
     }
-
-    let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
-    seq_dis.log_lh += LogLh::new(weights[index] * log_norm);
-    seq_dis.fixed.insert(state, kept_counts[index], log_vec);
+    self.seq_dis
   }
-  Ok(seq_dis)
 }
 
 pub(crate) fn propagate_raw(exp_qt: &Array2<f64>, seq_dis: &SparseSeqDistribution) -> SparseSeqDistribution {

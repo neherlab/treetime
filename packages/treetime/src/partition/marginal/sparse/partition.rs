@@ -34,7 +34,7 @@ pub struct PartitionMarginalSparse {
   pub root_sequence: Seq,
   pub obs_nodes: NodeMap<SparseNodeObs>,
   pub obs_edges: EdgeMap<SparseEdgeObs>,
-  pub outside_at_no_data: bool,
+  pub impute_missing_data: bool,
 }
 
 impl PartitionMarginalSparse {
@@ -44,9 +44,9 @@ impl PartitionMarginalSparse {
   }
 
   #[must_use]
-  pub(crate) fn with_outside_at_no_data(self, outside_at_no_data: bool) -> Self {
+  pub(crate) fn with_imputation(self, impute_missing_data: bool) -> Self {
     Self {
-      outside_at_no_data,
+      impute_missing_data,
       ..self
     }
   }

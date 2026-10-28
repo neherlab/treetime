@@ -75,7 +75,7 @@ mod tests {
       root_sequence: ref_seq,
       obs_nodes,
       obs_edges,
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     Ok(partition)
@@ -470,7 +470,7 @@ mod tests {
       root_sequence: p2_ref_seq,
       obs_nodes: p2_obs_nodes,
       obs_edges: p2_obs_edges,
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
 
     let mut partitions = sparse_topology_partitions(vec![p1, p2]);
@@ -1012,7 +1012,7 @@ mod tests {
         root_sequence: ref_seq,
         obs_nodes,
         obs_edges,
-        outside_at_no_data: false,
+        impute_missing_data: false,
       };
 
       Ok(partition)

@@ -60,7 +60,7 @@ impl PartitionFitch {
       root_sequence,
       obs_nodes,
       obs_edges: self.edges,
-      outside_at_no_data: false,
+      impute_missing_data: false,
     };
     Ok((partition, node_states))
   }

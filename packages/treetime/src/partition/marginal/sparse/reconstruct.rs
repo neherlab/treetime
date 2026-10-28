@@ -80,11 +80,8 @@ fn changed_group_states(node: &SparseNodeState, alphabet: &Alphabet) -> impl Ite
   node
     .profile
     .groups
-    .entries_where(&node.sequence, |entry| {
-      argmax_state(&entry.dis, alphabet) != entry.state
-    })
+    .changed_states(&node.sequence, |entry| argmax_state(&entry.dis, alphabet))
     .into_iter()
-    .map(move |(pos, entry)| (pos, argmax_state(&entry.dis, alphabet)))
 }
 
 fn argmax_state(dis: &[f64], alphabet: &Alphabet) -> AsciiChar {

@@ -649,7 +649,7 @@ mod tests {
         root_sequence: ref_seq,
         obs_nodes,
         obs_edges,
-        outside_at_no_data: false,
+        impute_missing_data: false,
       };
 
       (partition, node_states)

@@ -625,7 +625,7 @@ pub(super) mod tests {
           root_sequence: seq![],
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
-          outside_at_no_data: false,
+          impute_missing_data: false,
         };
 
         populate_test_nodes(&mut partition, &graph);
@@ -672,7 +672,7 @@ pub(super) mod tests {
           root_sequence: seq![],
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
-          outside_at_no_data: false,
+          impute_missing_data: false,
         };
 
         populate_test_nodes(&mut partition, &graph);
