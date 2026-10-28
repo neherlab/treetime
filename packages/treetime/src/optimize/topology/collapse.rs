@@ -14,6 +14,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::schedule::GraphSchedule;
+use treetime_utils::interval::range::range_contains;
 
 const SHORT_BRANCH_MUTATIONS: f64 = 0.1;
 
@@ -36,11 +37,20 @@ pub(crate) fn collapse_edge(
       branch_lengths.insert(new_edge_key, Some(bl1 + bl2));
     }
 
+    let child_key = graph.get_target_node_key(new_edge_key)?;
     for reconstruction in sparse.iter_mut() {
-      let obs_edges = &mut reconstruction.partition.obs_edges;
-      let removed_edge_data = obs_edges[&edge_key].clone();
-      let child_edge = obs_edges.entry(new_edge_key).or_default();
-      let merged_subs = removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())?;
+      let partition = &mut reconstruction.partition;
+      let child_non_char = partition
+        .obs_nodes
+        .get(child_key)
+        .map_or_else(Vec::new, |child| child.non_char.clone());
+      let removed_edge_data = partition.obs_edges[&edge_key].clone();
+      let child_edge = partition.obs_edges.entry(new_edge_key).or_default();
+      let merged_subs = removed_edge_data
+        .chain_fitch_subs(child_edge.fitch_subs())?
+        .into_iter()
+        .filter(|sub| !range_contains(&child_non_char, sub.pos()))
+        .collect();
       child_edge.set_fitch_subs(merged_subs);
 
       let estimates = &mut reconstruction.edges.estimates;
