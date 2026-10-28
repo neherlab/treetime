@@ -99,6 +99,12 @@ impl CandidateSites {
       .map(move |(index, &(pos, state))| (pos, state, &self.references[index * n..(index + 1) * n]))
   }
 
+  pub(crate) fn relabel(&mut self, label: impl Fn(usize, AsciiChar) -> AsciiChar) {
+    for (pos, state) in &mut self.sites {
+      *state = label(*pos, *state);
+    }
+  }
+
   pub(crate) fn fill_missing_references(&mut self, fill: impl Fn(usize, usize, AsciiChar) -> AsciiChar) {
     let n = self.n_messages;
     for (index, &(pos, state)) in self.sites.iter().enumerate() {

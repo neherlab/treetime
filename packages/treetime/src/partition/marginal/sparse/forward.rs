@@ -3,6 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
 use crate::partition::marginal::shared::update::MarginalForward;
+use crate::partition::marginal::sparse::backward::own_state;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{
   combine_messages, divide_out_site, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
@@ -25,10 +26,9 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
-use treetime_primitives::{AsciiTable, LogLh};
+use treetime_primitives::{AsciiChar, AsciiTable, LogLh, Seq};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
-use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn process_forward_indexed(
@@ -126,7 +126,7 @@ impl SparseForwardPass<'_> {
     let OutsideMessage {
       msg_to_child,
       child_missing,
-    } = compute_msg_to_child(alphabet, obs, parent, parent_obs, edge_obs, backward)?;
+    } = compute_msg_to_child(alphabet, &node.sequence, parent, parent_obs, edge_obs, backward)?;
 
     let n_events =
       3 * edge_obs.fitch_subs().len() + 2 * (msg_to_child.variable.len() + backward.msg_to_parent.variable.len());
@@ -138,7 +138,7 @@ impl SparseForwardPass<'_> {
       events.or_insert(mutation.pos(), SiteSlot::Reference(1), current_state);
     }
     for (pos, profile) in &msg_to_child.variable {
-      if !range_contains(&obs.non_char, *pos) {
+      if !range_contains(&backward.child_no_data, *pos) {
         events.or_insert(*pos, SiteSlot::State, profile.state);
         events.or_insert(*pos, SiteSlot::Reference(0), profile.state);
       }
@@ -147,7 +147,8 @@ impl SparseForwardPass<'_> {
       events.or_insert(*pos, SiteSlot::State, profile.state);
       events.or_insert(*pos, SiteSlot::Reference(1), profile.state);
     }
-    let sites = events.finish();
+    let mut sites = events.finish();
+    sites.relabel(|pos, state| own_state(alphabet, obs, &node.sequence, pos, state));
 
     let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
     let msg_from_parent = propagate_forward(gtr, branch_length, &msg_to_child);
@@ -205,7 +206,7 @@ fn propagate_forward(gtr: &GTR, branch_length: f64, message: &SparseSeqDistribut
 
 fn compute_msg_to_child(
   alphabet: &Alphabet,
-  child_obs: &SparseNodeObs,
+  child_sequence: &Seq,
   parent: &SparseNodeState,
   parent_obs: &SparseNodeObs,
   edge_obs: &SparseEdgeObs,
@@ -219,12 +220,13 @@ fn compute_msg_to_child(
     events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
   }
   for (pos, profile) in parent.profile.variable.iter().chain(&child_dis.variable) {
-    if !range_contains(&child_obs.non_char, *pos) {
+    if !range_contains(&backward.child_no_data, *pos) {
       events.or_insert(*pos, SiteSlot::Reference(0), profile.state);
       events.or_insert(*pos, SiteSlot::State, profile.state);
     }
   }
-  let sites = events.finish();
+  let mut sites = events.finish();
+  sites.relabel(|pos, state| canonical_or(alphabet, parent.sequence[pos], state));
 
   let mut seq_dis = SparseSeqDistribution {
     variable: VarPosMap::with_capacity(sites.len()),
@@ -235,6 +237,7 @@ fn compute_msg_to_child(
   let mut removed = AsciiTable::<usize>::default();
   for (pos, parent_state, child_state) in sites.iter() {
     let child_state = child_state[0].ok_or_else(|| make_internal_report!("Position {pos} has no child state"))?;
+    let child_state = canonical_or(alphabet, child_sequence[pos], child_state);
     let divisor = child_dis.variable.get(pos).map_or_else(
       || child_dis.fixed[child_state].dis.as_slice(),
       |distribution| distribution.dis,
@@ -246,22 +249,29 @@ fn compute_msg_to_child(
     let mut dis = divide_out_site(numerator, divisor);
     let normalization = normalize_1d_inplace(aview_mut1(&mut dis), 1.0);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
-    seq_dis.variable.insert(pos, parent_state, &dis);
-    removed[parent_state] += 1;
+    if alphabet.is_canonical(parent.sequence[pos]) {
+      seq_dis.variable.insert(pos, parent_state, &dis);
+      removed[parent_state] += 1;
+    } else {
+      seq_dis.variable.insert(pos, child_state, &dis);
+    }
   }
-  let missing = range_difference(&backward.child_no_data, &parent_obs.non_char);
-  let mut child_missing = VarPosMap::with_capacity(missing.iter().map(|(start, end)| end - start).sum());
-  for pos in missing.iter().flat_map(|&(start, end)| start..end) {
+  let mut child_missing = VarPosMap::default();
+  for pos in backward.child_no_data.iter().flat_map(|&(start, end)| start..end) {
     let parent_state = parent.sequence[pos];
-    if sites.contains(pos) || !alphabet.is_canonical(parent_state) {
+    if sites.contains(pos) {
       continue;
     }
-    let posterior = parent.profile.variable.get(pos).map_or_else(
-      || parent.profile.fixed[parent_state].dis.as_slice(),
-      |distribution| distribution.dis,
-    );
-    child_missing.insert(pos, parent_state, posterior);
-    removed[parent_state] += 1;
+    if alphabet.is_canonical(parent_state) {
+      let posterior = parent.profile.variable.get(pos).map_or_else(
+        || parent.profile.fixed[parent_state].dis.as_slice(),
+        |distribution| distribution.dis,
+      );
+      child_missing.insert(pos, parent_state, posterior);
+      removed[parent_state] += 1;
+    } else if let Some(posterior) = parent.profile.variable.get(pos) {
+      child_missing.insert(pos, posterior.state, posterior.dis);
+    }
   }
   for fixed in parent.profile.fixed.iter() {
     let state = fixed.state;
@@ -280,6 +290,10 @@ fn compute_msg_to_child(
     msg_to_child: seq_dis,
     child_missing,
   })
+}
+
+fn canonical_or(alphabet: &Alphabet, state: AsciiChar, fallback: AsciiChar) -> AsciiChar {
+  if alphabet.is_canonical(state) { state } else { fallback }
 }
 
 struct OutsideMessage {

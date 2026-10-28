@@ -165,7 +165,7 @@ mod tests {
       assert_eq!(stored_composition, recon.partition.obs_nodes[&node_key].composition);
     }
 
-    pretty_assert_ulps_eq!(-54.59041904047406, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-56.82091109765779, log_lh, epsilon = 1e-6);
     Ok(())
   }
 
@@ -199,7 +199,7 @@ mod tests {
 
     let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
-    pretty_assert_ulps_eq!(-54.59041904047406, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-56.82091109765779, log_lh, epsilon = 1e-6);
 
     for node_data in recon.node_states.values() {
       assert_sparse_profile_normalized(&node_data.profile, 4);
@@ -250,7 +250,7 @@ mod tests {
     let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
 
-    pretty_assert_ulps_eq!(-54.59041904047406, log_lh_first, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-56.82091109765779, log_lh_first, epsilon = 1e-6);
 
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
@@ -326,7 +326,7 @@ mod tests {
 
     let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
-    pretty_assert_ulps_eq!(-56.76471324493305, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-59.20297892181233, log_lh, epsilon = 1e-6);
 
     let root_key = graph.get_exactly_one_root()?.key();
     let root_profile = &recon.node_states[&root_key].profile;

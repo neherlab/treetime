@@ -20,7 +20,7 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
-use treetime_primitives::{LogLh, Seq};
+use treetime_primitives::{AsciiChar, LogLh, Seq};
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::range_intersection_iter;
@@ -82,7 +82,8 @@ impl SparseBackwardPass<'_> {
     } else {
       let child_edges = self.child_edges(key, children)?;
       let no_data = range_intersection_iter(child_edges.iter().map(|edge| &edge.child_no_data)).collect_vec();
-      (self.combine_child_messages(key, &child_edges, obs, &sequence)?, no_data)
+      let msg = self.combine_child_messages(key, children, &child_edges, obs, &sequence, &no_data)?;
+      (msg, no_data)
     };
 
     let (profile, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
@@ -132,9 +133,11 @@ impl SparseBackwardPass<'_> {
   fn combine_child_messages(
     &self,
     key: GraphNodeKey,
+    children: &[SparseBackwardOutput],
     child_edges: &[&SparseEdgeBackward],
     obs: &SparseNodeObs,
     sequence: &Seq,
+    no_data: &[(usize, usize)],
   ) -> Result<SparseSeqDistribution, Report> {
     let partition = self.partition;
     let alphabet = &partition.alphabet;
@@ -152,7 +155,12 @@ impl SparseBackwardPass<'_> {
       })
       .sum();
 
+    let gapped = range_difference(&obs.non_char, no_data);
+    let n_events = n_events + gapped.iter().map(|(start, end)| end - start).sum::<usize>();
     let mut events = CandidateSiteEvents::with_capacity(child_keys.len(), n_events);
+    for pos in gapped.iter().flat_map(|&(start, end)| start..end) {
+      events.or_insert(pos, SiteSlot::State, alphabet.gap());
+    }
     for (ci, (&(_, edge_key), child_message, missing)) in izip!(child_keys, &child_messages, &child_missing).enumerate()
     {
       for mutation in partition.obs_edges[&edge_key].fitch_subs() {
@@ -170,16 +178,21 @@ impl SparseBackwardPass<'_> {
       }
     }
     let mut sites = events.finish();
+    sites.relabel(|pos, state| own_state(alphabet, obs, sequence, pos, state));
     sites.fill_missing_references(|ci, pos, parent_state| {
-      let child_obs = &partition.obs_nodes[&child_keys[ci].0];
-      if range_contains(&child_obs.non_char, pos) {
-        if range_contains(&child_obs.gaps, pos) {
+      if range_contains(&child_edges[ci].child_no_data, pos) {
+        if range_contains(&partition.obs_nodes[&child_keys[ci].0].gaps, pos) {
           alphabet.gap()
         } else {
           alphabet.unknown()
         }
       } else {
-        parent_state
+        let child_state = children[ci].0.sequence[pos];
+        if alphabet.is_canonical(child_state) {
+          child_state
+        } else {
+          parent_state
+        }
       }
     });
 
@@ -194,6 +207,22 @@ impl SparseBackwardPass<'_> {
 }
 
 type SparseBackwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>;
+
+pub(crate) fn own_state(
+  alphabet: &Alphabet,
+  obs: &SparseNodeObs,
+  sequence: &Seq,
+  pos: usize,
+  state: AsciiChar,
+) -> AsciiChar {
+  if range_contains(&obs.non_char, pos) {
+    alphabet.gap()
+  } else if alphabet.is_canonical(sequence[pos]) {
+    sequence[pos]
+  } else {
+    state
+  }
+}
 
 fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDistribution, Report> {
   let mut fixed = FixedProfiles::default();

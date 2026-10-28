@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
+use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::normalize::divide_out_value;
 use crate::partition::marginal::sparse::candidate_sites::CandidateSites;
 use crate::partition::storage::sparse::{FixedProfiles, INLINE_STATES, SiteProfile, SparseSeqDistribution};
@@ -81,10 +82,13 @@ pub(crate) fn combine_messages(
     }
 
     if !is_site_resolved(&dis, EPS) || !all_states_equal {
-      if let Some(index) = index {
+      let label = if let Some(index) = index {
         kept_counts[index] = kept_counts[index].saturating_sub(1);
-      }
-      seq_dis.variable.insert(pos, state, &dis);
+        state
+      } else {
+        alphabet.char(most_likely_state(&aview1(&dis)).unwrap_or(0))
+      };
+      seq_dis.variable.insert(pos, label, &dis);
     }
   }
 
