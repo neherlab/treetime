@@ -1,6 +1,6 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::indel::IndelPolicy;
-use crate::optimize::topology::new_node_obs::new_node_obs;
+use crate::optimize::topology::new_node_obs::insert_new_node_obs;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
@@ -93,7 +93,7 @@ pub(crate) fn merge_single_polytomy(
         group.total_shared,
       );
       let helper_key = merge_sibling_group(graph, names, partitions, alignments, node_key, &group, branch_lengths)?;
-      ledger.helper_children.insert(helper_key, group.children);
+      ledger.helpers.insert(helper_key);
       nodes_created += 1;
     }
   }
@@ -104,7 +104,7 @@ pub(crate) fn merge_single_polytomy(
 #[derive(Clone, Debug)]
 pub(crate) struct MergeLedger {
   indel_policy: IndelPolicy,
-  helper_children: BTreeMap<GraphNodeKey, BTreeSet<GraphNodeKey>>,
+  helpers: BTreeSet<GraphNodeKey>,
   rejected: BTreeSet<BTreeSet<GraphNodeKey>>,
 }
 
@@ -112,7 +112,7 @@ impl MergeLedger {
   pub(crate) fn new(indel_policy: IndelPolicy) -> Self {
     Self {
       indel_policy,
-      helper_children: BTreeMap::new(),
+      helpers: BTreeSet::new(),
       rejected: BTreeSet::new(),
     }
   }
@@ -144,11 +144,11 @@ impl MergeLedger {
   }
 
   pub(crate) fn forget_helper(&mut self, helper_key: GraphNodeKey) {
-    self.helper_children.remove(&helper_key);
+    self.helpers.remove(&helper_key);
   }
 
   fn reject_helper(&mut self, graph: &Graph, helper_key: GraphNodeKey) -> Result<bool, Report> {
-    if self.helper_children.remove(&helper_key).is_none() {
+    if !self.helpers.remove(&helper_key) {
       return Ok(false);
     }
     let children = graph[helper_key]
@@ -366,13 +366,7 @@ fn merge_sibling_group(
       store_edge_indels(alignment, partitions, new_ek, remaining_indels)?;
     }
   }
-  let new_obs = partitions
-    .iter()
-    .map(|reconstruction| new_node_obs(graph, reconstruction, new_parent_edge_key, &child_keys))
-    .collect::<Result<Vec<_>, Report>>()?;
-  for (reconstruction, obs) in izip!(partitions.iter_mut(), new_obs) {
-    reconstruction.partition.obs_nodes.insert(new_node_key, obs);
-  }
+  insert_new_node_obs(graph, partitions, new_node_key, new_parent_edge_key, &child_keys)?;
 
   Ok(new_node_key)
 }

@@ -1,4 +1,4 @@
-use crate::optimize::topology::new_node_obs::new_node_obs;
+use crate::optimize::topology::new_node_obs::insert_new_node_obs;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::{assembled_edge_indels, store_edge_indels};
@@ -222,13 +222,7 @@ pub(crate) fn hoist_reverting_child(
     graph.get_target_node_key(parent_edge_key)?,
     graph.get_target_node_key(child_edge_key)?,
   ];
-  let new_obs = sparse
-    .iter()
-    .map(|reconstruction| new_node_obs(graph, reconstruction, un_edge_key, &child_keys))
-    .collect::<Result<Vec<_>, Report>>()?;
-  for (reconstruction, obs) in izip!(sparse.iter_mut(), new_obs) {
-    reconstruction.partition.obs_nodes.insert(n_key, obs);
-  }
+  insert_new_node_obs(graph, sparse, n_key, un_edge_key, &child_keys)?;
 
   Ok(n_key)
 }

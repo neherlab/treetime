@@ -94,19 +94,19 @@ pub(crate) fn collapse_short_internal_edges(
     0.0
   };
   let schedule = GraphSchedule::new(graph)?;
-  let short_edges = schedule
+  let short_edges: Vec<GraphEdgeKey> = schedule
     .postorder()
     .iter()
     .filter(|&&node_key| !graph.is_leaf(node_key))
     .flat_map(|&node_key| schedule.parents(node_key).iter().map(|&(_, edge_key)| edge_key))
     .filter(|&edge_key| !indels.term(edge_key).requires_positive_length())
-    .map(|edge_key| {
+    .map(|edge_key| -> Result<_, Report> {
       let length = branch_lengths[&edge_key].unwrap_or(0.0);
       let is_short = length == 0.0 || (length < threshold && !carries_substitution(graph, &partitions, edge_key)?);
       Ok(is_short.then_some(edge_key))
     })
     .flatten_ok()
-    .collect::<Result<Vec<_>, Report>>()?;
+    .try_collect()?;
   if short_edges.is_empty() {
     return Ok(partitions);
   }
@@ -125,7 +125,8 @@ pub(crate) fn collapse_short_internal_edges(
 }
 
 fn carries_substitution(graph: &Graph, partitions: &PartitionSet, edge_key: GraphEdgeKey) -> Result<bool, Report> {
-  partitions.iter().try_fold(false, |carries, partition| {
-    Ok(carries || partition.edge_sub_count(graph, edge_key)?.is_none_or(|count| count > 0))
-  })
+  partitions
+    .iter()
+    .map(|partition| partition.edge_sub_count(graph, edge_key))
+    .process_results(|mut counts| counts.any(|count| count.is_none_or(|count| count > 0)))
 }

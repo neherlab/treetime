@@ -5,7 +5,7 @@ use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::compute_node_ranges;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -13,7 +13,24 @@ use treetime_primitives::Seq;
 use treetime_utils::interval::range_union::range_union;
 use treetime_utils::make_internal_report;
 
-pub(crate) fn new_node_obs(
+pub(crate) fn insert_new_node_obs(
+  graph: &Graph,
+  sparse: &mut [SparseReconstruction],
+  node_key: GraphNodeKey,
+  edge_key: GraphEdgeKey,
+  child_keys: &[GraphNodeKey],
+) -> Result<(), Report> {
+  let new_obs = sparse
+    .iter()
+    .map(|reconstruction| new_node_obs(graph, reconstruction, edge_key, child_keys))
+    .collect::<Result<Vec<_>, Report>>()?;
+  for (reconstruction, obs) in izip!(sparse.iter_mut(), new_obs) {
+    reconstruction.partition.obs_nodes.insert(node_key, obs);
+  }
+  Ok(())
+}
+
+fn new_node_obs(
   graph: &Graph,
   reconstruction: &SparseReconstruction,
   edge_key: GraphEdgeKey,
