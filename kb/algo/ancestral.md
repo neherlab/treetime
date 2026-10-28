@@ -121,8 +121,6 @@ The **no-data range** of a node is the set of positions where its subtree has no
 
 The dense backend treats gaps and `N` as no data at every node, as v0 does, and is the oracle for both cases: `packages/treetime/src/partition/marginal/sparse/__tests__/test_missing_data.rs` compares the root log-likelihood, the change of every edge objective and of the tree log-likelihood with the branch length, the node log-likelihoods, and the leaf posteriors at `N` sites with dense on cases with `N` and gap runs in leaves and clades, an all-`N` leaf, and gapped ancestors below the root and at the root.
 
-Child-missing sites are grouped: the sites below a child without data that share the parent state and the pattern of children without data form one group with one profile and one count, so the cost of a pass grows with the number of such groups, not with the number of sites.
-
 ### v0 differences
 
 v1 backward pass uses log-space arithmetic with logsumexp normalization (dense `normalize_from_log()`, sparse `softmax_with_log_norm_inplace()` in `combine_messages()`). v1 forward pass uses plain probability space (division). v0 uses neg-log space throughout. v1 dense uses deterministic `argmax_first()` (`#argmax_first`) for sequence extraction (leftmost state wins ties); v0 uses `np.argmax()` which has undefined tie-breaking.
