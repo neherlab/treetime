@@ -93,49 +93,20 @@ pub(crate) fn run_optimize_loop(
     )?;
   }
 
-  if stopped_at.is_none() && max_iter > 0 {
-    if last_iteration_changed_topology {
-      partitions = compute_and_record(
-        graph,
-        partitions,
-        &state.branch_lengths,
-        &indels,
-        &mut lh_history,
-        &mut history,
-      )?;
-      optimize_branch_lengths(graph, &partitions, max_iter, settings, &indels, &mut state)?;
-      history.lengths_optimized();
-      partitions = update_partition_rates(
-        graph,
-        partitions,
-        settings.partition_rates,
-        &mut state.branch_lengths,
-        Some(&mut indels),
-        log,
-      )?;
-    }
-    partitions = compute_and_record(
-      graph,
-      partitions,
-      &state.branch_lengths,
-      &indels,
-      &mut lh_history,
-      &mut history,
-    )?;
-  }
-
-  log_stop(log, stopped_at, max_iter, dp);
-
-  if let Some(best) = history.into_best()
-    && best.iteration() + 1 != lh_history.len()
-  {
-    partitions = best.restore(graph, partitions, &mut state.branch_lengths, &mut indels)?;
-  }
-
-  if settings.topology_ops.collapse_short_branches {
-    let current_indels = indels.recount(graph, &partitions)?;
-    partitions = collapse_short_internal_edges(graph, partitions, &current_indels, &mut state.branch_lengths)?;
-  }
+  let FinishedLoop { partitions, indels } = finish_loop(
+    graph,
+    partitions,
+    settings,
+    &mut state,
+    indels,
+    FinishInputs {
+      stopped_at,
+      last_iteration_changed_topology,
+      lh_history: &mut lh_history,
+      history,
+    },
+    log,
+  )?;
 
   Ok(OptimizeLoopResult {
     indel_rates: indels.alignment_rates(),
@@ -165,6 +136,81 @@ pub(crate) struct OptimizeLoopResult {
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 
   pub convergence: ConvergenceSummary,
+}
+
+struct FinishInputs<'a> {
+  stopped_at: Option<(usize, ConvergenceReason)>,
+  last_iteration_changed_topology: bool,
+  lh_history: &'a mut Vec<LogLh>,
+  history: TopologyHistory,
+}
+
+struct FinishedLoop {
+  partitions: PartitionSet,
+  indels: EdgeIndels,
+}
+
+fn finish_loop(
+  graph: &mut Graph,
+  mut partitions: PartitionSet,
+  settings: &OptimizeLoopSettings,
+  state: &mut LoopState,
+  mut indels: EdgeIndels,
+  inputs: FinishInputs<'_>,
+  log: &dyn LogSink,
+) -> Result<FinishedLoop, Report> {
+  let FinishInputs {
+    stopped_at,
+    last_iteration_changed_topology,
+    lh_history,
+    mut history,
+  } = inputs;
+  let max_iter = settings.max_iter;
+  if stopped_at.is_none() && max_iter > 0 {
+    if last_iteration_changed_topology {
+      partitions = compute_and_record(
+        graph,
+        partitions,
+        &state.branch_lengths,
+        &indels,
+        lh_history,
+        &mut history,
+      )?;
+      optimize_branch_lengths(graph, &partitions, max_iter, settings, &indels, state)?;
+      history.lengths_optimized();
+      partitions = update_partition_rates(
+        graph,
+        partitions,
+        settings.partition_rates,
+        &mut state.branch_lengths,
+        Some(&mut indels),
+        log,
+      )?;
+    }
+    partitions = compute_and_record(
+      graph,
+      partitions,
+      &state.branch_lengths,
+      &indels,
+      lh_history,
+      &mut history,
+    )?;
+  }
+
+  log_stop(log, stopped_at, max_iter, settings.dp);
+
+  if let Some(best) = history.into_best()
+    && best.iteration() + 1 != lh_history.len()
+  {
+    partitions = best.restore(graph, partitions, &mut state.branch_lengths, &mut indels)?;
+  }
+
+  if settings.topology_ops.collapse_short_branches && max_iter > 0 {
+    let current_indels = indels.recount(graph, &partitions)?;
+    partitions = collapse_short_internal_edges(graph, partitions, &current_indels, &mut state.branch_lengths)?;
+  }
+
+  Ok(FinishedLoop { partitions, indels })
 }
 
 fn log_stop(log: &dyn LogSink, stopped_at: Option<(usize, ConvergenceReason)>, max_iter: usize, dp: f64) {

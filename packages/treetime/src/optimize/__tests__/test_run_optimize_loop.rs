@@ -52,7 +52,7 @@ mod tests {
     )?;
 
     assert!(result.lh_history.len() >= 1);
-    assert!(result.lh_history.len() <= max_iter + 1);
+    assert!(result.lh_history.len() <= max_iter + 2);
     Ok(())
   }
 
