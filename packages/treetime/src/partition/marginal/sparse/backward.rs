@@ -11,7 +11,7 @@ use crate::partition::storage::sparse::{
 };
 use crate::partition::storage::var_pos_map::VarPosMap;
 use eyre::Report;
-use itertools::izip;
+use itertools::{Itertools, izip};
 use ndarray::aview_mut1;
 use smallvec::smallvec;
 use std::sync::Arc;
@@ -22,6 +22,9 @@ use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::{LogLh, Seq};
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::interval::range_difference::range_difference;
+use treetime_utils::interval::range_intersection::range_intersection_iter;
+use treetime_utils::interval::range_union::range_union;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn process_backward_indexed(
@@ -71,10 +74,15 @@ impl SparseBackwardPass<'_> {
     let gtr = self.gtr;
     let obs = &partition.obs_nodes[&key];
 
-    let msg_to_parent = if self.schedule.children(key).is_empty() {
-      leaf_message(obs, &partition.alphabet)?
+    let (msg_to_parent, no_data) = if self.schedule.children(key).is_empty() {
+      (
+        leaf_message(obs, &partition.alphabet)?,
+        range_union(&[obs.gaps.clone(), obs.unknown.clone()]),
+      )
     } else {
-      self.combine_child_messages(key, children, obs)?
+      let child_edges = self.child_edges(key, children)?;
+      let no_data = range_intersection_iter(child_edges.iter().map(|edge| &edge.child_no_data)).collect_vec();
+      (self.combine_child_messages(key, &child_edges, obs, &sequence)?, no_data)
     };
 
     let (profile, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
@@ -90,6 +98,7 @@ impl SparseBackwardPass<'_> {
           smallvec![SparseEdgeBackward {
             msg_to_parent,
             msg_from_child,
+            child_no_data: no_data,
           }],
         )
       },
@@ -105,35 +114,59 @@ impl SparseBackwardPass<'_> {
     Ok((Arc::clone(&output), output))
   }
 
+  fn child_edges<'c>(
+    &self,
+    key: GraphNodeKey,
+    children: &'c [SparseBackwardOutput],
+  ) -> Result<Vec<&'c SparseEdgeBackward>, Report> {
+    izip!(self.schedule.children(key), children)
+      .map(|(&(child_key, edge_key), child)| {
+        child
+          .1
+          .get(self.schedule.parent_slot(edge_key))
+          .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))
+      })
+      .collect()
+  }
+
   fn combine_child_messages(
     &self,
     key: GraphNodeKey,
-    children: &[SparseBackwardOutput],
+    child_edges: &[&SparseEdgeBackward],
     obs: &SparseNodeObs,
+    sequence: &Seq,
   ) -> Result<SparseSeqDistribution, Report> {
     let partition = self.partition;
     let alphabet = &partition.alphabet;
     let child_keys = self.schedule.children(key);
-    let n_children = child_keys.len();
-    let mut child_messages = Vec::with_capacity(n_children);
-    let mut n_events = 0;
-    for (&(child_key, edge_key), child) in izip!(child_keys, children) {
-      let child_backward = child
-        .1
-        .get(self.schedule.parent_slot(edge_key))
-        .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))?;
-      n_events += 2 * partition.obs_edges[&edge_key].fitch_subs().len() + child_backward.msg_from_child.variable.len();
-      child_messages.push(&child_backward.msg_from_child);
-    }
+    let child_messages = child_edges.iter().map(|edge| &edge.msg_from_child).collect_vec();
+    let child_missing = child_edges
+      .iter()
+      .map(|edge| range_difference(&edge.child_no_data, &obs.non_char))
+      .collect_vec();
+    let n_events: usize = izip!(child_keys, &child_messages, &child_missing)
+      .map(|(&(_, edge_key), message, missing)| {
+        2 * partition.obs_edges[&edge_key].fitch_subs().len()
+          + message.variable.len()
+          + missing.iter().map(|(start, end)| end - start).sum::<usize>()
+      })
+      .sum();
 
-    let mut events = CandidateSiteEvents::with_capacity(n_children, n_events);
-    for (ci, (&(_, edge_key), child_message)) in izip!(child_keys, &child_messages).enumerate() {
+    let mut events = CandidateSiteEvents::with_capacity(child_keys.len(), n_events);
+    for (ci, (&(_, edge_key), child_message, missing)) in izip!(child_keys, &child_messages, &child_missing).enumerate()
+    {
       for mutation in partition.obs_edges[&edge_key].fitch_subs() {
         events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
         events.insert(mutation.pos(), SiteSlot::Reference(ci), mutation.qry());
       }
       for (pos, profile) in &child_message.variable {
         events.or_insert(*pos, SiteSlot::State, profile.state);
+      }
+      for pos in missing.iter().flat_map(|&(start, end)| start..end) {
+        let state = sequence[pos];
+        if alphabet.is_canonical(state) {
+          events.or_insert(pos, SiteSlot::State, state);
+        }
       }
     }
     let mut sites = events.finish();

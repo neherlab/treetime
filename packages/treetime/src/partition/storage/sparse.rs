@@ -127,6 +127,7 @@ impl SparseEdgeObs {
 pub struct SparseEdgeBackward {
   pub(crate) msg_to_parent: SparseSeqDistribution,
   pub(crate) msg_from_child: SparseSeqDistribution,
+  pub(crate) child_no_data: Vec<(usize, usize)>,
 }
 
 #[derive(Clone, Default, Debug)]
