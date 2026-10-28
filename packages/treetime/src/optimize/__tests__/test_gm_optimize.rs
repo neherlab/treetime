@@ -205,7 +205,7 @@ mod tests {
       pub(crate) names: NodeNames,
       pub(crate) branch_lengths: EdgeMap<Option<f64>>,
       pub(crate) lh_history: Vec<f64>,
-      pub(crate) stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
+      pub(crate) stopped_at: Option<(usize, crate::optimize::loop_history::ConvergenceReason)>,
     }
 
     pub(super) fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {

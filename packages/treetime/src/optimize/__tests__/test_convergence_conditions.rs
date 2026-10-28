@@ -6,10 +6,11 @@ mod tests {
   };
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
+  use crate::optimize::loop_history::ConvergenceReason;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::partition_rates::PartitionRates;
-  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::optimize::run_loop::run_optimize_loop;
   use crate::progress::NoopProgress;
   use eyre::Report;
   use num_traits::pow::pow;

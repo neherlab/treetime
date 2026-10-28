@@ -3,9 +3,9 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::GtrModel;
   use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::loop_history::TopologyHistory;
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates, update_partition_rates};
-  use crate::optimize::run_loop::record_if_best;
   use crate::progress::NoopProgress;
   use crate::test_utils::{Columns, TestDataset};
   use eyre::Report;
@@ -187,8 +187,8 @@ mod tests {
     } = build_set(&rate_blocks()?, false)?;
     let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths)?;
     let log_lh = LogLh::new(objective(&graph, &partitions, &branch_lengths, &indels)?);
-    let mut best = None;
-    record_if_best(&mut best, 0, log_lh, &branch_lengths, &partitions, &indels);
+    let mut history = TopologyHistory::new(0.0);
+    history.record(0, log_lh, &branch_lengths, &partitions, &indels);
     let recorded = (partitions.rates(), branch_lengths.clone(), indels.alignment_rates());
 
     let mut current_branch_lengths = branch_lengths;
@@ -202,7 +202,7 @@ mod tests {
     )?;
     assert_ne!(recorded.0, partitions.rates());
 
-    let best = best.expect("the first iteration is recorded");
+    let best = history.into_best().expect("the first iteration is recorded");
     let partitions = best.restore(&graph, partitions, &mut current_branch_lengths, &mut indels)?;
     assert_eq!(
       recorded,

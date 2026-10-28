@@ -4,6 +4,7 @@ use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_leng
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::EdgeIndels;
 use crate::optimize::iteration::apply_damping;
+use crate::optimize::loop_history::{ConvergenceReason, TopologyHistory};
 use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOps};
 use crate::optimize::partition_rates::update_partition_rates;
@@ -51,7 +52,7 @@ pub(crate) fn run_optimize_loop(
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
-  let mut best: Option<BestIteration> = None;
+  let mut history = TopologyHistory::new(dp);
 
   for i in 0..max_iter {
     let iteration = compute_iteration(graph, &state.branch_lengths, partitions, &indels)?;
@@ -60,21 +61,14 @@ pub(crate) fn run_optimize_loop(
     lh_history.push(lh);
     log_iteration_likelihood(i + 1, &iteration.likelihood);
 
-    if !lh.value().is_finite() {
-      stopped_at = Some((i, ConvergenceReason::NumericalFailure));
-      break;
-    }
-
-    record_if_best(&mut best, i, lh, &state.branch_lengths, &partitions, &indels);
-    let best_lh = best.as_ref().map_or(lh, |best| best.log_lh);
-    if let Some(reason) = stop_reason(&lh_history, best_lh, dp) {
+    if let Some(reason) = history.record(i, lh, &state.branch_lengths, &partitions, &indels) {
       stopped_at = Some((i, reason));
       break;
     }
 
     let cleanup = update_branch_lengths(graph, partitions, i, settings, &indels, &mut state)?;
     if cleanup.topology_changed {
-      best = None;
+      history.topology_changed();
     }
     partitions = update_partition_rates(
       graph,
@@ -92,15 +86,13 @@ pub(crate) fn run_optimize_loop(
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
     log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
-    if lh.value().is_finite() {
-      record_if_best(&mut best, max_iter, lh, &state.branch_lengths, &partitions, &indels);
-    }
+    history.record(max_iter, lh, &state.branch_lengths, &partitions, &indels);
   }
 
   log_stop(log, stopped_at, max_iter, dp);
 
-  if let Some(best) = best
-    && best.iteration + 1 != lh_history.len()
+  if let Some(best) = history.into_best()
+    && best.iteration() + 1 != lh_history.len()
   {
     partitions = best.restore(graph, partitions, &mut state.branch_lengths, &mut indels)?;
   }
@@ -135,57 +127,6 @@ pub(crate) struct OptimizeLoopResult {
   pub convergence: ConvergenceSummary,
 }
 
-pub(super) fn record_if_best(
-  best: &mut Option<BestIteration>,
-  iteration: usize,
-  log_lh: LogLh,
-  branch_lengths: &EdgeMap<Option<f64>>,
-  partitions: &PartitionSet,
-  indels: &EdgeIndels,
-) {
-  if best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
-    *best = Some(BestIteration {
-      iteration,
-      log_lh,
-      branch_lengths: branch_lengths.clone(),
-      rates: partitions.rates(),
-      indels: indels.clone(),
-    });
-  }
-}
-
-pub(super) struct BestIteration {
-  iteration: usize,
-  log_lh: LogLh,
-  branch_lengths: EdgeMap<Option<f64>>,
-  rates: Vec<f64>,
-  indels: EdgeIndels,
-}
-
-impl BestIteration {
-  pub(super) fn restore(
-    self,
-    graph: &Graph,
-    mut partitions: PartitionSet,
-    branch_lengths: &mut EdgeMap<Option<f64>>,
-    indels: &mut EdgeIndels,
-  ) -> Result<PartitionSet, Report> {
-    debug!(
-      "Returning the branch lengths and rates of iteration {} with the highest likelihood {}",
-      self.iteration + 1,
-      float_to_significant_digits(self.log_lh.value(), 7)
-    );
-    *branch_lengths = self.branch_lengths;
-    partitions.set_rates(&self.rates)?;
-    *indels = self.indels;
-    Ok(
-      partitions
-        .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
-        .0,
-    )
-  }
-}
-
 fn log_stop(log: &dyn LogSink, stopped_at: Option<(usize, ConvergenceReason)>, max_iter: usize, dp: f64) {
   match stopped_at {
     Some((i, reason)) => {
@@ -202,35 +143,6 @@ fn log_stop(log: &dyn LogSink, stopped_at: Option<(usize, ConvergenceReason)>, m
     None if max_iter == 0 => progress_info!(log, "Optimization loop skipped: the iteration limit is 0"),
     None => progress_info!(log, "Optimization loop reached the iteration limit of {max_iter}"),
   }
-}
-
-fn stop_reason(lh_history: &[LogLh], best_lh: LogLh, dp: f64) -> Option<ConvergenceReason> {
-  let iteration = lh_history.len().checked_sub(1)?;
-  let earlier = |steps: usize| {
-    iteration
-      .checked_sub(steps)
-      .map_or(LogLh::IMPOSSIBLE, |i| lh_history[i])
-  };
-  let lh = lh_history[iteration];
-  let lh_prev = earlier(1);
-  let lh_prev_prev = earlier(2);
-  if (lh - lh_prev).abs() < dp.abs() {
-    Some(ConvergenceReason::Converged)
-  } else if iteration >= 2 && (lh - lh_prev_prev).abs() < dp.abs() {
-    Some(ConvergenceReason::Oscillating)
-  } else if iteration >= 2 && lh < lh_prev && lh_prev >= best_lh {
-    Some(ConvergenceReason::Worsened)
-  } else {
-    None
-  }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ConvergenceReason {
-  Converged,
-  Oscillating,
-  Worsened,
-  NumericalFailure,
 }
 
 fn update_branch_lengths(

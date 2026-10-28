@@ -8,7 +8,8 @@ mod tests {
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::partition_rates::PartitionRates;
-  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::optimize::loop_history::ConvergenceReason;
+  use crate::optimize::run_loop::run_optimize_loop;
   use crate::progress::{LogLevel, NoopProgress};
   use crate::test_utils::{RecordingLog, SingleReconstruction};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};

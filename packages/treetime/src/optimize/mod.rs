@@ -9,6 +9,7 @@ pub(crate) mod gather;
 pub mod indel;
 pub(crate) mod iteration;
 pub mod likelihood;
+pub(crate) mod loop_history;
 pub(super) mod method_brent;
 pub(super) mod method_newton;
 pub mod params;
