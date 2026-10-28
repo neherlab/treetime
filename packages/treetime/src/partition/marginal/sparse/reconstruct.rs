@@ -180,7 +180,7 @@ pub(crate) fn impute_state(
     .map_or(observed, |idx| alphabet.char(idx))
 }
 
-fn leaf_posterior(
+pub(crate) fn leaf_posterior(
   observed: AsciiChar,
   pos: usize,
   down: &SparseSeqDistribution,
