@@ -221,8 +221,8 @@ fn retire_created_helpers(
 
     match candidate {
       Some((edge_key, helper_key)) => {
+        ledger.reject_retired_helper(graph, helper_key)?;
         collapse_edge(graph, sparse, groups, edge_key, branch_lengths)?;
-        ledger.forget_helper(helper_key);
         retired = true;
       },
       None => break,

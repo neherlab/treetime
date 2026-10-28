@@ -128,20 +128,36 @@ impl MergeLedger {
     edge_key: GraphEdgeKey,
   ) -> Result<(), Report> {
     let helper_key = graph.get_target_node_key(edge_key)?;
-    if let Some(children) = self.helper_children.remove(&helper_key) {
+    if self.reject_helper(graph, helper_key)? {
       let parent_key = graph.get_source_node_key(edge_key)?;
       let parent_name = &names[parent_key];
-      debug!(
-        "Rejected the merge of {} siblings under node '{parent_name}': the optimized length of their new edge is 0",
-        children.len(),
-      );
-      self.rejected.insert(children);
+      debug!("Rejected the merge under node '{parent_name}': the optimized length of its new edge is 0");
+    }
+    Ok(())
+  }
+
+  pub(crate) fn reject_retired_helper(&mut self, graph: &Graph, helper_key: GraphNodeKey) -> Result<(), Report> {
+    if self.reject_helper(graph, helper_key)? {
+      debug!("Rejected the merge of helper node {helper_key}: its edge carries no mutation");
     }
     Ok(())
   }
 
   pub(crate) fn forget_helper(&mut self, helper_key: GraphNodeKey) {
     self.helper_children.remove(&helper_key);
+  }
+
+  fn reject_helper(&mut self, graph: &Graph, helper_key: GraphNodeKey) -> Result<bool, Report> {
+    if self.helper_children.remove(&helper_key).is_none() {
+      return Ok(false);
+    }
+    let children = graph[helper_key]
+      .outbound()
+      .iter()
+      .map(|&edge_key| graph.get_target_node_key(edge_key))
+      .collect::<Result<BTreeSet<_>, Report>>()?;
+    self.rejected.insert(children);
+    Ok(true)
   }
 }
 
