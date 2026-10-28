@@ -111,7 +111,7 @@ function Viewer({
       ref={measureViewer}
       // oxlint-disable-next-line react/forbid-dom-props -- the sidebar width comes from Auspice's layout constants, which no Tailwind class can hold
       style={VIEWER_STYLE}
-      className="light-scope relative min-w-0 overflow-hidden rounded-lg border bg-white"
+      className="bg-card text-foreground relative min-w-0 overflow-hidden rounded-lg border scheme-light"
     >
       {docked && (
         <DockedSidebar store={store} open={open} onOpenChange={setOpen} sidebarId={sidebarId} entropy={entropy}>

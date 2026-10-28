@@ -11,7 +11,7 @@ import {
   type Rgb,
 } from "culori/fn";
 
-import type { Oklch } from "./tokens";
+import type { Oklch, ThemePair } from "./tokens";
 
 const MODES = [modeRgb, modeLrgb, modeOklab, modeOklch] as const;
 
@@ -30,6 +30,10 @@ export function hexColor(color: Oklch): string {
   return formatHex(srgb(color));
 }
 
+export function hexPair(pair: ThemePair): HexPair {
+  return { light: hexColor(pair.light), dark: hexColor(pair.dark) };
+}
+
 export function rgbBytes(color: Oklch): RgbBytes {
   const { r, g, b } = srgb(color);
 
@@ -38,6 +42,11 @@ export function rgbBytes(color: Oklch): RgbBytes {
 
 export function contrastRatio(foreground: Oklch, background: Oklch): number {
   return wcagContrast(srgb(foreground), srgb(background));
+}
+
+export interface HexPair {
+  light: string;
+  dark: string;
 }
 
 export interface RgbBytes {

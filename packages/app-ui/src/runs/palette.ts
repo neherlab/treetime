@@ -2,13 +2,13 @@ import { scaleLinear } from "d3-scale";
 import type { LabelProps } from "recharts";
 
 export const CHART = {
-  ink: "var(--foreground)",
-  muted: "var(--muted-foreground)",
+  ink: "var(--chart-ink)",
+  muted: "var(--chart-muted)",
   grid: "var(--chart-grid)",
-  accent: "var(--chart-1)",
-  fault: "var(--destructive)",
-  tip: "var(--chart-3)",
-  selection: "var(--chart-2)",
+  series: "var(--chart-series)",
+  fit: "var(--chart-fit)",
+  fault: "var(--chart-fault)",
+  selection: "var(--chart-selection)",
 } as const;
 
 export const TICK_STYLE = { fontSize: 11 } as const;

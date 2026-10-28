@@ -4,6 +4,8 @@ import "katex/dist/katex.min.css";
 import "../styles/docs.css";
 
 import { m, type Locale } from "@neherlab/app-ui/i18n";
+import { hexPair } from "@neherlab/design/color";
+import { BASE_COLORS } from "@neherlab/design/tokens";
 
 import DocsHeader from "../components/DocsHeader.astro";
 import { NavTree } from "../components/NavTree";
@@ -29,6 +31,8 @@ const { locale, title, description, template, version, versionLabel, page, nodes
 
 const fullTitle = `${title} | ${m.docs_site_name({}, { locale })}`;
 
+const themeColor = hexPair(BASE_COLORS.background);
+
 const absolute = (url: string) => new URL(url, Astro.site).href;
 ---
 
@@ -45,8 +49,8 @@ const absolute = (url: string) => new URL(url, Astro.site).href;
     <link rel="icon" href={assetUrl("favicon.svg")} type="image/svg+xml" />
     <link rel="icon" href={assetUrl("favicon.ico")} sizes="32x32" />
     <link rel="apple-touch-icon" href={assetUrl("apple-touch-icon.png")} />
-    <meta name="theme-color" content="#e9eeec" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0e1615" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content={themeColor.light} media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content={themeColor.dark} media="(prefers-color-scheme: dark)" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={fullTitle} />
     {description !== undefined && <meta property="og:description" content={description} />}

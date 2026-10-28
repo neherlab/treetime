@@ -35,7 +35,7 @@ export const SiteHitsChart = memo(function SiteHitsChart({ rows }: { rows: reado
           label={leftAxisLabel("Sites")}
         />
         <ChartTooltip content={<SiteHitsTooltip byHits={byHits} />} isAnimationActive={false} />
-        <Bar dataKey="sitesShown" name="Observed" fill={CHART.accent} isAnimationActive={false} />
+        <Bar dataKey="sitesShown" name="Observed" fill={CHART.series} isAnimationActive={false} />
         <Line
           dataKey="expectedShown"
           name="Poisson expectation"
@@ -72,7 +72,7 @@ export const MultiplicityChart = memo(function MultiplicityChart({ rows }: { row
           label={leftAxisLabel("Distinct substitutions")}
         />
         <ChartTooltip content={<MultiplicityTooltip byBranches={byBranches} />} isAnimationActive={false} />
-        <Bar dataKey="mutationsShown" name="Distinct substitutions" fill={CHART.accent} isAnimationActive={false} />
+        <Bar dataKey="mutationsShown" name="Distinct substitutions" fill={CHART.series} isAnimationActive={false} />
       </BarChart>
     </ChartContainer>
   );

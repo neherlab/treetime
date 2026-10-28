@@ -23,7 +23,7 @@ export function RateTrace({ iterations }: { iterations: readonly IterationPoint[
         <Line
           dataKey="clockRate"
           name="Clock rate"
-          stroke={CHART.accent}
+          stroke={CHART.series}
           strokeWidth={1.6}
           dot={DOT}
           isAnimationActive={false}

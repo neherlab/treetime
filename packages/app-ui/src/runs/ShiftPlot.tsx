@@ -43,7 +43,7 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
         <ZAxis type="number" dataKey="z" range={CLADE_SIZE} />
         <ReferenceLine y={0} stroke={CHART.muted} strokeDasharray="3 3" />
         <ChartTooltip content={<ShiftTooltip />} isAnimationActive={false} />
-        <Scatter data={data} fill={CHART.accent} fillOpacity={0.65} isAnimationActive={false} />
+        <Scatter data={data} fill={CHART.series} fillOpacity={0.65} isAnimationActive={false} />
       </ScatterChart>
     </ChartContainer>
   );

@@ -93,7 +93,7 @@ export const GenomeSitesChart = memo(function GenomeSitesChart({
           <ChartTooltip content={<SiteTooltip byPosition={byPosition} />} isAnimationActive={false} />
           <Bar
             dataKey="branches"
-            fill={CHART.accent}
+            fill={CHART.series}
             isAnimationActive={false}
             // oxlint-disable-next-line anti-slop/no-shape-in-symbol-names -- `shape` is the Recharts prop that draws each bar
             shape={SiteBar}
@@ -111,7 +111,7 @@ export const GenomeSitesChart = memo(function GenomeSitesChart({
 function SiteBar({ x, y, width, height }: BarGeometry) {
   const drawn = Math.max(MIN_BAR_WIDTH, width);
 
-  return <Rectangle x={x + (width - drawn) / 2} y={y} width={drawn} height={height} fill={CHART.accent} />;
+  return <Rectangle x={x + (width - drawn) / 2} y={y} width={drawn} height={height} fill={CHART.series} />;
 }
 
 interface BarGeometry {

@@ -2,14 +2,14 @@ import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "@neherlab/design/ui/sid
 
 import { WINDOW_BACKGROUND, WINDOW_MIN_SIZE, windowBackground } from "../window";
 
-import tokensCss from "../tokens.css?raw";
+const HEX_COLOR = /^#[0-9a-f]{6}$/u;
 
 describe("window background", () => {
-  test("the window colors equal the page backgrounds of the light and the dark theme", () => {
-    expect(WINDOW_BACKGROUND).toStrictEqual({
-      light: themeBackground(":root,\n.light-scope {"),
-      dark: themeBackground(".dark {"),
-    });
+  test("the window colors are opaque hex colors, the format Electron accepts", () => {
+    expect([WINDOW_BACKGROUND.light, WINDOW_BACKGROUND.dark]).toStrictEqual([
+      expect.stringMatching(HEX_COLOR),
+      expect.stringMatching(HEX_COLOR),
+    ]);
   });
 
   test.each([
@@ -29,9 +29,3 @@ describe("window minimum size", () => {
     expect([WINDOW_MIN_SIZE.width <= 1097, WINDOW_MIN_SIZE.height <= 569]).toStrictEqual([true, true]);
   });
 });
-
-function themeBackground(selector: string): string | undefined {
-  const block = tokensCss.slice(tokensCss.indexOf(selector));
-
-  return /--background:\s*(#[0-9a-f]{6});/u.exec(block)?.[1];
-}

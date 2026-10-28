@@ -1,0 +1,54 @@
+/*
+ * Tailwind CSS theme of the neherlab design language. Import it after `tailwindcss`:
+ *
+ *   @import "tailwindcss";
+ *   @import "@neherlab/design/tailwind.css";
+ *
+ * Colors follow the used color-scheme of each element: `scheme-light` keeps a subtree light inside a dark page,
+ * for example a view without a dark theme. The `dark:` variant applies under the `dark` class of the root, outside
+ * such a subtree.
+ */
+
+@import "./tokens.css";
+@import "./tailwind-theme.css";
+@import "../../node_modules/tw-animate-css/dist/tw-animate.css";
+@import "../ui/shadcn.css";
+
+@source "../ui";
+
+@custom-variant dark (&:is(.dark *):not(.scheme-light, .scheme-light *));
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans lining-nums tabular-nums antialiased;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-variant-ligatures: none;
+  }
+
+  /* Recharts makes its charts and their layers focusable for keyboard navigation; a mouse click should not outline them */
+  .recharts-wrapper :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

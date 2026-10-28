@@ -80,8 +80,8 @@ export function DateIntervals({
           className={onOpen === undefined ? "" : "cursor-pointer"}
         />
         <ChartTooltip content={<IntervalTooltip rows={rows} />} isAnimationActive={false} cursor={false} />
-        <Bar dataKey="interval" barSize={BAR_SIZE} fill={CHART.accent} fillOpacity={0.35} isAnimationActive={false} />
-        <Scatter dataKey="otherYear" fill={CHART.accent} isAnimationActive={false} />
+        <Bar dataKey="interval" barSize={BAR_SIZE} fill={CHART.series} fillOpacity={0.35} isAnimationActive={false} />
+        <Scatter dataKey="otherYear" fill={CHART.series} isAnimationActive={false} />
         <Scatter dataKey="currentYear" fill={CHART.selection} isAnimationActive={false} />
       </ComposedChart>
     </div>

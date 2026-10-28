@@ -23,7 +23,6 @@
       "entry": ["src/App.tsx!", "src/auspice/extensions.ts!"],
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"],
       "ignoreDependencies": [
-        "tw-animate-css",
         "@svgr/plugin-jsx",
         "@oxc-project/runtime",
         "@inlang/plugin-message-format",
@@ -54,7 +53,8 @@
     },
     "packages/design": {
       "entry": ["build/generate.ts!"],
-      "project": ["src/**/*.{ts,tsx}!", "build/**/*.ts!", "!src/**/__tests__/**!"]
+      "project": ["src/**/*.{ts,tsx}!", "build/**/*.ts!", "!src/**/__tests__/**!"],
+      "ignoreDependencies": ["tw-animate-css"]
     },
     "packages/app-wasm": {
       "entry": ["smoke.ts"]

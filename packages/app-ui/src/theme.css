@@ -1,23 +1,2 @@
-@import "./tokens.css";
-@import "./components.css";
-@import "./base.css";
-
-@source "../../design/src/ui";
-
-@layer base {
-  body {
-    @apply bg-background text-foreground font-sans lining-nums tabular-nums antialiased;
-  }
-
-  /* Recharts makes its charts and their layers focusable for keyboard navigation; a mouse click should not outline them */
-  .recharts-wrapper :focus:not(:focus-visible) {
-    outline: none;
-  }
-}
-
-/* Auspice has no dark theme: its panels keep the light tokens (set with :root in tokens.css) inside a dark page */
-@utility light-scope {
-  color-scheme: light;
-  background-color: var(--background);
-  color: var(--foreground);
-}
+@import "@neherlab/design/tailwind.css";
+@import "./auspice/viewer.css";

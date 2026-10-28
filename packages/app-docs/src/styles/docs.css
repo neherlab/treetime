@@ -1,10 +1,7 @@
 @import "tailwindcss";
-@import "../../../app-ui/src/tokens.css";
-@import "../../../app-ui/src/components.css";
-@import "../../../app-ui/src/base.css";
+@import "@neherlab/design/tailwind.css";
 @plugin "@tailwindcss/typography";
 @source "../../../app-ui/src";
-@source "../../../design/src/ui";
 @source "../../../../docs";
 
 @layer base {
@@ -25,7 +22,7 @@
   --tw-prose-body: var(--foreground);
   --tw-prose-headings: var(--foreground);
   --tw-prose-lead: var(--muted-foreground);
-  --tw-prose-links: var(--primary);
+  --tw-prose-links: var(--link);
   --tw-prose-bold: var(--foreground);
   --tw-prose-counters: var(--muted-foreground);
   --tw-prose-bullets: var(--muted-foreground);

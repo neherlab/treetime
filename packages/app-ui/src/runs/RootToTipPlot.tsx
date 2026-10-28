@@ -37,10 +37,10 @@ const RING_SIZE: [number, number] = [220, 220];
 
 const SERIES_LOOK: readonly SeriesLook[] = [
   { key: "inferredFaded", fill: CHART.muted, opacity: FADED_OPACITY },
-  { key: "tipsFaded", fill: CHART.tip, opacity: FADED_OPACITY },
+  { key: "tipsFaded", fill: CHART.series, opacity: FADED_OPACITY },
   { key: "excludedFaded", fill: CHART.fault, opacity: FADED_OPACITY },
   { key: "inferred", fill: CHART.muted, opacity: 1 },
-  { key: "tips", fill: CHART.tip, opacity: 1 },
+  { key: "tips", fill: CHART.series, opacity: 1 },
   { key: "excluded", fill: CHART.fault, opacity: 1 },
 ];
 
@@ -85,7 +85,7 @@ export function RootToTipPlot({
           <span />
         ) : (
           <p className="text-muted-foreground">
-            <span className="bg-chart-1 mr-1.5 inline-block h-0.5 w-4 align-middle" />
+            <span className="bg-chart-fit mr-1.5 inline-block h-0.5 w-4 align-middle" />
             {line.label}
           </p>
         )}
@@ -125,7 +125,7 @@ export function RootToTipPlot({
           <ZAxis zAxisId="ring" range={RING_SIZE} />
           <ChartTooltip content={<PointTooltip />} isAnimationActive={false} />
           {segment !== undefined && (
-            <ReferenceLine segment={segment} stroke={CHART.accent} strokeWidth={1.5} ifOverflow="hidden" />
+            <ReferenceLine segment={segment} stroke={CHART.fit} strokeWidth={1.5} ifOverflow="hidden" />
           )}
           {SERIES_LOOK.map((look) => (
             <SeriesScatter key={look.key} look={look} points={series[look.key]} onSelect={onSelect} />

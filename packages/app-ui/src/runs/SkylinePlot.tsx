@@ -56,7 +56,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
           dataKey="band"
           type="linear"
           stroke="none"
-          fill={CHART.accent}
+          fill={CHART.series}
           fillOpacity={0.15}
           isAnimationActive={false}
           name="Interval"
@@ -64,7 +64,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
         <Line
           dataKey="ne"
           type="linear"
-          stroke={CHART.accent}
+          stroke={CHART.series}
           strokeWidth={1.8}
           dot={false}
           isAnimationActive={false}

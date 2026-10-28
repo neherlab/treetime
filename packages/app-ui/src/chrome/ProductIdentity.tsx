@@ -14,7 +14,7 @@ export function ProductIdentity({
   const content = (
     <>
       <img src={logoSrc} alt="" className="size-6" />
-      <span className="font-heading text-base font-bold">TreeTime</span>
+      <span className="text-foreground font-mono text-base font-medium tracking-tight">treetime</span>
       {version !== undefined && (
         <span className="text-muted-foreground font-mono text-xs">{m.chrome_version({ version }, { locale })}</span>
       )}
