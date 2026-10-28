@@ -86,6 +86,10 @@ impl CandidateSites {
     self.sites.len()
   }
 
+  pub(crate) fn contains(&self, pos: usize) -> bool {
+    self.sites.binary_search_by_key(&pos, |&(site, _)| site).is_ok()
+  }
+
   pub(crate) fn iter(&self) -> impl Iterator<Item = (usize, AsciiChar, &[Option<AsciiChar>])> {
     let n = self.n_messages;
     self

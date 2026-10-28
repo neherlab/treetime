@@ -28,6 +28,7 @@ use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::{AsciiTable, LogLh};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn process_forward_indexed(
@@ -122,7 +123,10 @@ impl SparseForwardPass<'_> {
     let edge_obs = &partition.obs_edges[&edge_key];
     let parent_obs = &partition.obs_nodes[&parent_key];
 
-    let msg_to_child = compute_msg_to_child(obs, parent, parent_obs, edge_obs, backward)?;
+    let OutsideMessage {
+      msg_to_child,
+      child_missing,
+    } = compute_msg_to_child(alphabet, obs, parent, parent_obs, edge_obs, backward)?;
 
     let n_events =
       3 * edge_obs.fitch_subs().len() + 2 * (msg_to_child.variable.len() + backward.msg_to_parent.variable.len());
@@ -146,11 +150,7 @@ impl SparseForwardPass<'_> {
     let sites = events.finish();
 
     let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
-    let msg_from_parent = if let Some(site_rates) = gtr.site_rates() {
-      propagate_raw_per_site(gtr, site_rates, branch_length, false, &msg_to_child)
-    } else {
-      propagate_raw(&gtr.expQt(branch_length), &msg_to_child)
-    };
+    let msg_from_parent = propagate_forward(gtr, branch_length, &msg_to_child);
     let profile = combine_messages(
       &obs.composition,
       &[&msg_from_parent, &backward.msg_to_parent],
@@ -160,6 +160,18 @@ impl SparseForwardPass<'_> {
     )?;
     node.profile = profile;
     let msg_from_parent_out = if is_leaf {
+      let child_missing = propagate_forward(
+        gtr,
+        branch_length,
+        &SparseSeqDistribution {
+          variable: child_missing,
+          ..SparseSeqDistribution::default()
+        },
+      );
+      let mut msg_from_parent = msg_from_parent;
+      for (&pos, outside) in &child_missing.variable {
+        msg_from_parent.variable.insert(pos, outside.state, outside.dis);
+      }
       msg_from_parent
     } else {
       SparseSeqDistribution::default()
@@ -183,13 +195,22 @@ struct SparseEdgeForwardOut {
   subs_ml: Vec<Sub>,
 }
 
+fn propagate_forward(gtr: &GTR, branch_length: f64, message: &SparseSeqDistribution) -> SparseSeqDistribution {
+  if let Some(site_rates) = gtr.site_rates() {
+    propagate_raw_per_site(gtr, site_rates, branch_length, false, message)
+  } else {
+    propagate_raw(&gtr.expQt(branch_length), message)
+  }
+}
+
 fn compute_msg_to_child(
+  alphabet: &Alphabet,
   child_obs: &SparseNodeObs,
   parent: &SparseNodeState,
   parent_obs: &SparseNodeObs,
   edge_obs: &SparseEdgeObs,
   backward: &SparseEdgeBackward,
-) -> Result<SparseSeqDistribution, Report> {
+) -> Result<OutsideMessage, Report> {
   let child_dis = &backward.msg_from_child;
   let n_events = 2 * (edge_obs.fitch_subs().len() + parent.profile.variable.len() + child_dis.variable.len());
   let mut events = CandidateSiteEvents::with_capacity(1, n_events);
@@ -228,6 +249,20 @@ fn compute_msg_to_child(
     seq_dis.variable.insert(pos, parent_state, &dis);
     removed[parent_state] += 1;
   }
+  let missing = range_difference(&backward.child_no_data, &parent_obs.non_char);
+  let mut child_missing = VarPosMap::with_capacity(missing.iter().map(|(start, end)| end - start).sum());
+  for pos in missing.iter().flat_map(|&(start, end)| start..end) {
+    let parent_state = parent.sequence[pos];
+    if sites.contains(pos) || !alphabet.is_canonical(parent_state) {
+      continue;
+    }
+    let posterior = parent.profile.variable.get(pos).map_or_else(
+      || parent.profile.fixed[parent_state].dis.as_slice(),
+      |distribution| distribution.dis,
+    );
+    child_missing.insert(pos, parent_state, posterior);
+    removed[parent_state] += 1;
+  }
   for fixed in parent.profile.fixed.iter() {
     let state = fixed.state;
     let mut dis = divide_out_site(&fixed.dis, &child_dis.fixed[state].dis);
@@ -241,7 +276,15 @@ fn compute_msg_to_child(
     seq_dis.fixed.insert(state, count, dis);
   }
   seq_dis.log_lh += delta_ll;
-  Ok(seq_dis)
+  Ok(OutsideMessage {
+    msg_to_child: seq_dis,
+    child_missing,
+  })
+}
+
+struct OutsideMessage {
+  msg_to_child: SparseSeqDistribution,
+  child_missing: VarPosMap,
 }
 
 fn compute_ml_subs_for_nodes(
