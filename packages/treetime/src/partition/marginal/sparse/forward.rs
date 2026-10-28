@@ -160,21 +160,24 @@ impl SparseForwardPass<'_> {
       None,
     )?;
     node.profile = profile;
+    let child_missing = propagate_forward(
+      gtr,
+      branch_length,
+      &SparseSeqDistribution {
+        variable: child_missing,
+        ..SparseSeqDistribution::default()
+      },
+    );
     let msg_from_parent_out = if is_leaf {
-      let child_missing = propagate_forward(
-        gtr,
-        branch_length,
-        &SparseSeqDistribution {
-          variable: child_missing,
-          ..SparseSeqDistribution::default()
-        },
-      );
       let mut msg_from_parent = msg_from_parent;
       for (&pos, outside) in &child_missing.variable {
         msg_from_parent.variable.insert(pos, outside.state, outside.dis);
       }
       msg_from_parent
     } else {
+      for (&pos, outside) in &child_missing.variable {
+        node.profile.variable.insert(pos, outside.state, outside.dis);
+      }
       SparseSeqDistribution::default()
     };
 

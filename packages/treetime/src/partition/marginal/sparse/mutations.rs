@@ -158,7 +158,7 @@ impl<'a> EdgeChild<'a> {
 
 fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
   let state = node.sequence[pos];
-  if state == alphabet.gap() {
+  if state == alphabet.gap() || state == alphabet.unknown() {
     return state;
   }
   node.profile.variable.get(pos).map_or(state, |var| {

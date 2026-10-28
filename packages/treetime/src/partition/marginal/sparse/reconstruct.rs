@@ -75,7 +75,7 @@ fn variable_states<'a>(
     .profile
     .variable
     .iter()
-    .filter(|&(&pos, _)| node.sequence[pos] != alphabet.gap())
+    .filter(|&(&pos, _)| has_fitch_state(node, pos, alphabet))
     .map(move |(&pos, var)| (pos, alphabet.char(resolve_profile(aview1(var.dis), resolve))))
 }
 
@@ -115,7 +115,7 @@ pub(crate) fn internal_ambiguity(
     .profile
     .variable
     .iter()
-    .filter(|&(&pos, _)| node.sequence[pos] != alphabet.gap())
+    .filter(|&(&pos, _)| has_fitch_state(node, pos, alphabet))
     .filter_map(|(&pos, var)| {
       threshold
         .ambiguity_char(&aview1(var.dis), alphabet)
@@ -202,6 +202,11 @@ pub(crate) fn leaf_posterior(
     posterior /= total;
   }
   Some(posterior)
+}
+
+fn has_fitch_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> bool {
+  let state = node.sequence[pos];
+  state != alphabet.gap() && state != alphabet.unknown()
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
