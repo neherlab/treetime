@@ -1,11 +1,21 @@
+use crate::branch_lengths::one_mutation;
+use crate::optimize::indel::EdgeIndels;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
-use crate::partition::marginal::sparse::alignment_indels::{composed_edge_pieces, store_edge_pieces};
+use crate::partition::marginal::sparse::alignment_indels::{
+  composed_edge_pieces, sparse_alignment_groups, store_edge_pieces,
+};
+use crate::partition::set::PartitionSet;
 use crate::seq::mutation::compose_substitutions;
 use eyre::Report;
+use itertools::Itertools;
+use log::debug;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
+use treetime_graph::schedule::GraphSchedule;
+
+const SHORT_BRANCH_MUTATIONS: f64 = 0.1;
 
 pub(crate) fn collapse_edge(
   graph: &mut Graph,
@@ -59,4 +69,53 @@ pub(crate) fn collapse_edge(
   branch_lengths.remove(edge_key);
 
   Ok(())
+}
+
+pub(crate) fn collapse_short_internal_edges(
+  graph: &mut Graph,
+  mut partitions: PartitionSet,
+  indels: &EdgeIndels,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
+) -> Result<PartitionSet, Report> {
+  let total_length = partitions.total_length();
+  let threshold = if total_length > 0 {
+    SHORT_BRANCH_MUTATIONS * one_mutation(total_length)
+  } else {
+    0.0
+  };
+  let schedule = GraphSchedule::new(graph)?;
+  let short_edges = schedule
+    .postorder()
+    .iter()
+    .filter(|&&node_key| !graph.is_leaf(node_key))
+    .flat_map(|&node_key| schedule.parents(node_key).iter().map(|&(_, edge_key)| edge_key))
+    .filter(|&edge_key| !indels.term(edge_key).requires_positive_length())
+    .map(|edge_key| {
+      let length = branch_lengths[&edge_key].unwrap_or(0.0);
+      let is_short = length == 0.0 || (length < threshold && !carries_substitution(graph, &partitions, edge_key)?);
+      Ok(is_short.then_some(edge_key))
+    })
+    .flatten_ok()
+    .collect::<Result<Vec<_>, Report>>()?;
+  if short_edges.is_empty() {
+    return Ok(partitions);
+  }
+
+  let sparse = partitions.sparse_mut();
+  let groups = sparse_alignment_groups(sparse)?;
+  for &edge_key in &short_edges {
+    collapse_edge(graph, sparse, &groups, edge_key, branch_lengths)?;
+  }
+  debug!(
+    "Collapsed {} internal edges shorter than {threshold} without substitutions after the optimization loop",
+    short_edges.len()
+  );
+  graph.build()?;
+  Ok(partitions.reconcile_node_states(graph))
+}
+
+fn carries_substitution(graph: &Graph, partitions: &PartitionSet, edge_key: GraphEdgeKey) -> Result<bool, Report> {
+  partitions.iter().try_fold(false, |carries, partition| {
+    Ok(carries || partition.edge_sub_count(graph, edge_key)?.is_none_or(|count| count > 0))
+  })
 }

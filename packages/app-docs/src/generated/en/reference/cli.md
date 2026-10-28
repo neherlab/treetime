@@ -1285,7 +1285,7 @@ treetime optimize -t tree.nwk -a aln.fasta.xz --model hky85 --reroot min-dev --o
 
 * `--no-collapse-short-branches` — Disable collapsing of short internal branches.
 
-   By default the optimize loop contracts every internal edge whose optimized length is zero, unless an indel on the edge enters the likelihood and needs a positive length. The substitutions and indels of a contracted edge move to its child edges, and the nodes it joined become one polytomy. When set, such edges are kept in the output tree with length zero.
+   By default the optimize loop contracts every internal edge whose optimized length is zero, unless an indel on the edge enters the likelihood and needs a positive length. After the loop, internal edges shorter than 0.1/L (L is the number of sites of all alignments) with no substitution in the marginal reconstruction are contracted too. The substitutions and indels of a contracted edge move to its child edges, and the nodes it joined become one polytomy. When set, such edges are kept in the output tree.
 * `--no-merge-shared-mutations` — Disable merging of polytomy siblings that share substitutions.
 
    By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. The step and the flag apply only to the sparse representation.

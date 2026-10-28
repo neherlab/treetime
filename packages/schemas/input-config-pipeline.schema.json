@@ -3942,7 +3942,7 @@
         "no_collapse_short_branches": {
           "anyOf": [
             {
-              "description": "Disable collapsing of short internal branches.\n\nBy default the optimize loop contracts every internal edge whose optimized length is zero,\nunless an indel on the edge enters the likelihood and needs a positive length. The\nsubstitutions and indels of a contracted edge move to its child edges, and the nodes it\njoined become one polytomy. When set, such edges are kept in the output tree with length zero.",
+              "description": "Disable collapsing of short internal branches.\n\nBy default the optimize loop contracts every internal edge whose optimized length is zero,\nunless an indel on the edge enters the likelihood and needs a positive length. After the\nloop, internal edges shorter than 0.1/L (L is the number of sites of all alignments) with no\nsubstitution in the marginal reconstruction are contracted too. The substitutions and indels\nof a contracted edge move to its child edges, and the nodes it joined become one polytomy.\nWhen set, such edges are kept in the output tree.",
               "type": "boolean",
               "default": false
             },

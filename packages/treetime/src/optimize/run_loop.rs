@@ -9,7 +9,7 @@ use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOps};
 use crate::optimize::partition_rates::update_partition_rates;
 use crate::optimize::solver_outcome::ConvergenceSummary;
-use crate::optimize::topology::collapse::collapse_edge;
+use crate::optimize::topology::collapse::{collapse_edge, collapse_short_internal_edges};
 use crate::optimize::topology::merge_shared_mutations::MergeLedger;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
@@ -130,6 +130,11 @@ pub(crate) fn run_optimize_loop(
     && best.iteration() + 1 != lh_history.len()
   {
     partitions = best.restore(graph, partitions, &mut state.branch_lengths, &mut indels)?;
+  }
+
+  if settings.topology_ops.collapse_short_branches {
+    let current_indels = indels.recount(graph, &partitions)?;
+    partitions = collapse_short_internal_edges(graph, partitions, &current_indels, &mut state.branch_lengths)?;
   }
 
   Ok(OptimizeLoopResult {
