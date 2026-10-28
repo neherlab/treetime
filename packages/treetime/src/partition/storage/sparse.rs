@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::shared::update::MarginalNodeState;
-use crate::partition::storage::site_groups::SiteGroups;
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
@@ -142,28 +141,9 @@ pub struct SparseEdgeForward {
 pub struct SparseSeqDistribution {
   pub(crate) variable: VarPosMap,
 
-  pub(crate) groups: SiteGroups,
-
   pub(crate) fixed: FixedProfiles,
 
   pub(crate) log_lh: LogLh,
-}
-
-impl SparseSeqDistribution {
-  pub(crate) fn profile_at(&self, pos: usize, state: AsciiChar) -> Option<&[f64]> {
-    if let Some(var) = self.variable.get(pos) {
-      return Some(var.dis);
-    }
-    self.shared_profile_at(pos, state)
-  }
-
-  pub(crate) fn shared_profile_at(&self, pos: usize, state: AsciiChar) -> Option<&[f64]> {
-    self
-      .groups
-      .entry(pos, state)
-      .or_else(|| self.fixed.get(state))
-      .map(|entry| entry.dis.as_slice())
-  }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -195,10 +175,6 @@ impl FixedProfiles {
 
   pub(crate) fn len(&self) -> usize {
     self.entries.len()
-  }
-
-  pub(crate) fn is_empty(&self) -> bool {
-    self.entries.is_empty()
   }
 
   pub(crate) fn map_dis(&self, transform: impl Fn(&SiteProfile) -> SiteProfile) -> Self {

@@ -41,9 +41,7 @@ pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
 }
 
 pub(crate) fn map_seq_overlay(node: &SparseNodeState, alphabet: &Alphabet) -> SeqOverlay {
-  let overrides = variable_states(node, alphabet, &mut Resolve::Argmax)
-    .chain(changed_group_states(node, alphabet))
-    .collect();
+  let overrides = variable_states(node, alphabet, &mut Resolve::Argmax).collect();
   SeqOverlay::new(Arc::clone(&node.sequence), overrides)
 }
 
@@ -59,33 +57,13 @@ pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resol
       if node.profile.variable.contains_key(pos) {
         continue;
       }
-      if let Some(dis) = node.profile.shared_profile_at(pos, seq[pos]) {
-        seq[pos] = alphabet.char(resolve_profile(aview1(dis), resolve));
+      if let Some(fixed) = node.profile.fixed.get(seq[pos]) {
+        seq[pos] = alphabet.char(resolve_profile(aview1(&fixed.dis), resolve));
       }
-    }
-  } else {
-    for (pos, state) in changed_group_states(node, alphabet) {
-      seq[pos] = state;
     }
   }
 
   seq
-}
-
-pub(crate) fn changed_group_positions(node: &SparseNodeState, alphabet: &Alphabet) -> impl Iterator<Item = usize> {
-  changed_group_states(node, alphabet).map(|(pos, _)| pos)
-}
-
-fn changed_group_states(node: &SparseNodeState, alphabet: &Alphabet) -> impl Iterator<Item = (usize, AsciiChar)> {
-  node
-    .profile
-    .groups
-    .changed_states(&node.sequence, |entry| argmax_state(&entry.dis, alphabet))
-    .into_iter()
-}
-
-fn argmax_state(dis: &[f64], alphabet: &Alphabet) -> AsciiChar {
-  alphabet.char(most_likely_state(&aview1(dis)).unwrap_or(0))
 }
 
 fn variable_states<'a>(
@@ -144,11 +122,6 @@ pub(crate) fn internal_ambiguity(
         .map(|code| (pos, code))
     })
     .collect();
-  sites.extend(node.profile.groups.entries(&node.sequence).filter_map(|(pos, entry)| {
-    threshold
-      .ambiguity_char(&aview1(&entry.dis), alphabet)
-      .map(|code| (pos, code))
-  }));
   let fixed_codes: BTreeMap<AsciiChar, AsciiChar> = node
     .profile
     .fixed
@@ -164,9 +137,7 @@ pub(crate) fn internal_ambiguity(
       .sequence
       .iter()
       .enumerate()
-      .filter(|&(pos, state)| {
-        !node.profile.variable.contains_key(pos) && node.profile.groups.entry(pos, *state).is_none()
-      })
+      .filter(|&(pos, _)| !node.profile.variable.contains_key(pos))
       .filter_map(|(pos, state)| fixed_codes.get(state).map(|&code| (pos, code)));
     sites.extend(fixed_sites);
   }
@@ -216,11 +187,12 @@ pub(crate) fn leaf_posterior(
   parent: &SparseNodeState,
   alphabet: &Alphabet,
 ) -> Option<Array1<f64>> {
-  let parent_state = match parent.profile.variable.get(pos) {
-    Some(var) => argmax_state(var.dis, alphabet),
-    None => *parent.sequence.get(pos)?,
-  };
-  let from_parent = down.profile_at(pos, parent_state)?;
+  let from_parent = down.variable.get(pos).map(|var| var.dis).or_else(|| {
+    down
+      .fixed
+      .get(map_state(parent, pos, alphabet))
+      .map(|fixed| fixed.dis.as_slice())
+  })?;
   let Ok(mask) = alphabet.get_profile(observed) else {
     return None;
   };
@@ -238,15 +210,8 @@ fn has_fitch_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> b
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
-  if let Some(var) = node.profile.variable.get(pos) {
-    return argmax_state(var.dis, alphabet);
+  match node.profile.variable.get(pos) {
+    Some(var) => alphabet.char(most_likely_state(&aview1(var.dis)).unwrap_or(0)),
+    None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
   }
-  let Some(&state) = node.sequence.get(pos) else {
-    return alphabet.char(0);
-  };
-  node
-    .profile
-    .groups
-    .entry(pos, state)
-    .map_or(state, |entry| argmax_state(&entry.dis, alphabet))
 }

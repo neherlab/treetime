@@ -10,11 +10,6 @@ pub fn range_contains(ranges: &[(usize, usize)], pos: usize) -> bool {
   range_contains_iter(ranges.iter(), pos)
 }
 
-pub fn range_contains_sorted(ranges: &[(usize, usize)], pos: usize) -> bool {
-  let index = ranges.partition_point(|&(_, end)| end <= pos);
-  ranges.get(index).is_some_and(|&(start, _)| start <= pos)
-}
-
 pub fn range_contains_iter<'a>(mut ranges: impl Iterator<Item = &'a (usize, usize)> + 'a, pos: usize) -> bool {
   ranges.any(|(start, end)| *start <= pos && pos < *end)
 }

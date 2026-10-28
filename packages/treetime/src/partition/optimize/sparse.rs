@@ -1,5 +1,4 @@
 use crate::gtr::gtr::GTR;
-use crate::make_internal_report;
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
@@ -57,33 +56,21 @@ pub(crate) fn get_coefficients(
 
   let mut site_contributions = Vec::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
-    let parent = msg_to_child.profile_at(pos, parent_state).ok_or_else(|| {
-      make_internal_report!("Outside message has no profile of state {parent_state} at position {pos}")
-    })?;
-    let child = msg_to_parent
-      .profile_at(pos, child_state)
-      .ok_or_else(|| make_internal_report!("Inside message has no profile of state {child_state} at position {pos}"))?;
+    let parent = if let Some(parent) = msg_to_child.variable.get(pos) {
+      parent.dis
+    } else {
+      msg_to_child.fixed[parent_state].dis.as_slice()
+    };
+
+    let child = if let Some(child) = msg_to_parent.variable.get(pos) {
+      child.dis
+    } else {
+      msg_to_parent.fixed[child_state].dis.as_slice()
+    };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
       coefficients: aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
     });
-  }
-  for group in 0..msg_to_child.groups.len() {
-    let child_group = msg_to_child
-      .groups
-      .first_position(group)
-      .and_then(|pos| msg_to_parent.groups.group_at(pos));
-    for parent_entry in msg_to_child.groups.profiles(group).iter() {
-      let state = parent_entry.state;
-      let child = child_group
-        .and_then(|child_group| msg_to_parent.groups.profiles(child_group).get(state))
-        .or_else(|| msg_to_parent.fixed.get(state))
-        .ok_or_else(|| make_internal_report!("Inside message has no profile of grouped state {state}"))?;
-      site_contributions.push(SiteContribution {
-        multiplicity: parent_entry.count.to_f64_exact(),
-        coefficients: aview1(&child.dis).dot(gtr.v()) * aview1(&parent_entry.dis).dot(&gtr.v_inv().t()),
-      });
-    }
   }
   for parent_fixed in msg_to_child.fixed.iter() {
     let parent = &parent_fixed.dis;
