@@ -1,4 +1,5 @@
 import { errorMessage } from "@neherlab/app-contracts";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 
@@ -7,7 +8,6 @@ import { useHost } from "../host-context";
 import { commandSwitchNote } from "../settings/commands";
 import { folderName } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { useToastManager } from "../ui/toast";
 
 const YAML_ACCEPT = { "application/yaml": [".yaml", ".yml"] };
 

@@ -1,4 +1,12 @@
 import { errorMessage } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@neherlab/design/ui/dropdown-menu";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { publications } from "auspice/src/components/download/downloadModal";
 import { auspiceJSON, entropyTSV, exportTree, strainTSV, SVG } from "auspice/src/components/download/helperFunctions";
 import { datasetSummary } from "auspice/src/components/info/datasetSummary";
@@ -6,9 +14,6 @@ import { getMapTilesSettings } from "auspice/src/util/globals";
 import { useCallback, useMemo } from "react";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 
-import { Button } from "../ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { useToastManager } from "../ui/toast";
 import { figureCaption } from "./caption";
 import { downloadPrefix, type FigureRuns } from "./downloads";
 import { translateAuspice } from "./i18n";

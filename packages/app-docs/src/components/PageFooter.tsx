@@ -1,5 +1,5 @@
 import { LocaleProvider, m, type Locale } from "@neherlab/app-ui/i18n";
-import { Card, CardDescription, CardTitle } from "@neherlab/app-ui/ui/card";
+import { Card, CardDescription, CardTitle } from "@neherlab/design/ui/card";
 import ArrowLeft from "~icons/lucide/arrow-left";
 import ArrowRight from "~icons/lucide/arrow-right";
 import SquarePen from "~icons/lucide/square-pen";

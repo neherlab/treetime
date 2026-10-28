@@ -67,7 +67,7 @@ describe("auspice messages", () => {
 });
 
 async function render(store: AuspiceStore) {
-  const { Toaster } = await import("../../ui/toast");
+  const { Toaster } = await import("@neherlab/design/ui/toast");
   const { useNotificationToasts } = await import("../notifications");
 
   function Messages(): ReactNode {

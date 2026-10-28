@@ -1,5 +1,10 @@
 import type { RunRecord, SparseConfig, UiCodeFormat } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
+import { Button } from "@neherlab/design/ui/button";
+import { CopyButton } from "@neherlab/design/ui/copy-button";
+import { Label } from "@neherlab/design/ui/label";
+import { Switch } from "@neherlab/design/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 import { keepPreviousData } from "@tanstack/react-query";
 import { cn } from "cn";
 import { Fragment, useMemo, useState } from "react";
@@ -7,7 +12,6 @@ import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { CodeLineView, keyedLines } from "../analysis/CodePanel";
 import { useApi } from "../api/hooks";
-import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { useLocale } from "../i18n/locale";
@@ -15,10 +19,6 @@ import { commandSettings } from "../settings/catalog";
 import { documentedDefault, effectiveValue } from "../settings/config";
 import { groupedSpecs } from "../settings/groups";
 import { defaultText } from "../settings/help";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
-import { Switch } from "../ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useRerun } from "./useRerun";
 
 const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [

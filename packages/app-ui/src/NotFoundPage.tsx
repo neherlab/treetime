@@ -1,8 +1,7 @@
+import { Button } from "@neherlab/design/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@neherlab/design/ui/empty";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
-
-import { Button } from "./ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 
 export function NotFoundPage() {
   const { pathname } = useLocation();

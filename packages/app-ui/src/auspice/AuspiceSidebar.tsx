@@ -1,3 +1,5 @@
+import { Button } from "@neherlab/design/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import ChooseBranchLabelling from "auspice/src/components/controls/choose-branch-labelling";
 import ChooseExplodeAttr from "auspice/src/components/controls/choose-explode-attr";
 import ChooseLayout from "auspice/src/components/controls/choose-layout";
@@ -25,8 +27,6 @@ import type { ComponentProps } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 
-import { Button } from "../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";

@@ -1,4 +1,4 @@
-import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "./ui/sidebar-width";
+import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "@neherlab/design/ui/sidebar-width";
 
 export const WINDOW_BACKGROUND = { light: "#e9eeec", dark: "#0e1615" } as const;
 

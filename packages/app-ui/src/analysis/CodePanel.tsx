@@ -5,20 +5,20 @@ import {
   type ConfigCode,
   type UiCodeFormat,
 } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
+import { CopyButton } from "@neherlab/design/ui/copy-button";
+import { Spinner } from "@neherlab/design/ui/spinner";
+import { Textarea } from "@neherlab/design/ui/textarea";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import FileUp from "~icons/lucide/file-up";
 
-import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { commandSwitchNote } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
-import { Button } from "../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { Spinner } from "../ui/spinner";
-import { Textarea } from "../ui/textarea";
-import { useToastManager } from "../ui/toast";
 import { useConfigLoader } from "./useConfigLoader";
 
 const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [

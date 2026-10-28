@@ -1,4 +1,8 @@
 import type { CheckLevel, RunCheck, RunSummary } from "@neherlab/app-contracts";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Kbd } from "@neherlab/design/ui/kbd";
+import { Spinner } from "@neherlab/design/ui/spinner";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { Link } from "@tanstack/react-router";
 import { useCallback } from "react";
@@ -12,10 +16,6 @@ import Play from "~icons/lucide/play";
 
 import { Panel } from "../components/Panel";
 import { RUN_HOTKEY } from "../hotkeys";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Kbd } from "../ui/kbd";
-import { Spinner } from "../ui/spinner";
 import { toFormValue, type FormConfig } from "./formValues";
 
 const LEVEL_ICON: Record<CheckLevel, React.ReactNode> = {

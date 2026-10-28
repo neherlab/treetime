@@ -11,6 +11,12 @@ import type {
   SettingSpec,
   SparseConfig,
 } from "@neherlab/app-contracts";
+import { Badge } from "@neherlab/design/ui/badge";
+import { Input } from "@neherlab/design/ui/input";
+import { Label } from "@neherlab/design/ui/label";
+import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
+import { Slider } from "@neherlab/design/ui/slider";
+import { Switch } from "@neherlab/design/ui/switch";
 import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -23,12 +29,6 @@ import { documentedDefault, isChanged, resetValue, settingValue } from "../setti
 import { SettingHelp } from "../settings/help";
 import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import { Badge } from "../ui/badge";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { NativeSelect, NativeSelectOption } from "../ui/native-select";
-import { Slider } from "../ui/slider";
-import { Switch } from "../ui/switch";
 import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";

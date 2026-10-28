@@ -1,9 +1,9 @@
 import type { JsonValue } from "@neherlab/app-contracts";
+import { Input } from "@neherlab/design/ui/input";
 import { useCallback, useState } from "react";
 
 import { isNumber, isString } from "../settings/json";
 import { parseNumber } from "../settings/numbers";
-import { Input } from "../ui/input";
 
 type NumberText = number | string | undefined;
 

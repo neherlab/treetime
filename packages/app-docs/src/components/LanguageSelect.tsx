@@ -1,5 +1,5 @@
 import { LocaleProvider, m, type Locale } from "@neherlab/app-ui/i18n";
-import { buttonVariants } from "@neherlab/app-ui/ui/button";
+import { buttonVariants } from "@neherlab/design/ui/button";
 import { cn } from "cn";
 
 const LOCALE_NAMES: Record<Locale, (locale: Locale) => string> = {

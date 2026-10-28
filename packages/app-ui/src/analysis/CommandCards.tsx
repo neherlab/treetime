@@ -1,11 +1,11 @@
 import type { AppCommand, CommandSettings, SparseConfig } from "@neherlab/app-contracts";
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@neherlab/design/ui/field";
+import { RadioGroup, RadioGroupItem } from "@neherlab/design/ui/radio-group";
 import { useCallback } from "react";
 
 import { COMMANDS } from "../settings/catalog";
 import { carryOverDraft } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
-import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "../ui/field";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 export function CommandCards({ command, config }: { command: AppCommand; config: SparseConfig }) {
   const select = useCallback(

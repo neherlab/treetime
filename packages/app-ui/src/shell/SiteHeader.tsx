@@ -1,4 +1,8 @@
 import { version as getVersion } from "@neherlab/app-contracts/client";
+import { Button } from "@neherlab/design/ui/button";
+import { Separator } from "@neherlab/design/ui/separator";
+import { SidebarTrigger } from "@neherlab/design/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import { useCallback } from "react";
 import BookOpen from "~icons/lucide/book-open";
 
@@ -11,10 +15,6 @@ import { PALETTE_HOTKEY } from "../hotkeys";
 import { m, useLocale } from "../i18n/locale";
 import { usePreferencesStore } from "../store/preferences";
 import { useShellStore } from "../store/shell";
-import { Button } from "../ui/button";
-import { Separator } from "../ui/separator";
-import { SidebarTrigger } from "../ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { WorkspaceButton } from "./WorkspaceDialog";
 
 const DOCS_URL = import.meta.env.VITE_TREETIME_DOCS_URL ?? "https://docs.treetime.neherlab.click";

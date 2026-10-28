@@ -1,8 +1,7 @@
 import { errorMessage } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@neherlab/design/ui/empty";
 import { ErrorBoundary as ReactErrorBoundary, type FallbackProps } from "react-error-boundary";
-
-import { Button } from "./ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (

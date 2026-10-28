@@ -1,6 +1,6 @@
+import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
 import { useCallback, useMemo } from "react";
 
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { toggledChoice } from "./toggleChoice";
 
 export interface ToggleOption<Value extends string> {

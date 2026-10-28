@@ -1,5 +1,5 @@
 import { m, useLocale, type Locale } from "@neherlab/app-ui/i18n";
-import { NativeSelect, NativeSelectOption } from "@neherlab/app-ui/ui/native-select";
+import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
 import { useCallback, type ChangeEvent } from "react";
 
 import { versionPageUrl } from "../lib/version-links";

@@ -1,5 +1,5 @@
 import { LocaleProvider, m, type Locale } from "@neherlab/app-ui/i18n";
-import { Alert, AlertDescription } from "@neherlab/app-ui/ui/alert";
+import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
 import History from "~icons/lucide/history";
 
 import { versionPageUrl } from "../lib/version-links";

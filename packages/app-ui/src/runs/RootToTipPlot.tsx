@@ -1,3 +1,6 @@
+import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "@neherlab/design/ui/chart";
+import { Label as FieldLabel } from "@neherlab/design/ui/label";
+import { Switch } from "@neherlab/design/ui/switch";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -11,9 +14,6 @@ import {
 } from "recharts";
 import * as z from "zod";
 
-import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
-import { Label as FieldLabel } from "../ui/label";
-import { Switch } from "../ui/switch";
 import { bottomAxisLabel, CHART, leftAxisLabel, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
 

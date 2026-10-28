@@ -1,11 +1,11 @@
 import type { RunRecord, AncestralResults, BranchMutations, RecurrentSite } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { CellText, DataTable, dataColumns } from "@neherlab/design/ui/data-table";
 import { useMemo } from "react";
 import ChartColumn from "~icons/lucide/chart-column";
 
-import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { useLocale } from "../i18n/locale";
-import { Button } from "../ui/button";
 import { settingText } from "./settingText";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";

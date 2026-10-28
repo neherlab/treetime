@@ -1,11 +1,11 @@
 import { type SparseConfig, errorMessage, type AppCommand } from "@neherlab/app-contracts";
 import { runsCreate, runsStart } from "@neherlab/app-contracts/client";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
-import { useToastManager } from "../ui/toast";
 import { forgetLostRuns, lostFilesMessage } from "./lostRuns";
 import { pendingUpload } from "./pendingUpload";
 

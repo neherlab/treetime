@@ -1,8 +1,8 @@
 import type { MultiplicityRow, SiteHitsRow } from "@neherlab/app-contracts";
+import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "@neherlab/design/ui/chart";
 import { memo, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis, type ActiveLabel } from "recharts";
 
-import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { logAxis, multiplicityPoints, siteHitsPoints } from "./homoplasy";
 import { bottomAxisLabel, CHART, leftAxisLabel, PLOT_MARGIN, TICK_STYLE } from "./palette";
 

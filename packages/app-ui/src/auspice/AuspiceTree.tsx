@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useReducedMotion } from "@mantine/hooks";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { CHANGE_PANEL_LAYOUT, TOGGLE_SIDEBAR } from "auspice/src/actions/types";
 import {
   useCallback,
@@ -17,7 +18,6 @@ import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
 import { MAIN_SCROLL_ID } from "../RootLayout";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { AuspicePanels } from "./AuspicePanels";
 import { HideControlsButton, ShowControlsTab, SidebarControls } from "./AuspiceSidebar";
 import type { FigureRuns } from "./downloads";

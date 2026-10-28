@@ -13,16 +13,16 @@ const resolveIcon = IconsResolver({ prefix: ICON_PREFIX, strict: true });
 
 const PROVIDED_COMPONENTS = new Map<string, ProvidedComponent>(
   Object.entries({
-    Badge: { module: "@neherlab/app-ui/ui/badge" },
-    Card: { module: "@neherlab/app-ui/ui/card" },
-    CardAction: { module: "@neherlab/app-ui/ui/card" },
-    CardDescription: { module: "@neherlab/app-ui/ui/card" },
+    Badge: { module: "@neherlab/design/ui/badge" },
+    Card: { module: "@neherlab/design/ui/card" },
+    CardAction: { module: "@neherlab/design/ui/card" },
+    CardDescription: { module: "@neherlab/design/ui/card" },
     CardGrid: { module: "../components/LinkCard.tsx" },
-    CardHeader: { module: "@neherlab/app-ui/ui/card" },
-    CardTitle: { module: "@neherlab/app-ui/ui/card" },
+    CardHeader: { module: "@neherlab/design/ui/card" },
+    CardTitle: { module: "@neherlab/design/ui/card" },
     Disclosure: { module: "../components/Disclosure.tsx", client: "visible" },
     FileTree: { module: "../components/FileTree.tsx" },
-    Kbd: { module: "@neherlab/app-ui/ui/kbd" },
+    Kbd: { module: "@neherlab/design/ui/kbd" },
     LinkButton: { module: "../components/LinkButton.tsx" },
     LinkCard: { module: "../components/LinkCard.tsx" },
     SyncedTabs: { module: "../components/SyncedTabs.tsx", client: "load" },

@@ -1,4 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@neherlab/app-ui/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@neherlab/design/ui/tabs";
 import { useCallback, useEffect, type ReactNode } from "react";
 
 import { useTabChoices } from "../lib/tab-choices";

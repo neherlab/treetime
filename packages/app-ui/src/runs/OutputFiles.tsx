@@ -1,5 +1,10 @@
 import { type RunFile, errorMessage, type RunRecord, type Citation } from "@neherlab/app-contracts";
 import { runsFiles } from "@neherlab/app-contracts/client";
+import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Spinner } from "@neherlab/design/ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback, useState } from "react";
 import Download from "~icons/lucide/download";
 
@@ -10,11 +15,6 @@ import { Panel } from "../components/Panel";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
 import { downloadName, totalSize } from "../results/files";
-import { Alert, AlertDescription } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Spinner } from "../ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { useToastManager } from "../ui/toast";
 import { downloadUrl, saveRunOutput, setBrowserTimer, type RunOutput } from "./saveRunOutput";
 
 export function OutputFiles({ record, citation }: { record: RunRecord; citation: Citation }) {

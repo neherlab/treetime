@@ -1,10 +1,10 @@
 import { type JsonValue, errorMessage, type AppCommand, type IndexedFile } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { Spinner } from "@neherlab/design/ui/spinner";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
-import { Button } from "../ui/button";
-import { Spinner } from "../ui/spinner";
-import { useToastManager } from "../ui/toast";
 import { type ExampleIndex, fetchExampleFile, localExamplePath } from "./exampleData";
 import { ExampleFilesDialog } from "./ExampleFilesDialog";
 import { dropzoneAccept } from "./fileAccept";

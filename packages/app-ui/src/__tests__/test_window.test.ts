@@ -1,4 +1,5 @@
-import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "../ui/sidebar-width";
+import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "@neherlab/design/ui/sidebar-width";
+
 import { WINDOW_BACKGROUND, WINDOW_MIN_SIZE, windowBackground } from "../window";
 
 import tokensCss from "../tokens.css?raw";

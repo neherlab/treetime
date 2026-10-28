@@ -1,11 +1,11 @@
 import type { JsonValue, SettingSpec } from "@neherlab/app-contracts";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import type { ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import { m, useLocale, type Locale } from "../i18n/locale";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { documentedDefault } from "./config";
 import { isJsonObject } from "./json";
 import { formatList } from "./lists";

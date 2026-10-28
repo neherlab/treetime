@@ -1,13 +1,13 @@
 import type { AmbiguousSite, GapFill, HomoplasyStatistics, TaxonResult } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { Card } from "@neherlab/design/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
+import { DataTable, dataColumns } from "@neherlab/design/ui/data-table";
+import { Empty, EmptyDescription } from "@neherlab/design/ui/empty";
 import { createContext, memo, use, useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 
-import { DataTable, dataColumns } from "../components/DataTable";
 import { Panel } from "../components/Panel";
-import { Button } from "../ui/button";
-import { Card } from "../ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { Empty, EmptyDescription } from "../ui/empty";
 import { gapFillNote, pressedMutations } from "./homoplasy";
 import { PositionButton, RecurrentTable } from "./RecurrentTable";
 import type { TreeLink } from "./TreeWorkspace";

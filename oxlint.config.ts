@@ -10,6 +10,7 @@ const WEB_SCOPES = [
   "packages/app-web/src/**",
   "packages/app-web2/src/**",
   "packages/app-desktop/renderer/**",
+  "packages/design/src/**",
 ];
 
 const APP_SCOPE = ["sharedComponents", "sharedComponentsAria", "sharedTheme"] as const;
@@ -67,19 +68,19 @@ export default projectConfig({
     sharedComponents: {
       path: {
         name: "@base-ui/react",
-        message: "Use the app-ui components, so the docs and the app share one implementation.",
+        message: "Use the components of @neherlab/design, so the docs and the apps share one implementation.",
       },
     },
     sharedComponentsAria: {
       path: {
         name: "react-aria-components",
-        message: "Use the app-ui components, so the docs and the app share one implementation.",
+        message: "Use the components of @neherlab/design, so the docs and the apps share one implementation.",
       },
     },
     sharedTheme: {
       path: {
         name: "next-themes",
-        message: "Use the app-ui components, so the docs and the app share one implementation.",
+        message: "Use the components of @neherlab/design, so the docs and the apps share one implementation.",
       },
     },
     jsonParse: {
@@ -99,6 +100,7 @@ export default projectConfig({
     { files: ["packages/app-ui/src/**"], dir: "app-ui", web: true, allow: APP_SCOPE },
     { files: ["packages/app-web/src/**"], dir: "app-web", web: true, allow: APP_SCOPE },
     { files: ["packages/app-web2/src/**"], dir: "app-web2", web: true, allow: APP_SCOPE },
+    { files: ["packages/design/src/**"], dir: "design", web: true, allow: APP_SCOPE },
   ],
 
   restrictionAllowances: [
@@ -207,7 +209,7 @@ export default projectConfig({
         "packages/app-docs/src/**/__tests__/*.test.tsx",
         "packages/app-docs/src/layouts/DocsLayout.astro",
         "packages/app-ui/src/App.tsx",
-        "packages/app-ui/src/ui/fonts.ts",
+        "packages/design/src/fonts.ts",
         "packages/app-web/src/main.tsx",
         "packages/app-web2/src/main.tsx",
         "packages/app-desktop/renderer/main.tsx",
@@ -217,7 +219,7 @@ export default projectConfig({
       },
     },
     {
-      files: ["packages/app-docs/src/**", "packages/app-ui/src/**"],
+      files: ["packages/app-docs/src/**", "packages/app-ui/src/**", "packages/design/src/**"],
       rules: {
         "react-perf/jsx-no-jsx-as-prop": "off",
         "react-perf/jsx-no-new-object-as-prop": "off",

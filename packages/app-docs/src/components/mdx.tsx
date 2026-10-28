@@ -1,4 +1,4 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/app-ui/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 import type { ComponentProps } from "react";
 
 import { CalloutContainer, CalloutDescription, CalloutTitle } from "./Callout";

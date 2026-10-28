@@ -1,9 +1,8 @@
 import type { RunWarning } from "@neherlab/app-contracts";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import TriangleAlert from "~icons/lucide/triangle-alert";
-
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 
 export function RunWarnings({ warnings }: { warnings: readonly RunWarning[] }) {
   if (warnings.length === 0) {

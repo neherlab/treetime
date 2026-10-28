@@ -17,6 +17,7 @@
     "@astrojs/sitemap": "3.7.4",
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
+    "@neherlab/design": "workspace:*",
     "@tailwindcss/typography": "0.5.20",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-hotkeys": "catalog:",

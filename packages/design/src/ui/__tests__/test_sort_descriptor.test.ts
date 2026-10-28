@@ -1,4 +1,4 @@
-import { sortDescriptor } from "../sortDescriptor";
+import { sortDescriptor } from "../sort-descriptor";
 
 describe("sort descriptor", () => {
   test("an ascending sort names its column and direction", () => {

@@ -1,4 +1,4 @@
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/app-ui/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import type { ReactNode } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 

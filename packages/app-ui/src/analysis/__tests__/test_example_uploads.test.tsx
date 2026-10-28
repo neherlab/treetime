@@ -9,6 +9,7 @@ import type {
 } from "@neherlab/app-contracts";
 import { zCheckConfigRequest } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
+import { Toaster } from "@neherlab/design/ui/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
@@ -26,7 +27,6 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { ApiContext, type ApiContextValue } from "../../api/context";
 import { useDraftStore } from "../../store/draft";
-import { Toaster } from "../../ui/toast";
 import { type FormConfig, fromFormConfig, toFormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
 import { PathPicker } from "../PathPicker";

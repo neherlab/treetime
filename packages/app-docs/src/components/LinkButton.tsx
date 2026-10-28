@@ -1,4 +1,4 @@
-import { buttonVariants } from "@neherlab/app-ui/ui/button";
+import { buttonVariants } from "@neherlab/design/ui/button";
 import type { ReactNode } from "react";
 
 export function LinkButton({ href, variant, size, children }: LinkButtonProps) {

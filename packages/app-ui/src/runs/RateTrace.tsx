@@ -1,8 +1,8 @@
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@neherlab/design/ui/chart";
 import { useMemo } from "react";
 import { Line, LineChart, XAxis, YAxis } from "recharts";
 
 import type { IterationPoint } from "../results/progress";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
 import { CHART, TICK_STYLE } from "./palette";
 
 const MARGIN = { top: 6, right: 12, bottom: 4, left: 8 };

@@ -1,3 +1,4 @@
+import { toast } from "@neherlab/design/ui/toast";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
@@ -5,7 +6,6 @@ import { useEffect, useRef } from "react";
 import { lostFilesMessage } from "../analysis/lostRuns";
 import { useApiContext } from "../api/context";
 import { LoadingState } from "../components/PageShell";
-import { toast } from "../ui/toast";
 import { reportToConsole, type PreferencesStorage } from "./storage";
 import { applyPreferences, PreferencesSaver, restorePreferences } from "./sync";
 

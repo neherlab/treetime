@@ -29,7 +29,7 @@ import ArrowDown from "~icons/lucide/arrow-down";
 import ArrowUp from "~icons/lucide/arrow-up";
 import ArrowUpDown from "~icons/lucide/arrow-up-down";
 
-import { sortDescriptor } from "./sortDescriptor";
+import { sortDescriptor } from "./sort-descriptor";
 
 interface DataColumnMeta {
   width: NonNullable<ColumnProps["defaultWidth"]>;

@@ -1,4 +1,5 @@
 import type { LogLevel } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "cn";
 import { useCallback } from "react";
@@ -6,7 +7,6 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import ArrowDown from "~icons/lucide/arrow-down";
 
 import { formatSeconds, type LogEntry } from "../results/progress";
-import { Button } from "../ui/button";
 
 const LEVEL_CLASS: Record<LogLevel, string | undefined> = {
   trace: "text-muted-foreground",

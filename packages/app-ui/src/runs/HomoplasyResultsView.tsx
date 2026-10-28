@@ -1,12 +1,12 @@
 import type { GapFill, HomoplasyResults, HomoplasySite, HomoplasyStatistics, RunRecord } from "@neherlab/app-contracts";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Empty, EmptyDescription } from "@neherlab/design/ui/empty";
 import { useCallback, useMemo } from "react";
 import TriangleAlert from "~icons/lucide/triangle-alert";
 
 import { nucleotideColorBy, nucleotidePosition } from "../auspice/genotype";
 import { Panel, SummaryStrip } from "../components/Panel";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Empty, EmptyDescription } from "../ui/empty";
 import { GenomeSitesChart } from "./GenomeSitesChart";
 import { drmText, homoplasySummary, initialHomoplasyColorBy, pressedMutations, siteAt } from "./homoplasy";
 import { HomoplasyTables } from "./HomoplasyTables";

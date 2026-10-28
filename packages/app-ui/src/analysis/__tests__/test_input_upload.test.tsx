@@ -1,5 +1,6 @@
 import type { RunRecord, UploadedInput } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
+import { Toaster } from "@neherlab/design/ui/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
@@ -11,7 +12,6 @@ import { inAct, registerDom } from "../../__tests__/dom";
 import { ApiContext, type ApiContextValue } from "../../api/context";
 import { type BrowserBackend, BrowserBackendContext, TAB_BACKEND } from "../../browser-backend";
 import { useDraftStore } from "../../store/draft";
-import { Toaster } from "../../ui/toast";
 import type { FormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
 

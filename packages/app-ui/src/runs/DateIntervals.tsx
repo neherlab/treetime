@@ -1,9 +1,9 @@
 import type { DateInterval, YearDate } from "@neherlab/app-contracts";
+import { ChartTooltip, ChartTooltipFrame } from "@neherlab/design/ui/chart";
 import { useCallback, useMemo } from "react";
 import { Bar, ComposedChart, Scatter, XAxis, YAxis } from "recharts";
 
 import { yearDateText } from "../format";
-import { ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { CHART, niceAxis, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 
 export interface DateRow {

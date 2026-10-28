@@ -4,6 +4,7 @@
 @import "../../../app-ui/src/base.css";
 @plugin "@tailwindcss/typography";
 @source "../../../app-ui/src";
+@source "../../../design/src/ui";
 @source "../../../../docs";
 
 @layer base {

@@ -7,6 +7,10 @@ import type {
   YearDate,
 } from "@neherlab/app-contracts";
 import { runsAuspice, runsCompare, runsGet, runsList, runsResults } from "@neherlab/app-contracts/client";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useMemo } from "react";
 import ArrowLeftRight from "~icons/lucide/arrow-left-right";
@@ -21,10 +25,6 @@ import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { commandSettings } from "../settings/catalog";
 import { defaultText } from "../settings/help";
 import { baseName } from "../settings/inputs";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Button } from "../ui/button";
-import { NativeSelect, NativeSelectOption } from "../ui/native-select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import type { RunTree } from "./CompareTrees";
 import { DateIntervals } from "./DateIntervals";
 import { ShiftPlot } from "./ShiftPlot";

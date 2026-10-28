@@ -1,12 +1,12 @@
 import { errorMessage, type RunRecord } from "@neherlab/app-contracts";
 import { runsUpdate } from "@neherlab/app-contracts/client";
+import { Button } from "@neherlab/design/ui/button";
+import { Input } from "@neherlab/design/ui/input";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback, useRef, useState } from "react";
 import Pencil from "~icons/lucide/pencil";
 
 import { useApiMutation } from "../api/hooks";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { useToastManager } from "../ui/toast";
 
 export function RunTitle({ record }: { record: RunRecord }) {
   const toasts = useToastManager();

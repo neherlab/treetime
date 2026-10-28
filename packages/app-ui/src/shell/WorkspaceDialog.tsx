@@ -1,5 +1,10 @@
 import { errorMessage, type Workspace } from "@neherlab/app-contracts";
 import { runsList, workspace as getWorkspace, workspaceUpdate } from "@neherlab/app-contracts/client";
+import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@neherlab/design/ui/dialog";
+import { useToastManager } from "@neherlab/design/ui/toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import FolderOpen from "~icons/lucide/folder-open";
@@ -9,11 +14,6 @@ import { resetApiQueries, useApi } from "../api/hooks";
 import type { Host } from "../host";
 import { useHost } from "../host-context";
 import { useShellStore } from "../store/shell";
-import { Alert, AlertDescription } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { useToastManager } from "../ui/toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 const RUNS_FOLDER = "Runs folder";
 

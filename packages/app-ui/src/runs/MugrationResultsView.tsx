@@ -1,10 +1,10 @@
 import type { RunRecord, AncestorState, MugrationResults, StateChange } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { CellText, DataTable, dataColumns } from "@neherlab/design/ui/data-table";
+import { Empty, EmptyDescription } from "@neherlab/design/ui/empty";
 import { useCallback, useMemo } from "react";
 
-import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
-import { Button } from "../ui/button";
-import { Empty, EmptyDescription } from "../ui/empty";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 

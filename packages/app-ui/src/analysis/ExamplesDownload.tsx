@@ -1,5 +1,9 @@
 import type { ExamplesDownloadStatus } from "@neherlab/app-contracts";
 import { examplesDownload, examplesDownloadStart } from "@neherlab/app-contracts/client";
+import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Progress } from "@neherlab/design/ui/progress";
+import { Spinner } from "@neherlab/design/ui/spinner";
 import { useCallback } from "react";
 import Download from "~icons/lucide/download";
 
@@ -7,10 +11,6 @@ import { useApi, useApiMutation } from "../api/hooks";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
 import { newerDownloadStatus, useExamplesDownloadStore } from "../store/examplesDownload";
-import { Alert, AlertDescription } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Progress } from "../ui/progress";
-import { Spinner } from "../ui/spinner";
 import { examplesDownloadView } from "./examplesDownloadView";
 import { useExampleIndex } from "./useExampleData";
 

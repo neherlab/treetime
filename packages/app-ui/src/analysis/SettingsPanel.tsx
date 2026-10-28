@@ -7,6 +7,13 @@ import type {
   SparseConfig,
   UiSettingsView,
 } from "@neherlab/app-contracts";
+import { Badge } from "@neherlab/design/ui/badge";
+import { Card } from "@neherlab/design/ui/card";
+import { Checkbox } from "@neherlab/design/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
+import { Empty, EmptyDescription } from "@neherlab/design/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
+import { Label } from "@neherlab/design/ui/label";
 import { useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
@@ -17,13 +24,6 @@ import { isChanged } from "../settings/config";
 import { groupedSpecs } from "../settings/groups";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
-import { Badge } from "../ui/badge";
-import { Card } from "../ui/card";
-import { Checkbox } from "../ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { Empty, EmptyDescription } from "../ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
-import { Label } from "../ui/label";
 import { MainSettings } from "./MainSettings";
 import { SettingField } from "./SettingField";
 

@@ -3,8 +3,8 @@ import { fuzzyFilter } from "@neherlab/app-ui/fuzzy";
 import { LocaleProvider, m, useLocale, type Locale } from "@neherlab/app-ui/i18n";
 import { groupedSpecs } from "@neherlab/app-ui/settings/groups";
 import { SettingHelp, SettingSummary } from "@neherlab/app-ui/settings/help";
-import { Input } from "@neherlab/app-ui/ui/input";
-import { Label } from "@neherlab/app-ui/ui/label";
+import { Input } from "@neherlab/design/ui/input";
+import { Label } from "@neherlab/design/ui/label";
 import { type ChangeEvent, Fragment, useCallback, useId, useMemo, useState } from "react";
 
 export function SettingsReference({ settings, locale }: { settings: CommandSettings; locale: Locale }) {

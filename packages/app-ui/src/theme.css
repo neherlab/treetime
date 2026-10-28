@@ -2,6 +2,8 @@
 @import "./components.css";
 @import "./base.css";
 
+@source "../../design/src/ui";
+
 @layer base {
   body {
     @apply bg-background text-foreground font-sans lining-nums tabular-nums antialiased;

@@ -1,4 +1,5 @@
 import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
+import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
 import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
@@ -12,7 +13,6 @@ import { useHost } from "../host-context";
 import { commandSettings } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblems } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
 import type { FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";

@@ -1,6 +1,11 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecord } from "@neherlab/app-contracts";
 import { runsCancel } from "@neherlab/app-contracts/client";
+import { Button } from "@neherlab/design/ui/button";
+import { Progress, ProgressLabel, ProgressValue } from "@neherlab/design/ui/progress";
+import { Spinner } from "@neherlab/design/ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback, useState } from "react";
 
 import { useApiMutation } from "../api/hooks";
@@ -9,11 +14,6 @@ import { Panel } from "../components/Panel";
 import { formatRate } from "../format";
 import { nonFiniteLabel } from "../results/numbers";
 import type { IterationPoint, LogFilter, RunProgress } from "../results/progress";
-import { Button } from "../ui/button";
-import { Progress, ProgressLabel, ProgressValue } from "../ui/progress";
-import { Spinner } from "../ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { useToastManager } from "../ui/toast";
 import { RateTrace } from "./RateTrace";
 import { StageLog } from "./StageLog";
 

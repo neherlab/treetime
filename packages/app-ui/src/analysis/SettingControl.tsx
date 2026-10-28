@@ -7,6 +7,12 @@ import type {
   SettingSpec,
   SparseConfig,
 } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { Input } from "@neherlab/design/ui/input";
+import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
+import { Switch } from "@neherlab/design/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { GridList, GridListItem } from "react-aria-components";
@@ -17,12 +23,6 @@ import Trash from "~icons/lucide/trash-2";
 import { baseName, pathList } from "../settings/inputs";
 import { isJsonObject, sameJson, withSetting } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { NativeSelect, NativeSelectOption } from "../ui/native-select";
-import { Switch } from "../ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";

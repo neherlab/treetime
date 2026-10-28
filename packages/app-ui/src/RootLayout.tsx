@@ -1,4 +1,7 @@
 import { useViewportSize } from "@mantine/hooks";
+import { SidebarInset, SidebarProvider } from "@neherlab/design/ui/sidebar";
+import { fitSidebarWidth, sidebarWidthOrDefault } from "@neherlab/design/ui/sidebar-width";
+import { TooltipProvider } from "@neherlab/design/ui/tooltip";
 import { Outlet } from "@tanstack/react-router";
 
 import { useNativeThemeSync } from "./hooks/useNativeThemeSync";
@@ -9,9 +12,6 @@ import { useGlobalShortcuts } from "./shell/useGlobalShortcuts";
 import { useYamlDrop } from "./shell/useYamlDrop";
 import { WorkspaceDialog } from "./shell/WorkspaceDialog";
 import { usePreferencesStore } from "./store/preferences";
-import { SidebarInset, SidebarProvider } from "./ui/sidebar";
-import { fitSidebarWidth, sidebarWidthOrDefault } from "./ui/sidebar-width";
-import { TooltipProvider } from "./ui/tooltip";
 
 export const MAIN_SCROLL_ID = "main-scroll";
 

@@ -1,6 +1,6 @@
-import type { Badge } from "@neherlab/app-ui/ui/badge";
-import type { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@neherlab/app-ui/ui/card";
-import type { Kbd } from "@neherlab/app-ui/ui/kbd";
+import type { Badge } from "@neherlab/design/ui/badge";
+import type { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@neherlab/design/ui/card";
+import type { Kbd } from "@neherlab/design/ui/kbd";
 import type { ReactElement, SVGProps } from "react";
 
 import type { Disclosure } from "./Disclosure";

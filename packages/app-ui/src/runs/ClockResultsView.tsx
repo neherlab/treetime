@@ -1,7 +1,7 @@
 import type { RunRecord, ClockResults, YearDate } from "@neherlab/app-contracts";
+import { CellText, DataTable, dataColumns } from "@neherlab/design/ui/data-table";
 import { useCallback, useMemo } from "react";
 
-import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatRate, formatSignedDays, rSquaredText, yearDateText } from "../format";
 import { useRootToTip } from "./rootToTip";

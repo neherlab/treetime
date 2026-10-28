@@ -1,5 +1,17 @@
 import { errorMessage, type IndexedConfig, type IndexedDataset } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
+import {
+  Command,
+  CommandCollection,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandGroupLabel,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@neherlab/design/ui/command";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -14,18 +26,6 @@ import { useThemeChoice } from "../preferences/useThemeChoice";
 import { commandSettings } from "../settings/catalog";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
-import {
-  Command,
-  CommandCollection,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandGroupLabel,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "../ui/command";
-import { useToastManager } from "../ui/toast";
 import {
   datasetPaletteItems,
   matchingPaletteItems,

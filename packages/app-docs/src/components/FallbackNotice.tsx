@@ -1,5 +1,5 @@
 import { LocaleProvider, m, type Locale } from "@neherlab/app-ui/i18n";
-import { Alert, AlertDescription, AlertTitle } from "@neherlab/app-ui/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
 import Languages from "~icons/lucide/languages";
 
 export function FallbackNotice({ locale }: { locale: Locale }) {

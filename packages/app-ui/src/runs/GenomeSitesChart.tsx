@@ -1,4 +1,5 @@
 import type { HomoplasySite } from "@neherlab/app-contracts";
+import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "@neherlab/design/ui/chart";
 import { memo, useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import {
   Bar,
@@ -13,7 +14,6 @@ import {
   type MouseHandlerDataParam,
 } from "recharts";
 
-import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { siteText } from "./homoplasy";
 import { bottomAxisLabel, CHART, leftAxisLabel, niceAxis, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE } from "./palette";
 

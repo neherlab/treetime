@@ -1,4 +1,6 @@
 import type { AppCommand, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { Label } from "@neherlab/design/ui/label";
 import { cn } from "cn";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
@@ -6,8 +8,6 @@ import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { isChanged, resetValue } from "../settings/config";
 import { SettingHelp, SettingSummary } from "../settings/help";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { SettingControl } from "./SettingControl";

@@ -10,7 +10,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@neherlab/app-ui/ui/command";
+} from "@neherlab/design/ui/command";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useCallback, useEffect, useMemo, useState } from "react";
 

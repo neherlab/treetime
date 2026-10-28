@@ -1,4 +1,6 @@
 import { useMounted } from "@mantine/hooks";
+import { Button } from "@neherlab/design/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import { useTheme } from "next-themes";
 import { useCallback, type ComponentType, type SVGProps } from "react";
 import Monitor from "~icons/lucide/monitor";
@@ -6,8 +8,6 @@ import Moon from "~icons/lucide/moon";
 import Sun from "~icons/lucide/sun";
 
 import { m, useLocale, type Locale } from "../i18n/locale";
-import { Button } from "../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 const THEME_CYCLE = ["system", "light", "dark"] as const;
 

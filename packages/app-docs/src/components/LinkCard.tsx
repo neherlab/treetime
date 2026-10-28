@@ -1,4 +1,4 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "@neherlab/app-ui/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@neherlab/design/ui/card";
 import ArrowRight from "~icons/lucide/arrow-right";
 
 export function LinkCard({ title, description, href }: { title: string; description?: string; href: string }) {

@@ -1,11 +1,11 @@
+import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
+import { CopyButton } from "@neherlab/design/ui/copy-button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
 import { useCallback, useMemo, useState } from "react";
 import Search from "~icons/lucide/search";
 
-import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
 import { countWarnings, filterLog, logText, type LogFilter, type RunProgress } from "../results/progress";
-import { Alert, AlertDescription } from "../ui/alert";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { StageLog } from "./StageLog";
 
 export function LogTab({ progress, failure }: { progress: RunProgress; failure: string | undefined }) {

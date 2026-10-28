@@ -3,8 +3,8 @@ import { useCallback } from "react";
 import Check from "~icons/lucide/check";
 import Copy from "~icons/lucide/copy";
 
-import { Button } from "../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { Button } from "./button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 export function CopyButton({ text, label, disabled }: { text: string; label: string; disabled?: boolean }) {
   const { copy, copied, error } = useClipboard();

@@ -1,5 +1,22 @@
 import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
+import { Badge } from "@neherlab/design/ui/badge";
+import { Button } from "@neherlab/design/ui/button";
+import { Checkbox } from "@neherlab/design/ui/checkbox";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
+import { Kbd } from "@neherlab/design/ui/kbd";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@neherlab/design/ui/sidebar";
+import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
@@ -11,23 +28,6 @@ import { toggledChoice } from "../components/toggleChoice";
 import { headlineText } from "../format";
 import { COMMANDS, commandSettings } from "../settings/catalog";
 import { useShellStore } from "../store/shell";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
-import { Kbd } from "../ui/kbd";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "../ui/sidebar";
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { changedFlags, groupRuns, listedRuns } from "./runList";
 import { StatusIcon, statusLabel } from "./StatusIcon";
 import { RUN_FILTER_ID } from "./useGlobalShortcuts";

@@ -1,5 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import { errorMessage } from "@neherlab/app-contracts";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
 import Entropy from "auspice/src/components/entropy";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
 import Tree from "auspice/src/components/tree";
@@ -17,7 +18,6 @@ import {
 } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { FigureRuns } from "./downloads";
 import {
   CARD_TITLE_HEIGHT,

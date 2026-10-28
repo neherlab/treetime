@@ -1,3 +1,6 @@
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@neherlab/design/ui/accordion";
+import { Badge } from "@neherlab/design/ui/badge";
+import { Spinner } from "@neherlab/design/ui/spinner";
 import { cn } from "cn";
 import { type ReactNode, useCallback, useId, useMemo, useState } from "react";
 import CircleCheck from "~icons/lucide/circle-check";
@@ -15,9 +18,6 @@ import {
   type StageSection,
   type StageState,
 } from "../results/progress";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
-import { Badge } from "../ui/badge";
-import { Spinner } from "../ui/spinner";
 import { LogLines } from "./LogLines";
 
 const NO_OVERRIDES: ReadonlyMap<string, boolean> = new Map();

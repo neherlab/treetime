@@ -1,7 +1,4 @@
 import type { IndexedFile } from "@neherlab/app-contracts";
-import { useCallback, useMemo, useState } from "react";
-
-import { formatBytes } from "../format";
 import {
   Command,
   CommandCollection,
@@ -11,7 +8,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "../ui/command";
+} from "@neherlab/design/ui/command";
+import { useCallback, useMemo, useState } from "react";
+
+import { formatBytes } from "../format";
 import { matchingExampleFiles } from "./exampleData";
 
 export function ExampleFilesDialog({

@@ -1,7 +1,7 @@
 import { LocaleProvider, m, type Locale } from "@neherlab/app-ui/i18n";
-import { Button } from "@neherlab/app-ui/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@neherlab/app-ui/ui/sheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/app-ui/ui/tooltip";
+import { Button } from "@neherlab/design/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@neherlab/design/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import { useCallback, useState } from "react";
 import Menu from "~icons/lucide/menu";
 

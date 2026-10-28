@@ -5,10 +5,10 @@ import type {
   SequenceModelSummary,
   TraitModelSummary,
 } from "@neherlab/app-contracts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 import { useMemo } from "react";
 
 import { Panel } from "../components/Panel";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 export function SubstitutionModels({ models: { alignments, models } }: { models: RunModels }) {
   const sequences = useMemo(

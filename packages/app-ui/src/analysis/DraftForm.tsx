@@ -1,5 +1,6 @@
 import type { AppCommand } from "@neherlab/app-contracts";
 import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } from "@neherlab/app-contracts/client";
+import { Button } from "@neherlab/design/ui/button";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -15,7 +16,6 @@ import { COMMAND_VERBS } from "../settings/commands";
 import { changedSpecs, normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { Button } from "../ui/button";
 import { ChecksPanel } from "./ChecksPanel";
 import { CodePanel } from "./CodePanel";
 import { CommandCards } from "./CommandCards";

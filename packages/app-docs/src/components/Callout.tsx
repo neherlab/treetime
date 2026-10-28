@@ -1,4 +1,4 @@
-import { Alert, AlertDescription, AlertTitle } from "@neherlab/app-ui/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import CircleAlert from "~icons/lucide/circle-alert";
 import Info from "~icons/lucide/info";

@@ -1,7 +1,7 @@
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { REMOVE_NOTIFICATION } from "auspice/src/actions/types";
 import { useEffect } from "react";
 
-import { useToastManager } from "../ui/toast";
 import type { AuspiceNotification } from "./state";
 import type { AuspiceStore } from "./store";
 

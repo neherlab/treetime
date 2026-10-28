@@ -1,8 +1,8 @@
 import type { SkylineSegment } from "@neherlab/app-contracts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@neherlab/design/ui/chart";
 import { useMemo } from "react";
 import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
 
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
 import {
   bottomAxisLabel,
   CHART,

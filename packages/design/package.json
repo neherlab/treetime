@@ -7,13 +7,30 @@
   "exports": {
     "./tokens": "./src/tokens/tokens.ts",
     "./color": "./src/tokens/color.ts",
-    "./tokens.css": "./src/css/tokens.css"
+    "./tokens.css": "./src/css/tokens.css",
+    "./fonts": "./src/fonts.ts",
+    "./ui/*": "./src/ui/*.tsx",
+    "./ui/sidebar-width": "./src/ui/sidebar-width.ts"
   },
   "dependencies": {
-    "culori": "4.0.2"
+    "@base-ui/react": "1.8.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/lato": "5.3.0",
+    "@mantine/hooks": "9.6.2",
+    "@tanstack/react-hotkeys": "catalog:",
+    "@tanstack/react-table": "9.2.4",
+    "class-variance-authority": "0.7.1",
+    "cn": "0.3.0",
+    "culori": "4.0.2",
+    "react": "catalog:",
+    "react-aria-components": "1.21.1",
+    "recharts": "3.10.1"
   },
   "devDependencies": {
     "@types/culori": "4.0.1",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "unplugin-icons": "catalog:"
   }
 }

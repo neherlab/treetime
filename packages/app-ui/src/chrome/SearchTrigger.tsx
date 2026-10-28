@@ -1,8 +1,7 @@
+import { Button } from "@neherlab/design/ui/button";
+import { Kbd } from "@neherlab/design/ui/kbd";
 import { formatForDisplay, type Hotkey } from "@tanstack/react-hotkeys";
 import Search from "~icons/lucide/search";
-
-import { Button } from "../ui/button";
-import { Kbd } from "../ui/kbd";
 
 export function SearchTrigger({ label, hotkey, onClick }: { label: string; hotkey: Hotkey; onClick: () => void }) {
   return (

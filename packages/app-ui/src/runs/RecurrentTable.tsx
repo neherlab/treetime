@@ -1,8 +1,8 @@
 import type { RecurrentMutation } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
+import { DataTable, dataColumns } from "@neherlab/design/ui/data-table";
 import { createContext, use, useCallback, useMemo } from "react";
 
-import { DataTable, dataColumns } from "../components/DataTable";
-import { Button } from "../ui/button";
 import { drmText } from "./homoplasy";
 
 const column = dataColumns<RecurrentMutation>();

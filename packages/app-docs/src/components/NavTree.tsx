@@ -5,7 +5,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@neherlab/app-ui/ui/sidebar";
+} from "@neherlab/design/ui/sidebar";
 import { match } from "ts-pattern";
 import ChevronRight from "~icons/lucide/chevron-right";
 

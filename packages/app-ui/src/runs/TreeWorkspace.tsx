@@ -1,5 +1,6 @@
 import { errorMessage, type ResultNode, type ResultTree } from "@neherlab/app-contracts";
 import { version as getVersion } from "@neherlab/app-contracts/client";
+import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
@@ -9,7 +10,6 @@ import { traitColors } from "../auspice/colors";
 import type { AuspiceMetadataState, AuspiceNode, AuspiceState } from "../auspice/state";
 import type { AuspiceStore } from "../auspice/store";
 import { colorTreeBy, focusNode, showWholeTree, useAuspiceSelector, useAuspiceStore } from "../auspice/store-hooks";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { TreeData } from "./TreeView";
 
 export interface TreeLink {

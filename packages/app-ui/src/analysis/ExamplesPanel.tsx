@@ -6,6 +6,12 @@ import {
   type RunRecord,
 } from "@neherlab/app-contracts";
 import { runsGet, runsList } from "@neherlab/app-contracts/client";
+import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
+import { Button } from "@neherlab/design/ui/button";
+import { Card } from "@neherlab/design/ui/card";
+import { Spinner } from "@neherlab/design/ui/spinner";
+import { Table, TableBody, TableCell, TableRow } from "@neherlab/design/ui/table";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback, useMemo, useState } from "react";
 import Database from "~icons/lucide/database";
 import FileCog from "~icons/lucide/file-cog";
@@ -14,12 +20,6 @@ import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
 import { commandSettings } from "../settings/catalog";
 import { runInputAssignments, type InputAssignment } from "../settings/inputs";
-import { Alert, AlertDescription } from "../ui/alert";
-import { Button } from "../ui/button";
-import { Card } from "../ui/card";
-import { Spinner } from "../ui/spinner";
-import { Table, TableBody, TableCell, TableRow } from "../ui/table";
-import { useToastManager } from "../ui/toast";
 import { indexedDatasetInputs, type ExampleIndex } from "./exampleData";
 import { ExamplesDownload } from "./ExamplesDownload";
 import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "./useExampleData";
