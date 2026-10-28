@@ -1,0 +1,19 @@
+{
+  "name": "@neherlab/design",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Design language of the neherlab tools and sites: tokens, themes, fonts, and React components",
+  "type": "module",
+  "exports": {
+    "./tokens": "./src/tokens/tokens.ts",
+    "./color": "./src/tokens/color.ts",
+    "./tokens.css": "./src/css/tokens.css"
+  },
+  "dependencies": {
+    "culori": "4.0.2"
+  },
+  "devDependencies": {
+    "@types/culori": "4.0.1",
+    "@types/node": "catalog:"
+  }
+}

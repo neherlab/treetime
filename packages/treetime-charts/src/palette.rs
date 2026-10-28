@@ -2,16 +2,16 @@ use plotters::style::RGBColor;
 
 pub const PAPER: RGBColor = RGBColor(0xff, 0xff, 0xff);
 
-pub const INK: RGBColor = RGBColor(0x16, 0x30, 0x2b);
+pub const INK: RGBColor = RGBColor(0x18, 0x18, 0x18);
 
-pub const MUTED: RGBColor = RGBColor(0x4b, 0x5f, 0x5a);
+pub const MUTED: RGBColor = RGBColor(0x65, 0x65, 0x65);
 
-pub const GRID: RGBColor = RGBColor(0xe3, 0xe9, 0xe7);
+pub const GRID: RGBColor = RGBColor(0xe2, 0xe2, 0xe2);
 
-pub const AXIS: RGBColor = RGBColor(0xbf, 0xcb, 0xc7);
+pub const AXIS: RGBColor = RGBColor(0x8d, 0x8d, 0x8d);
 
-pub const ACCENT: RGBColor = RGBColor(0x17, 0x69, 0x5a);
+pub const SERIES: RGBColor = RGBColor(0x44, 0x77, 0xaa);
 
-pub const TIP: RGBColor = RGBColor(0x27, 0x47, 0x7f);
+pub const FIT: RGBColor = RGBColor(0x18, 0x18, 0x18);
 
-pub const FAULT: RGBColor = RGBColor(0xb4, 0x23, 0x18);
+pub const FAULT: RGBColor = RGBColor(0xee, 0x66, 0x77);

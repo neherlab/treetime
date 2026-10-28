@@ -7,7 +7,7 @@ use plotters::element::{Circle, DashedPathElement, PathElement, Text};
 use plotters::prelude::{DrawingArea, DrawingBackend};
 use plotters::style::Color;
 use plotters::style::text_anchor::{HPos, Pos, VPos};
-use treetime_charts::palette::{ACCENT, AXIS, FAULT, GRID, PAPER, TIP};
+use treetime_charts::palette::{AXIS, FAULT, FIT, GRID, PAPER, SERIES};
 use treetime_charts::text::text_style;
 use treetime_utils::cast::f64_to_i32_saturating;
 
@@ -48,7 +48,7 @@ where
       extrapolation.iter().map(line_pixel),
       DASH_LENGTH,
       DASH_GAP,
-      ACCENT.stroke_width(LINE_WIDTH),
+      FIT.stroke_width(LINE_WIDTH),
     ))?;
   }
   let fit = frame.fit.iter().map(line_pixel).collect::<Vec<_>>();
@@ -56,7 +56,7 @@ where
     fit.clone(),
     PAPER.mix(LINE_CASING_OPACITY).stroke_width(LINE_CASING_WIDTH),
   ))?;
-  area.draw(&PathElement::new(fit, ACCENT.stroke_width(LINE_WIDTH)))?;
+  area.draw(&PathElement::new(fit, FIT.stroke_width(LINE_WIDTH)))?;
 
   if let RootPlacement::OnChart(root) = frame.root {
     let center = (layout.dates.pixel(root), layout.divergences.pixel(0.0));
@@ -65,7 +65,7 @@ where
       ROOT_MARKER_RADIUS + ROOT_MARKER_HALO,
       PAPER.filled(),
     ))?;
-    area.draw(&Circle::new(center, ROOT_MARKER_RADIUS, ACCENT.filled()))?;
+    area.draw(&Circle::new(center, ROOT_MARKER_RADIUS, FIT.filled()))?;
   }
 
   for entry in &layout.legend {
@@ -110,11 +110,11 @@ where
   DB: DrawingBackend,
   DB::ErrorType: 'static,
 {
-  area.draw(&Circle::new(center, radius, TIP.mix(SAMPLE_FILL_OPACITY).filled()))?;
+  area.draw(&Circle::new(center, radius, SERIES.mix(SAMPLE_FILL_OPACITY).filled()))?;
   area.draw(&Circle::new(
     center,
     radius,
-    TIP.mix(SAMPLE_STROKE_OPACITY).stroke_width(1),
+    SERIES.mix(SAMPLE_STROKE_OPACITY).stroke_width(1),
   ))?;
   Ok(())
 }
@@ -140,12 +140,12 @@ where
   match entry.symbol {
     LegendSymbol::Sample => draw_sample(area, center, radius)?,
     LegendSymbol::Excluded => draw_excluded(area, center, radius)?,
-    LegendSymbol::Fit => area.draw(&PathElement::new(ends, ACCENT.stroke_width(LINE_WIDTH)))?,
+    LegendSymbol::Fit => area.draw(&PathElement::new(ends, FIT.stroke_width(LINE_WIDTH)))?,
     LegendSymbol::Extrapolation => area.draw(&DashedPathElement::new(
       ends,
       DASH_LENGTH,
       DASH_GAP,
-      ACCENT.stroke_width(LINE_WIDTH),
+      FIT.stroke_width(LINE_WIDTH),
     ))?,
   }
   draw_label(area, &entry.label)

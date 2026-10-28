@@ -10,7 +10,8 @@
       "packages/app-ui",
       "packages/app-wasm",
       "packages/app-web",
-      "packages/app-web2"
+      "packages/app-web2",
+      "packages/design"
     ],
     "catalog": {
       "@tailwindcss/vite": "4.3.3",

@@ -584,7 +584,7 @@ fmt-check-other:
     just --fmt --check || status=1
     exit "${status}"
 
-# Regenerate the committed generated files: just gen [schemas|openapi|catalog|ts-client|napi-types|wasm-types|cli-docs|data-index|i18n]...
+# Regenerate the committed generated files: just gen [schemas|openapi|catalog|ts-client|napi-types|wasm-types|cli-docs|data-index|i18n|design]...
 [group("generated")]
 gen *groups: _js
     dev/generated generate "$@"

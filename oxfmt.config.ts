@@ -17,6 +17,8 @@ export default defineConfig({
     "packages/app-output/src/__tests__/schemas",
     "packages/app-ui/public/basemap",
     "packages/app-wasm/pkg",
+    "packages/design/src/css/tailwind-theme.css",
+    "packages/design/src/css/tokens.css",
     "packages/legacy",
     "pixi.lock",
     "packages/schemas",

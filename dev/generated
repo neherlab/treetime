@@ -18,6 +18,9 @@
 #   data-index  data/index.json, the index of the example data, from the files git tracks in data/
 #   i18n        packages/app-ui/src/i18n/generated/, the Paraglide message modules, from the inlang
 #               project packages/app-ui/project.inlang and packages/app-ui/messages/
+#   design      packages/design/src/css/{tokens,tailwind-theme}.css, packages/design/matplotlib/neherlab.mplstyle,
+#               and packages/treetime-charts/src/palette.rs, from the design tokens in
+#               packages/design/src/tokens/tokens.ts
 #
 # Examples:
 #   $0 check
@@ -29,10 +32,10 @@ shopt -s inherit_errexit
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "${root}"
 
-all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs data-index i18n)
+all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs data-index i18n design)
 
 # Each produce_<group> writes the files of the group below the given directory,
-# at their repository-relative paths, and prints those paths.
+# at their repository-relative paths, and prints those paths, one per line.
 produce_schemas() {
   mkdir -p "${1}/packages/schemas"
   cargo run --locked --quiet --bin treetime -- schema write --for all -o "${1}/packages/schemas" >&2
@@ -100,6 +103,10 @@ produce_i18n() {
   printf 'packages/app-ui/src/i18n/generated\n'
 }
 
+produce_design() {
+  bun packages/design/build/generate.ts --outdir "${1}"
+}
+
 main() {
   local mode="${1:-}"
   case "${mode}" in
@@ -119,7 +126,7 @@ main() {
   out="$(mktemp -d)"
   trap 'rm -rf "${out}"' EXIT
 
-  local group path rc=0
+  local group path paths produced rc=0
   for group in "${groups[@]}"; do
     case " ${all_groups[*]} " in
     *" ${group} "*) ;;
@@ -129,19 +136,22 @@ main() {
       ;;
     esac
     printf '==> %s\n' "${group}" >&2
-    path="$("produce_${group//-/_}" "${out}")"
-    if [[ "${mode}" == generate ]]; then
-      if [[ ! -e "${out}/${path}" ]]; then
-        printf 'The generator produced no %s\n' "${path}" >&2
-        return 1
+    produced="$("produce_${group//-/_}" "${out}")"
+    mapfile -t paths <<<"${produced}"
+    for path in "${paths[@]}"; do
+      if [[ "${mode}" == generate ]]; then
+        if [[ ! -e "${out}/${path}" ]]; then
+          printf 'The generator produced no %s\n' "${path}" >&2
+          return 1
+        fi
+        rm -rf "${path:?}"
+        mkdir -p "$(dirname "${path}")"
+        cp -R "${out}/${path}" "${path}"
+      elif ! diff -ru "${path}" "${out}/${path}" >&2; then
+        printf 'The committed %s is stale; regenerate it with: just gen %s\n' "${path}" "${group}" >&2
+        rc=1
       fi
-      rm -rf "${path:?}"
-      mkdir -p "$(dirname "${path}")"
-      cp -R "${out}/${path}" "${path}"
-    elif ! diff -ru "${path}" "${out}/${path}" >&2; then
-      printf 'The committed %s is stale; regenerate it with: just gen %s\n' "${path}" "${group}" >&2
-      rc=1
-    fi
+    done
   done
   return "${rc}"
 }

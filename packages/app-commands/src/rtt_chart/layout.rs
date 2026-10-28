@@ -5,7 +5,7 @@ use eyre::Report;
 use itertools::Itertools;
 use plotters::style::RGBColor;
 use std::iter::once;
-use treetime_charts::palette::{ACCENT, INK, MUTED};
+use treetime_charts::palette::{FIT, INK, MUTED};
 use treetime_charts::scale::LinearScale;
 use treetime_charts::text::{Weight, text_width};
 use treetime_charts::ticks::{Tick, date_ticks, linear_ticks};
@@ -402,7 +402,7 @@ fn root_label(
   x_title_top: f64,
 ) -> Result<Option<Label>, Report> {
   let value = &summary.root_date.value;
-  let spec = TextSpec::new(ROOT_LABEL_SIZE, Weight::Bold, ACCENT);
+  let spec = TextSpec::new(ROOT_LABEL_SIZE, Weight::Bold, FIT);
   match frame.root {
     RootPlacement::OnChart(root) => {
       let (x, y) = (dates.map(root), divergences.map(0.0));

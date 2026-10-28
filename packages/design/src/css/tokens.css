@@ -1,0 +1,87 @@
+/* Generated from packages/design/src/tokens/tokens.ts by `just gen design`; edit the token source instead */
+
+:root {
+  color-scheme: light dark;
+}
+
+:root.light,
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root.dark,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+:root {
+  --background: light-dark(oklch(0.985 0 0), oklch(0.2 0 0));
+  --foreground: light-dark(oklch(0.21 0 0), oklch(0.93 0 0));
+  --card: light-dark(oklch(1 0 0), oklch(0.23 0 0));
+  --popover: light-dark(oklch(1 0 0), oklch(0.26 0 0));
+  --primary: light-dark(oklch(0.53 0.17 259.5), oklch(0.55 0.16 259.5));
+  --primary-foreground: light-dark(oklch(1 0 0), oklch(1 0 0));
+  --muted: light-dark(oklch(0.962 0 0), oklch(0.28 0 0));
+  --muted-foreground: light-dark(oklch(0.505 0 0), oklch(0.72 0 0));
+  --border: light-dark(oklch(0.912 0 0), oklch(0.315 0 0));
+  --input: light-dark(oklch(0.645 0 0), oklch(0.54 0 0));
+  --ring: light-dark(oklch(0.56 0.17 259.5), oklch(0.72 0.13 259.5));
+  --link: light-dark(oklch(0.51 0.17 259.5), oklch(0.76 0.12 259.5));
+  --selected: light-dark(oklch(0.955 0.021 259.5), oklch(0.3 0.07 259.5));
+  --brand: light-dark(oklch(0.42 0.155 27), oklch(0.68 0.16 25));
+  --destructive: light-dark(oklch(0.53 0.19 33), oklch(0.72 0.15 30));
+  --destructive-subtle: light-dark(oklch(0.965 0.016 30), oklch(0.28 0.06 30));
+  --warning: light-dark(oklch(0.53 0.115 65), oklch(0.82 0.13 80));
+  --warning-subtle: light-dark(oklch(0.975 0.025 85), oklch(0.29 0.05 75));
+  --success: light-dark(oklch(0.5 0.12 150), oklch(0.77 0.14 152));
+  --success-subtle: light-dark(oklch(0.97 0.03 150), oklch(0.28 0.05 152));
+  --mark-gray: light-dark(oklch(0.573 0 0), oklch(0.68 0 0));
+  --mark-coral: light-dark(oklch(0.622 0.141 22), oklch(0.7 0.13 22));
+  --mark-blue: light-dark(oklch(0.589 0.087 228), oklch(0.7 0.08 228));
+  --data-blue: light-dark(oklch(0.556 0.097 250), oklch(0.68 0.1 250));
+  --data-red: light-dark(oklch(0.683 0.168 15.1), oklch(0.72 0.15 15.1));
+  --data-green: light-dark(oklch(0.551 0.153 145.6), oklch(0.7 0.15 145.6));
+  --data-yellow: light-dark(oklch(0.785 0.138 101.1), oklch(0.8 0.13 101.1));
+  --data-cyan: light-dark(oklch(0.797 0.106 222.5), oklch(0.8 0.1 222.5));
+  --data-purple: light-dark(oklch(0.519 0.169 349.4), oklch(0.68 0.15 349.4));
+  --data-gray: light-dark(oklch(0.792 0 0), oklch(0.62 0 0));
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --chart-paper: var(--card);
+  --chart-ink: var(--foreground);
+  --chart-muted: var(--muted-foreground);
+  --chart-grid: var(--border);
+  --chart-axis: var(--input);
+  --chart-series: var(--data-blue);
+  --chart-fit: var(--foreground);
+  --chart-fault: var(--data-red);
+  --chart-selection: var(--data-purple);
+  --typeface-sans: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --typeface-serif: "Source Serif 4 Variable", "Source Serif 4", Georgia, serif;
+  --typeface-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --typeface-heading: var(--typeface-sans);
+  --corner-sm: 3px;
+  --corner-md: 4px;
+  --corner-lg: 5px;
+  --corner-xl: 8px;
+  --motion-duration: 120ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+  }
+}

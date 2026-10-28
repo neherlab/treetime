@@ -56,6 +56,9 @@
       "path": "./packages/app-web2/tsconfig.node.json"
     },
     {
+      "path": "./packages/design/tsconfig.json"
+    },
+    {
       "path": "./tsconfig.tools.json"
     }
   ]

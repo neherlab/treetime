@@ -1,0 +1,53 @@
+# neherlab figure style for matplotlib: the colors and the typeface of the neherlab design language.
+# Generated from packages/design/src/tokens/tokens.ts by `just gen design`; edit the token source instead.
+# Use: matplotlib.style.use('path/to/neherlab.mplstyle'). Install IBM Plex Sans for the typeface;
+# without it, matplotlib falls back to DejaVu Sans.
+
+axes.prop_cycle: cycler('color', ['4477aa', 'ee6677', '228833', 'ccbb44', '66ccee', 'aa3377', 'bbbbbb'])
+
+font.family: sans-serif
+font.sans-serif: IBM Plex Sans, DejaVu Sans, sans-serif
+font.monospace: IBM Plex Mono, DejaVu Sans Mono, monospace
+font.size: 10
+mathtext.fontset: dejavusans
+
+figure.facecolor: ffffff
+figure.edgecolor: ffffff
+savefig.facecolor: ffffff
+savefig.edgecolor: ffffff
+savefig.bbox: tight
+figure.dpi: 100
+savefig.dpi: 300
+
+axes.facecolor: ffffff
+axes.edgecolor: 8d8d8d
+axes.linewidth: 0.8
+axes.labelcolor: 656565
+axes.labelsize: 10
+axes.titlecolor: 181818
+axes.titlesize: 12
+axes.titleweight: bold
+axes.titlelocation: left
+axes.spines.top: False
+axes.spines.right: False
+axes.grid: True
+axes.axisbelow: True
+grid.color: e2e2e2
+grid.linewidth: 0.8
+
+xtick.color: 8d8d8d
+xtick.labelcolor: 656565
+xtick.labelsize: 9
+ytick.color: 8d8d8d
+ytick.labelcolor: 656565
+ytick.labelsize: 9
+
+text.color: 181818
+legend.frameon: False
+legend.fontsize: 9
+legend.labelcolor: 181818
+
+lines.linewidth: 1.5
+lines.markersize: 5
+scatter.edgecolors: face
+image.cmap: cividis
