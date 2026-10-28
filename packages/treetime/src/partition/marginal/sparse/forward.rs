@@ -8,7 +8,7 @@ use crate::partition::marginal::sparse::message::{
   combine_messages, divide_out_site, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::marginal::sparse::reconstruct::{map_state, parsimony_seq};
+use crate::partition::marginal::sparse::reconstruct::map_state;
 use crate::partition::storage::sparse::{
   FixedProfiles, SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
   SparseSeqDistribution,
@@ -94,12 +94,7 @@ impl SparseForwardPass<'_> {
       (Some(&(parent_key, edge_key)), Some(backward), Some(parent)) => {
         Some(self.edge(key, parent_key, edge_key, &mut node, backward, parent)?)
       },
-      (None, None, None) => {
-        if node.sequence.is_empty() {
-          node.sequence = Arc::new(partition.root_sequence.clone());
-        }
-        None
-      },
+      (None, None, None) => None,
       _ => {
         return Err(make_internal_report!(
           "Sparse marginal forward pass received an inconsistent parent edge and parent message at node {key}"
@@ -170,12 +165,6 @@ impl SparseForwardPass<'_> {
       SparseSeqDistribution::default()
     };
 
-    if !is_leaf && !parent.sequence.is_empty() {
-      let sequence = parsimony_seq(&parent.sequence, edge_obs, obs, alphabet);
-      if *node.sequence != sequence {
-        node.sequence = Arc::new(sequence);
-      }
-    }
     let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, node, obs, edge_obs)?;
 
     Ok(SparseEdgeForwardOut {

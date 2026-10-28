@@ -5,6 +5,7 @@ use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::sequences::fitch_node_sequences;
 use crate::partition::storage::sparse::{
   FixedProfiles, SparseEdgeBackward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
@@ -19,7 +20,7 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
-use treetime_primitives::LogLh;
+use treetime_primitives::{LogLh, Seq};
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::make_internal_report;
 
@@ -32,17 +33,17 @@ pub(crate) fn process_backward_indexed(
 ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
+  let sequences = fitch_node_sequences(partition, &schedule, node_states)?;
   let pass = SparseBackwardPass {
     schedule: &schedule,
     partition,
     gtr,
     branch_lengths,
   };
-  let nodes = node_states.iter().collect();
   let edges = partition.obs_edges.iter().collect();
   let outputs = schedule.scan_up(
-    schedule.join_parent_edges(nodes, edges)?,
-    |key, (node, mut edge_obs), children| pass.node(key, node, edge_obs.pop(), &children),
+    schedule.join_parent_edges(sequences, edges)?,
+    |key, (sequence, mut edge_obs), children| pass.node(key, sequence, edge_obs.pop(), &children),
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
   Ok(MarginalBackward {
@@ -62,7 +63,7 @@ impl SparseBackwardPass<'_> {
   fn node(
     &self,
     key: GraphNodeKey,
-    node: &SparseNodeState,
+    sequence: Arc<Seq>,
     edge_obs: Option<&SparseEdgeObs>,
     children: &[SparseBackwardOutput],
   ) -> Result<(SparseBackwardOutput, SparseBackwardOutput), Report> {
@@ -76,7 +77,6 @@ impl SparseBackwardPass<'_> {
       self.combine_child_messages(key, children, obs)?
     };
 
-    let sequence = Arc::clone(&node.sequence);
     let (profile, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
       (Some(&(_, edge_key)), Some(_)) => {
         let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
