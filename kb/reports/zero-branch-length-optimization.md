@@ -54,13 +54,15 @@ All three cases route to `grid_search_branch_length()` ([optimize/zero_boundary.
 
 ## Topology cleanup
 
-After branch-length optimization, the optimize loop collapses zero-length edges and restructures the tree.
+After branch-length optimization, the optimize loop collapses zero-length edges and restructures the tree; after the loop, it collapses short edges once.
 
-`find_zero_optimal_internal_edges()` ([optimize/run_loop.rs#L295](../../packages/treetime/src/optimize/run_loop.rs#L295)) runs after `optimize_edge_lengths()` and before damping ([optimize/run_loop.rs#L230](../../packages/treetime/src/optimize/run_loop.rs#L230)). It collects internal edges with branch length exactly zero and no mutations or indels on any partition. Leaf edges are excluded, matching v0's `prune_short_branches` which skips terminals.
+`find_zero_optimal_internal_edges()` ([optimize/run_loop.rs#L302](../../packages/treetime/src/optimize/run_loop.rs#L302)) runs after `optimize_edge_lengths()` and before damping ([optimize/run_loop.rs#L237](../../packages/treetime/src/optimize/run_loop.rs#L237)). It collects every internal edge with branch length exactly zero, also when the edge carries Fitch substitutions or indels, because the transition matrix at length zero is the identity and the removal leaves the substitution likelihood unchanged. It keeps an edge only when the indel term of the edge needs a positive length (`IndelTerm::requires_positive_length()`: the edge has indel events and indels are part of the likelihood, which `--no-indels` turns off). Leaf edges are excluded, matching v0's `prune_short_branches` which skips terminals.
 
-`prune_and_merge_in_loop()` ([optimize/run_loop.rs#L321](../../packages/treetime/src/optimize/run_loop.rs#L321)) then overrides damped branch lengths back to zero for these edges and collapses each one ([optimize/run_loop.rs#L355](../../packages/treetime/src/optimize/run_loop.rs#L355)). The underlying `collapse_edge()` ([optimize/topology/collapse.rs#L7-L43](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)) removes the target node, reparents its children to the source, sums branch lengths, composes substitutions via the Markov semigroup property (reversions cancel), concatenates indels, and drops stale partition entries. `collapse_edge()` is also used by the prune command ([prune/prune.rs#L64](../../packages/treetime/src/prune/prune.rs#L64), [prune/prune.rs#L121](../../packages/treetime/src/prune/prune.rs#L121)).
+`prune_and_merge_in_loop()` ([optimize/run_loop.rs#L318](../../packages/treetime/src/optimize/run_loop.rs#L318)) then overrides damped branch lengths back to zero for these edges and collapses each one. The underlying `collapse_edge()` ([optimize/topology/collapse.rs#L21](../../packages/treetime/src/optimize/topology/collapse.rs#L21)) removes the target node, reparents its children to the source, sums branch lengths, composes substitutions via the Markov semigroup property (reversions cancel), composes the marginal estimates of the two edges, concatenates indels, and drops stale partition entries. A composed Fitch substitution at a site where the child subtree has no data is dropped. `collapse_edge()` is also used by the prune command ([prune/prune.rs#L77](../../packages/treetime/src/prune/prune.rs#L77), [prune/prune.rs#L136](../../packages/treetime/src/prune/prune.rs#L136)).
 
-After collapsing, sibling branches in newly formed polytomies that share identical substitutions are merged under new internal nodes.
+After collapsing, `resolve_polytomies()` merges siblings that share substitutions of both Fitch and the marginal reconstruction under new internal nodes, hoists reverting children, and retires mutation-free helper nodes ([kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md)). A merge creates an edge that the next branch-length step can drive to zero; when the collapse removes it, `MergeLedger` rejects the same group of children for the rest of the run, so the loop does not repeat the merge.
+
+After the loop, on the final branch lengths, `collapse_short_internal_edges()` ([optimize/topology/collapse.rs#L84](../../packages/treetime/src/optimize/topology/collapse.rs#L84)) collapses every internal edge of length zero and every internal edge shorter than $0.1/L$ ($L$ is the number of sites of all partitions) whose marginal estimate carries no substitution in any partition, except edges whose indel term needs a positive length. This is the post-loop `prune_short_branches` of v0 marginal mode. No merge or hoist follows. `--no-collapse-short-branches` disables both collapses.
 
 ## Data flow
 
@@ -93,8 +95,10 @@ graph TD
         find["find_zero_optimal_internal_edges()"]
         prune["prune_and_merge_in_loop()"]
         coll["collapse_edge()"]
+        short["collapse_short_internal_edges()"]
         find --> prune
         prune --> coll
+        short --> coll
     end
 
     run["optimize_edge_lengths()"]
@@ -107,6 +111,7 @@ graph TD
     loop["run_optimize_loop()"]
     loop --> run
     run --> find
+    loop -->|"after the loop"| short
 ```
 
 ## Decision matrix

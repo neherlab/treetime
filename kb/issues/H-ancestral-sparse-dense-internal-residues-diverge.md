@@ -2,6 +2,9 @@
 
 ## Symptom
 
+> [!WARNING]
+> **Needs review.** The sparse backend now leaves sites where a child subtree has no data out of its messages, keeps the data below ancestors that Fitch resolves as gaps, and imputes leaves inside clades without data (commits `e380322ea`, `a084a38c8`, `ef5cc6a21`, `f9e7b6c2a`). The tests in `packages/treetime/src/partition/marginal/sparse/__tests__/test_missing_data.rs` compare both backends on alignments with gaps and `N`. Measure the residue differences of the table again, and rewrite or delete this issue
+
 For the same tree and alignment, the sparse and dense marginal backends reconstruct different residues at some positions of internal nodes. Both backends place every gap and unknown character at the same positions ([kb/decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md](../decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md)), so the remaining differences are canonical states only:
 
 | Dataset         | Internal nodes | Nodes that differ | Positions that differ |
@@ -62,8 +65,7 @@ The ignored test `test_dense_sparse_homoplasy_statistics_agree_with_gaps_and_unk
 
 ## Related issues
 
-The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause. The smallest reproducing case is the tree with one unknown leaf of [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md), so an investigation of the others starts there.
+The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause.
 
 - [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md)
-- [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)
 - [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)

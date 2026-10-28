@@ -157,21 +157,18 @@ These issues give wrong scientific results or crashes on default settings or exa
 
 - **[kb/issues/H-timetree-sparse-dense-node-times-differ.md](issues/H-timetree-sparse-dense-node-times-differ.md)**: compare the sparse and dense per-edge log-likelihoods on edges whose parent is not the root, where they differ at fixed branch lengths, starting with the sparse message from the parent
 - **[kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](issues/H-ancestral-sparse-dense-internal-residues-diverge.md)**: trace `NODE_0000002` at 0-based position 5437 of `rsv/a/20` through both backends, starting with the `EPS = 1e-4` site demotion
-- **[kb/issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)**: find why the sparse message of a tip without sequence data depends on its branch length, starting in the sparse leaf message
 
 ## Next
 
 These issues give wrong results or failures under specific settings, or block capabilities that users need soon.
 
-- **[kb/issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md](issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md)**: resolve the parent state before the lookup in `fn impute_state()`
-- **[kb/issues/M-timetree-pre-loop-short-branch-pruning-missing.md](issues/M-timetree-pre-loop-short-branch-pruning-missing.md)**: add the v0 short-branch pruning to the timetree pre-loop, with code shared with the post-loop pruning of [kb/issues/M-optimize-short-branch-pruning-unimplemented.md](issues/M-optimize-short-branch-pruning-unimplemented.md)
+- **[kb/issues/M-timetree-pre-loop-short-branch-pruning-missing.md](issues/M-timetree-pre-loop-short-branch-pruning-missing.md)**: add the v0 short-branch pruning to the timetree pre-loop, with the rule and code of the post-loop collapse of `optimize` (`fn collapse_short_internal_edges()`)
 - **[kb/issues/M-clock-filter-residual-parity.md](issues/M-clock-filter-residual-parity.md)**: compute quartiles as v0 does and never flag children of the root
 - **[kb/issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md)**: leave undated tips out of the in-loop clock fit
 - **[kb/issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md](issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md)**: estimate the fallback substitution count of polytomy resolution from the clock-constrained branch length
 - **[kb/issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md)**: refine the branch grid alone in the exact-posterior test to find the source of the 2.5e-4 floor on long branches
 - **[kb/issues/M-distribution-multiply-touching-hard-domains-error-instead-of-point.md](issues/M-distribution-multiply-touching-hard-domains-error-instead-of-point.md)**: return a point when two range domains touch, in `fn multiply_range_range()`
 - **[kb/issues/M-sparse-marginal-zero-multiplicity-nan.md](issues/M-sparse-marginal-zero-multiplicity-nan.md)**: skip zero-weight terms before the multiplication that gives NaN
-- **[kb/issues/M-optimize-short-branch-pruning-unimplemented.md](issues/M-optimize-short-branch-pruning-unimplemented.md)**: add the v0 post-loop short-branch pruning to optimize
 - **[kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)**: derive the optimize mutations from the emitted sequences, as ancestral and timetree do
 - **[kb/issues/M-io-stdin-config-and-input-read-twice.md](issues/M-io-stdin-config-and-input-read-twice.md)**: reject `--config -` together with an input `-`
 

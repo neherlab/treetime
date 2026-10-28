@@ -32,7 +32,7 @@ Leaves are reconstructed from their own observed data, not by chaining through t
 
 With imputation enabled, every ambiguous or unknown tip position resolves to the argmax of the tip's marginal posterior, leaving gaps as gaps (a gap is inferred structure, not missing data). The posterior is the parent marginal evolved across the tip's branch, restricted by the observed ambiguity mask, matching v0's per-leaf marginal profile. The parent state is not simply copied, because on a long tip branch the evolved posterior can differ from the parent's most-likely state.
 
-The dense backend takes the argmax of the stored per-site leaf profile at imputed positions; the sparse backend evolves the stored parent-to-child message across the branch and takes the argmax under the observed ambiguity mask. The two backends produce identical tip sequences. Sparse imputation does not yet meet this below an unknown internal node: [kb/issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md](../issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md).
+The dense backend takes the argmax of the stored per-site leaf profile at imputed positions; the sparse backend evolves the stored parent-to-child message across the branch and takes the argmax under the observed ambiguity mask. The two backends produce identical tip sequences.
 
 ### Leaf-branch mutations follow the emitted tip
 

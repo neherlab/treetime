@@ -1,6 +1,6 @@
 # Short branch pruning for optimize command
 
-After the branch-length optimization loop converges, prune internal branches too short to be resolved by the available sequence data. Matches v0's marginal-mode behavior. Listed as `[ ]` in [kb/features/optimize.md](../features/optimize.md) (line 73).
+After the branch-length optimization loop converges, prune internal branches too short to be resolved by the available sequence data. Matches v0's marginal-mode behavior. Status: implemented by `fn collapse_short_internal_edges()` in [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs), which tests the absence of substitutions in the marginal estimate of the edge, the case in which $P(0) > 0.1$ holds ([kb/features/optimize.md](../features/optimize.md)).
 
 ## Criterion
 
@@ -46,5 +46,4 @@ The optimization loop already calls `find_zero_optimal_internal_edges` per itera
 ## Related
 
 - [kb/proposals/optimize-pipeline-timetree-parity.md](optimize-pipeline-timetree-parity.md) -- parent proposal
-- [kb/features/optimize.md](../features/optimize.md) -- `[ ] Short branch pruning after optimization` and `[ ] MIN_BRANCH_LENGTH floor for GTR calculations`
-- [kb/issues/M-optimize-short-branch-pruning-unimplemented.md](../issues/M-optimize-short-branch-pruning-unimplemented.md) -- implementation scope and validation
+- [kb/features/optimize.md](../features/optimize.md) -- `Short branch pruning after optimization` and `[ ] MIN_BRANCH_LENGTH floor for GTR calculations`

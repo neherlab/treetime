@@ -33,12 +33,12 @@ Before the timetree loop, after the pre-loop ancestral reconstruction or branch-
 3. reconcile partition topology
 4. recompute the marginal state on the pruned tree
 
-The criterion is the same as in [M-optimize-short-branch-pruning-unimplemented.md](M-optimize-short-branch-pruning-unimplemented.md); both commands should share one implementation.
+`optimize` applies this criterion after its loop in `fn collapse_short_internal_edges()` [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs): an internal edge shorter than $0.1m$ whose marginal estimate carries no substitution, which is the $P(0) > 0.1$ test, because $P(0)$ is 1 when the parent and child sequences agree at every compared site and 0 otherwise. Both commands should share this implementation.
 
 ## Locations
 
 - Pre-loop: `fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.rs#L29-L70`](../../packages/treetime/src/timetree/pre_loop.rs#L29-L70)
-- Topology collapse: `fn collapse_edge()` [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
+- Topology collapse: `fn collapse_edge()` and `fn collapse_short_internal_edges()` [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
 
 ## Validation
 

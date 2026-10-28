@@ -10,7 +10,10 @@ The optimize golden-master fixture `packages/treetime/src/optimize/__tests__/__f
 
 ## Likely contributors
 
-1. Topology cleanup criterion. v0's `prune_short_branches` collapses any internal branch with `bl < 0.1 * one_mutation && prob_t(parent, child, 0) > 0.1`. v1 collapses only branches the optimizer drives to exact zero. Branches the optimizer leaves at e.g. `1e-12 - 1e-3` subs/site that v0 collapses stay positive in v1 and absorb mass that v0 redistributes to siblings. This is the missing post-loop pruning of [M-optimize-short-branch-pruning-unimplemented.md](M-optimize-short-branch-pruning-unimplemented.md): implement that issue first, then measure the divergence again and list every divergent branch.
+1. Topology cleanup criterion. v0's `prune_short_branches` collapses any internal branch with `bl < 0.1 * one_mutation && prob_t(parent, child, 0) > 0.1`. v1 applies the same rule after the loop (`fn collapse_short_internal_edges()` in [packages/treetime/src/optimize/topology/collapse.rs](../../packages/treetime/src/optimize/topology/collapse.rs)): it collapses internal edges shorter than 0.1/L whose marginal estimate carries no substitution, and every internal edge of length zero. Without this rule, branches that the optimizer leaves at e.g. `1e-12 - 1e-3` subs/site stay positive and absorb mass that v0 redistributes to siblings.
+
+> [!IMPORTANT]
+> **Investigation required.** The per-branch divergence has not been measured since the post-loop collapse and the sparse missing-data fix. Run `test_gm_optimize_per_branch` again, list every divergent branch, and check which of the contributors below remain.
 2. Indel term. The per-branch test runs with `IndelPolicy::Include`, so v1 adds a Poisson indel term to each per-edge objective. `IndelPolicy::edge_indels()` returns `EdgeIndels` with one indel rate per alignment, estimated once at the start of `fn run_optimize_loop()` ([packages/treetime/src/optimize/run_loop.rs#L47](../../packages/treetime/src/optimize/run_loop.rs#L47)); the loop recounts the indel events per iteration but keeps the rates. v0 has no indel term, so indel-bearing edges get a different objective.
 3. Damping schedule application order. v0 and v1 both apply `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`, but v1 restores zeros for internal zero-optimal edges after damping (see `prune_and_merge_in_loop`), while v0 prunes at the end of each pass with the threshold above. Different cleanup ordering can leave different mass distributions per branch even when the sum agrees.
 
@@ -20,13 +23,7 @@ The optimize golden-master fixture `packages/treetime/src/optimize/__tests__/__f
 
 ## Approach
 
-Three orthogonal options:
-
-1. Implement v0's `prune_short_branches` criterion (`bl < 0.1 * one_mutation` AND `prob_t(parent, child, 0) > 0.1`) inside the v1 optimize loop and recheck the per-branch divergence.
-2. Re-derive the GM fixture from v1 itself (snapshot rather than oracle) and accept the per-branch divergence as an intentional v0/v1 deviation, moving the entry to `decisions/`.
-3. Tighten the v1 internal-edge collapse criterion to match v0's threshold (without copying the probability gate).
-
-Option 1 is the most aligned with the porting goal. Option 2 is the fastest path to a green CI but loses the v0 oracle. Option 3 is a compromise but introduces a new threshold parameter.
+Measure the divergence again with the post-loop collapse in place. If branches still differ, trace them to one of the remaining contributors (indel term, cleanup order). Re-deriving the GM fixture from v1 itself would turn the v0 oracle into a snapshot and needs an approved entry in `decisions/`.
 
 ## Cross-references
 
@@ -34,4 +31,3 @@ Option 1 is the most aligned with the porting goal. Option 2 is the fastest path
 - [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs) (shared `collapse_edge()`)
 - `fn find_zero_optimal_internal_edges()` and `fn prune_and_merge_in_loop()` [packages/treetime/src/optimize/run_loop.rs#L312-L385](../../packages/treetime/src/optimize/run_loop.rs#L312-L385)
 - `def prune_short_branches()` [packages/legacy/treetime/treetime/treeanc.py#L1475-L1495](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1495)
-- [M-optimize-short-branch-pruning-unimplemented.md](M-optimize-short-branch-pruning-unimplemented.md)

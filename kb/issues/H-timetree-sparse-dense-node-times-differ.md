@@ -2,6 +2,9 @@
 
 The marginal time inference gives different node times in dense and in sparse mode for the same tree, alignment, clock rate, and indel policy. With JC69 and no per-site rates, the two modes compute the same branch-length likelihood and should give the same node times.
 
+> [!WARNING]
+> **Needs review.** The sparse backend now leaves sites where a child subtree has no data out of its messages and its branch-length objective, and keeps the data below ancestors that Fitch resolves as gaps (commits `e380322ea`, `a084a38c8`, `ef5cc6a21`). Before this fix, sparse branch lengths were shorter than dense ones on alignments with gaps and `N`. The test `test_missing_data_sparse_matches_dense` in `packages/treetime/src/partition/marginal/sparse/__tests__/test_missing_data.rs` compares the root log-likelihood and the edge objectives of both backends on such alignments. Measure the node times of both modes again on the datasets above, and rewrite or delete this issue
+
 `test_gm_runner_marginal_sparse_dense_consistency` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25) runs v1 dense and v1 sparse on the same inputs and compares their node times. On `flu_h3n2_20` it passes at `epsilon = 1e-2` (largest difference $4.1 \cdot 10^{-3}$ years at `NODE_0000011`); on the other datasets of the fixtures the modes differ by 0.07 to 1.2 years, so the test holds only the flu case. The node time is the grid point with the largest posterior density, and the two modes build different posterior grids, so on `flu_h3n2_20` the test measures mostly the grid cell of about $6.4 \cdot 10^{-3}$ years (see Evidence).
 
 On `rust` at `3825359a2`, one CLI comparison confirms the difference on the default path: `timetree` on `data/ebola/20` with `--clock-rate=0.001 --keep-root --model=jc69 --seed=1` gives node dates that differ by up to 0.0495 years (at `NODE_0000013`) between `--representation dense` and `--representation sparse`. That run includes the ML branch-length pre-step, so it does not separate the pre-step from the time inference.
@@ -57,8 +60,7 @@ The two datasets with the smallest and a large difference also differ in their a
 
 ## Related issues
 
-The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause. The smallest reproducing case is the tree with one unknown leaf of [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md), so an investigation of the others starts there.
+The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause.
 
 - [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md)
-- [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)
 - [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)

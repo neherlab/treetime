@@ -37,8 +37,7 @@ Wire `--reroot`, `--outgroup`, and `--keep-root` into optimize. Two-phase BL opt
 Prune internal branches too short to be resolved by the alignment after the optimization loop converges. v0 criterion: `bl < 0.1 * one_mutation` AND `P(zero) > 0.1`.
 
 - Proposal: [optimize-short-branch-pruning.md](optimize-short-branch-pruning.md)
-- Issue:
-  - [kb/issues/M-optimize-short-branch-pruning-unimplemented.md](../issues/M-optimize-short-branch-pruning-unimplemented.md) -- pruning logic, topology collapse, partition reconciliation
+- Status: implemented. `fn collapse_short_internal_edges()` runs after the optimize loop and collapses internal edges shorter than `0.1 * one_mutation` whose marginal estimate carries no substitution ([kb/features/optimize.md](../features/optimize.md))
 
 ### 4. GTR re-estimation in optimization loop
 

@@ -7,7 +7,7 @@
 
 ## Impact
 
-`--representation auto` always selects sparse mode. On long-branch datasets where dense representation would be more appropriate, users must explicitly pass `--representation dense`. Sparse mode is the default of every run, so the differences between sparse and dense results in [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md), [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md), and [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md) reach every run with `--representation auto`.
+`--representation auto` always selects sparse mode. On long-branch datasets where dense representation would be more appropriate, users must explicitly pass `--representation dense`. Sparse mode is the default of every run, so the differences between sparse and dense results in [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md) and [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md) reach every run with `--representation auto`.
 
 ## Root cause
 
