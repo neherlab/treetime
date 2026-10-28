@@ -2,6 +2,7 @@ use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::reconstruct::parsimony_seq;
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs};
 use crate::seq::composition::Composition;
+use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::compute_node_ranges;
 use eyre::Report;
 use itertools::Itertools;
@@ -9,7 +10,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
-use treetime_utils::interval::range_difference::range_difference;
+use treetime_utils::interval::range_union::range_union;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn new_node_obs(
@@ -23,25 +24,15 @@ pub(crate) fn new_node_obs(
   let children = child_keys.iter().map(|key| &partition.obs_nodes[key]).collect_vec();
   let child_non_chars = children.iter().map(|child| &child.non_char).collect_vec();
   let child_gaps = children.iter().map(|child| &child.gaps).collect_vec();
-  let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
-  let gaps = range_difference(&ranges.non_char, &ranges.unknown);
-
-  let mut sequence = node_sequence(graph, reconstruction, graph.get_source_node_key(edge_key)?)?;
-  for sub in partition.obs_edges[&edge_key].fitch_subs() {
-    sequence[sub.pos()] = sub.qry();
-  }
-  for &(start, end) in &gaps {
-    sequence[start..end].fill(alphabet.gap());
-  }
-  for &(start, end) in &ranges.unknown {
-    sequence[start..end].fill(alphabet.unknown());
-  }
+  let unknown = compute_node_ranges(&child_non_chars, &child_gaps).unknown;
 
   let mut obs = SparseNodeObs::empty(alphabet);
+  obs.unknown = unknown;
+  let parent_sequence = node_sequence(graph, reconstruction, graph.get_source_node_key(edge_key)?)?;
+  let sequence = parsimony_seq(&parent_sequence, &partition.obs_edges[&edge_key], &obs, alphabet);
+  obs.gaps = find_letter_ranges(&sequence, alphabet.gap());
+  obs.non_char = range_union(&[obs.gaps.clone(), obs.unknown.clone()]);
   obs.composition = Composition::with_seq(&sequence, alphabet);
-  obs.unknown = ranges.unknown;
-  obs.gaps = gaps;
-  obs.non_char = ranges.non_char;
   Ok(obs)
 }
 

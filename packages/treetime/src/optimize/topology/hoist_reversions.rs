@@ -98,6 +98,9 @@ pub(crate) fn slide_bifurcating_root_for_child(
       if !parent_positions.contains(&sibling_sub.pos()) && reverted_by_child {
         let pos = sibling_sub.pos();
         partition.root_sequence[pos] = sibling_sub.qry();
+        if let Some(root_obs) = partition.obs_nodes.get_mut(root_key) {
+          root_obs.composition.add_sub(&sibling_sub);
+        }
         if let Some(root_node) = node_states.get_mut(root_key) {
           if pos < root_node.sequence.len() {
             Arc::make_mut(&mut root_node.sequence)[pos] = sibling_sub.qry();
