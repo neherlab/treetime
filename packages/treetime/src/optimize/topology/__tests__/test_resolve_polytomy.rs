@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::TopologyOps;
+  use crate::optimize::topology::merge_shared_mutations::MergeLedger;
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
@@ -43,6 +45,7 @@ mod tests {
       &mut sparse,
       TopologyOps::default(),
       &mut branch_lengths,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     assert!(changed > 0);
 
@@ -90,6 +93,7 @@ mod tests {
       &mut sparse,
       TopologyOps::default(),
       &mut branch_lengths,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let after = total_subs(&graph, &sparse[0].partition);
 
@@ -126,6 +130,7 @@ mod tests {
       &mut sparse,
       TopologyOps::default(),
       &mut branch_lengths,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let after = total_subs(&graph, &sparse[0].partition);
 
@@ -169,6 +174,7 @@ mod tests {
       &mut sparse,
       TopologyOps::default(),
       &mut branch_lengths,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
 
     assert!(
@@ -213,6 +219,7 @@ mod tests {
       &mut sparse,
       TopologyOps::default(),
       &mut branch_lengths,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
 
     assert_eq!(changed, 0);
@@ -248,6 +255,7 @@ mod tests {
       &mut sparse,
       TopologyOps::default(),
       &mut branch_lengths,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
 
     assert_eq!(changed, 0);

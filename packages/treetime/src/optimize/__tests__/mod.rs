@@ -43,4 +43,5 @@ mod test_sim_optimize_indel_policy;
 mod test_sim_optimize_recovery;
 mod test_solver_outcome;
 mod test_topology_cleanup;
+mod test_topology_cleanup_merge_ledger;
 mod test_topology_cleanup_prune_and_merge;

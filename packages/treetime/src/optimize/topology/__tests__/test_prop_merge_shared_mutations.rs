@@ -199,7 +199,7 @@ mod tests {
   }
 
   #[test]
-  fn test_merge_all_children_share_same_mutation() -> Result<(), Report> {
+  fn test_merge_keeps_a_polytomy_whose_children_all_share_a_mutation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;".as_slice())?;
     let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
@@ -220,16 +220,10 @@ mod tests {
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
-    assert_eq!(merged, 1);
     graph.build()?;
 
     let root = graph.get_roots().next().expect("root");
-    assert_eq!(root.degree_out(), 1);
-
-    let internal_edge = root.outbound()[0];
-    let internal_key = graph.get_target_node_key(internal_edge)?;
-    let internal = graph.get_node(internal_key).expect("internal node");
-    assert_eq!(internal.degree_out(), 5);
+    assert_eq!((0, 5), (merged, root.degree_out()));
 
     Ok(())
   }
@@ -430,7 +424,7 @@ mod tests {
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = Vec::new();
       for (i, name) in names.iter().enumerate() {
         let n_unique = unique_counts[i];
-        let mut subs = shared.clone();
+        let mut subs = if i + 1 < n_children { shared.clone() } else { vec![] };
         for _ in 0..n_unique {
           subs.push(sub_at(pos_counter));
           pos_counter += 1;

@@ -1,4 +1,5 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
+use crate::optimize::indel::IndelPolicy;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
@@ -27,12 +28,21 @@ pub(crate) fn merge_shared_mutation_branches(
   branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<usize, Report> {
   let alignments = sparse_alignment_groups(partitions)?;
+  let mut ledger = MergeLedger::new(IndelPolicy::Include);
   let mut total_merged = 0;
 
   let polytomy_keys = find_polytomy_nodes(graph);
 
   for node_key in polytomy_keys {
-    let merged = merge_single_polytomy(graph, names, partitions, &alignments, node_key, branch_lengths)?;
+    let merged = merge_single_polytomy(
+      graph,
+      names,
+      partitions,
+      &alignments,
+      node_key,
+      branch_lengths,
+      &mut ledger,
+    )?;
     total_merged += merged;
   }
 
@@ -52,6 +62,7 @@ pub(crate) fn merge_single_polytomy(
   alignments: &[AlignmentGroup],
   node_key: GraphNodeKey,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  ledger: &mut MergeLedger,
 ) -> Result<usize, Report> {
   let mut nodes_created = 0;
 
@@ -61,8 +72,11 @@ pub(crate) fn merge_single_polytomy(
       break;
     }
 
-    let index = build_mutation_index(partitions, alignments, &child_edges)?;
-    let candidates = find_merge_groups(&index, partitions.len(), alignments.len());
+    let index = build_mutation_index(partitions, alignments, &child_edges, ledger.indel_policy)?;
+    let candidates = find_merge_groups(graph, &index, partitions.len(), alignments.len())?
+      .into_iter()
+      .filter(|group| group.edges.len() < child_edges.len() && !ledger.rejected.contains(&group.children))
+      .collect_vec();
     let selected = greedy_disjoint_group_matching(candidates);
 
     if selected.is_empty() {
@@ -78,12 +92,57 @@ pub(crate) fn merge_single_polytomy(
         group.edges.len(),
         group.total_shared,
       );
-      merge_sibling_group(graph, names, partitions, alignments, node_key, &group, branch_lengths)?;
+      let helper_key = merge_sibling_group(graph, names, partitions, alignments, node_key, &group, branch_lengths)?;
+      ledger.helper_children.insert(helper_key, group.children);
       nodes_created += 1;
     }
   }
 
   Ok(nodes_created)
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct MergeLedger {
+  indel_policy: IndelPolicy,
+  helper_children: BTreeMap<GraphNodeKey, BTreeSet<GraphNodeKey>>,
+  rejected: BTreeSet<BTreeSet<GraphNodeKey>>,
+}
+
+impl MergeLedger {
+  pub(crate) fn new(indel_policy: IndelPolicy) -> Self {
+    Self {
+      indel_policy,
+      helper_children: BTreeMap::new(),
+      rejected: BTreeSet::new(),
+    }
+  }
+
+  pub(crate) const fn indel_policy(&self) -> IndelPolicy {
+    self.indel_policy
+  }
+
+  pub(crate) fn reject_collapsed_helper(
+    &mut self,
+    graph: &Graph,
+    names: &NodeNames,
+    edge_key: GraphEdgeKey,
+  ) -> Result<(), Report> {
+    let helper_key = graph.get_target_node_key(edge_key)?;
+    if let Some(children) = self.helper_children.remove(&helper_key) {
+      let parent_key = graph.get_source_node_key(edge_key)?;
+      let parent_name = &names[parent_key];
+      debug!(
+        "Rejected the merge of {} siblings under node '{parent_name}': the optimized length of their new edge is 0",
+        children.len(),
+      );
+      self.rejected.insert(children);
+    }
+    Ok(())
+  }
+
+  pub(crate) fn forget_helper(&mut self, helper_key: GraphNodeKey) {
+    self.helper_children.remove(&helper_key);
+  }
 }
 
 fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
@@ -95,6 +154,7 @@ fn build_mutation_index(
   partitions: &[SparseReconstruction],
   alignments: &[AlignmentGroup],
   child_edges: &[GraphEdgeKey],
+  indel_policy: IndelPolicy,
 ) -> Result<MutationIndex, Report> {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
@@ -106,6 +166,9 @@ fn build_mutation_index(
           .push(edge_key);
       }
     }
+    if indel_policy == IndelPolicy::Exclude {
+      continue;
+    }
     for (ai, alignment) in alignments.iter().enumerate() {
       for indel in assembled_edge_indels(alignment, partitions, edge_key)? {
         index.entry(MutationKey::InDel(ai, indel)).or_default().push(edge_key);
@@ -115,7 +178,12 @@ fn build_mutation_index(
   Ok(index)
 }
 
-fn find_merge_groups(index: &MutationIndex, n_partitions: usize, n_alignments: usize) -> Vec<MergeGroup> {
+fn find_merge_groups(
+  graph: &Graph,
+  index: &MutationIndex,
+  n_partitions: usize,
+  n_alignments: usize,
+) -> Result<Vec<MergeGroup>, Report> {
   let mut seen: BTreeSet<Vec<GraphEdgeKey>> = BTreeSet::new();
   let mut groups = Vec::new();
 
@@ -133,15 +201,20 @@ fn find_merge_groups(index: &MutationIndex, n_partitions: usize, n_alignments: u
     let total_shared: usize =
       shared_subs.iter().map(|v| v.len()).sum::<usize>() + shared_indels.iter().map(|v| v.len()).sum::<usize>();
     if total_shared > 0 {
+      let children = group_edges
+        .iter()
+        .map(|&edge_key| graph.get_target_node_key(edge_key))
+        .collect::<Result<BTreeSet<_>, _>>()?;
       groups.push(MergeGroup {
         edges: group_edges,
+        children,
         shared_subs,
         shared_indels,
         total_shared,
       });
     }
   }
-  groups
+  Ok(groups)
 }
 
 fn shared_mutations_for_group(
@@ -198,7 +271,7 @@ fn merge_sibling_group(
   parent_key: GraphNodeKey,
   group: &MergeGroup,
   branch_lengths: &mut EdgeMap<Option<f64>>,
-) -> Result<(), Report> {
+) -> Result<GraphNodeKey, Report> {
   let child_keys: Vec<GraphNodeKey> = group
     .edges
     .iter()
@@ -282,7 +355,7 @@ fn merge_sibling_group(
     }
   }
 
-  Ok(())
+  Ok(new_node_key)
 }
 
 fn remaining_mutations(
@@ -327,6 +400,7 @@ fn remaining_mutations(
 
 struct MergeGroup {
   edges: Vec<GraphEdgeKey>,
+  children: BTreeSet<GraphNodeKey>,
   shared_subs: Vec<Vec<Sub>>,
   shared_indels: Vec<Vec<InDel>>,
   total_shared: usize,

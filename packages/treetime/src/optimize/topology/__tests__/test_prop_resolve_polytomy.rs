@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::TopologyOps;
+  use crate::optimize::topology::merge_shared_mutations::MergeLedger;
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
@@ -23,7 +25,7 @@ mod tests {
       let (mut graph, mut names, partition, node_states, before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-      let changed = resolve_polytomies(&mut graph, &mut names, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      let changed = resolve_polytomies(&mut graph, &mut names, &mut sparse, TopologyOps::default(), &mut branch_lengths, &mut MergeLedger::new(IndelPolicy::Include)).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0].partition);
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
@@ -43,7 +45,7 @@ mod tests {
       let leaves_before = helpers::leaf_names(&names, &graph);
       let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-      resolve_polytomies(&mut graph, &mut names, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      resolve_polytomies(&mut graph, &mut names, &mut sparse, TopologyOps::default(), &mut branch_lengths, &mut MergeLedger::new(IndelPolicy::Include)).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&names, &graph), leaves_before);
 
@@ -73,7 +75,7 @@ mod tests {
         helpers::build_bifurcating_case(g, a, &own_counts);
       let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-      let changed = resolve_polytomies(&mut graph, &mut names, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      let changed = resolve_polytomies(&mut graph, &mut names, &mut sparse, TopologyOps::default(), &mut branch_lengths, &mut MergeLedger::new(IndelPolicy::Include)).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0].partition);
 
       prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");

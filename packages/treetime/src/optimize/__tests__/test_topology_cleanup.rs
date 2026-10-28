@@ -12,6 +12,7 @@ pub(super) mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
+  use crate::optimize::topology::merge_shared_mutations::MergeLedger;
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -184,7 +185,7 @@ pub(super) mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11, &mut MergeLedger::new(IndelPolicy::Include))?;
       reconstruction = cleanup.partitions;
 
       lh_prev = total_lh;
@@ -263,7 +264,7 @@ pub(super) mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10, &mut MergeLedger::new(IndelPolicy::Include))?;
       reconstruction = cleanup.partitions;
 
       lh_prev = total_lh;
@@ -358,6 +359,7 @@ pub(super) mod tests {
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_8,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let changed = cleanup.topology_changed;
     assert!(changed);
@@ -431,7 +433,7 @@ pub(super) mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7, &mut MergeLedger::new(IndelPolicy::Include))?;
       reconstruction = cleanup.partitions;
 
       lh_prev = dense_lh;

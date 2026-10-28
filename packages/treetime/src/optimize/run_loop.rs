@@ -9,6 +9,7 @@ use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOp
 use crate::optimize::partition_rates::update_partition_rates;
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::optimize::topology::collapse::collapse_edge;
+use crate::optimize::topology::merge_shared_mutations::MergeLedger;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
 use crate::partition::set::PartitionSet;
@@ -44,6 +45,7 @@ pub(crate) fn run_optimize_loop(
     branch_lengths,
     names,
     convergence: ConvergenceSummary::default(),
+    ledger: MergeLedger::new(indel_policy),
   };
   let mut indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths)?;
 
@@ -243,6 +245,7 @@ fn update_branch_lengths(
     branch_lengths,
     names,
     convergence,
+    ledger,
   } = state;
   let old_branch_lengths = branch_lengths.clone();
   let indels = indels.recount(graph, &partitions)?;
@@ -271,6 +274,7 @@ fn update_branch_lengths(
     settings.topology_ops,
     branch_lengths,
     names,
+    ledger,
   )
 }
 
@@ -278,6 +282,7 @@ struct LoopState {
   branch_lengths: EdgeMap<Option<f64>>,
   names: NodeNames,
   convergence: ConvergenceSummary,
+  ledger: MergeLedger,
 }
 
 fn log_iteration_likelihood(iteration_number: usize, likelihood: &OptimizeIterationLikelihood) {
@@ -356,6 +361,7 @@ pub(crate) fn prune_and_merge_in_loop(
   topology_ops: TopologyOps,
   branch_lengths: &mut EdgeMap<Option<f64>>,
   names: &mut NodeNames,
+  ledger: &mut MergeLedger,
 ) -> Result<TopologyCleanup, Report> {
   let sparse = partitions.sparse_mut();
 
@@ -374,6 +380,7 @@ pub(crate) fn prune_and_merge_in_loop(
       if graph.get_edge(edge_key).is_none() {
         continue;
       }
+      ledger.reject_collapsed_helper(graph, names, edge_key)?;
       collapse_edge(graph, sparse, &groups, edge_key, branch_lengths)?;
       collapsed += 1;
     }
@@ -384,7 +391,7 @@ pub(crate) fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, names, sparse, topology_ops, branch_lengths)? > 0 {
+  if resolve_polytomies(graph, names, sparse, topology_ops, branch_lengths, ledger)? > 0 {
     topology_changed = true;
   }
 

@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::topology::merge_shared_mutations::MergeLedger;
 
   use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::*;
   use crate::optimize::params::TopologyOps;
@@ -27,6 +29,7 @@ mod tests {
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_13,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -83,6 +86,7 @@ mod tests {
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -137,6 +141,7 @@ mod tests {
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_9,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -208,6 +213,7 @@ mod tests {
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_6,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -271,6 +277,7 @@ mod tests {
       ops,
       &mut branch_lengths,
       &mut names_tt_5,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -327,6 +334,7 @@ mod tests {
       ops,
       &mut branch_lengths,
       &mut names_tt_4,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -389,6 +397,7 @@ mod tests {
       ops,
       &mut branch_lengths,
       &mut names_tt_3,
+      &mut MergeLedger::new(IndelPolicy::Include),
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;

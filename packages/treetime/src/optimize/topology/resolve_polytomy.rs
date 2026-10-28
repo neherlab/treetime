@@ -1,10 +1,11 @@
 use crate::make_internal_report;
+use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::TopologyOps;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::hoist_reversions::{
   count_child_reversions, hoist_reverting_child, slide_bifurcating_root_for_child,
 };
-use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
+use crate::optimize::topology::merge_shared_mutations::{MergeLedger, merge_single_polytomy};
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
@@ -24,6 +25,7 @@ pub(crate) fn resolve_polytomies(
   sparse: &mut [SparseReconstruction],
   topology_ops: TopologyOps,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  ledger: &mut MergeLedger,
 ) -> Result<usize, Report> {
   if sparse.is_empty() || !(topology_ops.merge_siblings || topology_ops.flip_parent_child) {
     return Ok(0);
@@ -35,7 +37,16 @@ pub(crate) fn resolve_polytomies(
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, names, sparse, &groups, node_key, topology_ops, branch_lengths)? {
+      if resolve_one(
+        graph,
+        names,
+        sparse,
+        &groups,
+        node_key,
+        topology_ops,
+        branch_lengths,
+        ledger,
+      )? {
         round_changed += 1;
       }
     }
@@ -52,6 +63,10 @@ pub(crate) fn resolve_polytomies(
   Ok(total_changed)
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the graph, names, data and lengths of one cleanup are separate borrows"
+)]
 fn resolve_one(
   graph: &mut Graph,
   names: &mut NodeNames,
@@ -60,21 +75,25 @@ fn resolve_one(
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  ledger: &mut MergeLedger,
 ) -> Result<bool, Report> {
   let preexisting: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|node| node.key()).collect();
 
   let mut any_changed = false;
   loop {
-    let merged =
-      topology_ops.merge_siblings && merge_single_polytomy(graph, names, sparse, groups, node_key, branch_lengths)? > 0;
+    let merged = topology_ops.merge_siblings
+      && merge_single_polytomy(graph, names, sparse, groups, node_key, branch_lengths, ledger)? > 0;
     let hoisted = topology_ops.flip_parent_child
-      && try_hoist_reverting_child(graph, names, sparse, groups, node_key, branch_lengths)?;
-    let retired = retire_created_helpers(graph, sparse, groups, &preexisting, branch_lengths)?;
+      && try_hoist_reverting_child(graph, names, sparse, groups, node_key, branch_lengths, ledger)?;
+    let retired = retire_created_helpers(graph, sparse, groups, &preexisting, branch_lengths, ledger)?;
 
     if !(merged || hoisted || retired) {
       break;
     }
     any_changed = true;
+    if graph.get_node(node_key).is_none() {
+      break;
+    }
   }
 
   Ok(any_changed)
@@ -87,6 +106,7 @@ fn try_hoist_reverting_child(
   groups: &[AlignmentGroup],
   node_key: GraphNodeKey,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  ledger: &mut MergeLedger,
 ) -> Result<bool, Report> {
   let Some(parent_edge_key) = single_inbound_edge(graph, node_key) else {
     return Ok(false);
@@ -112,6 +132,10 @@ fn try_hoist_reverting_child(
     child_edge_key,
     branch_lengths,
   )?;
+  if graph.get_node(node_key).is_some_and(|node| node.degree_out() == 1) {
+    collapse_edge(graph, sparse, groups, parent_edge_key, branch_lengths)?;
+    ledger.forget_helper(node_key);
+  }
   Ok(true)
 }
 
@@ -169,6 +193,7 @@ fn retire_created_helpers(
   groups: &[AlignmentGroup],
   preexisting: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  ledger: &mut MergeLedger,
 ) -> Result<bool, Report> {
   let mut retired = false;
   loop {
@@ -184,16 +209,20 @@ fn retire_created_helpers(
       let edge_key = edge.key();
       let mutation_free = sparse.iter().all(
         |reconstruction| match reconstruction.partition.obs_edges.get(edge_key) {
-          Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
+          Some(edge_data) => {
+            edge_data.fitch_subs().is_empty()
+              && (ledger.indel_policy() == IndelPolicy::Exclude || edge_data.indels.is_empty())
+          },
           None => true,
         },
       );
-      mutation_free.then_some(edge_key)
+      mutation_free.then_some((edge_key, target_key))
     });
 
     match candidate {
-      Some(edge_key) => {
+      Some((edge_key, helper_key)) => {
         collapse_edge(graph, sparse, groups, edge_key, branch_lengths)?;
+        ledger.forget_helper(helper_key);
         retired = true;
       },
       None => break,
