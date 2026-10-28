@@ -70,10 +70,12 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
   #[rstest]
-  #[case::no_marginal_estimates(None, 1)]
-  #[case::marginal_estimates_agree(Some(true), 1)]
+  #[case::no_marginal_estimates(      None,        1)]
+  #[case::marginal_estimates_agree(   Some(true),  1)]
   #[case::marginal_estimate_disagrees(Some(false), 0)]
+  #[trace]
   fn test_hoist_reversions_counts_only_reversions_the_marginal_estimates_share(
     #[case] child_estimate_reverts: Option<bool>,
     #[case] expected: usize,

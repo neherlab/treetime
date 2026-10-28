@@ -16,7 +16,7 @@ mod tests {
     emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, marginal_update_reconstruction,
     sparse_reconstruction,
   };
-  use crate::test_utils::{leaf_seq_inputs, make_nonuniform_gtr, run_sparse_marginal};
+  use crate::test_utils::{leaf_seq_inputs, make_nonuniform_gtr, run_dense_marginal, run_sparse_marginal};
   use eyre::Report;
   use indoc::indoc;
   use ndarray::aview1;
@@ -324,9 +324,10 @@ mod tests {
     let graph: Graph = graph;
     let gtr = make_nonuniform_gtr()?;
 
+    let (dense_log_lh, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr.clone())?;
     let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
-    pretty_assert_ulps_eq!(-59.20297892181233, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(dense_log_lh, log_lh, epsilon = 1e-10);
 
     let root_key = graph.get_exactly_one_root()?.key();
     let root_profile = &recon.node_states[&root_key].profile;
