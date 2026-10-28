@@ -3,7 +3,8 @@ mod tests {
   use crate::partition::create::Representation;
   use eyre::Report;
   use helpers::{
-    ALL_N, CLADE_GAP_RUN, CLADE_N_RUN, CLEAN, GAP_RUN, MissingDataTree, N_AT_SIBLING_SUB, N_RUN, SINGLE_N,
+    ALL_N, CLADE_GAP_RUN, CLADE_N_RUN, CLEAN, Case, GAP_RUN, GAPPED_ANCESTOR, GAPPED_ROOT, MissingDataTree,
+    N_AT_SIBLING_SUB, N_RUN, SINGLE_N,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -20,10 +21,12 @@ mod tests {
   #[case::clade_gap_run(    CLADE_GAP_RUN)]
   #[case::single_n(         SINGLE_N)]
   #[case::n_at_sibling_sub( N_AT_SIBLING_SUB)]
+  #[case::gapped_ancestor(  GAPPED_ANCESTOR)]
+  #[case::gapped_root(      GAPPED_ROOT)]
   #[trace]
-  fn test_missing_data_sparse_matches_dense(#[case] seqs: [&str; 5]) -> Result<(), Report> {
-    let dense = MissingDataTree::new(seqs, Representation::Dense)?;
-    let sparse = MissingDataTree::new(seqs, Representation::Sparse)?;
+  fn test_missing_data_sparse_matches_dense(#[case] case: Case) -> Result<(), Report> {
+    let dense = MissingDataTree::new(case, Representation::Dense)?;
+    let sparse = MissingDataTree::new(case, Representation::Sparse)?;
 
     let expected = dense.summary()?;
     let actual = sparse.summary()?;
@@ -42,12 +45,14 @@ mod tests {
   #[case::clade_gap_run(    CLADE_GAP_RUN)]
   #[case::single_n(         SINGLE_N)]
   #[case::n_at_sibling_sub( N_AT_SIBLING_SUB)]
+  #[case::gapped_ancestor(  GAPPED_ANCESTOR)]
+  #[case::gapped_root(      GAPPED_ROOT)]
   #[trace]
   fn test_missing_data_node_log_lh_equals_root_log_lh(
-    #[case] seqs: [&str; 5],
+    #[case] case: Case,
     #[values(Representation::Dense, Representation::Sparse)] representation: Representation,
   ) -> Result<(), Report> {
-    let tree = MissingDataTree::new(seqs, representation)?;
+    let tree = MissingDataTree::new(case, representation)?;
 
     let root_log_lh = tree.log_lh;
     let expected: BTreeMap<String, f64> = tree.node_names().map(|name| (name, root_log_lh)).collect();
@@ -67,11 +72,13 @@ mod tests {
   #[case::clade_gap_run(    CLADE_GAP_RUN)]
   #[case::single_n(         SINGLE_N)]
   #[case::n_at_sibling_sub( N_AT_SIBLING_SUB)]
+  #[case::gapped_ancestor(  GAPPED_ANCESTOR)]
+  #[case::gapped_root(      GAPPED_ROOT)]
   #[trace]
   fn test_missing_data_dense_internal_posteriors_stay_below_folding_threshold(
-    #[case] seqs: [&str; 5],
+    #[case] case: Case,
   ) -> Result<(), Report> {
-    let dense = MissingDataTree::new(seqs, Representation::Dense)?;
+    let dense = MissingDataTree::new(case, Representation::Dense)?;
 
     let actual = dense.internal_sites_resolved_above(1.0 - 1e-4)?;
 
@@ -86,9 +93,9 @@ mod tests {
   #[case::single_n(         SINGLE_N)]
   #[case::n_at_sibling_sub( N_AT_SIBLING_SUB)]
   #[trace]
-  fn test_missing_data_sparse_leaf_posteriors_at_n_sites_match_dense(#[case] seqs: [&str; 5]) -> Result<(), Report> {
-    let dense = MissingDataTree::new(seqs, Representation::Dense)?;
-    let sparse = MissingDataTree::new(seqs, Representation::Sparse)?;
+  fn test_missing_data_sparse_leaf_posteriors_at_n_sites_match_dense(#[case] case: Case) -> Result<(), Report> {
+    let dense = MissingDataTree::new(case, Representation::Dense)?;
+    let sparse = MissingDataTree::new(case, Representation::Sparse)?;
 
     let expected = dense.leaf_posteriors_at_n_sites()?;
     let actual = sparse.leaf_posteriors_at_n_sites()?;
@@ -124,27 +131,61 @@ mod tests {
 
     pub(super) const LEAF_NAMES: [&str; 5] = ["A", "B", "C", "D", "E"];
 
+    pub(super) const GAPPED_PARENT_TREE: &str = "((A:0.3,(B:0.25,C:0.3)BC:0.2)ABC:0.25,D:0.4)root;";
+
+    pub(super) const GAPPED_PARENT_NAMES: [&str; 4] = ["A", "B", "C", "D"];
+
     pub(super) const BRANCH_LENGTHS: [f64; 3] = [0.01, 0.1, 1.0];
 
     #[rustfmt::skip]
-    pub(super) const CLEAN:            [&str; 5] = ["ACGTACGTACGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"];
+    pub(super) const CLEAN:            Case = Case::five_tips(&["ACGTACGTACGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const N_RUN:            [&str; 5] = ["ACGTNNNNNNGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"];
+    pub(super) const N_RUN:            Case = Case::five_tips(&["ACGTNNNNNNGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const GAP_RUN:          [&str; 5] = ["ACGT------GTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"];
+    pub(super) const GAP_RUN:          Case = Case::five_tips(&["ACGT------GTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const ALL_N:            [&str; 5] = ["NNNNNNNNNNNNNNNNNNNN", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"];
+    pub(super) const ALL_N:            Case = Case::five_tips(&["NNNNNNNNNNNNNNNNNNNN", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const CLADE_N_RUN:      [&str; 5] = ["ACGTACGTACGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGANNNNNNCTTCGTACGT", "ACGANNNNNNGTTCGTACGC"];
+    pub(super) const CLADE_N_RUN:      Case = Case::five_tips(&["ACGTACGTACGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGANNNNNNCTTCGTACGT", "ACGANNNNNNGTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const CLADE_GAP_RUN:    [&str; 5] = ["ACGTACGTACGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGA------CTTCGTACGT", "ACGA------GTTCGTACGC"];
+    pub(super) const CLADE_GAP_RUN:    Case = Case::five_tips(&["ACGTACGTACGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGA------CTTCGTACGT", "ACGA------GTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const SINGLE_N:         [&str; 5] = ["ACGTACGTANGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"];
+    pub(super) const SINGLE_N:         Case = Case::five_tips(&["ACGTACGTANGTACGTACGT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"]);
     #[rustfmt::skip]
-    pub(super) const N_AT_SIBLING_SUB: [&str; 5] = ["ACGTACGTACGTACGTACNT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"];
+    pub(super) const N_AT_SIBLING_SUB: Case = Case::five_tips(&["ACGTACGTACGTACGTACNT", "ACGTACGTACGTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT", "ACGAACGTACGTTCGTACGC"]);
 
     fn gtr() -> Result<GTR, Report> {
       jc69(JC69Params::default())
+    }
+
+    #[rustfmt::skip]
+    pub(super) const GAPPED_ANCESTOR: Case = Case::gapped_parent(&["ACGT------GTACGTACGT", "ACGT------GTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGAACGTACCTTCGTACGT"]);
+    #[rustfmt::skip]
+    pub(super) const GAPPED_ROOT:     Case = Case::gapped_parent(&["ACGT------GTACGTACGT", "ACGT------GTACGTACAA", "ACGAACGTACGTTCGTACGT", "ACGA------CTTCGTACGT"]);
+
+    #[derive(Clone, Copy, Debug)]
+    pub(super) struct Case {
+      tree: &'static str,
+      names: &'static [&'static str],
+      seqs: &'static [&'static str],
+    }
+
+    impl Case {
+      const fn five_tips(seqs: &'static [&'static str]) -> Self {
+        Self {
+          tree: TREE,
+          names: &LEAF_NAMES,
+          seqs,
+        }
+      }
+
+      const fn gapped_parent(seqs: &'static [&'static str]) -> Self {
+        Self {
+          tree: GAPPED_PARENT_TREE,
+          names: &GAPPED_PARENT_NAMES,
+          seqs,
+        }
+      }
     }
 
     pub(super) struct MissingDataTree {
@@ -156,14 +197,14 @@ mod tests {
     }
 
     impl MissingDataTree {
-      pub(super) fn new(seqs: [&str; 5], representation: Representation) -> Result<Self, Report> {
+      pub(super) fn new(case: Case, representation: Representation) -> Result<Self, Report> {
         let NwkParse {
           graph,
           branch_lengths,
           names,
           ..
-        } = nwk_read(TREE.as_bytes())?;
-        let fasta = izip!(LEAF_NAMES, seqs)
+        } = nwk_read(case.tree.as_bytes())?;
+        let fasta = izip!(case.names, case.seqs)
           .map(|(name, seq)| format!(">{name}\n{seq}\n"))
           .join("");
         let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &*NUC_ALPHABET)?
