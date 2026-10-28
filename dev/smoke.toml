@@ -607,9 +607,9 @@ datasets = ["flu/h3n2/20"]
 args = "--representation=sparse --keep-root"
 
 [[optimize]]
-variant = "no-collapse-zero-branches"
+variant = "no-collapse-short-branches"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --no-collapse-zero-branches"
+args = "--representation=sparse --no-collapse-short-branches"
 
 [[optimize]]
 variant = "no-merge-shared-mutations"
@@ -624,12 +624,12 @@ args = "--representation=sparse --no-hoist-reversions"
 [[optimize]]
 variant = "no-topology-ops"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --no-collapse-zero-branches --no-merge-shared-mutations --no-hoist-reversions"
+args = "--representation=sparse --no-collapse-short-branches --no-merge-shared-mutations --no-hoist-reversions"
 
 [[optimize]]
 variant = "no-topology-ops-dense"
 datasets = ["flu/h3n2/20"]
-args = "--representation=dense --no-collapse-zero-branches"
+args = "--representation=dense --no-collapse-short-branches"
 
 [[optimize]]
 variant = "gap-fill-all"

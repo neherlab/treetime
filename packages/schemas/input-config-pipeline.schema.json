@@ -3939,10 +3939,10 @@
           "$ref": "#/$defs/BranchOptMethod",
           "default": "brent"
         },
-        "no_collapse_zero_branches": {
+        "no_collapse_short_branches": {
           "anyOf": [
             {
-              "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
+              "description": "Disable collapsing of short internal branches.\n\nBy default the optimize loop contracts every internal edge whose optimized length is zero,\nunless an indel on the edge enters the likelihood and needs a positive length. The\nsubstitutions and indels of a contracted edge move to its child edges, and the nodes it\njoined become one polytomy. When set, such edges are kept in the output tree with length zero.",
               "type": "boolean",
               "default": false
             },

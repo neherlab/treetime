@@ -6914,9 +6914,9 @@
           "more": ""
         },
         {
-          "key": "no_collapse_zero_branches",
-          "label": "No collapse zero branches",
-          "flag": "--no-collapse-zero-branches",
+          "key": "no_collapse_short_branches",
+          "label": "No collapse short branches",
+          "flag": "--no-collapse-short-branches",
           "group": "Branch lengths",
           "role": "setting",
           "kind": "switch",
@@ -6927,11 +6927,11 @@
           "default_value": false,
           "examples": [],
           "value_names": [
-            "NO_COLLAPSE_ZERO_BRANCHES"
+            "NO_COLLAPSE_SHORT_BRANCHES"
           ],
           "conflicts": [],
-          "help": "Disable collapsing of internal branches whose optimized length is zero.",
-          "more": "By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero."
+          "help": "Disable collapsing of short internal branches.",
+          "more": "By default the optimize loop contracts every internal edge whose optimized length is zero, unless an indel on the edge enters the likelihood and needs a positive length. The substitutions and indels of a contracted edge move to its child edges, and the nodes it joined become one polytomy. When set, such edges are kept in the output tree with length zero."
         },
         {
           "key": "no_merge_shared_mutations",

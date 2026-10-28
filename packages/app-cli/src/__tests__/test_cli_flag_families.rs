@@ -52,7 +52,7 @@ pub(crate) mod tests {
                       "--model-iterations", "--sampling-bias-correction", "--smooth-initial-pi",
                       "--filter-uninformative-root"]),
     (HO,            &["--const", "--rescale", "--detailed", "--drms", "--num-mut"]),
-    (OP,            &["--tolerance", "--damping", "--initial-branch-lengths", "--optimizer", "--no-collapse-zero-branches",
+    (OP,            &["--tolerance", "--damping", "--initial-branch-lengths", "--optimizer", "--no-collapse-short-branches",
                       "--no-merge-shared-mutations", "--no-hoist-reversions"]),
     (PR,            &["--collapse-short", "--collapse-empty", "--merge-shared-mutations", "--remove", "--remove-file"]),
     (PI,            &["--steps"]),

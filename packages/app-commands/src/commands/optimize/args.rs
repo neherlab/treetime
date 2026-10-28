@@ -104,7 +104,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       optimizer,
       reroot,
       rooting: RootingArgs { outgroup, keep_root },
-      no_collapse_zero_branches,
+      no_collapse_short_branches,
       no_merge_shared_mutations,
       no_hoist_reversions,
       gap_fill_args: GapFillArgs { gap_fill },
@@ -138,7 +138,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
         opt_method: optimizer.into(),
         indel_policy: indel_policy(no_indels),
         topology_ops: TopologyOps {
-          collapse_short_branches: !no_collapse_zero_branches,
+          collapse_short_branches: !no_collapse_short_branches,
           merge_siblings: !no_merge_shared_mutations,
           flip_parent_child: !no_hoist_reversions,
         },
@@ -345,16 +345,17 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
   pub optimizer: BranchOptMethodCli,
 
-  /// Disable collapsing of internal branches whose optimized length is zero.
+  /// Disable collapsing of short internal branches.
   ///
-  /// By default the optimize loop contracts internal edges the per-edge optimizer drove to
-  /// exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
-  /// polytomies. When set, such edges are kept in the output tree with length zero.
+  /// By default the optimize loop contracts every internal edge whose optimized length is zero,
+  /// unless an indel on the edge enters the likelihood and needs a positive length. The
+  /// substitutions and indels of a contracted edge move to its child edges, and the nodes it
+  /// joined become one polytomy. When set, such edges are kept in the output tree with length zero.
   #[cfg_attr(
     feature = "clap",
     clap(long, hide_short_help = true, help_heading = "Branch lengths")
   )]
-  pub no_collapse_zero_branches: bool,
+  pub no_collapse_short_branches: bool,
 
   /// Disable merging of polytomy siblings that share substitutions.
   ///

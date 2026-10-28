@@ -149,11 +149,11 @@
       "default": "brent",
       "x-cli-flag": "--optimizer"
     },
-    "no_collapse_zero_branches": {
-      "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
+    "no_collapse_short_branches": {
+      "description": "Disable collapsing of short internal branches.\n\nBy default the optimize loop contracts every internal edge whose optimized length is zero,\nunless an indel on the edge enters the likelihood and needs a positive length. The\nsubstitutions and indels of a contracted edge move to its child edges, and the nodes it\njoined become one polytomy. When set, such edges are kept in the output tree with length zero.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-collapse-zero-branches"
+      "x-cli-flag": "--no-collapse-short-branches"
     },
     "no_merge_shared_mutations": {
       "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",

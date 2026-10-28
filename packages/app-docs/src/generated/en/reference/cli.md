@@ -1283,9 +1283,9 @@ treetime optimize -t tree.nwk -a aln.fasta.xz --model hky85 --reroot min-dev --o
   - `newton`:
     Newton-Raphson on sqrt(t)
 
-* `--no-collapse-zero-branches` — Disable collapsing of internal branches whose optimized length is zero.
+* `--no-collapse-short-branches` — Disable collapsing of short internal branches.
 
-   By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero.
+   By default the optimize loop contracts every internal edge whose optimized length is zero, unless an indel on the edge enters the likelihood and needs a positive length. The substitutions and indels of a contracted edge move to its child edges, and the nodes it joined become one polytomy. When set, such edges are kept in the output tree with length zero.
 * `--no-merge-shared-mutations` — Disable merging of polytomy siblings that share substitutions.
 
    By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. The step and the flag apply only to the sparse representation.

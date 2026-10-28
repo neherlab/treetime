@@ -1934,7 +1934,7 @@ export const zOptimizeConfig = z.strictObject({
   damping: z.number().optional(),
   initial_branch_lengths: zInitialGuessMode.optional(),
   optimizer: zBranchOptMethod.optional(),
-  no_collapse_zero_branches: z.boolean().optional(),
+  no_collapse_short_branches: z.boolean().optional(),
   no_merge_shared_mutations: z.boolean().optional(),
   no_hoist_reversions: z.boolean().optional(),
   model: zGtrModelName.optional(),
