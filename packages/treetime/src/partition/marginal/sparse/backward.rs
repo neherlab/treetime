@@ -6,6 +6,8 @@ use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, S
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::sequences::fitch_node_sequences;
+use crate::partition::marginal::sparse::site_grouping::{group_sites, missing_layer, ranges_contain};
+use crate::partition::storage::site_groups::SiteGroups;
 use crate::partition::storage::sparse::{
   FixedProfiles, SparseEdgeBackward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
@@ -21,7 +23,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::{AsciiChar, LogLh, Seq};
-use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::range_intersection_iter;
 use treetime_utils::interval::range_union::range_union;
@@ -90,7 +91,7 @@ impl SparseBackwardPass<'_> {
       (Some(&(_, edge_key)), Some(_)) => {
         let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
         let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
-          propagate_raw_per_site(gtr, site_rates, branch_length, true, &msg_to_parent)
+          propagate_raw_per_site(gtr, site_rates, branch_length, true, &msg_to_parent)?
         } else {
           propagate_raw(&gtr.expQt(branch_length).t().to_owned(), &msg_to_parent)
         };
@@ -141,6 +142,7 @@ impl SparseBackwardPass<'_> {
   ) -> Result<SparseSeqDistribution, Report> {
     let partition = self.partition;
     let alphabet = &partition.alphabet;
+    let grouped = self.gtr.site_rates().is_none();
     let child_keys = self.schedule.children(key);
     let child_messages = child_edges.iter().map(|edge| &edge.msg_from_child).collect_vec();
     let child_missing = child_edges
@@ -149,9 +151,12 @@ impl SparseBackwardPass<'_> {
       .collect_vec();
     let n_events: usize = izip!(child_keys, &child_messages, &child_missing)
       .map(|(&(_, edge_key), message, missing)| {
-        2 * partition.obs_edges[&edge_key].fitch_subs().len()
-          + message.variable.len()
-          + missing.iter().map(|(start, end)| end - start).sum::<usize>()
+        let per_site_missing = if grouped {
+          0
+        } else {
+          missing.iter().map(|(start, end)| end - start).sum::<usize>()
+        };
+        2 * partition.obs_edges[&edge_key].fitch_subs().len() + message.variable.len() + per_site_missing
       })
       .sum();
 
@@ -170,6 +175,9 @@ impl SparseBackwardPass<'_> {
       for (pos, profile) in &child_message.variable {
         events.or_insert(*pos, SiteSlot::State, profile.state);
       }
+      if grouped {
+        continue;
+      }
       for pos in missing.iter().flat_map(|&(start, end)| start..end) {
         let state = sequence[pos];
         if alphabet.is_canonical(state) {
@@ -180,8 +188,14 @@ impl SparseBackwardPass<'_> {
     let mut sites = events.finish();
     sites.relabel(|pos, state| own_state(alphabet, obs, sequence, pos, state));
     sites.fill_missing_references(|ci, pos, parent_state| {
-      if range_contains(&child_edges[ci].child_no_data, pos) {
-        if range_contains(&partition.obs_nodes[&child_keys[ci].0].gaps, pos) {
+      let has_group_entry = || {
+        child_messages[ci]
+          .groups
+          .entry(pos, children[ci].0.sequence[pos])
+          .is_some()
+      };
+      if ranges_contain(&child_edges[ci].child_no_data, pos) && !has_group_entry() {
+        if ranges_contain(&partition.obs_nodes[&child_keys[ci].0].gaps, pos) {
           alphabet.gap()
         } else {
           alphabet.unknown()
@@ -196,10 +210,22 @@ impl SparseBackwardPass<'_> {
       }
     });
 
+    let layers = izip!(&child_missing, &child_messages)
+      .map(|(missing, message)| {
+        if grouped {
+          missing_layer(missing, &message.groups)
+        } else {
+          vec![]
+        }
+      })
+      .collect_vec();
+    let groups = group_sites(&layers, &[], &sites, sequence, alphabet);
+
     combine_messages(
       &obs.composition,
       &child_messages,
       &sites,
+      groups,
       alphabet,
       self.schedule.parents(key).is_empty().then_some(self.gtr.pi()),
     )
@@ -215,7 +241,7 @@ pub(crate) fn own_state(
   pos: usize,
   state: AsciiChar,
 ) -> AsciiChar {
-  if range_contains(&obs.non_char, pos) {
+  if ranges_contain(&obs.non_char, pos) {
     alphabet.gap()
   } else if alphabet.is_canonical(sequence[pos]) {
     sequence[pos]
@@ -244,6 +270,7 @@ fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDis
   }
   Ok(SparseSeqDistribution {
     variable,
+    groups: SiteGroups::default(),
     fixed,
     log_lh: LogLh::ZERO,
   })

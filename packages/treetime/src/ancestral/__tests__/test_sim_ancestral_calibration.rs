@@ -232,23 +232,13 @@ pub(crate) mod tests {
             let state = &sparse.node_states[&node];
             let mut posterior = Array2::zeros((CALIBRATION_LENGTH, alphabet.n_canonical()));
             for (pos, mut row) in posterior.rows_mut().into_iter().enumerate() {
-              let dis = if let Some(var) = state.profile.variable.get(pos) {
-                var.dis
-              } else {
-                let fixed_state = state.sequence[pos];
-                state
-                  .profile
-                  .fixed
-                  .get(fixed_state)
-                  .ok_or_else(|| {
-                    make_report!(
-                      "Node {} has no fixed profile of state {fixed_state} at position {pos}",
-                      &self.case.tree.names[node]
-                    )
-                  })?
-                  .dis
-                  .as_slice()
-              };
+              let fitch_state = state.sequence[pos];
+              let dis = state.profile.profile_at(pos, fitch_state).ok_or_else(|| {
+                make_report!(
+                  "Node {} has no profile of state {fitch_state} at position {pos}",
+                  &self.case.tree.names[node]
+                )
+              })?;
               row.assign(&aview1(dis));
             }
             Ok((node, posterior))

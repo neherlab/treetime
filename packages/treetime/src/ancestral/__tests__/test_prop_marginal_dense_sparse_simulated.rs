@@ -93,22 +93,13 @@ mod tests {
           );
         }
         for (pos, dense_posterior) in dense_profile.rows().into_iter().enumerate() {
-          let sparse_posterior = if let Some(var) = sparse_state.profile.variable.get(pos) {
-            aview1(var.dis)
-          } else {
-            let fixed_state = sparse_state.sequence[pos];
-            aview1(
-              sparse_state
-                .profile
-                .fixed
-                .get(fixed_state)
-                .ok_or_else(|| {
-                  make_report!("Node {name} has no fixed profile of state {fixed_state} at position {pos}")
-                })?
-                .dis
-                .as_slice(),
-            )
-          };
+          let fitch_state = sparse_state.sequence[pos];
+          let sparse_posterior = aview1(
+            sparse_state
+              .profile
+              .profile_at(pos, fitch_state)
+              .ok_or_else(|| make_report!("Node {name} has no profile of state {fitch_state} at position {pos}"))?,
+          );
           check_posterior("dense", &dense_posterior, states, name, pos)?;
           check_posterior("sparse", &sparse_posterior, states, name, pos)?;
           let dense_state = most_likely(&dense_posterior, name, pos)?;

@@ -1,12 +1,14 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::make_internal_report;
 use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::normalize::divide_out_value;
 use crate::partition::marginal::sparse::candidate_sites::CandidateSites;
+use crate::partition::marginal::sparse::site_grouping::{GroupSite, Label};
+use crate::partition::storage::site_groups::SiteGroups;
 use crate::partition::storage::sparse::{FixedProfiles, INLINE_STATES, SiteProfile, SparseSeqDistribution};
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
+use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use itertools::izip;
 use ndarray::linalg::general_mat_vec_mul;
@@ -23,12 +25,14 @@ pub(crate) fn combine_messages(
   composition: &Composition,
   messages: &[&SparseSeqDistribution],
   sites: &CandidateSites,
+  groups: Vec<GroupSite>,
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDistribution, Report> {
   let n_states = alphabet.n_canonical();
   let mut seq_dis = SparseSeqDistribution {
     variable: VarPosMap::with_capacity(sites.len()),
+    groups: SiteGroups::default(),
     fixed: FixedProfiles::default(),
     log_lh: messages.iter().map(|m| m.log_lh).sum(),
   };
@@ -63,13 +67,13 @@ pub(crate) fn combine_messages(
         }
       } else if let Some(ref_state) = *reference {
         if alphabet.is_canonical(ref_state) {
-          add_log(&mut log_vec, log_fixed[ref_state].dis.iter().copied());
+          add_shared_log(&mut log_vec, msg, log_fixed, pos, ref_state);
         }
         if ref_state != state {
           all_states_equal = false;
         }
       } else {
-        add_log(&mut log_vec, log_fixed[state].dis.iter().copied());
+        add_shared_log(&mut log_vec, msg, log_fixed, pos, state);
       }
     }
 
@@ -92,6 +96,52 @@ pub(crate) fn combine_messages(
     }
   }
 
+  let mut group_profiles = Vec::with_capacity(groups.len());
+  for GroupSite { labels, ranges, counts } in groups {
+    let mut profiles = FixedProfiles::default();
+    for (state, count) in counts {
+      let mut log_vec = initial_log.clone();
+      let mut shared = true;
+      let mut all_states_equal = true;
+      for (msg, label, log_fixed) in izip!(messages, &labels, &log_fixed) {
+        match label {
+          Label::Missing => {
+            shared = false;
+            all_states_equal = false;
+          },
+          Label::Group(group) => {
+            if let Some(entry) = msg.groups.profiles(*group).get(state) {
+              shared = false;
+              add_log(&mut log_vec, entry.dis.iter().map(|p| p.ln()));
+            } else {
+              add_log(&mut log_vec, log_fixed[state].dis.iter().copied());
+            }
+          },
+          Label::Fixed => add_log(&mut log_vec, log_fixed[state].dis.iter().copied()),
+        }
+      }
+      if shared {
+        continue;
+      }
+      let index = canonical
+        .iter()
+        .position(|&c| c == state)
+        .ok_or_else(|| make_internal_report!("Grouped state {state} is not canonical"))?;
+      let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
+      let multiplicity = count.to_f64_exact();
+      seq_dis.log_lh += LogLh::new(multiplicity * log_norm);
+      weights[index] -= multiplicity;
+      if !is_site_resolved(&log_vec, EPS) || !all_states_equal {
+        kept_counts[index] = kept_counts[index].saturating_sub(count);
+        profiles.insert(state, count, log_vec);
+      }
+    }
+    if !profiles.is_empty() {
+      group_profiles.push((ranges, profiles));
+    }
+  }
+  seq_dis.groups = SiteGroups::from_groups(group_profiles);
+
   for (index, &state) in canonical.iter().enumerate() {
     let mut log_vec = initial_log.clone();
 
@@ -110,6 +160,7 @@ pub(crate) fn propagate_raw(exp_qt: &Array2<f64>, seq_dis: &SparseSeqDistributio
   let n_states = exp_qt.nrows();
   let mut message = SparseSeqDistribution {
     variable: VarPosMap::with_capacity(seq_dis.variable.len()),
+    groups: seq_dis.groups.map_profiles(|dis| propagate_site(exp_qt, dis)),
     fixed: FixedProfiles::default(),
     log_lh: seq_dis.log_lh,
   };
@@ -134,7 +185,10 @@ pub(crate) fn propagate_raw_per_site(
   branch_length: f64,
   transpose: bool,
   seq_dis: &SparseSeqDistribution,
-) -> SparseSeqDistribution {
+) -> Result<SparseSeqDistribution, Report> {
+  if !seq_dis.groups.is_empty() {
+    return make_internal_error!("Grouped sites cannot be propagated with per-site rates");
+  }
   let default_exp_qt = if transpose {
     gtr.expQt(branch_length).t().to_owned()
   } else {
@@ -143,6 +197,7 @@ pub(crate) fn propagate_raw_per_site(
 
   let mut message = SparseSeqDistribution {
     variable: VarPosMap::with_capacity(seq_dis.variable.len()),
+    groups: SiteGroups::default(),
     fixed: FixedProfiles::default(),
     log_lh: seq_dis.log_lh,
   };
@@ -165,7 +220,7 @@ pub(crate) fn propagate_raw_per_site(
       .insert(fixed.state, fixed.count, propagate_site(&default_exp_qt, &fixed.dis));
   }
 
-  message
+  Ok(message)
 }
 
 pub(crate) fn divide_out_site(profile: &[f64], message: &[f64]) -> SiteProfile {
@@ -182,6 +237,20 @@ fn propagate_site(exp_qt: &Array2<f64>, profile: &[f64]) -> SiteProfile {
 
 fn propagate_into(exp_qt: &Array2<f64>, profile: &[f64], out: &mut [f64]) {
   general_mat_vec_mul(1.0, exp_qt, &aview1(profile), 0.0, &mut aview_mut1(out));
+}
+
+fn add_shared_log(
+  log_vec: &mut SiteProfile,
+  message: &SparseSeqDistribution,
+  log_fixed: &FixedProfiles,
+  pos: usize,
+  state: AsciiChar,
+) {
+  if let Some(entry) = message.groups.entry(pos, state) {
+    add_log(log_vec, entry.dis.iter().map(|p| p.ln()));
+  } else {
+    add_log(log_vec, log_fixed[state].dis.iter().copied());
+  }
 }
 
 fn add_log(log_vec: &mut SiteProfile, log_values: impl Iterator<Item = f64>) {

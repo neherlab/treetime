@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::marginal::sparse::reconstruct::impute_state;
+use crate::partition::marginal::sparse::reconstruct::{changed_group_positions, impute_state};
+use crate::partition::marginal::sparse::site_grouping::ranges_contain;
 use crate::partition::storage::sparse::{SparseEdgeForward, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::{make_internal_error, make_internal_report};
@@ -77,10 +78,19 @@ fn edge_sequence_subs(
         .copied()
         .merge(child.obs.unknown.iter().flat_map(|&(start, end)| start..end)),
     ),
-    None => Either::Right(child.state.profile.variable.keys().copied()),
+    None => Either::Right(
+      child
+        .state
+        .profile
+        .variable
+        .keys()
+        .copied()
+        .merge(changed_group_positions(child.state, alphabet)),
+    ),
   };
   differing_positions(&parent.sequence, &child.state.sequence)
     .merge(parent.profile.variable.keys().copied())
+    .merge(changed_group_positions(parent, alphabet))
     .merge(child_overrides)
     .dedup()
     .filter_map(|pos| {
@@ -161,9 +171,15 @@ fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> As
   if state == alphabet.gap() || state == alphabet.unknown() {
     return state;
   }
-  node.profile.variable.get(pos).map_or(state, |var| {
-    alphabet.char(resolve_profile(aview1(var.dis), &mut Resolve::Argmax))
-  })
+  node
+    .profile
+    .variable
+    .get(pos)
+    .map(|var| var.dis)
+    .or_else(|| node.profile.groups.entry(pos, state).map(|entry| entry.dis.as_slice()))
+    .map_or(state, |dis| {
+      alphabet.char(resolve_profile(aview1(dis), &mut Resolve::Argmax))
+    })
 }
 
 struct LeafImputation<'a> {
@@ -177,12 +193,7 @@ impl LeafImputation<'_> {
     let Some((down, parent)) = self.impute else {
       return state;
     };
-    let visits = usize::from(sorted_ranges_contain(&node_obs.unknown, pos)) + usize::from(ambiguous.is_some());
+    let visits = usize::from(ranges_contain(&node_obs.unknown, pos)) + usize::from(ambiguous.is_some());
     (0..visits).fold(state, |state, _| impute_state(state, pos, down, parent, alphabet))
   }
-}
-
-fn sorted_ranges_contain(ranges: &[(usize, usize)], pos: usize) -> bool {
-  let index = ranges.partition_point(|&(_, end)| end <= pos);
-  ranges.get(index).is_some_and(|&(start, _)| start <= pos)
 }

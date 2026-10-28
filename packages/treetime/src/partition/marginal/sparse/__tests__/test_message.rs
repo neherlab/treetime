@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::partition::marginal::sparse::message::propagate_raw_per_site;
+  use crate::partition::storage::site_groups::SiteGroups;
   use crate::partition::storage::sparse::{FixedProfiles, SparseSeqDistribution};
   use crate::partition::storage::var_pos_map::VarPosMap;
   use helpers::jc69_with_site_rates;
@@ -30,11 +31,12 @@ mod tests {
 
     let seq_dis = SparseSeqDistribution {
       variable,
+      groups: SiteGroups::default(),
       fixed: FixedProfiles::default(),
       log_lh: LogLh::ZERO,
     };
 
-    let result = propagate_raw_per_site(&gtr, gtr.site_rates().unwrap(), t, false, &seq_dis);
+    let result = propagate_raw_per_site(&gtr, gtr.site_rates().unwrap(), t, false, &seq_dis).unwrap();
 
     let expected_0 = array![
       0.7821749895006883,
@@ -86,11 +88,12 @@ mod tests {
 
     let seq_dis = SparseSeqDistribution {
       variable,
+      groups: SiteGroups::default(),
       fixed: FixedProfiles::default(),
       log_lh: LogLh::ZERO,
     };
 
-    let result = propagate_raw_per_site(&gtr, gtr.site_rates().unwrap(), t, true, &seq_dis);
+    let result = propagate_raw_per_site(&gtr, gtr.site_rates().unwrap(), t, true, &seq_dis).unwrap();
 
     let expected_0 = array![
       0.7821749895006883,

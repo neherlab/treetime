@@ -9,7 +9,11 @@ use crate::partition::marginal::sparse::message::{
   combine_messages, divide_out_site, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::marginal::sparse::reconstruct::map_state;
+use crate::partition::marginal::sparse::reconstruct::{changed_group_positions, map_state};
+use crate::partition::marginal::sparse::site_grouping::{
+  GroupSite, Label, group_sites, message_layer, positions_outside, ranges_contain,
+};
+use crate::partition::storage::site_groups::SiteGroups;
 use crate::partition::storage::sparse::{
   FixedProfiles, SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
   SparseSeqDistribution,
@@ -28,7 +32,6 @@ use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::{AsciiChar, AsciiTable, LogLh, Seq};
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::interval::range::range_contains;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn process_forward_indexed(
@@ -146,7 +149,7 @@ impl SparseForwardPass<'_> {
       events.or_insert(mutation.pos(), SiteSlot::Reference(1), current_state);
     }
     for (pos, profile) in &msg_to_child.variable {
-      if !range_contains(&backward.child_no_data, *pos) {
+      if !ranges_contain(&backward.child_no_data, *pos) {
         events.or_insert(*pos, SiteSlot::State, profile.state);
         events.or_insert(*pos, SiteSlot::Reference(0), profile.state);
       }
@@ -159,11 +162,22 @@ impl SparseForwardPass<'_> {
     sites.relabel(|pos, state| own_state(alphabet, obs, &node.sequence, pos, state));
 
     let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
-    let msg_from_parent = propagate_forward(gtr, branch_length, &msg_to_child);
+    let msg_from_parent = propagate_forward(gtr, branch_length, &msg_to_child)?;
+    let groups = group_sites(
+      &[
+        message_layer(&msg_from_parent.groups),
+        message_layer(&backward.msg_to_parent.groups),
+      ],
+      &[],
+      &sites,
+      &node.sequence,
+      alphabet,
+    );
     let profile = combine_messages(
       &obs.composition,
       &[&msg_from_parent, &backward.msg_to_parent],
       &sites,
+      groups,
       alphabet,
       None,
     )?;
@@ -181,7 +195,7 @@ impl SparseForwardPass<'_> {
           variable: child_missing,
           ..SparseSeqDistribution::default()
         },
-      );
+      )?;
       let outside = if is_leaf {
         &mut msg_from_parent.variable
       } else {
@@ -210,11 +224,15 @@ struct SparseEdgeForwardOut {
   subs_ml: Vec<Sub>,
 }
 
-fn propagate_forward(gtr: &GTR, branch_length: f64, message: &SparseSeqDistribution) -> SparseSeqDistribution {
+fn propagate_forward(
+  gtr: &GTR,
+  branch_length: f64,
+  message: &SparseSeqDistribution,
+) -> Result<SparseSeqDistribution, Report> {
   if let Some(site_rates) = gtr.site_rates() {
     propagate_raw_per_site(gtr, site_rates, branch_length, false, message)
   } else {
-    propagate_raw(&gtr.expQt(branch_length), message)
+    Ok(propagate_raw(&gtr.expQt(branch_length), message))
   }
 }
 
@@ -235,7 +253,7 @@ fn compute_msg_to_child(
     events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
   }
   for (pos, profile) in parent.profile.variable.iter().chain(&child_dis.variable) {
-    if !range_contains(&backward.child_no_data, *pos) {
+    if !ranges_contain(&backward.child_no_data, *pos) {
       events.or_insert(*pos, SiteSlot::Reference(0), profile.state);
       events.or_insert(*pos, SiteSlot::State, profile.state);
     }
@@ -245,6 +263,7 @@ fn compute_msg_to_child(
 
   let mut seq_dis = SparseSeqDistribution {
     variable: VarPosMap::with_capacity(sites.len()),
+    groups: SiteGroups::default(),
     fixed: FixedProfiles::default(),
     log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),
   };
@@ -253,14 +272,12 @@ fn compute_msg_to_child(
   for (pos, parent_state, child_state) in sites.iter() {
     let child_state = child_state[0].ok_or_else(|| make_internal_report!("Position {pos} has no child state"))?;
     let child_state = canonical_or(alphabet, child_sequence[pos], child_state);
-    let divisor = child_dis.variable.get(pos).map_or_else(
-      || child_dis.fixed[child_state].dis.as_slice(),
-      |distribution| distribution.dis,
-    );
-    let numerator = parent.profile.variable.get(pos).map_or_else(
-      || parent.profile.fixed[parent_state].dis.as_slice(),
-      |distribution| distribution.dis,
-    );
+    let divisor = child_dis
+      .profile_at(pos, child_state)
+      .ok_or_else(|| make_internal_report!("Child message has no profile of state {child_state} at position {pos}"))?;
+    let numerator = parent.profile.profile_at(pos, parent_state).ok_or_else(|| {
+      make_internal_report!("Parent posterior has no profile of state {parent_state} at position {pos}")
+    })?;
     let mut dis = divide_out_site(numerator, divisor);
     let normalization = normalize_1d_inplace(aview_mut1(&mut dis), 1.0);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
@@ -271,19 +288,46 @@ fn compute_msg_to_child(
       seq_dis.variable.insert(pos, child_state, &dis);
     }
   }
-  let mut child_missing = VarPosMap::default();
-  for pos in backward.child_no_data.iter().flat_map(|&(start, end)| start..end) {
-    let parent_state = parent.sequence[pos];
-    if sites.contains(pos) {
-      continue;
+
+  let groups = group_sites(
+    &[message_layer(&parent.profile.groups), message_layer(&child_dis.groups)],
+    &backward.child_no_data,
+    &sites,
+    &parent.sequence,
+    alphabet,
+  );
+  let mut group_profiles = Vec::with_capacity(groups.len());
+  for GroupSite { labels, ranges, counts } in groups {
+    let mut profiles = FixedProfiles::default();
+    for (state, count) in counts {
+      let numerator = group_entry(&parent.profile, labels[0], state);
+      let divisor = group_entry(child_dis, labels[1], state);
+      if numerator.is_none() && divisor.is_none() {
+        continue;
+      }
+      let numerator = shared_or_fixed(numerator, &parent.profile, state)?;
+      let divisor = shared_or_fixed(divisor, child_dis, state)?;
+      let mut dis = divide_out_site(numerator, divisor);
+      let normalization = normalize_1d_inplace(aview_mut1(&mut dis), count.to_f64_exact());
+      delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
+      removed[state] += count;
+      profiles.insert(state, count, dis);
     }
+    if !profiles.is_empty() {
+      group_profiles.push((ranges, profiles));
+    }
+  }
+  seq_dis.groups = SiteGroups::from_groups(group_profiles);
+
+  let mut child_missing = VarPosMap::default();
+  for pos in positions_outside(&backward.child_no_data, &sites) {
+    let parent_state = parent.sequence[pos];
     if alphabet.is_canonical(parent_state) {
       removed[parent_state] += 1;
       if outside_at_no_data {
-        let posterior = parent.profile.variable.get(pos).map_or_else(
-          || parent.profile.fixed[parent_state].dis.as_slice(),
-          |distribution| distribution.dis,
-        );
+        let posterior = parent.profile.profile_at(pos, parent_state).ok_or_else(|| {
+          make_internal_report!("Parent posterior has no profile of state {parent_state} at position {pos}")
+        })?;
         child_missing.insert(pos, parent_state, posterior);
       }
     } else if outside_at_no_data && let Some(posterior) = parent.profile.variable.get(pos) {
@@ -307,6 +351,27 @@ fn compute_msg_to_child(
     msg_to_child: seq_dis,
     child_missing,
   })
+}
+
+fn group_entry(message: &SparseSeqDistribution, label: Label, state: AsciiChar) -> Option<&[f64]> {
+  match label {
+    Label::Group(group) => message
+      .groups
+      .profiles(group)
+      .get(state)
+      .map(|entry| entry.dis.as_slice()),
+    Label::Fixed | Label::Missing => None,
+  }
+}
+
+fn shared_or_fixed<'a>(
+  entry: Option<&'a [f64]>,
+  message: &'a SparseSeqDistribution,
+  state: AsciiChar,
+) -> Result<&'a [f64], Report> {
+  entry
+    .or_else(|| message.fixed.get(state).map(|fixed| fixed.dis.as_slice()))
+    .ok_or_else(|| make_internal_report!("Message has no fixed profile of state {state}"))
 }
 
 fn canonical_or(alphabet: &Alphabet, state: AsciiChar, fallback: AsciiChar) -> AsciiChar {
@@ -333,13 +398,15 @@ fn compute_ml_subs_for_nodes(
     .map(Sub::pos)
     .chain(parent.profile.variable.keys().copied())
     .chain(child.profile.variable.keys().copied())
-    .sorted()
+    .chain(changed_group_positions(parent, alphabet))
+    .chain(changed_group_positions(child, alphabet))
+    .sorted_unstable()
     .dedup();
   positions
     .filter_map(|pos| {
-      if range_contains(&parent_obs.non_char, pos)
-        || range_contains(&child_obs.non_char, pos)
-        || range_contains(&backward.child_no_data, pos)
+      if ranges_contain(&parent_obs.non_char, pos)
+        || ranges_contain(&child_obs.non_char, pos)
+        || ranges_contain(&backward.child_no_data, pos)
       {
         return None;
       }

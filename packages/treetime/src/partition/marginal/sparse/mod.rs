@@ -11,3 +11,4 @@ pub mod partition;
 pub(crate) mod reconstruct;
 pub(crate) mod reroot;
 pub(crate) mod sequences;
+pub(crate) mod site_grouping;
