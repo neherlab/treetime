@@ -21,10 +21,7 @@ mod tests {
   fn test_boundary_neglog_hard_left_returns_infinity() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let f = f.with_left_extrap(BoundaryBehavior::Hard)?;
-    #[expect(clippy::float_cmp, reason = "hard boundaries return exactly infinity")]
-    {
-      assert_eq!(f64::INFINITY, f.interp(-1.0)?);
-    }
+    assert_eq!(f64::INFINITY, f.interp(-1.0)?);
     Ok(())
   }
 
@@ -32,10 +29,7 @@ mod tests {
   fn test_boundary_neglog_hard_right_returns_infinity() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let f = f.with_right_extrap(BoundaryBehavior::Hard)?;
-    #[expect(clippy::float_cmp, reason = "hard boundaries return exactly infinity")]
-    {
-      assert_eq!(f64::INFINITY, f.interp(3.0)?);
-    }
+    assert_eq!(f64::INFINITY, f.interp(3.0)?);
     Ok(())
   }
 

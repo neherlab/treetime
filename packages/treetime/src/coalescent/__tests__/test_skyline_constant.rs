@@ -19,7 +19,6 @@ mod tests {
   }
 
   #[test]
-  #[expect(clippy::float_cmp, reason = "determinism requires bit-identical results")]
   fn test_skyline_constant_is_deterministic() -> Result<(), Report> {
     let (graph, constraints) = setup_graph()?;
     let node_times = expectation(&graph, &constraints);
