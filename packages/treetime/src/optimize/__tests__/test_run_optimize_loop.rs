@@ -5,10 +5,10 @@ mod tests {
     TREE_NEWICK, setup_dense_reconstruction, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::loop_history::ConvergenceReason;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::partition_rates::PartitionRates;
-  use crate::optimize::loop_history::ConvergenceReason;
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::progress::{LogLevel, NoopProgress};
   use crate::test_utils::{RecordingLog, SingleReconstruction};
@@ -98,7 +98,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(2, result.lh_history.len());
+    assert_eq!(3, result.lh_history.len());
     pretty_assert_abs_diff_eq!(result.lh_history[0].value(), expected_total_lh, epsilon = 1e-10);
     Ok(())
   }
@@ -133,14 +133,14 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(Some((1, ConvergenceReason::Converged)), result.stopped_at);
-    assert_eq!(2, result.lh_history.len());
+    assert_eq!(Some((2, ConvergenceReason::Converged)), result.stopped_at);
+    assert_eq!(3, result.lh_history.len());
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::converged(      (50, f64::INFINITY), "Optimization loop stopped at iteration 2: the log-likelihood changed by less than inf")]
+  #[case::converged(      (50, f64::INFINITY), "Optimization loop stopped at iteration 3: the log-likelihood changed by less than inf")]
   #[case::iteration_limit((1,  0.0),           "Optimization loop reached the iteration limit of 1")]
   #[case::zero_max_iter(  (0,  1e-2),          "Optimization loop skipped: the iteration limit is 0")]
   #[trace]

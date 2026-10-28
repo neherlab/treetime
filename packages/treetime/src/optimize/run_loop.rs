@@ -54,6 +54,8 @@ pub(crate) fn run_optimize_loop(
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut history = TopologyHistory::new(dp);
 
+  let mut last_iteration_changed_topology = false;
+
   for i in 0..max_iter {
     let iteration = compute_iteration(graph, &state.branch_lengths, partitions, &indels)?;
     partitions = iteration.partitions;
@@ -66,7 +68,18 @@ pub(crate) fn run_optimize_loop(
       break;
     }
 
-    let cleanup = update_branch_lengths(graph, partitions, i, settings, &indels, &mut state)?;
+    let zero_optimal_edges = optimize_branch_lengths(graph, &partitions, i, settings, &indels, &mut state)?;
+    history.lengths_optimized();
+    let cleanup = prune_and_merge_in_loop(
+      graph,
+      partitions,
+      &zero_optimal_edges,
+      settings.topology_ops,
+      &mut state.branch_lengths,
+      &mut state.names,
+      &mut state.ledger,
+    )?;
+    last_iteration_changed_topology = cleanup.topology_changed;
     if cleanup.topology_changed {
       history.topology_changed();
     }
@@ -81,12 +94,34 @@ pub(crate) fn run_optimize_loop(
   }
 
   if stopped_at.is_none() && max_iter > 0 {
-    let iteration = compute_iteration(graph, &state.branch_lengths, partitions, &indels)?;
-    partitions = iteration.partitions;
-    let lh = iteration.likelihood.total_lh;
-    lh_history.push(lh);
-    log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
-    history.record(max_iter, lh, &state.branch_lengths, &partitions, &indels);
+    if last_iteration_changed_topology {
+      partitions = compute_and_record(
+        graph,
+        partitions,
+        &state.branch_lengths,
+        &indels,
+        &mut lh_history,
+        &mut history,
+      )?;
+      optimize_branch_lengths(graph, &partitions, max_iter, settings, &indels, &mut state)?;
+      history.lengths_optimized();
+      partitions = update_partition_rates(
+        graph,
+        partitions,
+        settings.partition_rates,
+        &mut state.branch_lengths,
+        Some(&mut indels),
+        log,
+      )?;
+    }
+    partitions = compute_and_record(
+      graph,
+      partitions,
+      &state.branch_lengths,
+      &indels,
+      &mut lh_history,
+      &mut history,
+    )?;
   }
 
   log_stop(log, stopped_at, max_iter, dp);
@@ -145,26 +180,43 @@ fn log_stop(log: &dyn LogSink, stopped_at: Option<(usize, ConvergenceReason)>, m
   }
 }
 
-fn update_branch_lengths(
-  graph: &mut Graph,
+fn compute_and_record(
+  graph: &Graph,
   partitions: PartitionSet,
+  branch_lengths: &EdgeMap<Option<f64>>,
+  indels: &EdgeIndels,
+  lh_history: &mut Vec<LogLh>,
+  history: &mut TopologyHistory,
+) -> Result<PartitionSet, Report> {
+  let iteration = compute_iteration(graph, branch_lengths, partitions, indels)?;
+  let lh = iteration.likelihood.total_lh;
+  let index = lh_history.len();
+  lh_history.push(lh);
+  log_iteration_likelihood(index + 1, &iteration.likelihood);
+  history.record(index, lh, branch_lengths, &iteration.partitions, indels);
+  Ok(iteration.partitions)
+}
+
+fn optimize_branch_lengths(
+  graph: &Graph,
+  partitions: &PartitionSet,
   iteration: usize,
   settings: &OptimizeLoopSettings,
   indels: &EdgeIndels,
   state: &mut LoopState,
-) -> Result<TopologyCleanup, Report> {
+) -> Result<Vec<GraphEdgeKey>, Report> {
   let LoopState {
     branch_lengths,
     names,
     convergence,
-    ledger,
+    ..
   } = state;
   let old_branch_lengths = branch_lengths.clone();
-  let indels = indels.recount(graph, &partitions)?;
+  let indels = indels.recount(graph, partitions)?;
   let unconverged = optimize_edge_lengths(
     graph,
     partitions.total_length(),
-    &partitions,
+    partitions,
     &indels,
     settings.opt_method,
     branch_lengths,
@@ -179,15 +231,7 @@ fn update_branch_lengths(
 
   apply_damping(branch_lengths, &old_branch_lengths, settings.damping, iteration);
 
-  prune_and_merge_in_loop(
-    graph,
-    partitions,
-    &zero_optimal_edges,
-    settings.topology_ops,
-    branch_lengths,
-    names,
-    ledger,
-  )
+  Ok(zero_optimal_edges)
 }
 
 struct LoopState {

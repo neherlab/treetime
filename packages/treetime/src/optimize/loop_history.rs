@@ -12,6 +12,7 @@ pub(crate) struct TopologyHistory {
   dp: f64,
   log_lhs: Vec<LogLh>,
   best: Option<BestIteration>,
+  lengths_fit_topology: bool,
 }
 
 impl TopologyHistory {
@@ -20,6 +21,7 @@ impl TopologyHistory {
       dp,
       log_lhs: Vec::new(),
       best: None,
+      lengths_fit_topology: true,
     }
   }
 
@@ -35,7 +37,7 @@ impl TopologyHistory {
     if !log_lh.value().is_finite() {
       return Some(ConvergenceReason::NumericalFailure);
     }
-    if self.best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
+    if self.lengths_fit_topology && self.best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
       self.best = Some(BestIteration {
         iteration,
         log_lh,
@@ -48,8 +50,14 @@ impl TopologyHistory {
     stop_reason(&self.log_lhs, best_lh, self.dp)
   }
 
+  pub(crate) fn lengths_optimized(&mut self) {
+    self.lengths_fit_topology = true;
+  }
+
   pub(crate) fn topology_changed(&mut self) {
+    self.log_lhs.clear();
     self.best = None;
+    self.lengths_fit_topology = false;
   }
 
   pub(crate) fn into_best(self) -> Option<BestIteration> {
