@@ -248,8 +248,6 @@ fn merge_sibling_group(
   }
 
   for (pi, SparseReconstruction { partition, edges, .. }) in partitions.iter_mut().enumerate() {
-    // The shared substitutions are marginal estimates on every grouped edge, so the estimates split like the Fitch
-    // substitutions. Without an estimate on every grouped edge the new edges get none.
     let old_estimates: Option<Vec<Vec<Sub>>> = group.edges.iter().map(|&ek| edges.estimates.remove(ek)).collect();
     if let Some(old_estimates) = old_estimates {
       edges

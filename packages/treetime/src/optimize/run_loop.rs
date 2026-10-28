@@ -333,8 +333,6 @@ struct OptimizeIterationLikelihood {
   indel_rate: f64,
 }
 
-/// Internal edges whose ML length is zero. Collapsing composes their Fitch substitutions and indels into the child
-/// edges, so neither blocks the collapse; only indels that enter the likelihood (`EdgeIndels::Included`) do.
 pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
   indels: &EdgeIndels,

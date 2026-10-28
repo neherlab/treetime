@@ -116,8 +116,6 @@ pub(crate) fn slide_bifurcating_root_for_child(
       continue;
     }
     hoisted_parent.sort_by_key(Sub::pos);
-    // The slide moves Fitch substitutions across the root, which the marginal estimates do not follow; both edges
-    // fall back to their Fitch substitutions.
     edges.estimates.remove(parent_edge_key);
     edges.estimates.remove(sibling_edge_key);
 
@@ -193,7 +191,6 @@ pub(crate) fn hoist_reverting_child(
   branch_lengths.insert(child_edge_key, Some(bl_nc));
 
   for (SparseReconstruction { partition, edges, .. }, split) in sparse.iter_mut().zip(splits) {
-    // The marginal estimates of the two edges split like their Fitch substitutions; without both, the edges get none.
     let estimates = &mut edges.estimates;
     if let (Some(parent_estimate), Some(child_estimate)) =
       (estimates.remove(parent_edge_key), estimates.remove(child_edge_key))

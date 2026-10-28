@@ -626,8 +626,6 @@ pub(super) mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    // Only the sum of the two root edges is identifiable, so ML puts one of them at zero; Fitch places the last-site
-    // change (T in A and B, G or A in C and D) on one of them.
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;".as_slice())?;
     let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
