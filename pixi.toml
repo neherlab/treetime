@@ -11,11 +11,6 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
 exclude-newer = "7d"
 
-# TODO: remove after 2026-10-27 (security fix adopted before the seven-day wait)
-[exclude-newer]
-ca-certificates = "0d"
-certifi = "0d"
-
 # v0 runs from the checkout, with the OpenBLAS 0.3.34 release of conda-forge on
 # one thread. The Rust build links OpenBLAS develop de5d4914, 432 commits after
 # 0.3.34, with LAPACK compiled by flang (the openblas entries of
