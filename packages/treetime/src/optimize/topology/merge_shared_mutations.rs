@@ -1,12 +1,12 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::indel::IndelPolicy;
+use crate::optimize::topology::new_node_obs::new_node_obs;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::{
   assembled_edge_indels, sparse_alignment_groups, store_edge_indels,
 };
-use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -332,10 +332,6 @@ fn merge_sibling_group(
       }
     }
 
-    let mut new_node = SparseNodeObs::empty(&partition.alphabet);
-    new_node.composition = partition.obs_nodes[&parent_key].composition.clone();
-    partition.obs_nodes.entry(new_node_key).or_insert(new_node);
-
     for &ek in &group.edges {
       partition.obs_edges.remove(ek);
     }
@@ -353,6 +349,13 @@ fn merge_sibling_group(
     for (&new_ek, remaining_indels) in izip!(&new_child_edge_keys, remaining_indels) {
       store_edge_indels(alignment, partitions, new_ek, remaining_indels)?;
     }
+  }
+  let new_obs = partitions
+    .iter()
+    .map(|reconstruction| new_node_obs(graph, reconstruction, new_parent_edge_key, &child_keys))
+    .collect::<Result<Vec<_>, Report>>()?;
+  for (reconstruction, obs) in izip!(partitions.iter_mut(), new_obs) {
+    reconstruction.partition.obs_nodes.insert(new_node_key, obs);
   }
 
   Ok(new_node_key)

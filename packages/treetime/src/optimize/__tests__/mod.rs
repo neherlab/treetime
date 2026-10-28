@@ -48,3 +48,4 @@ mod test_topology_cleanup;
 mod test_topology_cleanup_merge_ledger;
 mod test_topology_cleanup_prune_and_merge;
 mod test_topology_cleanup_short_edges;
+mod test_topology_cleanup_sparse_dense;

@@ -1,7 +1,7 @@
+use crate::optimize::topology::new_node_obs::new_node_obs;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::{assembled_edge_indels, store_edge_indels};
-use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -201,10 +201,6 @@ pub(crate) fn hoist_reverting_child(
       estimates.insert(child_edge_key, estimate_split.composed);
     }
 
-    let mut node_n = SparseNodeObs::empty(&partition.alphabet);
-    node_n.composition = partition.obs_nodes[&u_key].composition.clone();
-    partition.obs_nodes.entry(n_key).or_insert(node_n);
-
     let un_edge = partition.obs_edges.entry(un_edge_key).or_default();
     un_edge.set_fitch_subs(split.hoisted);
 
@@ -218,6 +214,17 @@ pub(crate) fn hoist_reverting_child(
     store_edge_indels(alignment, sparse, un_edge_key, &split.hoisted)?;
     store_edge_indels(alignment, sparse, parent_edge_key, &split.kept)?;
     store_edge_indels(alignment, sparse, child_edge_key, &split.composed)?;
+  }
+  let child_keys = [
+    graph.get_target_node_key(parent_edge_key)?,
+    graph.get_target_node_key(child_edge_key)?,
+  ];
+  let new_obs = sparse
+    .iter()
+    .map(|reconstruction| new_node_obs(graph, reconstruction, un_edge_key, &child_keys))
+    .collect::<Result<Vec<_>, Report>>()?;
+  for (reconstruction, obs) in izip!(sparse.iter_mut(), new_obs) {
+    reconstruction.partition.obs_nodes.insert(n_key, obs);
   }
 
   Ok(n_key)

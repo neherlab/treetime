@@ -182,6 +182,7 @@ mod tests {
           root_sequence,
           obs_nodes,
           obs_edges,
+          outside_at_no_data: false,
         };
 
         Ok(Self {
