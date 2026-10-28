@@ -7,13 +7,13 @@
 # checkout. C, C++, and Rust code for x86_64-unknown-linux-gnu compiles and
 # links with the compiler, sysroot, and libraries of the shipped Linux build, so
 # the binaries built here need glibc 2.17 of the GCC 16.2.0 sysroot, not the
-# glibc of Ubuntu, and profiling builds also run on the host.
+# glibc of Debian, and profiling builds also run on the host.
 #
 # The layers go from the inputs that change least to those that change most:
 # the Rust toolchains (rust-toolchain.toml and the pinned nightlies), the
 # toolchains, Emscripten, and libraries of .config/mise.image.lock, then the
 # tools of .config/mise.lock, so a tool update rebuilds only the last layers.
-FROM ubuntu:noble-20260930.1@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+FROM debian:13.7-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
 # libatomic1 is a run-time library of mold.
