@@ -31,10 +31,6 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get clean autoclean >/dev/null \
 && apt-get autoremove --yes >/dev/null
 
-# Distrust the eMudhra roots whose intermediate keys are public (see the script).
-COPY dev/docker/files/distrust-compromised-roots /
-RUN /distrust-compromised-roots
-
 ARG USER=user
 ARG GROUP=user
 ARG UID

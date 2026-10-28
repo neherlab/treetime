@@ -41,10 +41,6 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get autoremove --yes >/dev/null \
 && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-# Distrust the eMudhra roots whose intermediate keys are public (see the script).
-COPY dev/docker/files/distrust-compromised-roots /
-RUN /distrust-compromised-roots
-
 # Runtime libraries of Electron, for the desktop app in development.
 RUN set -euxo pipefail >/dev/null \
 && export DEBIAN_FRONTEND=noninteractive \

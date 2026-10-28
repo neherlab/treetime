@@ -43,10 +43,6 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get autoremove --yes >/dev/null \
 && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-# Distrust the eMudhra roots whose intermediate keys are public (see the script).
-COPY dev/docker/files/distrust-compromised-roots /
-RUN /distrust-compromised-roots
-
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
 # mise installs the build toolchains of .config/mise.image.toml here and the
