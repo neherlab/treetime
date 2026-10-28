@@ -90,6 +90,7 @@ mod tests {
   #[rstest]
   #[case::leaf_n_run(       N_RUN)]
   #[case::leaf_all_n(       ALL_N)]
+  #[case::clade_n_run(      CLADE_N_RUN)]
   #[case::single_n(         SINGLE_N)]
   #[case::n_at_sibling_sub( N_AT_SIBLING_SUB)]
   #[trace]
