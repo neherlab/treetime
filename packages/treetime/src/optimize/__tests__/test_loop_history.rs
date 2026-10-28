@@ -59,15 +59,13 @@ mod tests {
       let branch_lengths = EdgeMap::new();
       let partitions = PartitionSet::Sparse(vec![]);
       log_lhs.iter().enumerate().fold(None, |_, (i, &log_lh)| {
-        let stop = history.record(
+        history.record(
           first_iteration + i,
           LogLh::new(log_lh),
           &branch_lengths,
           &partitions,
           &EdgeIndels::Excluded,
-        );
-        history.lengths_optimized();
-        stop
+        )
       })
     }
   }

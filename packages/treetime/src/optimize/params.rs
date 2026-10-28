@@ -38,6 +38,14 @@ pub struct TopologyOps {
   pub flip_parent_child: bool,
 }
 
+impl TopologyOps {
+  pub const NONE: Self = Self {
+    collapse_short_branches: false,
+    merge_siblings: false,
+    flip_parent_child: false,
+  };
+}
+
 #[derive(Copy, Clone, Debug, Display, PartialEq, Eq, SmartDefault)]
 #[strum(serialize_all = "kebab-case")]
 pub enum BranchOptMethod {

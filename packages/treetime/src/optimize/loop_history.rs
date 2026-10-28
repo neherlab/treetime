@@ -3,6 +3,7 @@ use crate::optimize::indel::EdgeIndels;
 use crate::partition::set::PartitionSet;
 use eyre::Report;
 use log::debug;
+use std::mem;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_primitives::LogLh;
@@ -12,7 +13,7 @@ pub(crate) struct TopologyHistory {
   dp: f64,
   log_lhs: Vec<LogLh>,
   best: Option<BestIteration>,
-  lengths_fit_topology: bool,
+  after_topology_change: bool,
 }
 
 impl TopologyHistory {
@@ -21,7 +22,7 @@ impl TopologyHistory {
       dp,
       log_lhs: Vec::new(),
       best: None,
-      lengths_fit_topology: true,
+      after_topology_change: false,
     }
   }
 
@@ -34,10 +35,11 @@ impl TopologyHistory {
     indels: &EdgeIndels,
   ) -> Option<ConvergenceReason> {
     self.log_lhs.push(log_lh);
+    let lengths_fit_topology = !mem::take(&mut self.after_topology_change);
     if !log_lh.value().is_finite() {
       return Some(ConvergenceReason::NumericalFailure);
     }
-    if self.lengths_fit_topology && self.best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
+    if lengths_fit_topology && self.best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
       self.best = Some(BestIteration {
         iteration,
         log_lh,
@@ -50,14 +52,10 @@ impl TopologyHistory {
     stop_reason(&self.log_lhs, best_lh, self.dp)
   }
 
-  pub(crate) fn lengths_optimized(&mut self) {
-    self.lengths_fit_topology = true;
-  }
-
   pub(crate) fn topology_changed(&mut self) {
     self.log_lhs.clear();
     self.best = None;
-    self.lengths_fit_topology = false;
+    self.after_topology_change = true;
   }
 
   pub(crate) fn into_best(self) -> Option<BestIteration> {
