@@ -15,7 +15,6 @@ use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_inplace;
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::interval::range::range_contains;
 
 const EPS: f64 = 1e-4;
 
@@ -103,11 +102,7 @@ pub(crate) fn combine_messages(
   Ok(seq_dis)
 }
 
-pub(crate) fn propagate_raw(
-  exp_qt: &Array2<f64>,
-  seq_dis: &SparseSeqDistribution,
-  transmission: Option<&[(usize, usize)]>,
-) -> SparseSeqDistribution {
+pub(crate) fn propagate_raw(exp_qt: &Array2<f64>, seq_dis: &SparseSeqDistribution) -> SparseSeqDistribution {
   let n_states = exp_qt.nrows();
   let mut message = SparseSeqDistribution {
     variable: VarPosMap::with_capacity(seq_dis.variable.len()),
@@ -115,11 +110,6 @@ pub(crate) fn propagate_raw(
     log_lh: seq_dis.log_lh,
   };
   for (pos, var) in &seq_dis.variable {
-    if let Some(transmission) = &transmission {
-      if !range_contains(transmission, *pos) {
-        continue;
-      }
-    }
     message
       .variable
       .insert_with(*pos, var.state, n_states, |row| propagate_into(exp_qt, var.dis, row));
@@ -140,7 +130,6 @@ pub(crate) fn propagate_raw_per_site(
   branch_length: f64,
   transpose: bool,
   seq_dis: &SparseSeqDistribution,
-  transmission: Option<&[(usize, usize)]>,
 ) -> SparseSeqDistribution {
   let default_exp_qt = if transpose {
     gtr.expQt(branch_length).t().to_owned()
@@ -155,12 +144,6 @@ pub(crate) fn propagate_raw_per_site(
   };
 
   for (&pos, var) in &seq_dis.variable {
-    if let Some(transmission) = &transmission {
-      if !range_contains(transmission, pos) {
-        continue;
-      }
-    }
-
     let rate = site_rates[pos];
     let exp_qt_pos = if transpose {
       gtr.expQt_with_rate(branch_length, rate).t().to_owned()

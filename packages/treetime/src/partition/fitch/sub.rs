@@ -32,12 +32,7 @@ pub(crate) fn resolve_variable_positions_backward(
 
     let child_profiles = children
       .iter()
-      .filter_map(|(child, edge)| {
-        if let Some(transmission) = &edge.transmission {
-          if range_contains(transmission, pos) {
-            return None;
-          }
-        }
+      .filter_map(|(child, _)| {
         if range_contains(&child.non_char, pos) {
           return None;
         }

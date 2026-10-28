@@ -152,20 +152,9 @@ impl SparseForwardPass<'_> {
 
     let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
     let msg_from_parent = if let Some(site_rates) = gtr.site_rates() {
-      propagate_raw_per_site(
-        gtr,
-        site_rates,
-        branch_length,
-        false,
-        &msg_to_child,
-        edge_obs.transmission.as_deref(),
-      )
+      propagate_raw_per_site(gtr, site_rates, branch_length, false, &msg_to_child)
     } else {
-      propagate_raw(
-        &gtr.expQt(branch_length),
-        &msg_to_child,
-        edge_obs.transmission.as_deref(),
-      )
+      propagate_raw(&gtr.expQt(branch_length), &msg_to_child)
     };
     let profile = combine_messages(
       &obs.composition,

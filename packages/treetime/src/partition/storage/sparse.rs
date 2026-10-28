@@ -97,7 +97,6 @@ impl MarginalNodeState for SparseNodeState {
 pub struct SparseEdgeObs {
   subs_fitch: Vec<Sub>,
   pub indels: Vec<InDel>,
-  pub(crate) transmission: Option<Vec<(usize, usize)>>,
 }
 
 impl SparseEdgeObs {
