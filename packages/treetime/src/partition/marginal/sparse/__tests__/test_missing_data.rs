@@ -96,7 +96,7 @@ mod tests {
   #[trace]
   fn test_missing_data_sparse_leaf_posteriors_at_n_sites_match_dense(#[case] case: Case) -> Result<(), Report> {
     let dense = MissingDataTree::new(case, Representation::Dense)?;
-    let sparse = MissingDataTree::new(case, Representation::Sparse)?;
+    let sparse = MissingDataTree::new(case, Representation::Sparse)?.with_outside_at_no_data()?;
 
     let expected = dense.leaf_posteriors_at_n_sites()?;
     let actual = sparse.leaf_posteriors_at_n_sites()?;
@@ -233,6 +233,21 @@ mod tests {
           reconstruction,
           log_lh,
         })
+      }
+
+      pub(super) fn with_outside_at_no_data(self) -> Result<Self, Report> {
+        let MarginalReconstruction::Sparse(mut sparse) = self.reconstruction else {
+          return Err(make_report!(
+            "outside messages at sites without data exist only in sparse mode"
+          ));
+        };
+        sparse.partition.outside_at_no_data = true;
+        let (reconstruction, _) = marginal_update_reconstruction(
+          MarginalReconstruction::Sparse(sparse),
+          &self.graph,
+          &self.branch_lengths,
+        )?;
+        Ok(Self { reconstruction, ..self })
       }
 
       pub(super) fn summary(&self) -> Result<BTreeMap<String, f64>, Report> {

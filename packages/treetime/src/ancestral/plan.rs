@@ -266,7 +266,7 @@ pub(crate) fn reconstruct_marginal(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
-  let reconstruction = fit_reconstruction(reconstruction, graph, branch_lengths)?;
+  let reconstruction = fit_reconstruction(reconstruction, graph, branch_lengths, options.impute)?;
   checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
   let sampled = reconstruction.sample_sequences(graph, options.sample_mode, rng)?;
   Ok(AncestralPartition::Marginal {
@@ -291,6 +291,7 @@ fn fit_reconstruction(
   reconstruction: MarginalReconstruction,
   graph: &Graph,
   branch_lengths: &EdgeMap<f64>,
+  impute: bool,
 ) -> Result<MarginalReconstruction, Report> {
   Ok(match reconstruction {
     MarginalReconstruction::Sparse(SparseReconstruction {
@@ -300,6 +301,7 @@ fn fit_reconstruction(
       layout,
       ..
     }) => {
+      let partition = partition.with_outside_at_no_data(impute);
       let MarginalUpdate { node_states, edges, .. } =
         partition.marginal_update(&gtr, graph, branch_lengths, &node_states)?;
       MarginalReconstruction::Sparse(SparseReconstruction {

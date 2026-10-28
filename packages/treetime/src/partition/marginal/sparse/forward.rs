@@ -126,7 +126,15 @@ impl SparseForwardPass<'_> {
     let OutsideMessage {
       msg_to_child,
       child_missing,
-    } = compute_msg_to_child(alphabet, &node.sequence, parent, parent_obs, edge_obs, backward)?;
+    } = compute_msg_to_child(
+      alphabet,
+      &node.sequence,
+      parent,
+      parent_obs,
+      edge_obs,
+      backward,
+      partition.outside_at_no_data,
+    )?;
 
     let n_events =
       3 * edge_obs.fitch_subs().len() + 2 * (msg_to_child.variable.len() + backward.msg_to_parent.variable.len());
@@ -160,32 +168,35 @@ impl SparseForwardPass<'_> {
       None,
     )?;
     node.profile = profile;
-    let child_missing = propagate_forward(
-      gtr,
-      branch_length,
-      &SparseSeqDistribution {
-        variable: child_missing,
-        ..SparseSeqDistribution::default()
-      },
-    );
-    let msg_from_parent_out = if is_leaf {
-      let mut msg_from_parent = msg_from_parent;
-      for (&pos, outside) in &child_missing.variable {
-        msg_from_parent.variable.insert(pos, outside.state, outside.dis);
-      }
+    let mut msg_from_parent = if is_leaf {
       msg_from_parent
     } else {
-      for (&pos, outside) in &child_missing.variable {
-        node.profile.variable.insert(pos, outside.state, outside.dis);
-      }
       SparseSeqDistribution::default()
     };
+    if !child_missing.is_empty() {
+      let child_missing = propagate_forward(
+        gtr,
+        branch_length,
+        &SparseSeqDistribution {
+          variable: child_missing,
+          ..SparseSeqDistribution::default()
+        },
+      );
+      let outside = if is_leaf {
+        &mut msg_from_parent.variable
+      } else {
+        &mut node.profile.variable
+      };
+      for (&pos, entry) in &child_missing.variable {
+        outside.insert(pos, entry.state, entry.dis);
+      }
+    }
 
-    let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, node, obs, edge_obs)?;
+    let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, node, obs, edge_obs, backward)?;
 
     Ok(SparseEdgeForwardOut {
       msg_to_child,
-      msg_from_parent: msg_from_parent_out,
+      msg_from_parent,
       subs_ml,
     })
   }
@@ -214,6 +225,7 @@ fn compute_msg_to_child(
   parent_obs: &SparseNodeObs,
   edge_obs: &SparseEdgeObs,
   backward: &SparseEdgeBackward,
+  outside_at_no_data: bool,
 ) -> Result<OutsideMessage, Report> {
   let child_dis = &backward.msg_from_child;
   let n_events = 2 * (edge_obs.fitch_subs().len() + parent.profile.variable.len() + child_dis.variable.len());
@@ -266,13 +278,15 @@ fn compute_msg_to_child(
       continue;
     }
     if alphabet.is_canonical(parent_state) {
-      let posterior = parent.profile.variable.get(pos).map_or_else(
-        || parent.profile.fixed[parent_state].dis.as_slice(),
-        |distribution| distribution.dis,
-      );
-      child_missing.insert(pos, parent_state, posterior);
       removed[parent_state] += 1;
-    } else if let Some(posterior) = parent.profile.variable.get(pos) {
+      if outside_at_no_data {
+        let posterior = parent.profile.variable.get(pos).map_or_else(
+          || parent.profile.fixed[parent_state].dis.as_slice(),
+          |distribution| distribution.dis,
+        );
+        child_missing.insert(pos, parent_state, posterior);
+      }
+    } else if outside_at_no_data && let Some(posterior) = parent.profile.variable.get(pos) {
       child_missing.insert(pos, posterior.state, posterior.dis);
     }
   }
@@ -311,6 +325,7 @@ fn compute_ml_subs_for_nodes(
   child: &SparseNodeState,
   child_obs: &SparseNodeObs,
   edge_obs: &SparseEdgeObs,
+  backward: &SparseEdgeBackward,
 ) -> Result<Vec<Sub>, Report> {
   let positions = edge_obs
     .fitch_subs()
@@ -322,7 +337,10 @@ fn compute_ml_subs_for_nodes(
     .dedup();
   positions
     .filter_map(|pos| {
-      if range_contains(&parent_obs.non_char, pos) || range_contains(&child_obs.non_char, pos) {
+      if range_contains(&parent_obs.non_char, pos)
+        || range_contains(&child_obs.non_char, pos)
+        || range_contains(&backward.child_no_data, pos)
+      {
         return None;
       }
       let parent_state = map_state(parent, pos, alphabet);

@@ -495,6 +495,7 @@ mod tests {
         root_sequence: ref_seq,
         obs_nodes,
         obs_edges,
+        outside_at_no_data: false,
       };
 
       Ok(partition)

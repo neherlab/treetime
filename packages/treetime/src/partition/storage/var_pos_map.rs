@@ -32,6 +32,10 @@ impl VarPosMap {
     self.entries.len()
   }
 
+  pub(crate) fn is_empty(&self) -> bool {
+    self.entries.is_empty()
+  }
+
   pub(crate) fn get(&self, pos: usize) -> Option<VarPos<'_>> {
     let index = self.entries.partition_point(|(key, _, _)| *key < pos);
     self

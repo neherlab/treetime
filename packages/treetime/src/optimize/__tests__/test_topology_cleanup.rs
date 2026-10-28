@@ -603,6 +603,7 @@ pub(super) mod tests {
           root_sequence: seq![],
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
+          outside_at_no_data: false,
         },
         gtr: jc69(JC69Params::default())?,
         node_states: keymap! {},

@@ -50,6 +50,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       root_sequence: seq![],
+      outside_at_no_data: false,
     };
     Ok(partition)
   }

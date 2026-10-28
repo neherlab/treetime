@@ -445,8 +445,11 @@ fn initialize_branch_model(
         log,
       )
       .map_err(OperationError::classify)?;
-      let partitions =
+      let mut partitions =
         fix_equal_rates(graph, partitions, params.partition_rates, branch_lengths).map_err(OperationError::classify)?;
+      for sparse in partitions.sparse_mut() {
+        sparse.partition.outside_at_no_data = params.impute_missing_data && params.sequence_outputs_requested;
+      }
       Ok((alignments, model_names, BranchModel::Marginal(partitions)))
     },
   }

@@ -34,12 +34,21 @@ pub struct PartitionMarginalSparse {
   pub root_sequence: Seq,
   pub obs_nodes: NodeMap<SparseNodeObs>,
   pub obs_edges: EdgeMap<SparseEdgeObs>,
+  pub outside_at_no_data: bool,
 }
 
 impl PartitionMarginalSparse {
   #[must_use]
   pub(crate) fn with_total_length(self, total_length: usize) -> Self {
     Self { total_length, ..self }
+  }
+
+  #[must_use]
+  pub(crate) fn with_outside_at_no_data(self, outside_at_no_data: bool) -> Self {
+    Self {
+      outside_at_no_data,
+      ..self
+    }
   }
 
   pub(crate) fn edge_subs(&self, estimates: &EdgeMap<Vec<Sub>>, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
