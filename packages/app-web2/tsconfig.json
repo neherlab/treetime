@@ -11,7 +11,7 @@
       "auspice/src/*": ["../app-ui/src/auspice/types/*"]
     }
   },
-  "include": ["src", "../../test-matchers.d.ts"],
+  "include": ["src", "../../dev/test/matchers.d.ts"],
   "references": [
     {
       "path": "../app-contracts/tsconfig.generated.json"

@@ -6,7 +6,7 @@
     "outDir": "dist-electron",
     "noEmit": true
   },
-  "include": ["src", "../../test-matchers.d.ts"],
+  "include": ["src", "../../dev/test/matchers.d.ts"],
   "references": [
     {
       "path": "../app-contracts/tsconfig.generated.json"

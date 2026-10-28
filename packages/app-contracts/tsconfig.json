@@ -5,7 +5,7 @@
     "types": ["bun-types/test", "bun-types/test-globals"],
     "noEmit": true
   },
-  "include": ["src", "../../test-matchers.d.ts"],
+  "include": ["src", "../../dev/test/matchers.d.ts"],
   "exclude": ["src/generated"],
   "references": [
     {

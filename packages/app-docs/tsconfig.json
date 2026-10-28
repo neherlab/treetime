@@ -6,7 +6,7 @@
     "jsx": "react-jsx",
     "noEmit": true
   },
-  "include": ["src", "../../test-matchers.d.ts"],
+  "include": ["src", "../../dev/test/matchers.d.ts"],
   "exclude": ["src/integrations", "src/markdown", "src/preview", "src/translations"],
   "references": [
     {

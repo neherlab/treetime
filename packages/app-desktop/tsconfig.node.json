@@ -5,5 +5,5 @@
     "types": ["node", "bun-types/test", "bun-types/test-globals"],
     "noEmit": true
   },
-  "include": ["vite.config.ts", "electron-builder.config.ts", "build", "../../test-matchers.d.ts"]
+  "include": ["vite.config.ts", "electron-builder.config.ts", "build", "../../dev/test/matchers.d.ts"]
 }

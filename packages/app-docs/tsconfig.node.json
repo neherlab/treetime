@@ -13,7 +13,7 @@
     "src/preview",
     "src/translations",
     "src/env.d.ts",
-    "../../test-matchers.d.ts"
+    "../../dev/test/matchers.d.ts"
   ],
   "references": [
     {

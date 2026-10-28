@@ -1,10 +1,16 @@
+import { resolve } from "node:path";
+
 import { Glob, plugin, TOML } from "bun";
 import * as fc from "fast-check";
 import * as z from "zod";
 
-import { AUSPICE_EXTENSIONS, AUSPICE_SOURCE, transformAuspiceSource } from "./packages/app-ui/build/auspice-vite.ts";
+import {
+  AUSPICE_EXTENSIONS,
+  AUSPICE_SOURCE,
+  transformAuspiceSource,
+} from "../../packages/app-ui/build/auspice-vite.ts";
 
-const ROOT = import.meta.dir;
+const ROOT = resolve(import.meta.dir, "../..");
 
 const ICON_SOURCES = "packages/*/{src,renderer}/**/*.{ts,tsx}";
 
@@ -56,7 +62,7 @@ function lazyIconLoader(): (specifier: string) => Promise<string> {
   let loader: Promise<(specifier: string) => Promise<string>> | undefined;
 
   return async (specifier) => {
-    loader ??= import("./packages/app-ui/build/icons-vite.ts").then(({ iconModuleLoader }) => iconModuleLoader());
+    loader ??= import("../../packages/app-ui/build/icons-vite.ts").then(({ iconModuleLoader }) => iconModuleLoader());
 
     return (await loader)(specifier);
   };
