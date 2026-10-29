@@ -1,0 +1,50 @@
+---
+title: Design language
+description: The colors, typefaces, and components that the TreeTime apps and docs share with the other sites and tools of the lab.
+---
+
+The design language carries the look of the lab site, [neherlab.org](https://neherlab.org), into the apps and the docs of the lab: serif headings, dark red titles, blue links, and a monospace wordmark. The design package `@neherlab/design` (`packages/design`) holds it: the tokens, a theme for each kind of site, the fonts, and the React components. TreeTime is its first user, and nothing in the package depends on TreeTime, so the other sites and tools of the lab can use it.
+
+## Two registers
+
+The same tokens serve two kinds of pages:
+
+- **Sites and docs**, where people read: headings in Source Serif 4, page titles in lab red, body text in IBM Plex Sans, lines of at most about 70 characters, and sentence case for every title
+- **Apps**, where people work with data: surfaces, lines, and text in grays without hue, one blue for actions, links, focus, and selection, IBM Plex Sans at 14 px on a dense grid, and lab red only in the wordmark of the lab
+
+## Principles
+
+- **Red names, blue acts.** Lab red marks identity: page titles and the `@` of the lab wordmark. Blue marks everything a person can act on. Neither color signals a state: errors, warnings, and success have their own colors and always come with an icon or a word
+- **Grays have no hue.** No tool takes a theme from its name or its domain, so the tools of the lab look related instead of each having its own color
+- **Data colors stay apart.** Charts use Paul Tol's "bright" scheme for color-blind readers, or the convention of their domain, such as the Nextstrain colors in an Auspice view; never the interface blue or the status colors
+- **Serif for headings, sans for work, mono for what a person types.** IBM Plex Mono sets code, commands, file names, sequences, and wordmarks; a tool's wordmark is its command, such as `treetime`
+- **Borders group, one shadow lifts.** Panels and tables have hairline borders; only menus, popovers, dialogs, and toasts cast a shadow
+- **Motion answers.** Transitions of 120 ms show a change that a person caused, and reduced-motion settings turn them off
+- **Accessible in both themes.** Text keeps a contrast of at least 4.5:1, and control outlines, focus rings, and chart marks at least 3:1, in the light and the dark theme. A test holds every pair to its minimum
+
+## Use the package
+
+| Surface                         | What to import                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| React app with Tailwind CSS     | `@import "tailwindcss"; @import "@neherlab/design/tailwind.css";` in CSS, `import "@neherlab/design/fonts";` in code, components from `@neherlab/design/ui/<name>` |
+| Site without a build step       | `@neherlab/design/tokens.css`, the CSS custom properties of every token                                                                                            |
+| Docusaurus                      | `@neherlab/design/docusaurus.css` in the custom CSS of the classic theme                                                                                           |
+| reveal.js talks                 | `@neherlab/design/reveal.css` after a stock reveal.js theme                                                                                                        |
+| matplotlib figures              | `matplotlib.style.use("packages/design/matplotlib/neherlab.mplstyle")`                                                                                             |
+| Rust charts (`treetime-charts`) | `palette.rs`, generated from the tokens; chart text in IBM Plex Sans                                                                                               |
+
+Colors follow the color scheme of each element: an element with the Tailwind class `scheme-light` keeps its subtree light inside a dark page, as the Auspice view does, and `scheme-dark` makes its subtree dark.
+
+## Change a token
+
+The token source is `packages/design/src/tokens/tokens.ts`: every color is a pair of OKLCH values, one for the light and one for the dark theme. After a change, `just gen design` writes the CSS custom properties (`packages/design/src/css/tokens.css`), the Tailwind theme (`packages/design/src/css/tailwind-theme.css`), the matplotlib style, and the chart palette of `treetime-charts`, and `just generated-check` fails when a committed copy is stale. `just test-ts` checks the contrast of every text, control, and chart color in both themes.
+
+The vendored components and the sources they came from are listed in `packages/design/src/ui/UPSTREAM.md`.
+
+## Specimen
+
+The specimen below draws the tokens and the components of the package. The switch shows the light and the dark theme side by side.
+
+<div className="not-prose">
+  <DesignSpecimen />
+</div>

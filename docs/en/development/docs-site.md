@@ -15,7 +15,7 @@ The docs site (`packages/app-docs`) is a prerendered multi-page site in the look
 
 The app and the docs share three layers, and each surface wires the rest itself:
 
-- **Styles**: `packages/app-docs/src/styles/docs.css` loads Tailwind, `tokens.css`, `components.css`, and `base.css` of app-ui, and adds the prose styles of `@tailwindcss/typography` with the colors of the app tokens. An app-ui component inside an article sits in a `not-prose` element, so it looks as it does in the app
+- **Styles**: `packages/app-docs/src/styles/docs.css` loads Tailwind and the Tailwind theme of the design package (`@neherlab/design/tailwind.css`), sets headings in the serif of the [design language](/development/design-language), and adds the prose styles of `@tailwindcss/typography` with the colors of the tokens. A component inside an article sits in a `not-prose` element, so it looks as it does in the app
 - **Components**: the header parts (`packages/app-ui/src/chrome/`), the theme control, the search palette, the sidebar items, the alerts, and the setting presentation (`packages/app-ui/src/settings/help.tsx`) are app-ui components built on the controls of the design package. The lint bans `@base-ui/react`, `react-aria-components`, and `next-themes` in the docs, so a missing control goes into `packages/design/src/ui/`
 - **Messages**: the strings of the shared parts and of the docs layout are Paraglide messages of app-ui (see UI messages below)
 - **Surface wiring**: the app keeps its router, API, and stores; the docs wire the content collections, `fumadocs-core`, Pagefind, and the version data

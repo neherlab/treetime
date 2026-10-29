@@ -2,6 +2,7 @@
 @import "@neherlab/design/tailwind.css";
 @plugin "@tailwindcss/typography";
 @source "../../../app-ui/src";
+@source "../../../design/src/specimen";
 @source "../../../../docs";
 
 @layer base {

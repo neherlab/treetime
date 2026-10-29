@@ -39,3 +39,4 @@ A component refreshed from the registry needs these changes again.
 - **`label.tsx`, `spinner.tsx`, `input-group.tsx`**: each carries one lint suppression with its reason
 - **`breadcrumb.tsx`**: the current page is plain text with `aria-current="page"`, without `role="link"` and `aria-disabled`, because it is not a link
 - **`breadcrumb.tsx`, `pagination.tsx`**: the ellipsis icon is Lucide `ellipsis`, the current name of `more-horizontal`; `pagination.tsx` compares the optional `isActive` with `true`
+- **`badge.tsx`**: `success` and `warning` variants in the subtle status colors, for the states of runs and checks

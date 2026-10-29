@@ -1,3 +1,4 @@
+import type { DesignSpecimen } from "@neherlab/design/specimen";
 import type { Badge } from "@neherlab/design/ui/badge";
 import type { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@neherlab/design/ui/card";
 import type { Kbd } from "@neherlab/design/ui/kbd";
@@ -17,6 +18,7 @@ export interface ProvidedComponents {
   CardGrid: typeof CardGrid;
   CardHeader: typeof CardHeader;
   CardTitle: typeof CardTitle;
+  DesignSpecimen: typeof DesignSpecimen;
   Disclosure: typeof Disclosure;
   FileTree: typeof FileTree;
   Kbd: typeof Kbd;

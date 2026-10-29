@@ -5,8 +5,8 @@
  *   @import "@neherlab/design/tailwind.css";
  *
  * Colors follow the used color-scheme of each element: `scheme-light` keeps a subtree light inside a dark page,
- * for example a view without a dark theme. The `dark:` variant applies under the `dark` class of the root, outside
- * such a subtree.
+ * for example a view without a dark theme, and `scheme-dark` makes a subtree dark. The `dark:` variant applies under
+ * the `dark` class of the root or inside `scheme-dark`, and never inside `scheme-light`.
  */
 
 @import "./tokens.css";
@@ -16,7 +16,7 @@
 
 @source "../ui";
 
-@custom-variant dark (&:is(.dark *):not(.scheme-light, .scheme-light *));
+@custom-variant dark (&:is(.dark *, .scheme-dark *):not(.scheme-light, .scheme-light *));
 
 @layer base {
   * {

@@ -20,6 +20,7 @@ const PROVIDED_COMPONENTS = new Map<string, ProvidedComponent>(
     CardGrid: { module: "../components/LinkCard.tsx" },
     CardHeader: { module: "@neherlab/design/ui/card" },
     CardTitle: { module: "@neherlab/design/ui/card" },
+    DesignSpecimen: { module: "@neherlab/design/specimen", client: "visible" },
     Disclosure: { module: "../components/Disclosure.tsx", client: "visible" },
     FileTree: { module: "../components/FileTree.tsx" },
     Kbd: { module: "@neherlab/design/ui/kbd" },

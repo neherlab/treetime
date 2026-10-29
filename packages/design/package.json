@@ -14,7 +14,8 @@
     "./tailwind.css": "./src/css/tailwind.css",
     "./docusaurus.css": "./src/css/docusaurus.css",
     "./reveal.css": "./src/css/reveal.css",
-    "./matplotlib/neherlab.mplstyle": "./matplotlib/neherlab.mplstyle"
+    "./matplotlib/neherlab.mplstyle": "./matplotlib/neherlab.mplstyle",
+    "./specimen": "./src/specimen/DesignSpecimen.tsx"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
