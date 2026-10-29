@@ -28,10 +28,10 @@ mod tests {
   }
 
   #[test]
-  fn test_pdf_embeds_lato_subsets() {
+  fn test_pdf_embeds_plex_sans_subsets() {
     let pdf = pdf_text(&svg_to_pdf(SVG).unwrap());
-    assert!(pdf.contains("+Lato-Regular"), "{pdf}");
-    assert!(pdf.contains("+Lato-Bold"), "{pdf}");
+    assert!(pdf.contains("+IBMPlexSans"), "{pdf}");
+    assert!(pdf.contains("+IBMPlexSans-Bold"), "{pdf}");
   }
 
   #[rustfmt::skip]
@@ -60,8 +60,8 @@ mod tests {
     pub(super) const SVG: &str = indoc! {r##"
       <svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
       <rect x="0" y="0" width="300" height="200" fill="#FFFFFF"/>
-      <text x="20" y="60" font-family="Lato, sans-serif" font-size="24">Clock regression</text>
-      <text x="20" y="120" font-family="Lato, sans-serif" font-size="24" font-weight="bold">R² 0.98 χ²</text>
+      <text x="20" y="60" font-family="IBM Plex Sans, sans-serif" font-size="24">Clock regression</text>
+      <text x="20" y="120" font-family="IBM Plex Sans, sans-serif" font-size="24" font-weight="bold">R² 0.98 χ²</text>
       </svg>
     "##};
 

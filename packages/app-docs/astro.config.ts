@@ -78,11 +78,11 @@ export default defineConfig({
       useDarkModeMediaQuery: false,
       themeCssSelector: (theme) => (theme.type === "dark" ? ".dark" : false),
       styleOverrides: {
-        borderRadius: "var(--radius)",
+        borderRadius: "var(--corner-lg)",
         borderColor: "var(--border)",
         codeBackground: "var(--muted)",
-        codeFontFamily: '"IBM Plex Mono", ui-monospace, monospace',
-        uiFontFamily: '"Lato", ui-sans-serif, sans-serif',
+        codeFontFamily: "var(--typeface-mono)",
+        uiFontFamily: "var(--typeface-sans)",
         frames: {
           frameBoxShadowCssValue: "none",
           editorActiveTabIndicatorTopColor: "var(--primary)",

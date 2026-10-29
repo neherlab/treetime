@@ -13,7 +13,7 @@ mod tests {
   use std::fs;
   use tempfile::TempDir;
   use tiny_skia::Pixmap;
-  use treetime_charts::font::{LATO_BOLD, LATO_REGULAR};
+  use treetime_charts::font::{PLEX_SANS_BOLD, PLEX_SANS_REGULAR};
   use treetime_utils::assert_error;
   use treetime_utils::fmt::float::float_to_power_of_ten;
 
@@ -29,11 +29,11 @@ mod tests {
   }
 
   #[test]
-  fn test_rtt_chart_svg_writes_every_text_in_lato() {
+  fn test_rtt_chart_svg_writes_every_text_in_plex_sans() {
     let families: BTreeSet<String> = svg_attribute_values(&chart_svg(&results()), "font-family")
       .into_iter()
       .collect();
-    assert_eq!(btreeset! {"Lato, sans-serif".to_owned()}, families);
+    assert_eq!(btreeset! {"IBM Plex Sans, sans-serif".to_owned()}, families);
   }
 
   #[test]
@@ -114,13 +114,13 @@ mod tests {
   }
 
   #[test]
-  fn test_rtt_chart_pdf_is_a_900_by_600_page_with_a_lato_subset() {
+  fn test_rtt_chart_pdf_is_a_900_by_600_page_with_a_plex_sans_subset() {
     let pdf = encode_chart(ChartFormat::Pdf, chart_svg(&results())).unwrap();
     let pdf = String::from_utf8_lossy(&pdf);
     assert!(pdf.starts_with("%PDF-"));
     assert!(pdf.contains("/MediaBox[0 0 900 600]"), "{pdf}");
-    assert!(pdf.contains("+Lato-Regular"), "{pdf}");
-    assert!(pdf.contains("+Lato-Bold"), "{pdf}");
+    assert!(pdf.contains("+IBMPlexSans"), "{pdf}");
+    assert!(pdf.contains("+IBMPlexSans-Bold"), "{pdf}");
   }
 
   #[rustfmt::skip]
@@ -182,17 +182,20 @@ mod tests {
       .collect_vec();
     let characters: BTreeSet<char> = texts.iter().flat_map(|text| text.chars()).collect();
 
-    let missing = [("Lato Regular", LATO_REGULAR), ("Lato Bold", LATO_BOLD)]
-      .into_iter()
-      .flat_map(|(name, bytes)| {
-        let font = FontRef::try_from_slice(bytes).unwrap();
-        characters
-          .iter()
-          .filter(move |&&c| font.glyph_id(c).0 == 0)
-          .map(move |&c| (name, c))
-          .collect_vec()
-      })
-      .collect_vec();
+    let missing = [
+      ("IBM Plex Sans Regular", PLEX_SANS_REGULAR),
+      ("IBM Plex Sans Bold", PLEX_SANS_BOLD),
+    ]
+    .into_iter()
+    .flat_map(|(name, bytes)| {
+      let font = FontRef::try_from_slice(bytes).unwrap();
+      characters
+        .iter()
+        .filter(move |&&c| font.glyph_id(c).0 == 0)
+        .map(move |&c| (name, c))
+        .collect_vec()
+    })
+    .collect_vec();
     assert_eq!(Vec::<(&str, char)>::new(), missing, "characters: {characters:?}");
   }
 

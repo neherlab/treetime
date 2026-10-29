@@ -7,12 +7,12 @@ mod tests {
   use pretty_assertions::assert_eq;
 
   #[test]
-  fn test_chart_text_names_lato_with_a_sans_serif_fallback() {
+  fn test_chart_text_names_plex_sans_with_a_sans_serif_fallback() {
     let svg = text_svg((CHART_FONT_FAMILY, 20).into_font().style(FontStyle::Bold));
     assert_eq!(
       indoc! {r##"
         <svg width="200" height="50" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
-        <text x="10" y="10" dy="0.76em" text-anchor="start" font-family="Lato, sans-serif" font-size="16.129032258064516" opacity="1" fill="#000000" font-weight="bold">
+        <text x="10" y="10" dy="0.76em" text-anchor="start" font-family="IBM Plex Sans, sans-serif" font-size="16.129032258064516" opacity="1" fill="#000000" font-weight="bold">
         Rate: 1.5e-3 χ²
         </text>
         </svg>
@@ -22,11 +22,14 @@ mod tests {
   }
 
   #[test]
-  fn test_text_in_the_default_family_draws_with_lato() {
-    let lato = text_svg((CHART_FONT_FAMILY, 20).into_font());
+  fn test_text_in_the_default_family_draws_with_plex_sans() {
+    let plex_sans = text_svg((CHART_FONT_FAMILY, 20).into_font());
     let default = text_svg(("sans-serif", 20).into_font());
     assert_eq!(
-      lato.replace(r#"font-family="Lato, sans-serif""#, r#"font-family="sans-serif""#),
+      plex_sans.replace(
+        r#"font-family="IBM Plex Sans, sans-serif""#,
+        r#"font-family="sans-serif""#
+      ),
       default
     );
   }

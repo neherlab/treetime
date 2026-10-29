@@ -1,4 +1,4 @@
-use crate::font::{CHART_FONT_DATABASE, LATO_FAMILY};
+use crate::font::{CHART_FONT_DATABASE, PLEX_SANS_FAMILY};
 use eyre::{Report, WrapErr};
 use krilla::Document;
 use krilla::geom::Size;
@@ -47,7 +47,7 @@ pub fn svg_to_pdf(svg: &str) -> Result<Vec<u8>, Report> {
 
 fn parse_svg(svg: &str) -> Result<Tree, Report> {
   let options = Options {
-    font_family: LATO_FAMILY.to_owned(),
+    font_family: PLEX_SANS_FAMILY.to_owned(),
     fontdb: Arc::clone(&CHART_FONT_DATABASE),
     ..Options::default()
   };

@@ -35,7 +35,7 @@ mod tests {
       .collect_vec();
     let tags_without_chart_font = text_tags
       .iter()
-      .filter(|tag| !tag.contains(r#"font-family="Lato, sans-serif""#))
+      .filter(|tag| !tag.contains(r#"font-family="IBM Plex Sans, sans-serif""#))
       .collect_vec();
 
     assert!(!text_tags.is_empty(), "the plot {file_name} has no text");

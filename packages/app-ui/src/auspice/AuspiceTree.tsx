@@ -31,7 +31,7 @@ import { useAuspiceSelector } from "./store-hooks";
 const SIDEBAR_THEME = {
   background: "var(--muted)",
   color: "var(--foreground)",
-  "font-family": "Lato, Helvetica Neue, Helvetica, sans-serif",
+  "font-family": "var(--typeface-sans)",
   sidebarBoxShadow: "rgba(0, 0, 0, 0.15)",
   selectedColor: "var(--primary)",
   unselectedColor: "var(--muted-foreground)",

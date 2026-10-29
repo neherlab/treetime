@@ -27,7 +27,7 @@ mod tests {
 
     pub(super) fn rendered_right_edge(text: &str, weight: &str) -> i32 {
       let svg = format!(
-        r#"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="80"><rect width="800" height="80" fill="white"/><text x="10" y="60" font-family="Lato" font-size="40" font-weight="{weight}">{text}</text></svg>"#
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="80"><rect width="800" height="80" fill="white"/><text x="10" y="60" font-family="IBM Plex Sans" font-size="40" font-weight="{weight}">{text}</text></svg>"#
       );
       let png = Pixmap::decode_png(&svg_to_png(&svg).unwrap()).unwrap();
       let width = u32_to_usize(png.width());

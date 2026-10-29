@@ -1,4 +1,4 @@
-use crate::font::{CHART_FONT_FAMILY, LATO_BOLD, LATO_REGULAR};
+use crate::font::{CHART_FONT_FAMILY, PLEX_SANS_BOLD, PLEX_SANS_REGULAR};
 use ab_glyph::{Font, FontRef, ScaleFont};
 use eyre::Report;
 use num_traits::ToPrimitive;
@@ -47,8 +47,8 @@ pub enum Weight {
 impl Weight {
   fn font_bytes(self) -> &'static [u8] {
     match self {
-      Self::Regular => LATO_REGULAR,
-      Self::Bold => LATO_BOLD,
+      Self::Regular => PLEX_SANS_REGULAR,
+      Self::Bold => PLEX_SANS_BOLD,
     }
   }
 
