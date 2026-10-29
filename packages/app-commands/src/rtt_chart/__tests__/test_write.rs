@@ -4,7 +4,9 @@ mod tests {
   use crate::rtt_chart::write::{encode_chart, rtt_chart_svg, write_rtt_chart};
   use ab_glyph::{Font, FontRef};
   use app_output::output_format::ChartFormat;
-  use helpers::{chart_svg, non_white_pixel_count, read_decompressed, results, svg_attribute_values, svg_texts};
+  use helpers::{
+    chart_svg, non_white_pixel_count, read_decompressed, results, svg_attribute_values, svg_text_elements, svg_texts,
+  };
   use itertools::Itertools;
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
@@ -29,11 +31,20 @@ mod tests {
   }
 
   #[test]
-  fn test_rtt_chart_svg_writes_every_text_in_plex_sans() {
-    let families: BTreeSet<String> = svg_attribute_values(&chart_svg(&results()), "font-family")
-      .into_iter()
-      .collect();
-    assert_eq!(btreeset! {"IBM Plex Sans, sans-serif".to_owned()}, families);
+  fn test_rtt_chart_svg_writes_text_in_plex_sans_and_only_the_characters_it_lacks_in_lato() {
+    let elements = svg_text_elements(&chart_svg(&results()));
+    let families: BTreeSet<&str> = elements.iter().map(|(family, _)| family.as_str()).collect();
+    let plex_sans = FontRef::try_from_slice(PLEX_SANS_REGULAR).unwrap();
+    let lato_characters_that_plex_sans_draws = elements
+      .iter()
+      .filter(|(family, _)| family == "Lato")
+      .flat_map(|(_, text)| text.chars())
+      .filter(|&c| plex_sans.glyph_id(c).0 != 0)
+      .collect_vec();
+    assert_eq!(
+      (btreeset! {"IBM Plex Sans, sans-serif", "Lato"}, Vec::<char>::new()),
+      (families, lato_characters_that_plex_sans_draws)
+    );
   }
 
   #[test]
@@ -78,7 +89,9 @@ mod tests {
       "Root-to-tip regression",
       "4 samples in the fit, 1 excluded by the clock filter",
       "Clock rate",
-      "2.00 × 10⁻³",
+      "2.00 × 10",
+      "⁻",
+      "³",
       "substitutions per site per year",
       "Root date",
       "2000.0",
@@ -241,6 +254,20 @@ mod tests {
           let (_, rest) = element.split_once('>')?;
           let (content, _) = rest.split_once("</text>")?;
           Some(content.trim().to_owned())
+        })
+        .collect()
+    }
+
+    pub(super) fn svg_text_elements(svg: &str) -> Vec<(String, String)> {
+      svg
+        .split("<text")
+        .skip(1)
+        .filter_map(|element| {
+          let (attributes, rest) = element.split_once('>')?;
+          let (_, family) = attributes.split_once(r#"font-family=""#)?;
+          let (family, _) = family.split_once('"')?;
+          let (content, _) = rest.split_once("</text>")?;
+          Some((family.to_owned(), content.trim().to_owned()))
         })
         .collect()
     }
