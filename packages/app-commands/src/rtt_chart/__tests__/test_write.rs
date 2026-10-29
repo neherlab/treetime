@@ -13,7 +13,7 @@ mod tests {
   use std::fs;
   use tempfile::TempDir;
   use tiny_skia::Pixmap;
-  use treetime_charts::font::{PLEX_SANS_BOLD, PLEX_SANS_REGULAR};
+  use treetime_charts::font::{FALLBACK_BOLD, FALLBACK_REGULAR, PLEX_SANS_BOLD, PLEX_SANS_REGULAR};
   use treetime_utils::assert_error;
   use treetime_utils::fmt::float::float_to_power_of_ten;
 
@@ -160,7 +160,7 @@ mod tests {
   }
 
   #[test]
-  fn test_rtt_chart_characters_have_glyphs_in_both_fonts() {
+  fn test_rtt_chart_characters_have_glyphs_in_the_chart_fonts_of_both_weights() {
     let numbers = [
       0.0,
       -0.5,
@@ -183,16 +183,17 @@ mod tests {
     let characters: BTreeSet<char> = texts.iter().flat_map(|text| text.chars()).collect();
 
     let missing = [
-      ("IBM Plex Sans Regular", PLEX_SANS_REGULAR),
-      ("IBM Plex Sans Bold", PLEX_SANS_BOLD),
+      ("regular", PLEX_SANS_REGULAR, FALLBACK_REGULAR),
+      ("bold", PLEX_SANS_BOLD, FALLBACK_BOLD),
     ]
     .into_iter()
-    .flat_map(|(name, bytes)| {
-      let font = FontRef::try_from_slice(bytes).unwrap();
+    .flat_map(|(weight, primary, fallback)| {
+      let primary = FontRef::try_from_slice(primary).unwrap();
+      let fallback = FontRef::try_from_slice(fallback).unwrap();
       characters
         .iter()
-        .filter(move |&&c| font.glyph_id(c).0 == 0)
-        .map(move |&c| (name, c))
+        .filter(move |&&c| primary.glyph_id(c).0 == 0 && fallback.glyph_id(c).0 == 0)
+        .map(move |&c| (weight, c))
         .collect_vec()
     })
     .collect_vec();

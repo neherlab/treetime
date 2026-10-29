@@ -18,6 +18,7 @@ doctest = false
 ab_glyph = { workspace = true }
 eyre = { workspace = true }
 fontdb = { workspace = true }
+itertools = { workspace = true }
 krilla = { workspace = true }
 krilla-svg = { workspace = true }
 num-traits = { workspace = true }
@@ -30,7 +31,6 @@ usvg = { workspace = true }
 [dev-dependencies]
 ctor = { workspace = true }
 indoc = { workspace = true }
-itertools = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }

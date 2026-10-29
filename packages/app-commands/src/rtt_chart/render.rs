@@ -3,12 +3,12 @@ use crate::rtt_chart::frame::{RootPlacement, RttFrame};
 use crate::rtt_chart::layout::{Align, Label, LegendEntry, LegendSymbol, RttLayout};
 use eyre::Report;
 use plotters::coord::Shift;
-use plotters::element::{Circle, DashedPathElement, PathElement, Text};
+use plotters::element::{Circle, DashedPathElement, PathElement};
 use plotters::prelude::{DrawingArea, DrawingBackend};
 use plotters::style::Color;
 use plotters::style::text_anchor::{HPos, Pos, VPos};
 use treetime_charts::palette::{AXIS, FAULT, FIT, GRID, PAPER, SERIES};
-use treetime_charts::text::text_style;
+use treetime_charts::text::draw_text;
 use treetime_utils::cast::f64_to_i32_saturating;
 
 const SAMPLE_FILL_OPACITY: f64 = 0.42;
@@ -161,15 +161,15 @@ where
     Align::Center => HPos::Center,
     Align::Right => HPos::Right,
   };
-  let style = text_style(
+  draw_text(
+    area,
+    &label.text,
+    label.position,
     label.spec.size,
     label.spec.weight,
     &label.spec.color,
     Pos::new(align, VPos::Top),
-  );
-  let (x, y) = label.position;
-  area.draw(&Text::new(label.text.as_str(), (rounded(x), rounded(y)), style))?;
-  Ok(())
+  )
 }
 
 fn rounded(value: f64) -> i32 {
