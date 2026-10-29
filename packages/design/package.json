@@ -11,7 +11,10 @@
     "./fonts": "./src/fonts.ts",
     "./ui/*": "./src/ui/*.tsx",
     "./ui/sidebar-width": "./src/ui/sidebar-width.ts",
-    "./tailwind.css": "./src/css/tailwind.css"
+    "./tailwind.css": "./src/css/tailwind.css",
+    "./docusaurus.css": "./src/css/docusaurus.css",
+    "./reveal.css": "./src/css/reveal.css",
+    "./matplotlib/neherlab.mplstyle": "./matplotlib/neherlab.mplstyle"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

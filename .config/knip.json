@@ -53,8 +53,7 @@
     },
     "packages/design": {
       "entry": ["build/generate.ts!"],
-      "project": ["src/**/*.{ts,tsx}!", "build/**/*.ts!", "!src/**/__tests__/**!"],
-      "ignoreDependencies": ["tw-animate-css"]
+      "project": ["src/**/*.{ts,tsx}!", "build/**/*.ts!", "!src/**/__tests__/**!"]
     },
     "packages/app-wasm": {
       "entry": ["smoke.ts"]

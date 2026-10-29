@@ -1,0 +1,76 @@
+/*
+ * reveal.js theme of the neherlab design language, for reveal.js 4 and 5. Load it after a stock theme, which
+ * supplies the theme rules that read these variables:
+ *
+ *   <link rel="stylesheet" href="dist/theme/white.css" />
+ *   <link rel="stylesheet" href="neherlab/reveal.css" />
+ *
+ * Slides use the light theme, because projectors wash out dark slides. Headings use the serif, the title of a
+ * title slide (h1) the lab red, as on the lab site. The page provides the fonts, for example through the
+ * @fontsource packages of the design package; without them, the stacks fall back to Georgia and the system sans.
+ */
+
+@import "./tokens.css";
+
+:root {
+  color-scheme: light;
+
+  --r-background-color: var(--card);
+  --r-main-font: var(--typeface-sans);
+  --r-main-font-size: 36px;
+  --r-main-color: var(--foreground);
+  --r-block-margin: 20px;
+
+  --r-heading-margin: 0 0 20px 0;
+  --r-heading-font: var(--typeface-serif);
+  --r-heading-color: var(--foreground);
+  --r-heading-line-height: 1.15;
+  --r-heading-letter-spacing: -0.01em;
+  --r-heading-text-transform: none;
+  --r-heading-text-shadow: none;
+  --r-heading-font-weight: 500;
+  --r-heading1-text-shadow: none;
+  --r-heading1-size: 2.5em;
+  --r-heading2-size: 1.6em;
+  --r-heading3-size: 1.25em;
+  --r-heading4-size: 1em;
+
+  --r-code-font: var(--typeface-mono);
+  --r-link-color: var(--link);
+  --r-link-color-dark: color-mix(in oklab, var(--link) 80%, black);
+  --r-link-color-hover: var(--primary);
+  --r-selection-background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+  --r-selection-color: var(--foreground);
+}
+
+.reveal h1 {
+  color: var(--brand);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.reveal code {
+  font-variant-ligatures: none;
+}
+
+.reveal pre {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  border-radius: var(--corner-lg);
+  background: var(--muted);
+}
+
+.reveal blockquote {
+  box-shadow: none;
+  border-left: 2px solid var(--border);
+  background: transparent;
+}
+
+.reveal table th,
+.reveal table td {
+  border-bottom-color: var(--border);
+}
+
+.reveal .progress {
+  color: var(--primary);
+}

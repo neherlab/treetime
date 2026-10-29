@@ -1,0 +1,78 @@
+/*
+ * Docusaurus preset of the neherlab design language. Add it to the custom CSS of the classic theme:
+ *
+ *   presets: [["classic", { theme: { customCss: [require.resolve("@neherlab/design/docusaurus.css")] } }]]
+ *
+ * Docusaurus sets `data-theme` on <html>, and tokens.css turns it into the color scheme of the page, so every
+ * variable below follows the light and the dark theme. The selector matches the specificity of the dark theme of
+ * Infima, and the custom CSS loads after Infima, so these values win in both themes. The site provides the fonts,
+ * for example through the @fontsource packages of the design package.
+ */
+
+@import "./tokens.css";
+
+:root,
+html[data-theme] {
+  --ifm-color-primary: var(--primary);
+  --ifm-color-primary-dark: color-mix(in oklab, var(--primary) 90%, black);
+  --ifm-color-primary-darker: color-mix(in oklab, var(--primary) 85%, black);
+  --ifm-color-primary-darkest: color-mix(in oklab, var(--primary) 70%, black);
+  --ifm-color-primary-light: color-mix(in oklab, var(--primary) 90%, white);
+  --ifm-color-primary-lighter: color-mix(in oklab, var(--primary) 85%, white);
+  --ifm-color-primary-lightest: color-mix(in oklab, var(--primary) 70%, white);
+  --ifm-color-primary-contrast-background: var(--selected);
+  --ifm-color-primary-contrast-foreground: var(--foreground);
+
+  --ifm-color-info: var(--link);
+  --ifm-color-info-dark: var(--link);
+  --ifm-color-info-contrast-background: var(--selected);
+  --ifm-color-info-contrast-foreground: var(--foreground);
+  --ifm-color-success: var(--success);
+  --ifm-color-success-dark: var(--success);
+  --ifm-color-success-contrast-background: var(--success-subtle);
+  --ifm-color-success-contrast-foreground: var(--foreground);
+  --ifm-color-warning: var(--warning);
+  --ifm-color-warning-dark: var(--warning);
+  --ifm-color-warning-contrast-background: var(--warning-subtle);
+  --ifm-color-warning-contrast-foreground: var(--foreground);
+  --ifm-color-danger: var(--destructive);
+  --ifm-color-danger-dark: var(--destructive);
+  --ifm-color-danger-contrast-background: var(--destructive-subtle);
+  --ifm-color-danger-contrast-foreground: var(--foreground);
+  --ifm-color-secondary-contrast-background: var(--muted);
+  --ifm-color-secondary-contrast-foreground: var(--foreground);
+
+  --ifm-background-color: var(--background);
+  --ifm-background-surface-color: var(--card);
+  --ifm-color-content: var(--foreground);
+  --ifm-color-content-secondary: var(--muted-foreground);
+  --ifm-font-color-base: var(--foreground);
+  --ifm-heading-color: var(--foreground);
+  --ifm-link-color: var(--link);
+  --ifm-hr-background-color: var(--border);
+  --ifm-table-border-color: var(--border);
+  --ifm-toc-border-color: var(--border);
+  --ifm-code-background: var(--muted);
+  --ifm-navbar-background-color: var(--card);
+  --ifm-footer-background-color: var(--background);
+  --docusaurus-highlighted-code-line-bg: var(--selected);
+
+  --ifm-font-family-base: var(--typeface-sans);
+  --ifm-font-family-monospace: var(--typeface-mono);
+  --ifm-heading-font-family: var(--typeface-serif);
+  --ifm-heading-font-weight: 500;
+  --ifm-global-radius: var(--corner-lg);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+}
+
+::selection {
+  background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+}
