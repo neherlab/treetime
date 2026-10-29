@@ -80,7 +80,7 @@ const absolute = (url: string) => new URL(url, Astro.site).href;
             <slot name="before" />
             <article data-pagefind-body class="bg-card rounded-lg border px-5 py-6 sm:px-8">
               <slot name="banner" />
-              <h1 class="font-heading text-3xl font-semibold tracking-tight">{title}</h1>
+              <h1 class="font-heading text-brand text-4xl font-normal tracking-tight text-balance">{title}</h1>
               {description !== undefined && <p class="text-muted-foreground mt-2 text-lg">{description}</p>}
               <slot name="notice" />
               <div class="prose mt-8">

@@ -5,6 +5,10 @@
 @source "../../../../docs";
 
 @layer base {
+  :root {
+    --typeface-heading: var(--typeface-serif);
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
@@ -47,7 +51,7 @@
 
   :where(h1, h2, h3, h4) {
     text-wrap: balance;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   :where(table, code, pre) {

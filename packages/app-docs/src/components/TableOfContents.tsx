@@ -13,7 +13,7 @@ export function TableOfContents({ headings, locale }: { headings: TocHeading[]; 
     <LocaleProvider locale={locale}>
       <AnchorProvider toc={toc}>
         <nav aria-labelledby="toc-title" className="text-sm">
-          <p id="toc-title" className="font-heading mb-2 font-semibold">
+          <p id="toc-title" className="mb-2 font-semibold">
             {m.docs_toc({}, { locale })}
           </p>
           <TocList headings={headings} />
