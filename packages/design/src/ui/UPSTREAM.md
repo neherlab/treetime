@@ -1,10 +1,12 @@
 # Vendored shadcn/ui components
 
-The files in this directory started as [shadcn/ui](https://ui.shadcn.com) components. TreeTime owns them: they follow the project lint and format rules like any other source file, and they keep only the parts the app uses.
+Most files in this directory started as [shadcn/ui](https://ui.shadcn.com) components. The design package owns them: they follow the project lint and format rules like any other source file. The components that the apps already use keep only the parts the apps use; the others keep the registry API, because the package offers them to every site and tool.
+
+The package wrote these components itself, without a registry source: `copy-button.tsx`, `data-table.tsx` with `sort-descriptor.ts`, `description-list.tsx`, `meter.tsx` (Base UI `Meter`, in the style of `progress.tsx`), `stat.tsx` (a value with its uncertainty and label), and `wordmark.tsx` (a name in the monospace face, optionally with `@` and a place in the style of `neherlab@biozentrum`).
 
 ## Source
 
-- Registry: `https://ui.shadcn.com/r/styles/base-vega/<name>.json`, the `files[0].content` field, fetched on 2026-09-28 (`dropdown-menu` on 2026-10-24)
+- Registry: `https://ui.shadcn.com/r/styles/base-vega/<name>.json`, the `files[0].content` field, fetched on 2026-09-28 (`dropdown-menu` on 2026-10-24; `avatar`, `breadcrumb`, `hover-card`, `pagination`, `popover`, `scroll-area`, `select`, and `skeleton` on 2026-10-29)
 - Style: `base-vega`, built on Base UI (`@base-ui/react`)
 - Stylesheet: `shadcn.css` is `dist/tailwind.css` of the `shadcn` npm package 4.21.0, copied verbatim
 - License: MIT (<https://github.com/shadcn-ui/ui/blob/main/LICENSE.md>)
@@ -35,3 +37,5 @@ A component refreshed from the registry needs these changes again.
 - **`toast.tsx`**: the default action and close buttons are module constants
 - **`dropdown-menu.tsx`**: only the menu, its trigger, its content and plain items, without the `inset` and `variant` props of the items
 - **`label.tsx`, `spinner.tsx`, `input-group.tsx`**: each carries one lint suppression with its reason
+- **`breadcrumb.tsx`**: the current page is plain text with `aria-current="page"`, without `role="link"` and `aria-disabled`, because it is not a link
+- **`breadcrumb.tsx`, `pagination.tsx`**: the ellipsis icon is Lucide `ellipsis`, the current name of `more-horizontal`; `pagination.tsx` compares the optional `isActive` with `true`

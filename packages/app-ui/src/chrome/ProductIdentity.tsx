@@ -1,3 +1,5 @@
+import { Wordmark } from "@neherlab/design/ui/wordmark";
+
 import { m, useLocale } from "../i18n/locale";
 
 export function ProductIdentity({
@@ -14,7 +16,7 @@ export function ProductIdentity({
   const content = (
     <>
       <img src={logoSrc} alt="" className="size-6" />
-      <span className="text-foreground font-mono text-base font-medium tracking-tight">treetime</span>
+      <Wordmark name="treetime" className="text-base" />
       {version !== undefined && (
         <span className="text-muted-foreground font-mono text-xs">{m.chrome_version({ version }, { locale })}</span>
       )}
