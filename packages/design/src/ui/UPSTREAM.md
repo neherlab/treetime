@@ -40,3 +40,4 @@ A component refreshed from the registry needs these changes again.
 - **`breadcrumb.tsx`**: the current page is plain text with `aria-current="page"`, without `role="link"` and `aria-disabled`, because it is not a link
 - **`breadcrumb.tsx`, `pagination.tsx`**: the ellipsis icon is Lucide `ellipsis`, the current name of `more-horizontal`; `pagination.tsx` compares the optional `isActive` with `true`
 - **`badge.tsx`**: `success` and `warning` variants in the subtle status colors, for the states of runs and checks
+- **`slider.tsx`**: the thumbs align with `edge-client-only` instead of `edge`, which positions them after hydration instead of with an inline script, because the content security policy of the docs site blocks inline scripts it does not list
