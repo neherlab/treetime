@@ -1,6 +1,6 @@
 # Buttons in result table cells are separate tab stops
 
-The result tables (`DataTable` in `packages/app-ui/src/components/DataTable.tsx`) render as a React Aria grid, which lets arrow keys move between cells and into a cell's button. The cell buttons themselves (`PositionButton` in `packages/app-ui/src/runs/RecurrentTable.tsx`, `SampleButton` in `packages/app-ui/src/runs/HomoplasyTables.tsx`) are Base UI buttons with `tabIndex` 0, so the Tab key also stops at every rendered button.
+The result tables (`DataTable` in `packages/design/src/ui/data-table.tsx`) render as a React Aria grid, which lets arrow keys move between cells and into a cell's button. The cell buttons themselves (`PositionButton` in `packages/app-ui/src/runs/RecurrentTable.tsx`, `SampleButton` in `packages/app-ui/src/runs/HomoplasyTables.tsx`) are Base UI buttons with `tabIndex` 0, so the Tab key also stops at every rendered button.
 
 ## Evidence
 
