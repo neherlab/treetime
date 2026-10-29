@@ -36,9 +36,9 @@
   --r-heading4-size: 1em;
 
   --r-code-font: var(--typeface-mono);
-  --r-link-color: var(--link);
-  --r-link-color-dark: color-mix(in oklab, var(--link) 80%, black);
-  --r-link-color-hover: var(--primary);
+  --r-link-color: var(--primary);
+  --r-link-color-dark: color-mix(in oklab, var(--primary) 80%, black);
+  --r-link-color-hover: color-mix(in oklab, var(--primary) 80%, black);
   --r-selection-background-color: color-mix(in oklab, var(--primary) 28%, transparent);
   --r-selection-color: var(--foreground);
 }

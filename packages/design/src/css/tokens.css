@@ -19,14 +19,13 @@
   --foreground: light-dark(oklch(0.21 0 0), oklch(0.93 0 0));
   --card: light-dark(oklch(1 0 0), oklch(0.23 0 0));
   --popover: light-dark(oklch(1 0 0), oklch(0.26 0 0));
-  --primary: light-dark(oklch(0.53 0.17 259.5), oklch(0.55 0.16 259.5));
-  --primary-foreground: light-dark(oklch(1 0 0), oklch(1 0 0));
+  --primary: light-dark(oklch(0.53 0.17 259.5), oklch(0.72 0.13 259.5));
+  --primary-foreground: light-dark(oklch(1 0 0), oklch(0.2 0 0));
   --muted: light-dark(oklch(0.962 0 0), oklch(0.28 0 0));
   --muted-foreground: light-dark(oklch(0.505 0 0), oklch(0.72 0 0));
   --border: light-dark(oklch(0.912 0 0), oklch(0.315 0 0));
   --input: light-dark(oklch(0.645 0 0), oklch(0.54 0 0));
   --ring: light-dark(oklch(0.56 0.17 259.5), oklch(0.72 0.13 259.5));
-  --link: light-dark(oklch(0.51 0.17 259.5), oklch(0.76 0.12 259.5));
   --selected: light-dark(oklch(0.955 0.021 259.5), oklch(0.3 0.07 259.5));
   --brand: light-dark(oklch(0.42 0.155 27), oklch(0.68 0.16 25));
   --destructive: light-dark(oklch(0.53 0.19 33), oklch(0.72 0.15 30));

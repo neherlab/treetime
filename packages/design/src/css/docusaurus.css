@@ -23,8 +23,8 @@ html[data-theme] {
   --ifm-color-primary-contrast-background: var(--selected);
   --ifm-color-primary-contrast-foreground: var(--foreground);
 
-  --ifm-color-info: var(--link);
-  --ifm-color-info-dark: var(--link);
+  --ifm-color-info: var(--primary);
+  --ifm-color-info-dark: var(--primary);
   --ifm-color-info-contrast-background: var(--selected);
   --ifm-color-info-contrast-foreground: var(--foreground);
   --ifm-color-success: var(--success);
@@ -48,7 +48,7 @@ html[data-theme] {
   --ifm-color-content-secondary: var(--muted-foreground);
   --ifm-font-color-base: var(--foreground);
   --ifm-heading-color: var(--foreground);
-  --ifm-link-color: var(--link);
+  --ifm-link-color: var(--primary);
   --ifm-hr-background-color: var(--border);
   --ifm-table-border-color: var(--border);
   --ifm-toc-border-color: var(--border);
