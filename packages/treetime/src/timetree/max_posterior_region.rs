@@ -9,9 +9,8 @@ use std::iter::once;
 use treetime_distribution::{
   BoundaryBehavior, Distribution, DistributionFunction, MassFractions, MassProfile, NegLog, TailMass,
 };
-use treetime_grid::{EdgeCell, GridEdge, HardApproachLaw, HardCell, Side};
+use treetime_grid::{EdgeCell, GridEdge, HardCell, Side};
 use treetime_utils::array::ndarray::partition_point;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error, make_report};
 
 const LEVEL_BRACKET_DOUBLINGS: usize = 64;
@@ -214,8 +213,8 @@ fn function_max_posterior_region(
   fraction: f64,
 ) -> Result<PosteriorRegion, Report> {
   let peak = latest_peak_index(function.y().view());
-  let origin = function.x_min() + function.dx() * peak.to_f64_exact();
-  let local = translated(function, -origin)?;
+  let origin = function.x_at(peak);
+  let local = function.shift_time(-origin);
   let profile = MassProfile::new(&local)?;
   let Some(fractions) = profile.fractions(TailMass::ZeroWhereUndefined) else {
     return make_error!(
@@ -232,23 +231,6 @@ fn function_max_posterior_region(
   };
   check_region_mass(&fractions, origin, region, fraction)?;
   Ok(region)
-}
-
-fn translated(
-  function: &DistributionFunction<f64, NegLog>,
-  shift: f64,
-) -> Result<DistributionFunction<f64, NegLog>, Report> {
-  let tail = |behavior: BoundaryBehavior| match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(HardApproachLaw {
-      t_hard: law.t_hard + shift,
-      ..law
-    }),
-    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.shift_arg(shift)),
-    other => other,
-  };
-  DistributionFunction::from_start_dx_values(function.x_min() + shift, function.dx(), function.y().clone())?
-    .with_left_extrap(tail(function.left_extrap()))?
-    .with_right_extrap(tail(function.right_extrap()))
 }
 
 fn local_max_posterior_region(
@@ -335,7 +317,7 @@ fn grid_peak_sides(
   carries_mass: BoundaryMass,
   cells: EdgeCells,
 ) -> Result<(LevelSide, LevelSide), Report> {
-  let (t, y) = (grid_t(function), function.y());
+  let (t, y) = (function.t(), function.y());
   let n_points = y.len();
   let earlier_segments = chain(
     cells.left.filter(|_| peak > 0).map(|cell| (peak, cell)),
@@ -375,7 +357,7 @@ fn cell_peak_sides(
   carries_mass: BoundaryMass,
   cells: EdgeCells,
 ) -> Result<(LevelSide, LevelSide), Report> {
-  let (t, y) = (grid_t(function), function.y());
+  let (t, y) = (function.t(), function.y());
   let n_points = y.len();
   let with_mode = |values: ArrayView1<f64>, at: f64| chain(once(at), values.iter().copied()).collect::<Array1<f64>>();
   let (edge_index, inward, inward_hard) = match side {
@@ -421,12 +403,6 @@ fn cell_peak_sides(
   Ok(match side {
     Side::Left => (outward, inward),
     Side::Right => (inward, outward),
-  })
-}
-
-fn grid_t(function: &DistributionFunction<f64, NegLog>) -> Array1<f64> {
-  Array1::from_shape_fn(function.y().len(), |idx| {
-    function.x_min() + function.dx() * idx.to_f64_exact()
   })
 }
 

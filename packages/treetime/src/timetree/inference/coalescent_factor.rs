@@ -6,7 +6,7 @@ use treetime_distribution::NegLog;
 use treetime_distribution::distribution_multiply_by_fn;
 use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
+use treetime_utils::cast::f64_to_usize_saturating;
 
 pub(crate) fn apply_coalescent_prior(
   coalescent_model: Option<&CoalescentPrior>,
@@ -39,10 +39,9 @@ pub(crate) fn apply_leaf_coalescent_factor(
     Some((start, end)) if matches!(distribution, Distribution::Range(_)) => {
       let n_points =
         (f64_to_usize_saturating(((end - start) / model.time_resolution()).ceil()) + 1).clamp(2, GRID_POINTS);
-      let dx = (end - start) / (n_points - 1).to_f64_exact();
       let values = Array1::from_elem(n_points, distribution.eval(start)?);
       Distribution::Function(
-        DistributionFunction::from_start_dx_values(start, dx, values)?
+        DistributionFunction::from_range_values((start, end), values)?
           .with_left_extrap(BoundaryBehavior::Hard)?
           .with_right_extrap(BoundaryBehavior::Hard)?,
       )
