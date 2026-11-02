@@ -1,8 +1,5 @@
 # `--prune-filtered-tips` keeps the undated tips that augur refine prunes
 
-> [!IMPORTANT]
-> **Decision required.** augur refine with a clock filter removes every tip that v0 marks as bad, which includes the tips without a usable date. v1 `--prune-filtered-tips` removes only the tips that the clock filter flags, and keeps the undated tips with an inferred date. See "Decision required" below.
-
 ## augur and v0 behavior
 
 - **v0 marks undated tips as bad**: `ClockTree` sets `bad_branch = True` on every terminal node without a date constraint and on every node whose date it cannot read ([packages/legacy/treetime/treetime/clock_tree.py#L120-L148](../../packages/legacy/treetime/treetime/clock_tree.py#L120-L148))
@@ -10,15 +7,17 @@
 
 ## v1 behavior
 
-`fn prune_filtered_tips()` [packages/treetime/src/timetree/pipeline.rs#L189-L229](../../packages/treetime/src/timetree/pipeline.rs#L189-L229) removes the tips that the clock filter flags. A tip without a date is not flagged; the time inference dates it from the tree ([kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md)). The help text of the flag says that the run removes the flagged tips "as augur refine does" ([packages/app-commands/src/commands/shared/clock_filter.rs#L52](../../packages/app-commands/src/commands/shared/clock_filter.rs#L52)), which is true for the clock outliers only.
+`--prune-filtered-tips` removes the tips that the clock filter flags. A tip without a usable date is not flagged; the time inference dates it from the tree ([kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md)).
 
-A six-tip tree whose tip `F` has no date keeps `F`, with the inferred date 2019-08-31, under `--clock-filter 4 --prune-filtered-tips`:
+`--prune-undated-tips` removes the tips without a usable date: a tip without a date in the metadata, or with a value that is not a date, a numeric date, or a date range. `timetree` removes them before the time inference, together with the flagged tips when `--prune-filtered-tips` is also set; `clock` removes them before the final clock fit. The setting does not require the clock filter. The tips that `--keep-tips` and `--keep-tips-file` name stay in the tree, as with augur `--keep-ids`, and a run warning (`undated-tips-removed`) names the removed tips. The core is `PruneTips` in [packages/treetime/src/clock/prune_tips.rs](../../packages/treetime/src/clock/prune_tips.rs).
+
+An augur workflow with `--clock-filter-iqd` matches augur refine when it passes both settings. A six-tip tree whose tip `F` has no date keeps `F` under `--clock-filter 4 --prune-filtered-tips`, and loses it when `--prune-undated-tips` is added:
 
 ```bash
 printf '((A:0.002,B:0.003):0.001,((C:0.002,D:0.004):0.002,(E:0.003,F:0.001):0.001):0.001);\n' > tree.nwk
 printf 'strain\tdate\nA\t2020-01-01\nB\t2021-01-01\nC\t2020-06-01\nD\t2022-01-01\nE\t2021-06-01\nF\t\n' > metadata.tsv
 treetime timetree --tree tree.nwk --metadata metadata.tsv --sequence-length 1000 --clock-rate 0.001 \
-  --clock-filter 4 --prune-filtered-tips --keep-root --branch-length-mode input --seed 1 \
+  --clock-filter 4 --prune-filtered-tips --prune-undated-tips --keep-root --branch-length-mode input --seed 1 \
   --output-tree-nwk out.nwk --output-node-data out.json
 ```
 
@@ -26,9 +25,3 @@ On replayed Nextstrain builds that use `--clock-filter-iqd`, the trees of v0 and
 
 > [!IMPORTANT]
 > **Investigation required.** How many of the tips that only v1 keeps in these builds lack a date, and how many come from a different outlier set of the clock filter ([M-clock-filter-residual-parity.md](M-clock-filter-residual-parity.md)); and whether `augur frequencies` stops on the kept undated tips of the rubella and seasonal-cov workflows.
-
-## Decision required
-
-- **Prune the undated tips with the flagged ones**: `--prune-filtered-tips` removes every tip without a usable date as well, as augur refine with a clock filter does. Changes which tips the outputs contain
-- **A separate setting**: keep `--prune-filtered-tips` as it is, and add a setting that removes undated tips, which augur workflows then pass. Two settings for one augur behavior
-- **Keep the behavior and correct the help text**: undated tips stay in every run; augur workflows that need them out must filter the metadata before `refine`

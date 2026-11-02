@@ -48,6 +48,7 @@
 - [x] Outlier marking (threshold \* IQD)
 - [ ] Local clock filter method (`--clock-filter-method=local` in v0)
 - [x] `--prune-filtered-tips` removes the flagged tips before the final clock fit, except the tips of `--keep-tips` and `--keep-tips-file` (v0 `clock --prune-outliers`, which the CLI reads as `--prune-filtered-tips`)
+- [x] `--prune-undated-tips` removes the tips without a usable date before the final clock fit, except the tips of `--keep-tips` and `--keep-tips-file` (v1 only)
 
 ## Clock Model Output
 
