@@ -10,13 +10,17 @@ mod tests {
     distribution_multiplication,
   };
   use eyre::Report;
-  use ndarray::Array1;
+  use itertools::Itertools;
+  use ndarray::{Array1, Axis};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use statrs::function::erf::{erf, erfc};
+  use std::f64::consts::{LN_10, PI, SQRT_2};
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
+  use treetime_utils::array::ndarray::min_or;
   use treetime_utils::cast::f64_to_usize_saturating;
-  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+  use treetime_utils::{make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[test]
   fn test_edge_convolution_variances_add_on_mass_window() -> Result<(), Report> {
@@ -336,7 +340,7 @@ mod tests {
   #[ignore = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"]
   fn test_edge_convolution_bimodal_operand_with_deep_valley_keeps_both_modes(#[case] soft: Side) -> Result<(), Report> {
     let result = convolve_across_edge(
-      &two_gaussians(20.0, 80.0, 1.0)?,
+      &two_gaussians(20.0, 80.0, 1.0, 1001)?,
       &gaussian(1.0)?,
       soft,
       1e-6,
@@ -346,7 +350,74 @@ mod tests {
 
     let y20 = result.eval(20.0)?;
     pretty_assert_abs_diff_eq!(0.0, result.eval(80.0)? - y20, epsilon = 1e-6);
-    pretty_assert_abs_diff_eq!(0.25, result.eval(21.0)? - y20, epsilon = 1e-6);
+    let valley = result.eval(50.0)? - y20;
+    assert!(
+      valley.is_finite() && valley > 20.0,
+      "the valley at t = 50 must stay finite and more than 20 nats below the modes, got {valley}"
+    );
+    Ok(())
+  }
+
+  #[test]
+  #[ignore = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"]
+  fn test_convolution_of_bimodal_operand_with_deep_valley_matches_its_oracles() -> Result<(), Report> {
+    let (a, b) = (two_gaussians(20.0, 80.0, 1.0, 1441)?, gaussian(1.0)?);
+    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?;
+    let Distribution::Function(conv) = conv else {
+      panic!("the convolution of two grid functions must be a grid function, got {conv}");
+    };
+    let t = conv.t();
+    let y = conv.y();
+    assert!(y.iter().all(|y| !y.is_nan()), "the convolution holds NaN: {y}");
+    let exact = t.mapv(deep_valley_exact_neg_log);
+    let quadrature = log_space_trapezoid_convolution(&a, &b, &t)?;
+    let exact_peak = min_or(&exact, f64::INFINITY);
+    let y_peak = min_or(y, f64::INFINITY);
+
+    let mode_samples = t
+      .iter()
+      .positions(|&t| (t - 20.0).abs() < 1e-9 || (t - 80.0).abs() < 1e-9)
+      .collect_vec();
+    assert_eq!(2, mode_samples.len());
+    for i in mode_samples {
+      pretty_assert_abs_diff_eq!(exact[i], y[i], epsilon = 1e-10);
+    }
+
+    let neg_log_total = -(conv.dx() * y.mapv(|y| (-y).exp()).sum()).ln();
+    pretty_assert_abs_diff_eq!(deep_valley_exact_neg_log_total(), neg_log_total, epsilon = 1e-10);
+
+    let near_modes = (0..t.len())
+      .filter(|&i| (t[i] - 20.0).abs() <= 6.0 || (t[i] - 80.0).abs() <= 6.0)
+      .collect_vec();
+    pretty_assert_abs_diff_eq!(
+      exact.select(Axis(0), &near_modes),
+      y.select(Axis(0), &near_modes),
+      epsilon = 1e-6
+    );
+
+    let within_fft_range = (0..t.len())
+      .filter(|&i| quadrature[i] - exact_peak <= 20.0)
+      .collect_vec();
+    pretty_assert_abs_diff_eq!(
+      quadrature.select(Axis(0), &within_fft_range),
+      y.select(Axis(0), &within_fft_range),
+      epsilon = 1e-6
+    );
+
+    let below_fft_range = (0..t.len())
+      .filter(|&i| t[i] > 20.0 && t[i] < 80.0 && quadrature[i] - exact_peak > CONV_TRUST_DEPTH + 1.0)
+      .collect_vec();
+    assert!(!below_fft_range.is_empty());
+    for i in below_fft_range {
+      assert!(
+        y[i] - y_peak >= CONV_TRUST_DEPTH - 1e-9 && y[i] <= quadrature[i] + 1e-9,
+        "at t = {}: the convolution {} must lie between the trust floor {} and the quadrature {}",
+        t[i],
+        y[i],
+        y_peak + CONV_TRUST_DEPTH,
+        quadrature[i],
+      );
+    }
     Ok(())
   }
 
@@ -366,8 +437,13 @@ mod tests {
       Ok(Distribution::Function(f))
     }
 
-    pub(super) fn two_gaussians(mu_a: f64, mu_b: f64, sigma: f64) -> Result<DistributionNegLog, Report> {
-      let t = Array1::linspace(mu_a - 6.0 * sigma, mu_b + 6.0 * sigma, 1001);
+    pub(super) fn two_gaussians(
+      mu_a: f64,
+      mu_b: f64,
+      sigma: f64,
+      n_points: usize,
+    ) -> Result<DistributionNegLog, Report> {
+      let t = Array1::linspace(mu_a - 6.0 * sigma, mu_b + 6.0 * sigma, n_points);
       let y = t.mapv(|t| ((t - mu_a).powi(2)).min((t - mu_b).powi(2)) / (2.0 * sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
@@ -376,6 +452,76 @@ mod tests {
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;
       Ok(Distribution::Function(f))
+    }
+
+    pub(super) const CONV_TRUST_DEPTH: f64 = 13.0 * LN_10;
+
+    pub(super) fn log_space_trapezoid_convolution(
+      a: &DistributionNegLog,
+      b: &DistributionNegLog,
+      t: &Array1<f64>,
+    ) -> Result<Array1<f64>, Report> {
+      let (Distribution::Function(a), Distribution::Function(b)) = (a, b) else {
+        return make_error!("the quadrature oracle needs two grid functions");
+      };
+      let dx = a.dx();
+      let (ya, yb) = (a.y(), b.y());
+      let (last_a, last_b) = (ya.len() - 1, yb.len() - 1);
+      let t0 = a.x_min() + b.x_min();
+      t.iter()
+        .map(|&t| {
+          let k = f64_to_usize_saturating(((t - t0) / dx).round());
+          let (lo, hi) = (k.saturating_sub(last_b), k.min(last_a));
+          let terms = (lo..=hi)
+            .map(|i| {
+              let weight: f64 = if lo == hi {
+                0.25
+              } else if i == lo || i == hi {
+                0.5
+              } else {
+                1.0
+              };
+              weight.ln() - ya[i] - yb[k - i]
+            })
+            .collect_vec();
+          let max = terms.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+          Ok(-(max + terms.iter().map(|v| (v - max).exp()).sum::<f64>().ln() + dx.ln()))
+        })
+        .collect()
+    }
+
+    pub(super) fn deep_valley_exact_neg_log(t: f64) -> f64 {
+      let log_masses = [(20.0, 14.0, 50.0), (80.0, 50.0, 86.0)].map(|(mu, s_lo, s_hi)| {
+        let d = t - mu;
+        let (u_lo, u_hi) = ((t - s_hi).max(-6.0), (t - s_lo).min(6.0));
+        -d * d / 4.0 + ln_gauss_integral(u_lo - d / 2.0, u_hi - d / 2.0)
+      });
+      let (a, b) = (log_masses[0], log_masses[1]);
+      let (hi, lo) = (a.max(b), a.min(b));
+      if hi == f64::NEG_INFINITY {
+        return f64::INFINITY;
+      }
+      -(hi + (lo - hi).exp().ln_1p())
+    }
+
+    pub(super) fn deep_valley_exact_neg_log_total() -> f64 {
+      let half_sqrt_2pi = (PI / 2.0).sqrt();
+      let mode_mass = half_sqrt_2pi * (erf(30.0 / SQRT_2) + erf(6.0 / SQRT_2));
+      let kernel_mass = half_sqrt_2pi * 2.0 * erf(6.0 / SQRT_2);
+      -(2.0 * mode_mass * kernel_mass).ln()
+    }
+
+    fn ln_gauss_integral(lo: f64, hi: f64) -> f64 {
+      let ln_half_sqrt_pi = (PI.sqrt() / 2.0).ln();
+      if hi <= lo {
+        f64::NEG_INFINITY
+      } else if lo >= 0.0 {
+        ln_half_sqrt_pi + erfc(lo).ln() + (-erfc(hi) / erfc(lo)).ln_1p()
+      } else if hi <= 0.0 {
+        ln_gauss_integral(-hi, -lo)
+      } else {
+        ln_half_sqrt_pi + (erf(hi) - erf(lo)).ln()
+      }
     }
 
     pub(super) fn gaussian(sigma: f64) -> Result<DistributionNegLog, Report> {
