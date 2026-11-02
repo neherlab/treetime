@@ -40,7 +40,7 @@ mod tests {
     #[case] sequences: Sequences,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let actual = run_topology(ZERO_LENGTH_CHAIN, ZERO_LENGTH_CHAIN_FASTA, mode, dense, sequences)?;
+    let actual = run_topology(ZERO_LENGTH_CHAIN, ZERO_LENGTH_CHAIN_FASTA, mode, dense, sequences, &[])?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -56,9 +56,28 @@ mod tests {
     #[case] fasta: &str,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let actual = run_topology(SHORT_EDGE, fasta, BranchLengthMode::Input, Some(false), Sequences::Alignment)?;
+    let actual = run_topology(SHORT_EDGE, fasta, BranchLengthMode::Input, Some(false), Sequences::Alignment, &[])?;
 
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::marginal(BranchLengthMode::Marginal)]
+  #[case::input(   BranchLengthMode::Input)]
+  #[trace]
+  fn test_pipeline_short_branches_keep_a_dated_internal_node(#[case] mode: BranchLengthMode) -> Result<(), Report> {
+    let actual = run_topology(
+      ZERO_LENGTH_CHAIN,
+      ZERO_LENGTH_CHAIN_FASTA,
+      mode,
+      Some(false),
+      Sequences::Alignment,
+      &[("Y", 2005.0)],
+    )?;
+
+    assert_eq!("(((C,A,B)Y,D)Z,(E,F)W)root;", actual);
     Ok(())
   }
 
@@ -160,6 +179,7 @@ mod tests {
       mode: BranchLengthMode,
       dense: Option<bool>,
       sequences: Sequences,
+      internal_dates: &[(&str, f64)],
     ) -> Result<String, Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names.clone();
@@ -184,6 +204,7 @@ mod tests {
       };
       let dates = TIP_DATES
         .iter()
+        .chain(internal_dates)
         .map(|&(name, date)| (o!(name), Some(DateConstraint::exact(date))));
       let dates = dates_by_node(dates, &nwk_parsed.graph, &names);
       let input = TimetreeInput {

@@ -12,6 +12,7 @@ use log::debug;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_utils::interval::range::range_contains;
 
@@ -84,6 +85,7 @@ pub(crate) fn collapse_short_internal_edges(
   graph: &mut Graph,
   mut partitions: PartitionSet,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  keeps_node: impl Fn(GraphNodeKey) -> bool,
 ) -> Result<CollapsedShortEdges, Report> {
   let total_length = partitions.total_length();
   let threshold = if total_length > 0 {
@@ -95,7 +97,7 @@ pub(crate) fn collapse_short_internal_edges(
   let short_edges: Vec<GraphEdgeKey> = schedule
     .postorder()
     .iter()
-    .filter(|&&node_key| !graph.is_leaf(node_key))
+    .filter(|&&node_key| !graph.is_leaf(node_key) && !keeps_node(node_key))
     .flat_map(|&node_key| schedule.parents(node_key).iter().map(|&(_, edge_key)| edge_key))
     .filter(|&edge_key| branch_lengths[&edge_key].unwrap_or(0.0) < threshold)
     .map(|edge_key| -> Result<_, Report> { Ok((!changes_state(graph, &partitions, edge_key)?).then_some(edge_key)) })

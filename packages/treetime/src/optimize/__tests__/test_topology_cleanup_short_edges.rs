@@ -91,6 +91,7 @@ mod tests {
           &mut self.graph,
           self.partitions.take().unwrap(),
           &mut self.branch_lengths,
+          |_| false,
         )?;
         self.partitions = Some(collapsed.partitions);
         Ok(())

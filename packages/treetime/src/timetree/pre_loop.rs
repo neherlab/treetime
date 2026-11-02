@@ -3,6 +3,7 @@ use crate::cancel::Cancel;
 use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
 use crate::clock::clock_regression::ClockFit;
 use crate::clock::clock_state::ClockInputs;
+use crate::clock::date_constraints::DateConstraints;
 use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
@@ -56,7 +57,7 @@ pub(crate) fn run_pre_loop(
     state
   } else {
     let state = ml_optimize(state, params, "post-reroot", &mut convergence, log)?;
-    collapse_short_branches(state, None, "post-reroot", log)?
+    collapse_short_branches(state, None, &inputs.context.date_constraints, "post-reroot", log)?
   };
   convergence.report(BranchOptMethod::Brent, log);
   cancel.check()?;
@@ -91,7 +92,13 @@ fn reroot_before_filter(
   let params = inputs.params;
   let state = if inputs.has_alignment {
     let state = ml_optimize(state, params, "pre-reroot", convergence, log)?;
-    collapse_short_branches(state, input_reconstruction, "pre-reroot", log)?
+    collapse_short_branches(
+      state,
+      input_reconstruction,
+      &inputs.context.date_constraints,
+      "pre-reroot",
+      log,
+    )?
   } else {
     state
   };
@@ -146,6 +153,7 @@ fn ml_optimize(
 fn collapse_short_branches(
   state: PreLoopState,
   input_reconstruction: Option<PartitionSet>,
+  date_constraints: &DateConstraints,
   label: &str,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
@@ -157,8 +165,14 @@ fn collapse_short_branches(
   } = state;
   let branch_model = match (branch_model, input_reconstruction) {
     (BranchModel::Marginal(partitions), _) => {
-      let CollapsedShortEdges { partitions, count, .. } =
-        collapse_and_report(&mut graph, partitions, &mut branch_lengths, label, log)?;
+      let CollapsedShortEdges { partitions, count, .. } = collapse_and_report(
+        &mut graph,
+        partitions,
+        &mut branch_lengths,
+        date_constraints,
+        label,
+        log,
+      )?;
       let partitions = if count == 0 {
         partitions
       } else {
@@ -173,7 +187,14 @@ fn collapse_short_branches(
       let (reconstruction, _) = reconstruction
         .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))
         .wrap_err("Ancestral reconstruction on the input branch lengths failed")?;
-      collapse_and_report(&mut graph, reconstruction, &mut branch_lengths, label, log)?;
+      collapse_and_report(
+        &mut graph,
+        reconstruction,
+        &mut branch_lengths,
+        date_constraints,
+        label,
+        log,
+      )?;
       model
     },
     (model @ BranchModel::Input(_), None) => model,
@@ -190,11 +211,14 @@ fn collapse_and_report(
   graph: &mut Graph,
   partitions: PartitionSet,
   branch_lengths: &mut EdgeMap<Option<f64>>,
+  date_constraints: &DateConstraints,
   label: &str,
   log: &dyn LogSink,
 ) -> Result<CollapsedShortEdges, Report> {
-  let collapsed = collapse_short_internal_edges(graph, partitions, branch_lengths)
-    .wrap_err_with(|| format!("Collapse of short branches ({label}) failed"))?;
+  let collapsed = collapse_short_internal_edges(graph, partitions, branch_lengths, |node_key| {
+    date_constraints.date_constraint(node_key).is_some()
+  })
+  .wrap_err_with(|| format!("Collapse of short branches ({label}) failed"))?;
   progress_info!(
     log,
     "Collapsed {} shorter than {:.3e} without a state change ({label})",
