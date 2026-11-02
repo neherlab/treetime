@@ -5,11 +5,12 @@
 @source "../../../design/src/specimen";
 @source "../../../../docs";
 
-@layer base {
-  :root {
-    --typeface-heading: var(--typeface-serif);
-  }
+/* The token stylesheet declares the heading typeface outside every layer, so the editorial override stays outside every layer to win over it */
+:root {
+  --typeface-heading: var(--typeface-serif);
+}
 
+@layer base {
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
