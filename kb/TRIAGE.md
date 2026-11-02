@@ -154,7 +154,7 @@ Each line names the issue and the measurement or analysis that must come first.
 
 These issues give wrong scientific results or crashes on default settings or example data.
 
-- **[kb/issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md)**: give the backward time messages a spacing that resolves their slope, so that chains of zero-length branches keep the exact log marginal likelihood
+- **[kb/issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md)**: give the backward time messages a spacing that resolves their slope and bounds the grid, so that chains of zero-length branches lose the second-order error of 73.9 nats on a 200-tip chain
 - **[kb/issues/H-timetree-sparse-dense-node-times-differ.md](issues/H-timetree-sparse-dense-node-times-differ.md)**: compare the sparse and dense per-edge log-likelihoods on edges whose parent is not the root, where they differ at fixed branch lengths, starting with the sparse message from the parent
 - **[kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](issues/H-ancestral-sparse-dense-internal-residues-diverge.md)**: trace `NODE_0000002` at 0-based position 5437 of `rsv/a/20` through both backends, starting with the `EPS = 1e-4` site demotion
 

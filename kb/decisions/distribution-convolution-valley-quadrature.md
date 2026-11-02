@@ -2,7 +2,7 @@
 
 **Type**: Intentional divergence from v0 (numerical method), approved by the user.
 
-The time passes convolve two sampled time functions by FFT. An FFT result has an absolute round-off of about $10^{-16}$ of its peak, with either sign, so a sample far below the peak has no correct digits. v1 trusts the samples above the floor $10^{-13}$ of the peak (`CONV_TRUST_FRACTION`). When an operand has two modes, the result can fall below this floor between its modes and rise above it again: a **valley**. v1 computes every sample of the trusted range that lies at or below the floor by direct quadrature, the same trapezoid sum over the overlap of the operands that the FFT approximates ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)). The tails outside the trusted range keep their log-linear reconstruction.
+The time passes convolve two sampled time functions by FFT. An FFT result has an absolute round-off of about $10^{-16}$ of its peak, with either sign, so a sample far below the peak has no correct digits. v1 trusts the samples above the floor $10^{-13}$ of the peak (`CONV_TRUST_FRACTION`). When an operand has two modes, the result can fall below this floor between its modes and rise above it again: a **valley**. v1 computes every sample of the trusted range that lies at or below the floor by direct quadrature, the same trapezoid sum over the overlap of the operands that the FFT approximates ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)). The tails outside the trusted range are computed by exponential tilting ([distribution-convolution-tails-by-exponential-tilting.md](distribution-convolution-tails-by-exponential-tilting.md)).
 
 **v1 location**: `fn neg_log_with_quadrature_in_valleys()`, called from `fn reconstruct_neg_log_tails()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs); the quadrature of one output sample is `pub fn convolve_direct_at()` in [packages/treetime-ops/src/convolution.rs](../../packages/treetime-ops/src/convolution.rs).
 
@@ -44,7 +44,7 @@ Three treatments were measured: clamp each valley sample to the floor (the v0 be
 ## Limits
 
 - A valley sample whose quadrature underflows (more than about 708 nats below the peak) is set to the smallest normal double; no measured case reaches this depth
-- The trusted range ends at the outermost samples above the floor. Below-floor samples outside it belong to the tails and keep the log-linear tail reconstruction
+- The trusted range ends at the outermost samples above the floor. Below-floor samples outside it belong to the tails, which exponential tilting computes
 
 ## Related
 

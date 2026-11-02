@@ -1,6 +1,6 @@
 # Backward time messages lose accuracy along chains of zero-length branches
 
-Along a chain of internal branches without substitutions, the backward pass of the marginal time inference accumulates a discretization error that grows faster than the chain length. The subtree messages lose mass on the old side, so the node posteriors come out too young and too narrow, and the log marginal likelihood of the time tree is wrong by up to 171 nats on a 200-tip chain. In long chains the posteriors become so narrow that the forward pass stops at the grid point limit ([M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md)). Tree builders write such chains for sets of identical or nearly identical sequences. The pre-loop short-branch collapse removes the chains whose sequences agree, as v0 does, but chains remain where the input mode runs without an alignment or the collapse keeps an edge.
+Along a chain of internal branches without substitutions, the backward pass of the marginal time inference accumulates a second-order discretization error that grows faster than the chain length. At the default grid, the log marginal likelihood of the time tree is wrong by 73.9 nats on a 200-tip chain, and the posteriors along such chains are too narrow, which makes the forward pass request fine grids ([M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md)). Tree builders write such chains for sets of identical or nearly identical sequences. The pre-loop short-branch collapse removes the chains whose sequences agree, as v0 does, but chains remain where the input mode runs without an alignment or the collapse keeps an edge.
 
 ## Exact reference
 
@@ -17,50 +17,41 @@ where:
 - $m$ -- number of lineages that cross one interval between consecutive internal node times
 - $n$ -- number of tips
 
-A sum-product on a fine grid agrees with the closed form to $3 \cdot 10^{-5}$ nats.
-
 ## Evidence
 
-With $L = 754$ and $\mu = 0.0014$ ($\lambda = 1.0556$ per year), tips at 2023.0, and the production backward pass:
+With $L = 754$ and $\mu = 0.0014$ ($\lambda = 1.0556$ per year), tips at 2023.0, and the production backward pass, the error of $\log Z$ in nats against the number of points of the branch grid:
 
-| Tips | Exact $\log Z$ | v1 $\log Z$ | Difference |
+| Tips | 300 points (default) | 1197 points | 4785 points |
 | ---: | ---: | ---: | ---: |
-| 20 | -43.364 | -43.248 | 0.116 |
-| 50 | -151.129 | -149.236 | 1.893 |
-| 200 | -874.000 | -702.484 | 171.516 |
+| 20 | 0.116 | 0.0075 | |
+| 50 | 1.89 | 0.129 | |
+| 200 | 73.9 | 8.13 | 0.546 |
 
-The error of the subtree log mass on the 200-tip chain, against the closed form for the subtree below each node: $2.2 \cdot 10^{-4}$ nats at the lowest node, 0.017 at 10 nodes above it, 1.05 at 40, 35 at 100, and 138 at 180.
+The error falls at second order with the spacing, by 3.75 to 3.96 times per halving, and grows about as $n^3$ at a fixed spacing. The convolution tails below the FFT trust floor are exact up to this discretization error ([kb/decisions/distribution-convolution-tails-by-exponential-tilting.md](../decisions/distribution-convolution-tails-by-exponential-tilting.md)). A 400-tip caterpillar dates every node at the default grid.
 
-On a synthetic 200-tip caterpillar run through the CLI without a coalescent prior, v1 dates `NODE_0000100` in [2022.970, 2023.0], while an exact numeric oracle gives [2022.25, 2022.46], and the root of the backward pass alone is 1.6 years too young. A 400-tip caterpillar stops at the grid point limit with "A grid over [0, 7.20055] with spacing 7.09998e-6 needs 1014165 points"; 50, 100, and 200 tips finish.
-
-Four Nextstrain production builds stop the same way, all with the fixed clock rates of their workflows: rubella E1, oropouche S, and the H5N1 cattle-outbreak builds of PB2 and HA. Their input trees from IQ-TREE hold chains of zero-length internal branches with up to 288 (rubella), 421 (oropouche), 511 (PB2), and 428 (HA) edges; in oropouche, more than 400 of them lie above the earliest tip. Each build finishes at the same fixed rate once the tree is pruned with `treetime prune --collapse-short 0.1/L` before `timetree` (rubella E1 in 14 seconds).
+Four Nextstrain production builds hold chains of zero-length internal branches in their IQ-TREE input trees, with up to 288 (rubella E1), 421 (oropouche S), 511 (H5N1 cattle-outbreak PB2), and 428 (HA) edges; in oropouche, more than 400 of them lie above the earliest tip. Without the pre-loop collapse, at the fixed clock rates of their workflows, all four stopped at the grid point limit before the convolution tails were computed by exponential tilting; with tilting they finish in 98 (rubella E1), 11 (oropouche S), 58 (HA), and 122 (PB2) seconds in the release build, against 28, 3, 21, and 24 seconds with the collapse. The chains still cost run time, and the margin to the limit is not known.
 
 ## Mechanism
 
-Near the youngest tip date, the subtree message of a node with $p$ chain nodes below it falls by about $\lambda (p + 1)$ nats per year, so the message gets steeper with every step up the chain. The backward pass keeps the spacing of the branch distribution grid, about 0.023 years in the 200-tip chain, and does not refine it as the message steepens: the convolution of `fn convolve_across_edge()` [packages/treetime/src/timetree/inference/backward_pass.rs#L152](../../packages/treetime/src/timetree/inference/backward_pass.rs#L152) and the products of the child messages discretize a function that changes by several nats within one grid cell. Each step adds an error, and the error per step grows with the slope, so the total grows faster than the chain length.
+Near the youngest tip date, the subtree message of a node with $p$ chain nodes below it falls by about $\lambda (p + 1)$ nats per year, so the message gets steeper with every step up the chain. The backward pass keeps the spacing of the branch distribution grid, about 0.023 years in the 200-tip chain, and does not refine it as the message steepens: the convolution of `fn convolve_across_edge()` [packages/treetime/src/timetree/inference/backward_pass.rs#L152](../../packages/treetime/src/timetree/inference/backward_pass.rs#L152) and the products of the child messages discretize a function that changes by several nats within one grid cell. Each step adds a second-order error, and the error per step grows with the slope, so the total grows faster than the chain length.
 
 The forward pass then convolves each too-narrow posterior with a long branch at the posterior's spacing, which requests the grids that exceed the limit (see the narrow-branch issue above).
 
 ## Fix direction
 
-The backward messages must resolve their own slope: the spacing of a message must follow the scale over which it changes, as the forward pass refines the spacing of a message whose posterior it under-resolves. The pre-loop collapse of v0 is the reference behavior and removes most such chains from the input trees, but the exact posterior of a chain is well defined, so the backward pass must be correct on any chain that reaches it.
+The backward messages must resolve their own slope: the spacing of a message must follow the scale over which it changes, as the forward pass refines the spacing of a message whose posterior it under-resolves. A prototype that refined the spacing of each backward message to its mass width reduced the ladder errors by 6 and 4 times, but requested 1.4 million points on oropouche S, so the spacing rule must also bound the grid. The pre-loop collapse of v0 is the reference behavior and removes most such chains from the input trees, but the exact posterior of a chain is well defined, so the backward pass must be correct on any chain that reaches it.
 
 ## Reproduction
 
-`packages/treetime/src/timetree/inference/__tests__/test_zero_length_ladder.rs` builds the caterpillar with exact zero-substitution branch likelihoods and runs the production backward and forward passes. Its tests are ignored until the fix:
+`packages/treetime/src/timetree/inference/__tests__/test_zero_length_ladder.rs` builds the caterpillar with exact zero-substitution branch likelihoods and runs the production backward and forward passes:
 
-- `test_zero_length_ladder_log_marginal_likelihood_matches_the_exact_value`, cases `tips_20`, `tips_50`, `tips_200`: compare $\log Z$ with the closed form above within `1e-6` nats
-- `test_zero_length_ladder_of_400_tips_dates_every_node_within_the_default_grid_point_limit`: fails at the grid point limit like the production builds; takes about two minutes in the debug build
-
-```bash
-./dev/docker/run just test-rs -E 'test(zero_length_ladder)' --run-ignored only
-```
+- `test_zero_length_ladder_log_marginal_likelihood_converges_at_second_order_to_the_exact_value`: the error of $\log Z$ against the closed form falls by at least 3 times per halving of the branch grid spacing
+- `test_zero_length_ladder_of_400_tips_dates_every_node_within_the_default_grid_point_limit`
 
 ## Validation
 
-- The ladder tests pass, and remove their `#[ignore]`
-- rubella E1, oropouche S, and the two cattle-outbreak builds finish without the pre-loop collapse at the default grid point limit
-- The node posteriors of a 200-tip caterpillar match the exact oracle
+- The error of $\log Z$ on the 200-tip caterpillar at the default grid falls well below its value of 73.9 nats
+- rubella E1, oropouche S, and the two cattle-outbreak builds still finish without the pre-loop collapse at the default grid point limit
 
 ## Related
 
