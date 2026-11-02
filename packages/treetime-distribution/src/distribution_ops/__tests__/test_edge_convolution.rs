@@ -328,6 +328,28 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::backward(Side::Left)]
+  #[case::forward( Side::Right)]
+  #[trace]
+  #[ignore = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"]
+  fn test_edge_convolution_bimodal_operand_with_deep_valley_keeps_both_modes(#[case] soft: Side) -> Result<(), Report> {
+    let result = convolve_across_edge(
+      &two_gaussians(20.0, 80.0, 1.0)?,
+      &gaussian(1.0)?,
+      soft,
+      1e-6,
+      400,
+      MaxGridPoints::default(),
+    )?;
+
+    let y20 = result.eval(20.0)?;
+    pretty_assert_abs_diff_eq!(0.0, result.eval(80.0)? - y20, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(0.25, result.eval(21.0)? - y20, epsilon = 1e-6);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -335,6 +357,18 @@ mod tests {
       let n_points = f64_to_usize_saturating((12.0 * sigma / dx).round()) + 1;
       let t = Array1::linspace(-6.0 * sigma, 6.0 * sigma, n_points);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
+      let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let f = f
+        .with_left_extrap(BoundaryBehavior::Linear(left))?
+        .with_right_extrap(BoundaryBehavior::Linear(right))?;
+      Ok(Distribution::Function(f))
+    }
+
+    pub(super) fn two_gaussians(mu_a: f64, mu_b: f64, sigma: f64) -> Result<DistributionNegLog, Report> {
+      let t = Array1::linspace(mu_a - 6.0 * sigma, mu_b + 6.0 * sigma, 1001);
+      let y = t.mapv(|t| ((t - mu_a).powi(2)).min((t - mu_b).powi(2)) / (2.0 * sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
