@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::clock::prune_tips::PruneTips;
 use crate::gtr::get_gtr::GtrModel;
 use crate::gtr::gtr::{GTR, Mu};
 use crate::optimize::pipeline::OptimizeInput;
@@ -66,7 +67,7 @@ pub(crate) fn timetree_cell(seed: u64) -> Result<CaseSpec, Report> {
 pub(crate) fn timetree_cell_params() -> TimetreeParams {
   TimetreeParams {
     clock_filter: 0.0,
-    prune_filtered_tips: None,
+    prune_tips: PruneTips::default(),
     max_iter: 2,
     confidence: true,
     ..marginal_timetree_params()

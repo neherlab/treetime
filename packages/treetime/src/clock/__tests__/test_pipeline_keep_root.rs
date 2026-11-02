@@ -2,6 +2,7 @@
 mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::pipeline::{self, ClockInput, ClockParams};
+  use crate::clock::prune_tips::PruneTips;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use eyre::Report;
@@ -32,7 +33,7 @@ mod tests {
       clock_filter: 0.0,
       allow_negative_rate: true,
       reroot_spec: None,
-      prune_filtered_tips: None,
+      prune_tips: PruneTips::default(),
     };
 
     let output = pipeline::run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;

@@ -2,7 +2,7 @@
 mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
-  use crate::clock::prune_filtered::PruneFilteredTips;
+  use crate::clock::prune_tips::PruneTips;
   use crate::progress::{NoopProgress, RunWarning, RunWarningKind};
   use crate::reroot::params::RerootSpec;
   use crate::test_utils::{RecordingLog, dates_by_node, find_node_key_by_name};
@@ -28,13 +28,17 @@ mod tests {
   fn test_pipeline_prune_filtered_tips_removes_the_flagged_tips_that_the_keep_list_does_not_name(
     #[case] reroot_spec: Option<RerootSpec>,
   ) -> Result<(), Report> {
-    let input = helpers::input()?;
+    let input = helpers::input(None)?;
     let kept = find_node_key_by_name(&input.graph, &input.names, "Y").expect("Y is a leaf");
     let params = ClockParams {
       clock_filter: CLOCK_FILTER_IQD,
       allow_negative_rate: false,
       reroot_spec,
-      prune_filtered_tips: Some(PruneFilteredTips { keep: btreeset! {kept} }),
+      prune_tips: PruneTips {
+        filtered: true,
+        undated: false,
+        keep: btreeset! {kept},
+      },
     };
     let log = RecordingLog::default();
 
@@ -76,19 +80,80 @@ mod tests {
 
   #[test]
   fn test_pipeline_prune_filtered_tips_rejects_removing_the_outgroup() -> Result<(), Report> {
-    let input = helpers::input()?;
+    let input = helpers::input(None)?;
     let outgroup_key = find_node_key_by_name(&input.graph, &input.names, "Y").expect("Y is a leaf");
     let params = ClockParams {
       clock_filter: CLOCK_FILTER_IQD,
       allow_negative_rate: false,
       reroot_spec: Some(RerootSpec::Tips(vec![outgroup_key])),
-      prune_filtered_tips: Some(PruneFilteredTips::default()),
+      prune_tips: PruneTips {
+        filtered: true,
+        ..PruneTips::default()
+      },
     };
 
     assert_error!(
       helpers::run(&params, input, &RecordingLog::default()),
       "The clock filter flagged the outgroup tip Y, and --prune-filtered-tips would remove it. Name it in --keep-tips \
        to keep it in the tree"
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::undated(              (0.0,              false, None),      (vec_of_owned!["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "X", "Y"],      vec![helpers::undated_warning()]))]
+  #[case::undated_keep_listed(  (0.0,              false, Some("L")), (vec_of_owned!["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "X", "Y"], vec![]))]
+  #[case::filtered_and_undated( (CLOCK_FILTER_IQD, true,  Some("Y")), (vec_of_owned!["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "Y"],           vec![helpers::filtered_warning(), helpers::undated_warning()]))]
+  #[trace]
+  fn test_pipeline_prune_undated_tips_removes_the_tips_without_a_date(
+    #[case] (clock_filter, filtered, kept_name): (f64, bool, Option<&str>),
+    #[case] (expected_leaves, expected_warnings): (Vec<String>, Vec<RunWarning>),
+  ) -> Result<(), Report> {
+    let input = helpers::input(Some("L"))?;
+    let keep = kept_name
+      .map(|name| find_node_key_by_name(&input.graph, &input.names, name).expect("the kept tip is a leaf"))
+      .into_iter()
+      .collect();
+    let params = ClockParams {
+      clock_filter,
+      allow_negative_rate: false,
+      reroot_spec: Some(RerootSpec::default()),
+      prune_tips: PruneTips {
+        filtered,
+        undated: true,
+        keep,
+      },
+    };
+    let log = RecordingLog::default();
+
+    let output = helpers::run(&params, input, &log)?;
+
+    assert_eq!(
+      (expected_leaves, expected_warnings),
+      (helpers::leaf_names(&output), log.run_warnings())
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_prune_undated_tips_rejects_removing_the_outgroup() -> Result<(), Report> {
+    let input = helpers::input(Some("L"))?;
+    let outgroup_key = find_node_key_by_name(&input.graph, &input.names, "L").expect("L is a leaf");
+    let params = ClockParams {
+      clock_filter: 0.0,
+      allow_negative_rate: false,
+      reroot_spec: Some(RerootSpec::Tips(vec![outgroup_key])),
+      prune_tips: PruneTips {
+        undated: true,
+        ..PruneTips::default()
+      },
+    };
+
+    assert_error!(
+      helpers::run(&params, input, &RecordingLog::default()),
+      "The outgroup tip L has no usable date, and --prune-undated-tips would remove it. Name it in --keep-tips to keep \
+       it in the tree"
     );
     Ok(())
   }
@@ -104,7 +169,7 @@ mod tests {
       pipeline::run(params, input, &NoopCancel, &NoopProgress, log).map_err(OperationError::into_report)
     }
 
-    pub(super) fn input() -> Result<ClockInput, Report> {
+    pub(super) fn input(undated: Option<&str>) -> Result<ClockInput, Report> {
       let nwk_parsed = nwk_read(CLOCK_TREE.as_bytes())?;
       let dates = [
         ("A", 2000.0),
@@ -123,6 +188,7 @@ mod tests {
         ("Y", 2007.0),
       ]
       .into_iter()
+      .filter(|&(name, _)| Some(name) != undated)
       .map(|(name, date)| (name.to_owned(), Some(DateConstraint::exact(date))));
       let names = nwk_parsed.names.clone();
       Ok(ClockInput {
@@ -131,6 +197,22 @@ mod tests {
         names,
         branch_lengths: nwk_parsed.branch_lengths,
       })
+    }
+
+    pub(super) fn filtered_warning() -> RunWarning {
+      RunWarning {
+        kind: RunWarningKind::FilteredTipsRemoved,
+        message: o!("Removed 1 tip that the clock filter flagged from the tree (X)"),
+        names: vec_of_owned!["X"],
+      }
+    }
+
+    pub(super) fn undated_warning() -> RunWarning {
+      RunWarning {
+        kind: RunWarningKind::UndatedTipsRemoved,
+        message: o!("Removed 1 tip without a usable date from the tree (L)"),
+        names: vec_of_owned!["L"],
+      }
     }
 
     pub(super) fn leaf_names(output: &ClockOutput) -> Vec<String> {

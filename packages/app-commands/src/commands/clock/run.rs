@@ -51,11 +51,7 @@ pub fn run_clock(
       .as_ref()
       .map(|reroot| reroot.spec(&graph, &names))
       .transpose()?,
-    prune_filtered_tips: clock_args
-      .prune_filtered_tips
-      .as_ref()
-      .map(|prune| prune.resolve(&graph, &names, log))
-      .transpose()?,
+    prune_tips: clock_args.prune_tips.resolve(&graph, &names, log)?,
   };
 
   let input = ClockInput {

@@ -2,6 +2,7 @@
 mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
+  use crate::clock::prune_tips::PruneTips;
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
   use crate::reroot::params::RerootSpec;
@@ -36,7 +37,7 @@ mod tests {
       clock_filter: 3.0,
       allow_negative_rate: false,
       reroot_spec: None,
-      prune_filtered_tips: None,
+      prune_tips: PruneTips::default(),
     };
     let input = ClockInput {
       graph: parsed.graph,
@@ -101,7 +102,7 @@ mod tests {
         clock_filter,
         allow_negative_rate: true,
         reroot_spec: Some(RerootSpec::default()),
-        prune_filtered_tips: None,
+        prune_tips: PruneTips::default(),
       };
       let input = ClockInput {
         dates: dates_by_node(dates, &parsed.graph, &names),

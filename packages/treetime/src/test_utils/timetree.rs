@@ -1,4 +1,5 @@
 use crate::clock::date_constraints::DateConstraints;
+use crate::clock::prune_tips::PruneTips;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::gtr::get_gtr::{GtrModel, JC69Params};
 use crate::optimize::indel::IndelPolicy;
@@ -82,7 +83,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     reroot_spec: None,
     allow_negative_rate: false,
     clock_filter: 0.0,
-    prune_filtered_tips: None,
+    prune_tips: PruneTips::default(),
     max_iter: 1,
     resolve_polytomies: false,
     relax: vec![],

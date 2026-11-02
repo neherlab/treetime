@@ -3,7 +3,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::{TimetreeAmbiguityArgs, resolve_ambiguity_outputs};
 use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
-use crate::commands::shared::clock_filter::{ClockFilterArgs, FilteredTipPruning};
+use crate::commands::shared::clock_filter::{ClockFilterArgs, TipPruning};
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::dates_input::DatesInput;
 use crate::commands::shared::dependent_settings::{check_applies, setting_flag};
@@ -331,6 +331,7 @@ fn timetree_clock(
     clock_filter,
     allow_negative_rate,
     prune_filtered_tips,
+    prune_undated_tips,
     keep_tips,
     keep_tips_file,
   }: ClockFilterArgs,
@@ -348,7 +349,13 @@ fn timetree_clock(
     clock_std_dev,
     clock_filter,
     allow_negative_rate,
-    prune_filtered_tips: FilteredTipPruning::new(clock_filter, prune_filtered_tips, keep_tips, keep_tips_file)?,
+    prune_tips: TipPruning::new(
+      clock_filter,
+      prune_filtered_tips,
+      prune_undated_tips,
+      keep_tips,
+      keep_tips_file,
+    )?,
     relax,
   })
 }
@@ -359,7 +366,7 @@ pub(crate) struct TimetreeClock {
   pub(crate) clock_std_dev: Option<f64>,
   pub(crate) clock_filter: f64,
   pub(crate) allow_negative_rate: bool,
-  pub(crate) prune_filtered_tips: Option<FilteredTipPruning>,
+  pub(crate) prune_tips: TipPruning,
   pub(crate) relax: Vec<f64>,
 }
 

@@ -73,6 +73,7 @@ mod tests {
 
   mod helpers {
     use crate::cancel::NoopCancel;
+    use crate::clock::prune_tips::PruneTips;
     use crate::error::OperationError;
     use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::progress::NoopProgress;
@@ -133,7 +134,7 @@ mod tests {
         branch_length_mode: BranchLengthMode::Input,
         reroot_spec: Some(spec(&tree)),
         clock_filter: CLOCK_FILTER_IQD,
-        prune_filtered_tips: None,
+        prune_tips: PruneTips::default(),
         ..marginal_timetree_params()
       };
       let dates = DATES

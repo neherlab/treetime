@@ -62,6 +62,7 @@ mod tests {
 
     use treetime_graph::graph::Graph;
 
+    use crate::clock::prune_tips::PruneTips;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::nwk_read;
@@ -124,7 +125,7 @@ mod tests {
         clock_filter,
         allow_negative_rate: true,
         reroot_spec: Some(spec.clone()),
-        prune_filtered_tips: None,
+        prune_tips: PruneTips::default(),
       };
       Ok(pipeline::run(
         &params,

@@ -21,7 +21,7 @@ use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
-use treetime::clock::prune_filtered::PruneFilteredTips;
+use treetime::clock::prune_tips::PruneTips;
 use treetime::make_internal_error;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::AlignmentSequences;
@@ -100,17 +100,15 @@ pub fn run_timetree_estimation(
     .as_ref()
     .map(|reroot| reroot.spec(&input_data.graph, &input_data.names))
     .transpose()?;
-  let prune_filtered_tips = args
+  let prune_tips = args
     .clock
-    .prune_filtered_tips
-    .as_ref()
-    .map(|prune| prune.resolve(&input_data.graph, &input_data.names, log))
-    .transpose()?;
+    .prune_tips
+    .resolve(&input_data.graph, &input_data.names, log)?;
   let params = timetree_params(
     args,
     branch_length_mode,
     reroot_spec,
-    prune_filtered_tips,
+    prune_tips,
     sequence_outputs_requested,
     seed,
   );
@@ -171,7 +169,7 @@ fn timetree_params(
   args: &TreetimeTimetreeArgs,
   branch_length_mode: BranchLengthMode,
   reroot_spec: Option<RerootSpec>,
-  prune_filtered_tips: Option<PruneFilteredTips>,
+  prune_tips: PruneTips,
   sequence_outputs_requested: bool,
   seed: u64,
 ) -> TimetreeParams {
@@ -185,7 +183,7 @@ fn timetree_params(
     reroot_spec,
     allow_negative_rate: args.clock.allow_negative_rate,
     clock_filter: args.clock.clock_filter,
-    prune_filtered_tips,
+    prune_tips,
     max_iter: args.dating.max_iter,
     resolve_polytomies: !args.dating.keep_polytomies,
     relax: args.clock.relax.clone(),

@@ -176,11 +176,18 @@ treetime timetree --config timetree.yaml -O results
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
 * `--prune-filtered-tips` — Remove the tips that the clock filter flags from the tree.
 
-   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
-* `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
+   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
 
-   Accepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and timetree dates it from the tree. Names that match no tip are ignored.
-* `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per line
+   augur refine with a clock filter (--clock-filter-iqd) removes the flagged tips and also the tips without a usable date. To remove the same tips, add --prune-undated-tips.
+* `--prune-undated-tips` — Remove the tips without a usable date from the tree.
+
+   A tip has no usable date when the metadata gives no date for it, or a value that is not a date, a numeric date, or a date range. Such a tip stays in the tree by default: timetree infers its date from the tree, and the clock fit leaves it out. With this flag, the run removes these tips: timetree before the time inference, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree.
+
+   Together with --prune-filtered-tips, the run removes the same tips as augur refine with a clock filter (--clock-filter-iqd).
+* `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips or --prune-undated-tips removes tips
+
+   Accepts several names, separated by commas or spaces. A kept flagged tip stays flagged: the clock fit leaves it out, and timetree dates it from the tree, as it dates a kept tip without a usable date. Names that match no tip are ignored.
+* `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips or --prune-undated-tips removes tips, one name per line
 
    Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `--reroot <REROOT>` — Method that chooses the root of the tree
@@ -722,11 +729,18 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
 * `--prune-filtered-tips` — Remove the tips that the clock filter flags from the tree.
 
-   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, as augur refine does, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
-* `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips
+   The clock filter flags a tip and leaves it in the tree by default. With this flag, the run removes the flagged tips after the filter: timetree before the time inference, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree, flagged. Requires the clock filter (--clock-filter above 0).
 
-   Accepts several names, separated by commas or spaces. A kept tip stays flagged: the clock fit leaves it out, and timetree dates it from the tree. Names that match no tip are ignored.
-* `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips removes the flagged tips, one name per line
+   augur refine with a clock filter (--clock-filter-iqd) removes the flagged tips and also the tips without a usable date. To remove the same tips, add --prune-undated-tips.
+* `--prune-undated-tips` — Remove the tips without a usable date from the tree.
+
+   A tip has no usable date when the metadata gives no date for it, or a value that is not a date, a numeric date, or a date range. Such a tip stays in the tree by default: timetree infers its date from the tree, and the clock fit leaves it out. With this flag, the run removes these tips: timetree before the time inference, and clock before the final clock fit. Every output leaves the removed tips out, and a run warning names them. The tips that --keep-tips and --keep-tips-file name stay in the tree.
+
+   Together with --prune-filtered-tips, the run removes the same tips as augur refine with a clock filter (--clock-filter-iqd).
+* `--keep-tips <NAME>` — Names of tips that stay in the tree when --prune-filtered-tips or --prune-undated-tips removes tips
+
+   Accepts several names, separated by commas or spaces. A kept flagged tip stays flagged: the clock fit leaves it out, and timetree dates it from the tree, as it dates a kept tip without a usable date. Names that match no tip are ignored.
+* `--keep-tips-file <FILE>` — File with names of tips that stay in the tree when --prune-filtered-tips or --prune-undated-tips removes tips, one name per line
 
    Surrounding whitespace is trimmed and empty lines are ignored. Names that match no tip are ignored, so the file can list samples of several datasets. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file. Use `-` to read uncompressed input from standard input (stdin).
 * `--reroot <REROOT>` — Method that chooses the root of the tree

@@ -7,7 +7,7 @@ use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::prune_filtered::{PruneFilteredTips, remove_filtered_tips};
+use crate::clock::prune_tips::remove_tips;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::coalescent::population_size::effective_population_size;
@@ -66,9 +66,10 @@ pub fn run(
 ) -> Result<TimetreeOutput, OperationError> {
   progress_info!(log, "# TreeTime Timetree Estimation");
   validate_params(params, seq_sink.is_some())?;
-  let (input, outliers) = match &params.prune_filtered_tips {
-    None => (input, ClockOutliers::Filter),
-    Some(prune) => prune_filtered_tips(params, prune, input, cancel, log)?,
+  let (input, outliers) = if params.prune_tips.is_active() {
+    prune_tips(params, input, cancel, log)?
+  } else {
+    (input, ClockOutliers::Filter)
   };
   let TimetreeInput {
     graph,
@@ -186,17 +187,26 @@ fn assemble_output(
   })
 }
 
-fn prune_filtered_tips(
+fn prune_tips(
   params: &TimetreeParams,
-  prune: &PruneFilteredTips,
   input: TimetreeInput,
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<(TimetreeInput, ClockOutliers), OperationError> {
-  progress_info!(log, "## Clock filter on the full tree, to remove the flagged tips");
-  let outliers = find_filtered_tips(params, &input, log)?;
-  cancel.check().map_err(OperationError::classify)?;
-  let tips = prune.split(outliers);
+  let prune = &params.prune_tips;
+  if prune.undated && input.dates.is_none() {
+    return Err(OperationError::InvalidParams(make_report!(
+      "--prune-undated-tips removes the tips without a usable date, but the run has no dates"
+    )));
+  }
+  let flagged = if prune.filtered {
+    progress_info!(log, "## Clock filter on the full tree, to remove the flagged tips");
+    let flagged = find_filtered_tips(params, &input, log)?;
+    cancel.check().map_err(OperationError::classify)?;
+    flagged
+  } else {
+    BTreeSet::new()
+  };
   let TimetreeInput {
     mut graph,
     names,
@@ -204,7 +214,8 @@ fn prune_filtered_tips(
     mut dates,
     mut branch_lengths,
   } = input;
-  remove_filtered_tips(
+  let tips = prune.split(flagged, &graph, dates.as_ref().unwrap_or(&NodeMap::new()));
+  remove_tips(
     &mut graph,
     &mut branch_lengths,
     &tips,
@@ -225,7 +236,12 @@ fn prune_filtered_tips(
     dates,
     branch_lengths,
   };
-  Ok((input, ClockOutliers::Given(tips.kept)))
+  let outliers = if prune.filtered {
+    ClockOutliers::Given(tips.kept_flagged)
+  } else {
+    ClockOutliers::Filter
+  };
+  Ok((input, outliers))
 }
 
 fn find_filtered_tips(
@@ -284,7 +300,7 @@ pub struct TimetreeOutput {
 }
 
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
-  if params.prune_filtered_tips.is_some() && params.clock_filter <= 0.0 {
+  if params.prune_tips.filtered && params.clock_filter <= 0.0 {
     return Err(OperationError::InvalidParams(make_report!(
       "--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"
     )));

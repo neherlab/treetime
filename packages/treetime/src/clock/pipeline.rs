@@ -6,7 +6,7 @@ use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::prune_filtered::{PruneFilteredTips, remove_filtered_tips};
+use crate::clock::prune_tips::{PruneTips, TipRemoval, remove_tips};
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::{NoPositiveRateRoot, OperationError};
 use crate::progress::{LogSink, StageSink};
@@ -51,7 +51,8 @@ pub fn run(
     },
     clock_model,
     filter_outliers,
-  ) = estimate_clock_model_with_prefilter(tree, params, &mut names, log).map_err(OperationError::classify)?;
+  ) = estimate_clock_model_with_prefilter(tree, &input.dates, params, &mut names, log)
+    .map_err(OperationError::classify)?;
 
   let outliers = filter_outliers.unwrap_or_default();
 
@@ -93,6 +94,7 @@ pub struct ClockOutput {
 
 fn estimate_clock_model_with_prefilter(
   tree: ClockTree,
+  dates: &NodeMap<DateConstraint>,
   params: &ClockParams,
   names: &mut NodeNames,
   log: &dyn LogSink,
@@ -134,19 +136,22 @@ fn estimate_clock_model_with_prefilter(
       clock_filter_threshold,
       log,
     )?;
-    Some(match &params.prune_filtered_tips {
-      None => filtered.outliers,
-      Some(prune) => prune_tree(
-        &mut tree,
-        prune,
-        filtered.outliers,
-        params.reroot_spec.as_ref(),
-        names,
-        log,
-      )?,
-    })
+    Some(filtered.outliers)
   } else {
     None
+  };
+  let filter_outliers = if params.prune_tips.is_active() {
+    prune_tree(
+      &mut tree,
+      &params.prune_tips,
+      filter_outliers,
+      dates,
+      params.reroot_spec.as_ref(),
+      names,
+      log,
+    )?
+  } else {
+    filter_outliers
   };
 
   let no_outliers = BTreeSet::new();
@@ -162,22 +167,43 @@ fn estimate_clock_model_with_prefilter(
 
 fn prune_tree(
   tree: &mut ClockTree,
-  prune: &PruneFilteredTips,
-  outliers: BTreeSet<GraphNodeKey>,
+  prune: &PruneTips,
+  filter_outliers: Option<BTreeSet<GraphNodeKey>>,
+  dates: &NodeMap<DateConstraint>,
   reroot_spec: Option<&RerootSpec>,
   names: &NodeNames,
   log: &dyn LogSink,
-) -> Result<BTreeSet<GraphNodeKey>, Report> {
-  let tips = prune.split(outliers);
+) -> Result<Option<BTreeSet<GraphNodeKey>>, Report> {
+  match filter_outliers {
+    Some(outliers) if prune.filtered => {
+      let tips = prune.split(outliers, &tree.graph, dates);
+      remove_from_clock_tree(tree, &tips, reroot_spec, names, log)?;
+      Ok(Some(tips.kept_flagged))
+    },
+    filter_outliers => {
+      let tips = prune.split(BTreeSet::new(), &tree.graph, dates);
+      remove_from_clock_tree(tree, &tips, reroot_spec, names, log)?;
+      Ok(filter_outliers)
+    },
+  }
+}
+
+fn remove_from_clock_tree(
+  tree: &mut ClockTree,
+  tips: &TipRemoval,
+  reroot_spec: Option<&RerootSpec>,
+  names: &NodeNames,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
   let ClockTree {
     graph,
     branch_lengths,
     inputs,
   } = tree;
-  remove_filtered_tips(graph, branch_lengths, &tips, reroot_spec, names, log)?;
+  remove_tips(graph, branch_lengths, tips, reroot_spec, names, log)?;
   inputs.nodes.retain(|key, _| graph.get_node(key).is_some());
   inputs.edges.retain(|key, _| graph.get_edge(key).is_some());
-  Ok(tips.kept)
+  Ok(())
 }
 
 fn reroot_clock_tree_date_free(
@@ -243,5 +269,5 @@ pub struct ClockParams {
   pub clock_filter: f64,
   pub allow_negative_rate: bool,
   pub reroot_spec: Option<RerootSpec>,
-  pub prune_filtered_tips: Option<PruneFilteredTips>,
+  pub prune_tips: PruneTips,
 }

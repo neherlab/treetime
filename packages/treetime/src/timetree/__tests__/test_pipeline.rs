@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::cancel::NoopCancel;
   use crate::clock::divergence::root_to_node_divergences;
-  use crate::clock::prune_filtered::PruneFilteredTips;
+  use crate::clock::prune_tips::PruneTips;
   use crate::error::OperationError;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::result::{AlignmentResult, AlignmentSequences};
@@ -111,7 +111,7 @@ mod tests {
     let input = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
     let params = TimetreeParams {
       clock_filter: CLOCK_FILTER_IQD,
-      prune_filtered_tips: None,
+      prune_tips: PruneTips::default(),
       clock_rate: Some(ZIKA_CLOCK_RATE),
       ..marginal_timetree_params()
     };
@@ -154,7 +154,7 @@ mod tests {
     let input = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
     let params = TimetreeParams {
       clock_filter: CLOCK_FILTER_IQD,
-      prune_filtered_tips: None,
+      prune_tips: PruneTips::default(),
       clock_rate: Some(ZIKA_CLOCK_RATE),
       ..marginal_timetree_params()
     };
@@ -209,7 +209,11 @@ mod tests {
       .collect();
     let kept = find_node_key_by_name(&input.graph, &input.names, &kept_name).expect("the kept tip is a leaf");
     let params = TimetreeParams {
-      prune_filtered_tips: Some(PruneFilteredTips { keep: btreeset! {kept} }),
+      prune_tips: PruneTips {
+        filtered: true,
+        undated: false,
+        keep: btreeset! {kept},
+      },
       ..params
     };
     let log = RecordingLog::default();
@@ -249,7 +253,10 @@ mod tests {
   fn test_pipeline_prune_filtered_tips_requires_the_clock_filter() -> Result<(), Report> {
     let params = TimetreeParams {
       clock_filter: 0.0,
-      prune_filtered_tips: Some(PruneFilteredTips::default()),
+      prune_tips: PruneTips {
+        filtered: true,
+        ..PruneTips::default()
+      },
       clock_rate: Some(ZIKA_CLOCK_RATE),
       ..marginal_timetree_params()
     };
@@ -288,7 +295,7 @@ mod tests {
       branch_length_mode: BranchLengthMode::Input,
       reroot_spec: Some(RerootSpec::default()),
       clock_filter: CLOCK_FILTER_IQD,
-      prune_filtered_tips: None,
+      prune_tips: PruneTips::default(),
       ..marginal_timetree_params()
     };
 
@@ -500,7 +507,7 @@ mod tests {
     let params = TimetreeParams {
       reroot_spec: Some(RerootSpec::default()),
       clock_filter: CLOCK_FILTER_IQD,
-      prune_filtered_tips: None,
+      prune_tips: PruneTips::default(),
       ..marginal_timetree_params()
     };
 

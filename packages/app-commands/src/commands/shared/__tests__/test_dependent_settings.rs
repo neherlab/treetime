@@ -10,7 +10,8 @@ mod tests {
   use rstest::rstest;
   use treetime_utils::{o, vec_of_owned};
 
-  const KEEP_TIPS: &str = "applies only with --prune-filtered-tips: it names flagged tips that the run keeps";
+  const KEEP_TIPS: &str =
+    "applies only with --prune-filtered-tips or --prune-undated-tips: it names tips that the run keeps";
 
   const COALESCENT_SKYLINE: &str = "applies only to --coalescent skyline, but --coalescent is";
 
@@ -56,10 +57,10 @@ mod tests {
   #[case::representation_in_marginal_mode( &["--representation", "dense", "--branch-length-mode", "marginal"], None)]
   #[case::model_in_input_mode(             &["--model", "jc69", "--model-params", "mu=2", "--branch-length-mode", "input"], None)]
   #[case::sequence_length_with_alignment(  &["--sequence-length", "1000"],                                    Some((o!("--sequence-length applies only without --alignment: the run takes the sequence length from the alignment, and an alignment of variable sites with a separate genome length is not supported"), ["sequence_length", "alignment"])))]
-  #[case::keep_tips_without_pruning(       &["--keep-tips", "A"],                                             Some((format!("--keep-tips {KEEP_TIPS}"),                               ["keep_tips", "prune_filtered_tips"])))]
-  #[case::keep_tips_file_without_pruning(  &["--keep-tips-file", "keep.txt"],                                 Some((format!("--keep-tips-file {KEEP_TIPS}"),                          ["keep_tips_file", "prune_filtered_tips"])))]
   #[case::pruning_without_clock_filter(    &["--prune-filtered-tips", "--clock-filter", "0"],                 Some((o!("--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"), ["prune_filtered_tips", "clock_filter"])))]
   #[case::pruning_with_keep_list(          &["--prune-filtered-tips", "--keep-tips", "A,B", "--keep-tips-file", "keep.txt"], None)]
+  #[case::undated_pruning_with_keep_list(  &["--prune-undated-tips", "--keep-tips", "A,B", "--keep-tips-file", "keep.txt"], None)]
+  #[case::undated_pruning_without_filter(  &["--prune-undated-tips", "--clock-filter", "0"],                  None)]
   #[case::documented_defaults(             &[],                                                               None)]
   #[trace]
   fn test_dependent_settings_timetree(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {
@@ -72,9 +73,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::keep_tips_without_pruning(    &["--keep-tips", "A"],                             Some((format!("--keep-tips {KEEP_TIPS}"), ["keep_tips", "prune_filtered_tips"])))]
   #[case::pruning_without_clock_filter( &["--prune-filtered-tips", "--clock-filter", "0"], Some((o!("--prune-filtered-tips removes the tips that the clock filter flags; set --clock-filter above 0"), ["prune_filtered_tips", "clock_filter"])))]
   #[case::pruning_with_keep_list(       &["--prune-filtered-tips", "--keep-tips", "A"],    None)]
+  #[case::undated_pruning_with_keep_list(&["--prune-undated-tips", "--keep-tips", "A"],    None)]
   #[trace]
   fn test_dependent_settings_clock(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {
     let argv = [&["clock", "--tree", "t.nwk", "--metadata", "m.tsv"][..], extra].concat();
@@ -82,6 +83,22 @@ mod tests {
       expected.map(helpers::owned),
       argument_error_of::<TreetimeClockArgsRaw, TreetimeClockArgs>(&argv)
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::timetree_keep_tips(      argument_error_of::<TreetimeTimetreeArgsRaw, TreetimeTimetreeArgs>, &["timetree", "--tree", "t.nwk", "--metadata", "m.tsv", "--alignment", "a.fasta", "--keep-tips", "A"],             (format!("--keep-tips {KEEP_TIPS}"),      ["keep_tips", "prune_filtered_tips", "prune_undated_tips"]))]
+  #[case::timetree_keep_tips_file( argument_error_of::<TreetimeTimetreeArgsRaw, TreetimeTimetreeArgs>, &["timetree", "--tree", "t.nwk", "--metadata", "m.tsv", "--alignment", "a.fasta", "--keep-tips-file", "keep.txt"], (format!("--keep-tips-file {KEEP_TIPS}"), ["keep_tips_file", "prune_filtered_tips", "prune_undated_tips"]))]
+  #[case::clock_keep_tips(         argument_error_of::<TreetimeClockArgsRaw, TreetimeClockArgs>,       &["clock", "--tree", "t.nwk", "--metadata", "m.tsv", "--keep-tips", "A"],                                          (format!("--keep-tips {KEEP_TIPS}"),      ["keep_tips", "prune_filtered_tips", "prune_undated_tips"]))]
+  #[trace]
+  fn test_dependent_settings_keep_tips_without_pruning(
+    #[case]
+    #[notrace]
+    convert: fn(&[&str]) -> Option<(String, Vec<String>)>,
+    #[case] argv: &[&str],
+    #[case] expected: (String, [&str; 3]),
+  ) {
+    assert_eq!(Some(helpers::owned(expected)), convert(argv));
   }
 
   #[rustfmt::skip]
@@ -218,7 +235,7 @@ mod tests {
       }
     }
 
-    pub(super) fn owned((message, settings): (String, [&str; 2])) -> (String, Vec<String>) {
+    pub(super) fn owned<const N: usize>((message, settings): (String, [&str; N])) -> (String, Vec<String>) {
       (message, settings.map(str::to_owned).to_vec())
     }
   }

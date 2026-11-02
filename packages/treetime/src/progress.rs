@@ -67,6 +67,8 @@ pub enum RunWarningKind {
   DatesOutsideInputDates,
   /// The run removed the tips that the clock filter flagged from the tree (`--prune-filtered-tips`); the outputs leave them out.
   FilteredTipsRemoved,
+  /// The run removed the tips without a usable date from the tree (`--prune-undated-tips`); the outputs leave them out.
+  UndatedTipsRemoved,
   /// The coordinates file of a mugration run has no coordinates for some values of the trait; the map of the Auspice tree leaves these locations out.
   LocationsWithoutCoordinates,
 }

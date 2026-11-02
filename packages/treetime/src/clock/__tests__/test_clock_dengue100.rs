@@ -102,6 +102,7 @@ mod tests {
     use crate::clock::clock_regression::ClockTree;
     use crate::clock::clock_state::ClockInputs;
     use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
+    use crate::clock::prune_tips::PruneTips;
     use crate::progress::NoopProgress;
     use crate::reroot::params::RerootParams;
     use crate::reroot::params::RerootSpec;
@@ -127,7 +128,7 @@ mod tests {
         clock_filter,
         allow_negative_rate: false,
         reroot_spec: (!keep_root).then(RerootSpec::default),
-        prune_filtered_tips: None,
+        prune_tips: PruneTips::default(),
       };
       let input = ClockInput {
         graph: nwk_parsed.graph,

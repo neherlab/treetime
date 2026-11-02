@@ -28,6 +28,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::cancel::NoopCancel;
     use crate::clock::pipeline::{ClockInput, ClockParams};
+    use crate::clock::prune_tips::PruneTips;
     use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
@@ -117,7 +118,7 @@ mod tests {
         clock_filter: CLOCK_FILTER_IQD,
         allow_negative_rate: false,
         reroot_spec: Some(spec.reroot_spec(&tree)),
-        prune_filtered_tips: None,
+        prune_tips: PruneTips::default(),
       };
       let input = ClockInput {
         dates: dates_by_node(DATASET.dates()?, &tree.graph, &tree.names),
@@ -135,7 +136,7 @@ mod tests {
       let params = TimetreeParams {
         reroot_spec: Some(spec.reroot_spec(&tree)),
         clock_filter: CLOCK_FILTER_IQD,
-        prune_filtered_tips: None,
+        prune_tips: PruneTips::default(),
         ..marginal_timetree_params()
       };
       let input = TimetreeInput {
