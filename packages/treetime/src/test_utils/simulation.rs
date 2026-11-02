@@ -253,19 +253,18 @@ pub(crate) fn match_internal_nodes(
   let mut ids = TipIds::default();
   let true_keys = graph_clade_keys(&truth.graph, &truth.names, &mut ids)?;
   let keys = graph_clade_keys(graph, names, &mut ids)?;
-  let nodes_by_key = first_node_by_key(keys.iter().map(|(&node, key)| (node, key.as_slice())));
-  truth
-    .graph
-    .get_internal_nodes()
-    .map(|node| {
-      let true_node = node.key();
-      nodes_by_key
-        .get(true_keys[&true_node].as_slice())
-        .map(|&inferred| (true_node, inferred))
+  let true_nodes_by_key = first_node_by_key(true_keys.iter().map(|(&node, key)| (node, key.as_slice())));
+  keys
+    .iter()
+    .filter(|&(&node, _)| !graph.is_leaf(node))
+    .map(|(&node, key)| {
+      true_nodes_by_key
+        .get(key.as_slice())
+        .map(|&true_node| (true_node, node))
         .ok_or_else(|| {
           make_report!(
-            "Node {} of the true tree has no node with the same clade in the inferred tree",
-            &truth.names[true_node]
+            "Node {} of the inferred tree has a clade that the true tree lacks",
+            &names[node]
           )
         })
     })
@@ -656,7 +655,8 @@ mod tests {
   }
 
   #[test]
-  fn test_simulation_timetree_cell_runs_through_the_timetree_pipeline_and_matches_every_clade() -> Result<(), Report> {
+  fn test_simulation_timetree_cell_runs_through_the_timetree_pipeline_and_matches_every_surviving_clade()
+  -> Result<(), Report> {
     let case = timetree_cell(3)?.simulate()?;
     let params = TimetreeParams {
       clock_rate: Some(TIMETREE_CELL_MU),
@@ -675,7 +675,7 @@ mod tests {
     )?;
 
     let matched = match_internal_nodes(&case.tree, &output.graph, &output.names)?;
-    assert_eq!(19, matched.len());
+    assert_eq!(output.graph.get_internal_nodes().count(), matched.len());
     Ok(())
   }
 
@@ -735,13 +735,32 @@ mod tests {
   }
 
   #[test]
-  fn test_simulation_match_internal_nodes_rejects_a_missing_clade() -> Result<(), Report> {
+  fn test_simulation_match_internal_nodes_skips_a_collapsed_clade() -> Result<(), Report> {
+    let truth = simulated_tree_from_newick("((A,B)ab,(C,D)cd)root;")?;
+    let inferred = simulated_tree_from_newick("(A,B,(D,C)x)z;")?;
+
+    let matched = match_internal_nodes(&truth, &inferred.graph, &inferred.names)?;
+
+    let matched_names = matched
+      .into_iter()
+      .map(|(true_node, node)| (truth.names[true_node].to_owned(), inferred.names[node].to_owned()))
+      .collect::<BTreeMap<_, _>>();
+    let expected = btreemap! {
+      o!("cd") => o!("x"),
+      o!("root") => o!("z"),
+    };
+    assert_eq!(expected, matched_names);
+    Ok(())
+  }
+
+  #[test]
+  fn test_simulation_match_internal_nodes_rejects_a_clade_the_true_tree_lacks() -> Result<(), Report> {
     let truth = simulated_tree_from_newick("((A,B)ab,(C,D)cd)root;")?;
     let inferred = simulated_tree_from_newick("((A,C)x,(B,D)y)z;")?;
 
     assert_error!(
       match_internal_nodes(&truth, &inferred.graph, &inferred.names),
-      "Node ab of the true tree has no node with the same clade in the inferred tree"
+      "Node x of the inferred tree has a clade that the true tree lacks"
     );
     Ok(())
   }

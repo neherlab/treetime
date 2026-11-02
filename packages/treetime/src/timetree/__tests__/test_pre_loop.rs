@@ -96,7 +96,7 @@ mod tests {
       clock_fit,
     );
 
-    let state = run_pre_loop(&inputs, state, &NoopCancel, &NoopProgress, &NoopProgress)?;
+    let state = run_pre_loop(&inputs, state, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     assert_eq!(input_edges, state.branch_lengths.keys().collect::<BTreeSet<_>>());
     let not_shortened: EdgeMap<Option<f64>> = state
@@ -155,7 +155,7 @@ mod tests {
       clock_fit,
     );
 
-    let state = run_pre_loop(&inputs, state, &NoopCancel, &NoopProgress, &NoopProgress)?;
+    let state = run_pre_loop(&inputs, state, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let tip_dates = given_times(&state.graph, &context.date_constraints)?;
     let excluded = bad_leaves(&state.graph, &context.date_constraints, &BTreeSet::new());

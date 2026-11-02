@@ -9,6 +9,7 @@ use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
 use crate::optimize::partition_rates::update_partition_rates;
 use crate::optimize::solver_outcome::ConvergenceSummary;
+use crate::optimize::topology::collapse::{CollapsedShortEdges, collapse_short_internal_edges};
 use crate::partition::set::PartitionSet;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
@@ -25,19 +26,21 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
+use treetime_utils::fmt::string::counted;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
 pub(crate) fn run_pre_loop(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
+  input_reconstruction: Option<PartitionSet>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   let mut convergence = ConvergenceSummary::default();
-  let state = reroot_before_filter(inputs, state, &mut convergence, log)?;
+  let state = reroot_before_filter(inputs, state, input_reconstruction, &mut convergence, log)?;
   let state = match &inputs.outliers {
     ClockOutliers::Filter if params.clock_filter > 0.0 => filter_clock_outliers(inputs, state, log)?,
     ClockOutliers::Filter => state,
@@ -52,7 +55,8 @@ pub(crate) fn run_pre_loop(
     progress_info!(log, "Using input branch lengths for timetree inference");
     state
   } else {
-    ml_optimize(state, params, "post-reroot", &mut convergence, log)?
+    let state = ml_optimize(state, params, "post-reroot", &mut convergence, log)?;
+    collapse_short_branches(state, None, "post-reroot", log)?
   };
   convergence.report(BranchOptMethod::Brent, log);
   cancel.check()?;
@@ -68,10 +72,11 @@ pub(crate) fn run_pre_loop(
 pub(crate) fn find_clock_outliers(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
+  input_reconstruction: Option<PartitionSet>,
   log: &dyn LogSink,
 ) -> Result<BTreeSet<GraphNodeKey>, Report> {
   let mut convergence = ConvergenceSummary::default();
-  let state = reroot_before_filter(inputs, state, &mut convergence, log)?;
+  let state = reroot_before_filter(inputs, state, input_reconstruction, &mut convergence, log)?;
   convergence.report(BranchOptMethod::Brent, log);
   Ok(filter_clock_outliers(inputs, state, log)?.outliers)
 }
@@ -79,12 +84,14 @@ pub(crate) fn find_clock_outliers(
 fn reroot_before_filter(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
+  input_reconstruction: Option<PartitionSet>,
   convergence: &mut ConvergenceSummary,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   let state = if inputs.has_alignment {
-    ml_optimize(state, params, "pre-reroot", convergence, log)?
+    let state = ml_optimize(state, params, "pre-reroot", convergence, log)?;
+    collapse_short_branches(state, input_reconstruction, "pre-reroot", log)?
   } else {
     state
   };
@@ -134,6 +141,67 @@ fn ml_optimize(
     branch_lengths,
     ..state
   })
+}
+
+fn collapse_short_branches(
+  state: PreLoopState,
+  input_reconstruction: Option<PartitionSet>,
+  label: &str,
+  log: &dyn LogSink,
+) -> Result<PreLoopState, Report> {
+  let PreLoopState {
+    mut graph,
+    mut branch_lengths,
+    branch_model,
+    ..
+  } = state;
+  let branch_model = match (branch_model, input_reconstruction) {
+    (BranchModel::Marginal(partitions), _) => {
+      let CollapsedShortEdges { partitions, count, .. } =
+        collapse_and_report(&mut graph, partitions, &mut branch_lengths, label, log)?;
+      let partitions = if count == 0 {
+        partitions
+      } else {
+        partitions
+          .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))
+          .wrap_err_with(|| format!("Marginal update after the collapse of short branches ({label}) failed"))?
+          .0
+      };
+      BranchModel::Marginal(partitions)
+    },
+    (model @ BranchModel::Input(_), Some(reconstruction)) => {
+      let (reconstruction, _) = reconstruction
+        .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))
+        .wrap_err("Ancestral reconstruction on the input branch lengths failed")?;
+      collapse_and_report(&mut graph, reconstruction, &mut branch_lengths, label, log)?;
+      model
+    },
+    (model @ BranchModel::Input(_), None) => model,
+  };
+  Ok(PreLoopState {
+    graph,
+    branch_lengths,
+    branch_model,
+    ..state
+  })
+}
+
+fn collapse_and_report(
+  graph: &mut Graph,
+  partitions: PartitionSet,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
+  label: &str,
+  log: &dyn LogSink,
+) -> Result<CollapsedShortEdges, Report> {
+  let collapsed = collapse_short_internal_edges(graph, partitions, branch_lengths)
+    .wrap_err_with(|| format!("Collapse of short branches ({label}) failed"))?;
+  progress_info!(
+    log,
+    "Collapsed {} shorter than {:.3e} without a state change ({label})",
+    counted(collapsed.count, "internal edge"),
+    collapsed.threshold
+  );
+  Ok(collapsed)
 }
 
 fn reroot(

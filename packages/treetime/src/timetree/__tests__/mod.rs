@@ -9,6 +9,7 @@ mod test_pipeline;
 mod test_pipeline_partitions;
 mod test_pipeline_prune_undated;
 mod test_pipeline_reroot;
+mod test_pipeline_short_branches;
 mod test_posterior_edge_cell;
 mod test_posterior_statistics;
 mod test_pre_loop;

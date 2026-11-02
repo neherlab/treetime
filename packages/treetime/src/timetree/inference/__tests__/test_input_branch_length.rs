@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::get_gtr::{F81Params, GtrModel, JC69Params, Jtt92Params};
+  use crate::partition::create::Representation;
   use crate::partition::resolve::{PartitionEntry, resolve_partitions};
   use crate::partition::sites::SiteRange;
   use crate::partition::split::SequenceInput;
@@ -112,7 +113,7 @@ mod tests {
     let (graph, branch_lengths, source) = helpers::cherry(with_alignment)?;
     let sequences = helpers::sequences(source, &model, None)?;
 
-    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, Representation::Sparse, &NoopProgress)?.model;
 
     pretty_assert_ulps_eq!(
       helpers::long_branch_variance(InputBranchModel::new(SEQUENCE_LENGTH, 0.7)),
@@ -132,7 +133,15 @@ mod tests {
     let (graph, branch_lengths, source) = helpers::cherry(with_alignment)?;
     let sequences = helpers::sequences(source, &GtrModel::JC69(JC69Params::default()), None)?;
 
-    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
+    let actual = input_branch_model(
+      SEQUENCE_LENGTH,
+      &graph,
+      &branch_lengths,
+      sequences,
+      Representation::Sparse,
+      &NoopProgress,
+    )?
+    .model;
 
     assert_eq!(InputBranchModel::new(SEQUENCE_LENGTH, 0.75), actual);
     Ok(())
@@ -143,7 +152,15 @@ mod tests {
     let (graph, branch_lengths, source) = helpers::cherry(false)?;
     let sequences = helpers::sequences(source, &GtrModel::Infer, None)?;
 
-    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
+    let actual = input_branch_model(
+      SEQUENCE_LENGTH,
+      &graph,
+      &branch_lengths,
+      sequences,
+      Representation::Sparse,
+      &NoopProgress,
+    )?
+    .model;
 
     assert_eq!(InputBranchModel::new(SEQUENCE_LENGTH, 0.75), actual);
     Ok(())
@@ -164,7 +181,7 @@ mod tests {
     let (graph, branch_lengths, source) = helpers::cherry(false)?;
     let sequences = helpers::sequences(source, &model, alphabet)?;
 
-    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, Representation::Sparse, &NoopProgress)?.model;
 
     pretty_assert_ulps_eq!(
       helpers::long_branch_variance(InputBranchModel::new(SEQUENCE_LENGTH, saturated_difference)),
@@ -201,7 +218,15 @@ mod tests {
       partitions,
     });
 
-    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
+    let actual = input_branch_model(
+      SEQUENCE_LENGTH,
+      &graph,
+      &branch_lengths,
+      sequences,
+      Representation::Sparse,
+      &NoopProgress,
+    )?
+    .model;
 
     pretty_assert_ulps_eq!(
       helpers::long_branch_variance(InputBranchModel::new(SEQUENCE_LENGTH, (4.0 * 0.7 + 6.0 * 0.75) / 10.0)),

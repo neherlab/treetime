@@ -1,9 +1,9 @@
 use crate::branch_lengths::{branch_lengths_or_zero, one_mutation};
 use crate::gtr::get_gtr::{GtrModel, JC69Params, log_gtr};
-use crate::partition::create::source_gtr;
-use crate::partition::inferred_rate::InferredRate;
+use crate::partition::create::Representation;
 use crate::partition::resolve::model_alphabet;
-use crate::partition::split::{PartitionData, SequenceInput, SplitInput, SplitPartition};
+use crate::partition::set::{PartitionSet, build_partition_set};
+use crate::partition::split::SplitInput;
 use crate::progress::LogSink;
 use crate::timetree::inference::runner::GRID_POINTS;
 use crate::timetree::pipeline::{SequenceLength, TimetreeSequences};
@@ -37,9 +37,10 @@ pub(crate) fn input_branch_model(
   graph: &Graph,
   branch_lengths: &EdgeMap<Option<f64>>,
   sequences: TimetreeSequences,
+  representation: Representation,
   log: &dyn LogSink,
-) -> Result<InputBranchModel, Report> {
-  let saturated_difference = match sequences {
+) -> Result<InputBranchSetup, Report> {
+  let (saturated_difference, reconstruction) = match sequences {
     TimetreeSequences::Length(SequenceLength { model, alphabet, .. }) => {
       let model = if model.is_infer() {
         GtrModel::JC69(JC69Params::default())
@@ -48,12 +49,30 @@ pub(crate) fn input_branch_model(
       };
       let gtr = model.build(model_alphabet(&model, alphabet))?;
       log_gtr(&gtr, model.name(), log)?;
-      saturated_difference(gtr.pi())
+      (saturated_difference(gtr.pi()), None)
     },
-    TimetreeSequences::Alignments(input) => partitions_saturated_difference(graph, branch_lengths, input, log)?,
+    TimetreeSequences::Alignments(input) => {
+      let SplitInput { partitions, .. } = input.split()?;
+      let reconstruction = build_partition_set(
+        representation,
+        graph,
+        partitions,
+        &branch_lengths_or_zero(branch_lengths),
+        log,
+      )?;
+      (partitions_saturated_difference(&reconstruction), Some(reconstruction))
+    },
   };
   debug!("Input branch lengths: saturated difference = {saturated_difference:.6}");
-  Ok(InputBranchModel::new(sequence_length, saturated_difference))
+  Ok(InputBranchSetup {
+    model: InputBranchModel::new(sequence_length, saturated_difference),
+    reconstruction,
+  })
+}
+
+pub(crate) struct InputBranchSetup {
+  pub model: InputBranchModel,
+  pub reconstruction: Option<PartitionSet>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -268,32 +287,16 @@ impl CostFunction for PoissonLevel {
   }
 }
 
-fn partitions_saturated_difference(
-  graph: &Graph,
-  branch_lengths: &EdgeMap<Option<f64>>,
-  input: SequenceInput,
-  log: &dyn LogSink,
-) -> Result<f64, Report> {
-  let SplitInput { partitions, .. } = input.split()?;
-  let rate = InferredRate::for_partition_count(partitions.len());
-  let branch_lengths = branch_lengths_or_zero(branch_lengths);
+fn partitions_saturated_difference(partitions: &PartitionSet) -> f64 {
   let total_sites: f64 = partitions
     .iter()
-    .map(|partition| partition.data.layout.columns.len().to_f64_exact())
+    .map(|partition| partition.length().to_f64_exact())
     .sum();
   let weighted: f64 = partitions
-    .into_iter()
-    .map(|SplitPartition { data, model }| -> Result<f64, Report> {
-      let PartitionData {
-        layout,
-        alphabet,
-        nodes,
-      } = data;
-      let gtr = source_gtr(&model, rate, graph, alphabet, nodes, &branch_lengths, log)?;
-      Ok(layout.columns.len().to_f64_exact() * saturated_difference(gtr.pi()))
-    })
-    .sum::<Result<f64, Report>>()?;
-  Ok(weighted / total_sites)
+    .iter()
+    .map(|partition| partition.length().to_f64_exact() * saturated_difference(partition.gtr().pi()))
+    .sum();
+  weighted / total_sites
 }
 
 pub(crate) fn saturated_difference(pi: &Array1<f64>) -> f64 {

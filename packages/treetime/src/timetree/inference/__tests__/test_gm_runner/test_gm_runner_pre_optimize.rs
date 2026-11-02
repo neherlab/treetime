@@ -55,7 +55,8 @@ mod tests {
 
     let n_changed = input_branch_lengths
       .iter()
-      .filter(|(key, before)| (before.unwrap_or(0.0) - output.branch_lengths[key].unwrap_or(0.0)).abs() > 1e-10)
+      .filter_map(|(key, before)| Some((*before, *output.branch_lengths.get(key)?)))
+      .filter(|(before, after)| (before.unwrap_or(0.0) - after.unwrap_or(0.0)).abs() > 1e-10)
       .count();
     assert!(
       n_changed > 0,
@@ -67,7 +68,7 @@ mod tests {
       .iter()
       .filter_map(|(key, &time)| time.map(|time| (key, time)))
       .collect();
-    assert_eq!(output.graph.num_nodes(), times.len(), "every node must be dated");
+    assert_eq!(output.graph.get_nodes().count(), times.len(), "every node must be dated");
     let non_finite: BTreeMap<GraphNodeKey, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
     assert_eq!(BTreeMap::new(), non_finite, "every node time must be finite");
     Ok(())

@@ -17,7 +17,7 @@ use crate::optimize::partition_rates::fix_equal_rates;
 use crate::partition::alignment_sequences::{ImputedReconstruction, StreamOptions, stream_alignment_sequences};
 use crate::partition::create::Representation;
 use crate::partition::result::{AlignmentOutcome, AlignmentResult, PartitionResult, alignment_results};
-use crate::partition::set::build_partition_set;
+use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::params::RerootParams;
@@ -31,7 +31,7 @@ use crate::timetree::confidence::{
 };
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::dates_outside_input::dates_outside_input_dates;
-use crate::timetree::inference::input_branch_length::input_branch_model;
+use crate::timetree::inference::input_branch_length::{InputBranchSetup, input_branch_model};
 use crate::timetree::inference::result::date_branch_lengths;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{
@@ -86,8 +86,12 @@ pub fn run(
     estimate_initial_clock(params, &context, graph, &mut names, branch_lengths, log)
       .map_err(OperationError::classify)?;
   let has_alignment = matches!(sequences, TimetreeSequences::Alignments(_));
-  let (alignments, model_names, branch_model) =
-    initialize_branch_model(params, &context, &graph, &branch_lengths, sequences, log)?;
+  let BranchModelSetup {
+    alignments,
+    model_names,
+    branch_model,
+    input_reconstruction,
+  } = initialize_branch_model(params, &context, &graph, &branch_lengths, sequences, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
@@ -95,8 +99,15 @@ pub fn run(
     outliers,
   };
   let pre_loop_state = PreLoopState::new(graph, names, branch_lengths, branch_model, clock_fit);
-  let pre_loop =
-    run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::classify)?;
+  let pre_loop = run_pre_loop(
+    &pre_loop_inputs,
+    pre_loop_state,
+    input_reconstruction,
+    cancel,
+    stages,
+    log,
+  )
+  .map_err(OperationError::classify)?;
 
   let initial = initialize(params, &context, pre_loop, log).map_err(OperationError::classify)?;
   let round_inputs = RoundInputs {
@@ -261,8 +272,11 @@ fn find_filtered_tips(
   )
   .map_err(OperationError::classify)?;
   let has_alignment = matches!(input.sequences, TimetreeSequences::Alignments(_));
-  let (_, _, branch_model) =
-    initialize_branch_model(params, &context, &graph, &branch_lengths, input.sequences.clone(), log)?;
+  let BranchModelSetup {
+    branch_model,
+    input_reconstruction,
+    ..
+  } = initialize_branch_model(params, &context, &graph, &branch_lengths, input.sequences.clone(), log)?;
   let inputs = PreLoopInputs {
     params,
     context: &context,
@@ -270,7 +284,7 @@ fn find_filtered_tips(
     outliers: ClockOutliers::Filter,
   };
   let state = PreLoopState::new(graph, names, branch_lengths, branch_model, clock_fit);
-  find_clock_outliers(&inputs, state, log).map_err(OperationError::classify)
+  find_clock_outliers(&inputs, state, input_reconstruction, log).map_err(OperationError::classify)
 }
 
 pub struct TimetreeInput {
@@ -432,13 +446,26 @@ fn initialize_branch_model(
   branch_lengths: &EdgeMap<Option<f64>>,
   sequences: TimetreeSequences,
   log: &dyn LogSink,
-) -> Result<(Vec<AlignmentInfo>, Vec<GtrModelName>, BranchModel), OperationError> {
+) -> Result<BranchModelSetup, OperationError> {
+  let representation = Representation::resolve(params.dense);
   match params.branch_length_mode {
     BranchLengthMode::Input => {
       progress_info!(log, "Branch length mode: Input - using tree branch lengths");
-      let model = input_branch_model(context.sequence_length, graph, branch_lengths, sequences, log)
-        .map_err(OperationError::classify)?;
-      Ok((vec![], vec![], BranchModel::Input(model)))
+      let InputBranchSetup { model, reconstruction } = input_branch_model(
+        context.sequence_length,
+        graph,
+        branch_lengths,
+        sequences,
+        representation,
+        log,
+      )
+      .map_err(OperationError::classify)?;
+      Ok(BranchModelSetup {
+        alignments: vec![],
+        model_names: vec![],
+        branch_model: BranchModel::Input(model),
+        input_reconstruction: reconstruction,
+      })
     },
     BranchLengthMode::Marginal => {
       progress_info!(
@@ -454,7 +481,7 @@ fn initialize_branch_model(
       let model_names = split.model_names();
       let SplitInput { alignments, partitions } = split;
       let partitions = build_partition_set(
-        Representation::resolve(params.dense),
+        representation,
         graph,
         partitions,
         &branch_lengths_or_zero(branch_lengths),
@@ -466,9 +493,21 @@ fn initialize_branch_model(
       for sparse in partitions.sparse_mut() {
         sparse.partition.impute_missing_data = params.impute_missing_data && params.sequence_outputs_requested;
       }
-      Ok((alignments, model_names, BranchModel::Marginal(partitions)))
+      Ok(BranchModelSetup {
+        alignments,
+        model_names,
+        branch_model: BranchModel::Marginal(partitions),
+        input_reconstruction: None,
+      })
     },
   }
+}
+
+struct BranchModelSetup {
+  alignments: Vec<AlignmentInfo>,
+  model_names: Vec<GtrModelName>,
+  branch_model: BranchModel,
+  input_reconstruction: Option<PartitionSet>,
 }
 
 #[derive(Clone)]
