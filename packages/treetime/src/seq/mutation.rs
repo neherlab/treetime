@@ -213,28 +213,36 @@ pub enum MutationTrack {
   AminoAcid(String),
 }
 
-pub fn mutation_event_strings(event: &MutationEvent, positions: PositionBase) -> Result<Vec<String>, Report> {
-  match event {
-    MutationEvent::Substitution(substitution) => {
-      let position = mutation_position(substitution.pos(), 0, positions)?;
-      Ok(vec![format!("{}{position}{}", substitution.reff(), substitution.qry())])
-    },
-    MutationEvent::Insertion(segment) => segment
-      .sequence
-      .iter()
-      .enumerate()
-      .map(|(offset, state)| {
-        mutation_position(segment.range.0, offset, positions).map(|position| format!("-{position}{state}"))
-      })
-      .collect(),
-    MutationEvent::Deletion(segment) => segment
-      .sequence
-      .iter()
-      .enumerate()
-      .map(|(offset, state)| {
-        mutation_position(segment.range.0, offset, positions).map(|position| format!("{state}{position}-"))
-      })
-      .collect(),
+pub fn mutation_strings<'a>(
+  events: impl IntoIterator<Item = &'a MutationEvent>,
+  positions: PositionBase,
+) -> Result<Vec<String>, Report> {
+  site_mutations(events)
+    .iter()
+    .map(|site| site.label(positions))
+    .collect()
+}
+
+pub fn site_mutations<'a>(events: impl IntoIterator<Item = &'a MutationEvent>) -> Vec<SiteMutation> {
+  events
+    .into_iter()
+    .flat_map(MutationEvent::sites)
+    .sorted_by_key(SiteMutation::pos)
+    .collect()
+}
+
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
+#[getset(get_copy = "pub")]
+pub struct SiteMutation {
+  pos: usize,
+  reff: AsciiChar,
+  qry: AsciiChar,
+}
+
+impl SiteMutation {
+  pub fn label(&self, positions: PositionBase) -> Result<String, Report> {
+    let position = mutation_position(self.pos, positions)?;
+    Ok(format!("{}{position}{}", self.reff, self.qry))
   }
 }
 
@@ -243,6 +251,35 @@ pub enum MutationEvent {
   Substitution(Sub),
   Insertion(AlignedMutation),
   Deletion(AlignedMutation),
+}
+
+impl MutationEvent {
+  fn sites(&self) -> Vec<SiteMutation> {
+    let gap = AsciiChar::from_byte_unchecked(b'-');
+    match self {
+      Self::Substitution(substitution) => vec![SiteMutation {
+        pos: substitution.pos(),
+        reff: substitution.reff(),
+        qry: substitution.qry(),
+      }],
+      Self::Insertion(segment) => segment
+        .sites()
+        .map(|(pos, state)| SiteMutation {
+          pos,
+          reff: gap,
+          qry: state,
+        })
+        .collect(),
+      Self::Deletion(segment) => segment
+        .sites()
+        .map(|(pos, state)| SiteMutation {
+          pos,
+          reff: state,
+          qry: gap,
+        })
+        .collect(),
+    }
+  }
 }
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -274,13 +311,16 @@ impl AlignedMutation {
     }
     Ok(Self { range, sequence })
   }
+
+  fn sites(&self) -> impl Iterator<Item = (usize, AsciiChar)> + '_ {
+    (self.range.0..self.range.1).zip(self.sequence.iter().copied())
+  }
 }
 
-fn mutation_position(start: usize, offset: usize, positions: PositionBase) -> Result<usize, Report> {
-  start
-    .checked_add(offset)
-    .and_then(|position| position.checked_add(positions.first()))
-    .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at start {start} and offset {offset}"))
+fn mutation_position(pos: usize, positions: PositionBase) -> Result<usize, Report> {
+  pos
+    .checked_add(positions.first())
+    .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at position {pos}"))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

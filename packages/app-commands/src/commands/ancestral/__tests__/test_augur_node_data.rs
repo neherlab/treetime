@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::shared::method_anc::MethodAncestralCli;
   use crate::commands::shared::representation::RepresentationCli;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
-  use treetime_utils::o;
+  use treetime_utils::{o, vec_of_owned};
   use util_augur_node_data_json::AugurNodeDataJsonAncestral;
 
   #[test]
@@ -123,14 +124,12 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_parsimony_end_to_end() {
-    use crate::commands::shared::method_anc::MethodAncestralCli;
     let actual = helpers::reconstruct_json(MethodAncestralCli::Parsimony, None, None);
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
   #[test]
   fn test_augur_node_data_ancestral_marginal_sparse_end_to_end() {
-    use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
     let actual = helpers::reconstruct_json(
       MethodAncestralCli::Marginal,
@@ -142,7 +141,6 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_marginal_dense_end_to_end() {
-    use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
     let actual = helpers::reconstruct_json(
       MethodAncestralCli::Marginal,
@@ -202,6 +200,68 @@ mod tests {
     assert_eq!(Some(no_muts), data.nodes["B"].aa_muts);
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::unmasked(   [false, false, false, false, false], vec_of_owned!["C2-", "G3-", "T4A"])]
+  #[case::masked_site([false, true,  false, false, false], vec_of_owned!["G3-", "T4A"])]
+  #[trace]
+  fn test_augur_node_data_ancestral_writes_nucleotide_indels_per_site(#[case] mask: [bool; 5], #[case] expected_a: Vec<String>) {
+    let (graph, names, maps) = helpers::indel_case();
+
+    let actual = helpers::node_muts(&helpers::build_json(&graph, &names, maps, &mask, None));
+
+    let expected = btreemap! { o!("A") => expected_a, o!("B") => vec_of_owned!["-5G"], o!("root") => vec![] };
+    assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::marginal_dense( MethodAncestralCli::Marginal, Some(RepresentationCli::Dense))]
+  #[case::marginal_sparse(MethodAncestralCli::Marginal, Some(RepresentationCli::Sparse))]
+  #[trace]
+  fn test_augur_node_data_ancestral_deletion_matches_augur_and_v0_joint(
+    #[case] method: MethodAncestralCli,
+    #[case] representation: Option<RepresentationCli>,
+  ) {
+    let actual = helpers::reconstruct_node_muts(
+      "(((A:0.1,B:0.1)AB:0.1,C:0.1)ABC:0.05,D:0.3)root;",
+      ">A\nATGAAATTTCCCGGG\n>B\nATG---TTTCCCGGG\n>C\nATGAAATTTCCCGGA\n>D\nATGAAATTTCCAGGA\n",
+      method,
+      representation,
+    );
+
+    let expected = btreemap! {
+      o!("A") => vec![], o!("B") => vec_of_owned!["A4-", "A5-", "A6-"], o!("C") => vec![], o!("D") => vec_of_owned!["C12A"],
+      o!("AB") => vec_of_owned!["A15G"], o!("ABC") => vec![], o!("root") => vec![],
+    };
+    assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::marginal_dense( MethodAncestralCli::Marginal,  Some(RepresentationCli::Dense))]
+  #[case::marginal_sparse(MethodAncestralCli::Marginal,  Some(RepresentationCli::Sparse))]
+  #[case::parsimony(      MethodAncestralCli::Parsimony, None)]
+  #[trace]
+  fn test_augur_node_data_ancestral_insertion_columns_match_v0(
+    #[case] method: MethodAncestralCli,
+    #[case] representation: Option<RepresentationCli>,
+  ) {
+    let actual = helpers::reconstruct_node_muts(
+      "(((A:0.1,B:0.1)AB:0.1,C:0.1)ABC:0.05,(D:0.1,E:0.1)DE:0.2)root;",
+      ">A\nATG---TTTCCCGGG\n>B\nATGAAATTTCCCGGG\n>C\nATG---TTTCCCGGA\n>D\nATG---TTT---GGA\n>E\nATG---TTTCCCGGA\n",
+      method,
+      representation,
+    );
+
+    let expected = btreemap! {
+      o!("A") => vec![], o!("B") => vec_of_owned!["-4A", "-5A", "-6A"], o!("C") => vec![],
+      o!("D") => vec_of_owned!["C10-", "C11-", "C12-"], o!("E") => vec![],
+      o!("AB") => vec_of_owned!["A15G"], o!("ABC") => vec![], o!("DE") => vec![], o!("root") => vec![],
+    };
+    assert_eq!(expected, actual);
+  }
+
   mod helpers {
     use crate::__tests__::test_support::tests::NUC_ALPHABET;
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
@@ -224,7 +284,7 @@ mod tests {
     use treetime::ancestral::aa::{AaCdsNodeData, AaNodeData};
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
-    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
+    use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
     use treetime_graph::key_map::{EdgeMap, NodeMap};
     use treetime_graph::keymap;
 
@@ -255,9 +315,40 @@ mod tests {
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
-      let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
-      let maps = build_output_maps(&graph, &names, &seqs, &edge_subs, 4);
+      let edge_mutations = btreemap! { o!("A") => vec![nuc(MutationEvent::Substitution(sub(b'T', 3, b'A')))] };
+      let maps = build_output_maps(&graph, &names, &seqs, &edge_mutations, 4);
       (graph, names, maps)
+    }
+
+    pub(super) fn indel_case() -> (Graph, NodeNames, OutputMaps) {
+      let nwk_parsed = nwk_read(b"(A:0.1,B:0.1)root;".as_slice()).unwrap();
+      let names = nwk_parsed.names.clone();
+      let graph = nwk_parsed.graph;
+      let seqs = btreemap! { o!("A") => o!("A--A-"), o!("B") => o!("ACGTG"), o!("root") => o!("ACGT-") };
+      let edge_mutations = btreemap! {
+        o!("A") => vec![
+          nuc(MutationEvent::Substitution(sub(b'T', 3, b'A'))),
+          nuc(MutationEvent::Deletion(AlignedMutation { range: (1, 3), sequence: Seq::try_from_str("CG").unwrap() })),
+        ],
+        o!("B") => vec![nuc(MutationEvent::Insertion(AlignedMutation { range: (4, 5), sequence: Seq::try_from_str("G").unwrap() }))],
+      };
+      let maps = build_output_maps(&graph, &names, &seqs, &edge_mutations, 5);
+      (graph, names, maps)
+    }
+
+    fn nuc(event: MutationEvent) -> Mutation {
+      Mutation {
+        track: MutationTrack::Nucleotide,
+        event,
+      }
+    }
+
+    pub(super) fn node_muts(data: &AugurNodeDataJsonAncestral) -> BTreeMap<String, Vec<String>> {
+      data
+        .nodes
+        .iter()
+        .map(|(name, node)| (name.clone(), node.muts.clone()))
+        .collect()
     }
 
     fn node_name_to_key(names: &NodeNames, graph: &Graph) -> BTreeMap<String, GraphNodeKey> {
@@ -282,7 +373,7 @@ mod tests {
       graph: &Graph,
       names: &NodeNames,
       seqs: &BTreeMap<String, String>,
-      edge_subs_by_child: &BTreeMap<String, Vec<Sub>>,
+      edge_mutations_by_child: &BTreeMap<String, Vec<Mutation>>,
       length: usize,
     ) -> OutputMaps {
       let name_of = |key: GraphNodeKey| names[key].to_owned();
@@ -293,14 +384,10 @@ mod tests {
       let edge_mutations = graph
         .get_edges()
         .map(|edge| {
-          let subs = edge_subs_by_child
+          let mutations = edge_mutations_by_child
             .get(&name_of(edge.target()))
             .cloned()
             .unwrap_or_default();
-          let mutations = subs
-            .into_iter()
-            .map(|sub| Mutation::substitution(MutationTrack::Nucleotide, sub))
-            .collect();
           (edge.key(), mutations)
         })
         .collect();
@@ -312,7 +399,7 @@ mod tests {
       }
     }
 
-    fn build_json(
+    pub(super) fn build_json(
       graph: &Graph,
       names: &NodeNames,
       maps: OutputMaps,
@@ -384,6 +471,39 @@ mod tests {
 
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
       std::fs::read_to_string(node_data_path).unwrap()
+    }
+
+    pub(super) fn reconstruct_node_muts(
+      tree: &str,
+      fasta: &str,
+      method: MethodAncestralCli,
+      representation: Option<RepresentationCli>,
+    ) -> BTreeMap<String, Vec<String>> {
+      let dir = tempdir().unwrap();
+      let tree_path = dir.path().join("tree.nwk");
+      let fasta_path = dir.path().join("aln.fasta");
+      let node_data_path = dir.path().join("node-data.json");
+      std::fs::write(&tree_path, tree).unwrap();
+      std::fs::write(&fasta_path, fasta).unwrap();
+
+      let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
+        alignment: AlignmentArgs {
+          alignment: vec![fasta_path],
+        },
+        tree: TreeArgs { tree: Some(tree_path) },
+        method_anc: MethodAncArgs { method_anc: method },
+        representation: RepresentationArgs { representation },
+        output: OutputCoreArgs {
+          output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
+          ..Default::default()
+        },
+        output_node_data: Some(node_data_path.clone()),
+        ..TreetimeAncestralArgsRaw::default()
+      })
+      .unwrap();
+
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
+      node_muts(&json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap())
     }
 
     pub(super) fn reconstruct_json_with_outlier_record(

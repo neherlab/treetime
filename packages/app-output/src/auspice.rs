@@ -11,7 +11,7 @@ use std::iter::once;
 use treetime::clock::divergence::root_to_node_divergences_where_known;
 use treetime::homoplasy::classify::MutationClass;
 use treetime::homoplasy::site_branches::sites_by_branch_count;
-use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, mutation_event_strings};
+use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, mutation_strings};
 use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
@@ -281,29 +281,28 @@ fn node_mutations(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> Result<BTr
     .and_then(|amino_acids| amino_acids.node_data.node_aa_mutations.get(key))
   {
     for (track, events) in tracks.iter().filter(|(_, events)| !events.is_empty()) {
-      let strings = grouped.entry(auspice_track_name(track)?.to_owned()).or_default();
-      for event in events {
-        strings.extend(mutation_event_strings(event, PositionBase::One)?);
-      }
+      grouped
+        .entry(auspice_track_name(track)?.to_owned())
+        .or_default()
+        .extend(mutation_strings(events, PositionBase::One)?);
     }
   }
   Ok(grouped)
 }
 
 pub(crate) fn group_mutations(mutations: &[Mutation]) -> Result<BTreeMap<String, Vec<String>>, Report> {
-  let mut grouped: BTreeMap<String, Vec<String>> = BTreeMap::new();
+  let mut events_by_track: BTreeMap<&str, Vec<&MutationEvent>> = BTreeMap::new();
   for mutation in mutations {
     let track = match &mutation.track {
-      MutationTrack::Nucleotide if !matches!(mutation.event, MutationEvent::Substitution(_)) => continue,
       MutationTrack::Nucleotide => NUC_TRACK,
       MutationTrack::AminoAcid(track) => auspice_track_name(track)?,
     };
-    grouped
-      .entry(track.to_owned())
-      .or_default()
-      .extend(mutation_event_strings(&mutation.event, PositionBase::One)?);
+    events_by_track.entry(track).or_default().push(&mutation.event);
   }
-  Ok(grouped)
+  events_by_track
+    .into_iter()
+    .map(|(track, events)| Ok((track.to_owned(), mutation_strings(events, PositionBase::One)?)))
+    .collect()
 }
 
 fn auspice_track_name(track: &str) -> Result<&str, Report> {

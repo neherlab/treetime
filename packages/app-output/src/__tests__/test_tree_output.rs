@@ -73,11 +73,14 @@ pub(super) mod tests {
   }
 
   #[test]
-  fn test_tree_output_auspice_drops_nucleotide_indel_and_encodes_amino_acid() -> Result<(), Report> {
+  fn test_tree_output_auspice_writes_nucleotide_indel_per_site_and_encodes_amino_acid() -> Result<(), Report> {
     let setup = ancestral_setup(Mutations::Indel)?;
     let auspice = auspice_tree_of(&ancestral_graph(&setup), CommandKind::Ancestral)?;
     let child = auspice_child(&auspice, "A");
-    assert!(!child.branch_attrs.mutations.contains_key("nuc"));
+    assert_eq!(
+      btreemap! { o!("nuc") => vec![o!("C2-"), o!("G3-")] },
+      child.branch_attrs.mutations
+    );
 
     let setup = ancestral_setup(Mutations::AminoAcid)?;
     let auspice = auspice_tree_of(&ancestral_graph(&setup), CommandKind::Ancestral)?;
@@ -119,7 +122,7 @@ pub(super) mod tests {
   #[rstest]
   #[case::nucleotide_substitution(Mutations::NucleotideSubstitution, true)]
   #[case::amino_acid_only(        Mutations::AminoAcid,              true)]
-  #[case::nucleotide_indel_only(  Mutations::Indel,                  false)]
+  #[case::nucleotide_indel_only(  Mutations::Indel,                  true)]
   #[case::no_mutation(            Mutations::None,                   false)]
   #[trace]
   fn test_tree_output_auspice_lists_genotype_coloring_only_when_a_branch_shows_a_mutation(
@@ -584,7 +587,7 @@ pub(super) mod tests {
   }
 
   #[test]
-  fn test_tree_output_group_mutations_drops_nucleotide_indels_keeps_amino_acid_indels() -> Result<(), Report> {
+  fn test_tree_output_group_mutations_writes_indels_of_every_track_in_column_order() -> Result<(), Report> {
     let mutations = vec![
       Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), 0_usize, c(b'T'))?),
       deletion(MutationTrack::Nucleotide, (1, 3), "CG")?,
@@ -598,8 +601,8 @@ pub(super) mod tests {
     let grouped = group_mutations(&mutations)?;
 
     let expected = btreemap! {
-      o!("GENE") => vec![o!("K5R"), o!("C2-"), o!("G3-")],
-      o!("nuc") => vec![o!("A1T")],
+      o!("GENE") => vec![o!("C2-"), o!("G3-"), o!("K5R")],
+      o!("nuc") => vec![o!("A1T"), o!("C2-"), o!("G3-")],
     };
     assert_eq!(expected, grouped);
     Ok(())

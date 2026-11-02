@@ -5,7 +5,7 @@ use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::ancestral::mask::mask_to_string;
-use treetime::seq::mutation::{MutationEvent, PositionBase, mutation_event_strings};
+use treetime::seq::mutation::{MutationEvent, PositionBase, mutation_strings, site_mutations};
 use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
@@ -67,7 +67,7 @@ pub fn build_augur_node_data_ancestral(
     nodes.insert(
       graph.names[key].to_owned(),
       AugurNodeDataJsonAncestralNode {
-        muts: nucleotide_substitutions(tree, facts, mask, key),
+        muts: nucleotide_mutation_strings(tree, facts, mask, key)?,
         sequence: Some(sequence.into_string()),
         aa_muts,
         aa_sequences,
@@ -115,37 +115,25 @@ pub struct AncestralNodeSequences<'a> {
   pub mask: &'a [bool],
 }
 
-fn nucleotide_substitutions(
+fn nucleotide_mutation_strings(
   tree: &AnnotatedTreeView<'_>,
   facts: &TreeSequences<'_>,
   mask: &[bool],
   key: GraphNodeKey,
-) -> Vec<String> {
+) -> Result<Vec<String>, Report> {
   let Some((_, edge_key)) = tree.tree().parent(key) else {
-    return vec![];
+    return Ok(vec![]);
   };
-  facts.edge_mutations[&edge_key]
+  site_mutations(facts.edge_mutations[&edge_key].iter().map(|mutation| &mutation.event))
     .iter()
-    .filter_map(|mutation| match &mutation.event {
-      MutationEvent::Substitution(sub) => Some(sub),
-      MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => None,
-    })
-    .filter(|sub| !mask[sub.pos()])
-    .sorted_by_key(|sub| sub.pos())
-    .map(|sub| sub.to_string())
+    .filter(|site| !mask[site.pos()])
+    .map(|site| site.label(PositionBase::One))
     .collect()
 }
 
 fn aa_mutation_strings(tracks: &BTreeMap<String, Vec<MutationEvent>>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   tracks
     .iter()
-    .map(|(cds, events)| {
-      let strings: Vec<String> = events
-        .iter()
-        .map(|event| mutation_event_strings(event, PositionBase::One))
-        .flatten_ok()
-        .try_collect()?;
-      Ok((cds.clone(), strings))
-    })
+    .map(|(cds, events)| Ok((cds.clone(), mutation_strings(events, PositionBase::One)?)))
     .collect()
 }

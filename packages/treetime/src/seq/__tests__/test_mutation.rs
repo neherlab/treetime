@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::seq::mutation::{
     AlignedMutation, Mutation, MutationEvent, MutationTrack, PositionBase, Sub, compose_substitutions,
-    edge_state_change_counts, mutation_event_strings,
+    edge_state_change_counts, mutation_strings,
   };
   use eyre::Report;
   use treetime_graph::keymap;
@@ -158,14 +158,33 @@ mod tests {
   #[case::insertion_one_based( b'I', PositionBase::One,  vec!["-2C", "-3G"])]
   #[case::insertion_zero_based(b'I', PositionBase::Zero, vec!["-1C", "-2G"])]
   #[trace]
-  fn test_mutation_event_strings_expand_aligned_indels(
+  fn test_mutation_strings_expand_aligned_indels(
     #[case] kind: u8,
     #[case] positions: PositionBase,
     #[case] expected: Vec<&str>,
   ) -> Result<(), Report> {
     let segment = AlignedMutation::new((1, 3), seq![helpers::c(b'C'), helpers::c(b'G')])?;
     let event = if kind == b'D' { MutationEvent::Deletion(segment) } else { MutationEvent::Insertion(segment) };
-    let actual = mutation_event_strings(&event, positions)?;
+    let actual = mutation_strings([&event], positions)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_based( PositionBase::One,  vec!["C2-", "G3-", "-6T", "A10G"])]
+  #[case::zero_based(PositionBase::Zero, vec!["C1-", "G2-", "-5T", "A9G"])]
+  #[trace]
+  fn test_mutation_strings_order_the_sites_of_all_events_by_column(
+    #[case] positions: PositionBase,
+    #[case] expected: Vec<&str>,
+  ) -> Result<(), Report> {
+    let events = [
+      MutationEvent::Substitution(helpers::sub(b'A', 9, b'G')),
+      MutationEvent::Insertion(AlignedMutation::new((5, 6), seq![helpers::c(b'T')])?),
+      MutationEvent::Deletion(AlignedMutation::new((1, 3), seq![helpers::c(b'C'), helpers::c(b'G')])?),
+    ];
+    let actual = mutation_strings(&events, positions)?;
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -175,9 +194,9 @@ mod tests {
   #[case::one_based( PositionBase::One,  "A10G")]
   #[case::zero_based(PositionBase::Zero, "A9G")]
   #[trace]
-  fn test_mutation_event_strings_number_substitutions(#[case] positions: PositionBase, #[case] expected: &str) -> Result<(), Report> {
+  fn test_mutation_strings_number_substitutions(#[case] positions: PositionBase, #[case] expected: &str) -> Result<(), Report> {
     let event = MutationEvent::Substitution(helpers::sub(b'A', 9, b'G'));
-    let actual = mutation_event_strings(&event, positions)?;
+    let actual = mutation_strings([&event], positions)?;
     assert_eq!(vec![expected], actual);
     Ok(())
   }
@@ -244,10 +263,10 @@ mod tests {
 
   proptest! {
     #[test]
-    fn test_prop_mutation_event_strings_preserve_range(start in 0_usize..10_000, length in 1_usize..32) {
+    fn test_prop_mutation_strings_preserve_range(start in 0_usize..10_000, length in 1_usize..32) {
       let sequence = seq![helpers::c(b'A'); length];
       let event = MutationEvent::Insertion(AlignedMutation::new((start, start + length), sequence).unwrap());
-      let actual = mutation_event_strings(&event, PositionBase::One).unwrap();
+      let actual = mutation_strings([&event], PositionBase::One).unwrap();
       let expected = (start + 1..=start + length)
         .map(|position| format!("-{position}A"))
         .collect::<Vec<_>>();

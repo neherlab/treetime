@@ -169,7 +169,7 @@ mod tests {
     use eyre::Report;
     use std::collections::BTreeMap;
     use std::str::FromStr;
-    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, Sub, mutation_event_strings};
+    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, Sub, mutation_strings};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::key_map::{EdgeMap, NodeMap};
@@ -266,13 +266,7 @@ mod tests {
         .iter()
         .map(|(edge_key, mutations)| {
           let child = graph.get_edge(edge_key).expect("edge must exist").target();
-          let strings = mutations
-            .iter()
-            .map(|mutation| mutation_event_strings(&mutation.event, PositionBase::One))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+          let strings = mutation_strings(mutations.iter().map(|mutation| &mutation.event), PositionBase::One)?;
           Ok((names[child].to_owned(), strings))
         })
         .collect()

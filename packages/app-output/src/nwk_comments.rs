@@ -1,7 +1,6 @@
 use crate::annotated_graph::AnnotatedTreeView;
 use eyre::Report;
-use itertools::Itertools;
-use treetime::seq::mutation::{Mutation, MutationEvent, PositionBase, mutation_event_strings};
+use treetime::seq::mutation::{Mutation, PositionBase, mutation_strings};
 use treetime_io::nwk::{NewickValue, NwkNodeComments};
 
 pub(crate) fn nwk_node_comments(tree: &AnnotatedTreeView<'_>) -> Result<NwkNodeComments, Report> {
@@ -35,13 +34,6 @@ fn mutation_comment(mutations: &[Mutation], positions: PositionBase) -> Result<O
   if mutations.is_empty() {
     return Ok(None);
   }
-  let strings: Vec<Vec<String>> = mutations
-    .iter()
-    .sorted_by_key(|mutation| match &mutation.event {
-      MutationEvent::Substitution(substitution) => substitution.pos(),
-      MutationEvent::Insertion(segment) | MutationEvent::Deletion(segment) => segment.range.0,
-    })
-    .map(|mutation| mutation_event_strings(&mutation.event, positions))
-    .try_collect()?;
-  Ok(Some(strings.into_iter().flatten().join(",")))
+  let strings = mutation_strings(mutations.iter().map(|mutation| &mutation.event), positions)?;
+  Ok(Some(strings.join(",")))
 }
