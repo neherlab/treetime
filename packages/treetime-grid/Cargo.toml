@@ -35,6 +35,7 @@ schemars = { workspace = true }
 approx = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
 serde_json = { workspace = true }

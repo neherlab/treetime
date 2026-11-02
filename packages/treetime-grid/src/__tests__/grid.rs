@@ -4,6 +4,7 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
+  use proptest::prelude::*;
   use rstest::rstest;
   use treetime_utils::assert_error;
 
@@ -162,5 +163,38 @@ mod tests {
     let actual = grid_fn.shift_x(2000.0)?.x();
     assert_eq!(expected, actual);
     Ok(())
+  }
+
+  proptest! {
+    #[test]
+    fn test_prop_grid_from_range_n_points_accepts_exactly_strictly_increasing_coordinates(
+      exponent in -40_i32..40,
+      mantissa in 1.0_f64..2.0,
+      negative in any::<bool>(),
+      span_ulps in 1_u32..400,
+      n_points in 2_usize..64,
+    ) {
+      let binade = 2.0_f64.powi(exponent);
+      let x_min = if negative { -mantissa * binade } else { mantissa * binade };
+      let x_max = x_min + f64::from(span_ulps) * f64::EPSILON * binade;
+      prop_assume!(x_max > x_min);
+      let expected = helpers::coordinates_increase_strictly(x_min, x_max, n_points);
+      let actual = Grid::from_range_n_points(x_min, x_max, n_points).is_ok();
+      prop_assert_eq!(expected, actual);
+    }
+  }
+
+  mod helpers {
+    use itertools::Itertools;
+    use treetime_utils::cast::ToF64Exact;
+
+    pub(super) fn coordinates_increase_strictly(x_min: f64, x_max: f64, n_points: usize) -> bool {
+      let dx = (x_max - x_min) / (n_points - 1).to_f64_exact();
+      (0..n_points - 1)
+        .map(|i| x_min + dx * i.to_f64_exact())
+        .chain([x_max])
+        .tuple_windows()
+        .all(|(left, right)| left < right)
+    }
   }
 }

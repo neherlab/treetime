@@ -5297,6 +5297,7 @@ dependencies = [
  "num",
  "num-traits",
  "pretty_assertions",
+ "proptest",
  "rayon",
  "rstest",
  "schemars",

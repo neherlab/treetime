@@ -16,6 +16,8 @@ const MAX_COINCIDENCE_ULPS: f64 = 4.0;
 
 const MAX_ARRAY_DEVIATION_CELLS: f64 = 0.25;
 
+const MIN_UNCHECKED_SPACING_ROUNDINGS: f64 = 8.0;
+
 impl<T: InterpElem> IntoIterator for &Grid<T>
 where
   T: Float,
@@ -61,6 +63,9 @@ impl<T: InterpElem> Grid<T> {
       dx,
       n_points,
     };
+    if grid.spacing_outweighs_rounding() {
+      return Ok(grid);
+    }
     match grid.iter().tuple_windows().position(|(left, right)| right <= left) {
       Some(i) => make_error!(
         "Grid of {n_points} points over [{x_min:?}, {x_max:?}] with spacing {dx:?} does not increase strictly: x[{}] = {:?} is not above x[{i}] = {:?}",
@@ -163,6 +168,14 @@ impl<T: InterpElem> Grid<T> {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
     Ok(n_points)
+  }
+
+  fn spacing_outweighs_rounding(&self) -> bool
+  where
+    T: Float,
+  {
+    let rounding = T::epsilon() * self.x_min.abs().max(self.x_max.abs()) + T::min_positive_value();
+    self.dx > <T as From<f64>>::from(MIN_UNCHECKED_SPACING_ROUNDINGS) * rounding
   }
 
   pub(crate) fn shifted(&self, delta: T) -> Result<Self, Report>
