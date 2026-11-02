@@ -167,7 +167,6 @@ These issues give wrong results or failures under specific settings, or block ca
 
 - **[kb/issues/M-timetree-pre-loop-short-branch-pruning-missing.md](issues/M-timetree-pre-loop-short-branch-pruning-missing.md)**: add the v0 short-branch pruning to the timetree pre-loop, with the rule and code of the post-loop collapse of `optimize` (`fn collapse_short_internal_edges()`)
 - **[kb/issues/M-timetree-times-one-ulp-apart-count-as-backward-branches.md](issues/M-timetree-times-one-ulp-apart-count-as-backward-branches.md)**: compare node times with `fn coordinates_coincide()` in the polytomy plan check and in the backward-branch count
-- **[kb/issues/M-cli-run-path-check-rejects-augur-translation-templates.md](issues/M-cli-run-path-check-rejects-augur-translation-templates.md)**: compare the concrete paths of the CDSs of the run instead of the patterns of the two templates
 - **[kb/issues/M-clock-filter-residual-parity.md](issues/M-clock-filter-residual-parity.md)**: compute quartiles as v0 does and never flag children of the root
 - **[kb/issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md)**: leave undated tips out of the in-loop clock fit
 - **[kb/issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md](issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md)**: estimate the fallback substitution count of polytomy resolution from the clock-constrained branch length
