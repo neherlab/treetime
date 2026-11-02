@@ -1,6 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::mean_field::{CoalescentPrior, NodeSurvival};
 use crate::timetree::confidence::CI_FRACTION;
+use crate::timetree::inference::grid_request::GridOrigin;
 use crate::timetree::max_posterior_region::{MaxPosteriorRegion, max_posterior_region};
 use eyre::{Report, WrapErr};
 use std::sync::Arc;
@@ -13,8 +14,10 @@ use treetime_primitives::LogLh;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NodeBackward {
-  pub subtree: TimeDistribution,
-  pub to_parent: TimeDistribution,
+  pub(crate) subtree: TimeDistribution,
+  pub(crate) to_parent: TimeDistribution,
+  pub(crate) subtree_origin: GridOrigin,
+  pub(crate) to_parent_origin: GridOrigin,
 }
 
 pub(crate) fn log_marginal_likelihood(

@@ -11,18 +11,20 @@ use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::bad_branches::derive_bad_branches;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+use crate::timetree::inference::grid_request::{ClockRateEffect, GridOperation, GridRequest, WrapGridRequest};
 use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, TimeInference, log_marginal_likelihood,
   runs_backwards,
 };
 use crate::{progress_info, progress_warn};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
 use treetime_primitives::LogLh;
@@ -44,8 +46,14 @@ pub(crate) fn run_timetree(
   coalescent: Option<&CoalescentPrior>,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
-  infer_times(inputs, coalescent, log)
-    .map_err(|report| explain_grid_point_limit(report, inputs.clock_model.clock_rate(), inputs.clock_rate_fixed))
+  infer_times(inputs, coalescent, log).map_err(|report| {
+    explain_grid_point_limit(
+      report,
+      inputs.names,
+      inputs.clock_model.clock_rate(),
+      inputs.clock_rate_fixed,
+    )
+  })
 }
 
 fn infer_times(
@@ -152,7 +160,12 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub posterior_summaries: PosteriorSummaries,
 }
 
-pub(super) fn explain_grid_point_limit(report: Report, clock_rate: f64, clock_rate_fixed: bool) -> Report {
+pub(super) fn explain_grid_point_limit(
+  report: Report,
+  names: &NodeNames,
+  clock_rate: f64,
+  clock_rate_fixed: bool,
+) -> Report {
   let Some(exceeded) = report
     .chain()
     .find_map(|cause| cause.downcast_ref::<GridPointLimitExceeded>())
@@ -165,23 +178,51 @@ pub(super) fn explain_grid_point_limit(report: Report, clock_rate: f64, clock_ra
     Some(points) => format!("a grid of {points} points, more than"),
     None => "a grid with more points than".to_owned(),
   };
+  let label = |key: GraphNodeKey| format!("node '{}'", &names[key]);
+  let explanation = report
+    .downcast_ref::<GridRequest>()
+    .map(|request| request.explain(&exceeded, &label));
+  let (operation, attribution) = explanation.as_ref().map_or_else(
+    || (String::new(), String::new()),
+    |explanation| {
+      (
+        format!(" when {}", explanation.operation),
+        format!(" {}", explanation.attribution),
+      )
+    },
+  );
+  let advice = explanation
+    .as_ref()
+    .and_then(|explanation| explanation.clock_rate_effect)
+    .map_or_else(
+      || "Raise --max-grid-points when enough memory is available.".to_owned(),
+      |effect| clock_rate_advice(effect, clock_rate, clock_rate_fixed),
+    );
+  report.wrap_err(format!(
+    "Time inference needs {needs} the limit of {limit} (--max-grid-points){operation}.{attribution} {advice}"
+  ))
+}
+
+fn clock_rate_advice(effect: ClockRateEffect, clock_rate: f64, clock_rate_fixed: bool) -> String {
   let rate = float_to_significant_digits(clock_rate, 3);
-  let cause = if clock_rate_fixed {
+  let (relation, width) = match effect {
+    ClockRateEffect::Narrow => ("far above", "very narrow"),
+    ClockRateEffect::Wide => ("far below", "very wide"),
+    ClockRateEffect::Width => ("far from", "very narrow or very wide"),
+  };
+  let raise = "raise --max-grid-points when enough memory is available.";
+  if clock_rate_fixed {
     format!(
-      "The fixed --clock-rate {rate} may be far from the rate the data supports, which makes branch-time \
-       distributions very narrow. Check --clock-rate"
+      "The fixed --clock-rate {rate} may be {relation} the rate the data supports, which makes branch-time \
+       distributions {width}. Check --clock-rate, or {raise}"
     )
   } else {
     format!(
-      "The estimated clock rate {rate} may be far from the true rate, which makes branch-time distributions very \
-       narrow; errors in the input dates and weak temporal signal cause such estimates. Check the input dates, set \
-       --clock-rate"
+      "The estimated clock rate {rate} may be {relation} the true rate, which makes branch-time distributions \
+       {width}; errors in the input dates and weak temporal signal cause such estimates. Check the input dates, \
+       set --clock-rate, or {raise}"
     )
-  };
-  report.wrap_err(format!(
-    "Time inference needs {needs} the limit of {limit} (--max-grid-points). {cause}, or raise --max-grid-points \
-     when enough memory is available."
-  ))
+  }
 }
 
 pub(crate) const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
@@ -272,22 +313,25 @@ fn compute_branch_distributions_marginal_mode(
     .into_par_iter()
     .map(|edge_ref| -> Result<(GraphEdgeKey, BranchLikelihood), Report> {
       let edge_key = edge_ref.key();
+      let child = edge_ref.target();
       let branch_length = branch_lengths[&edge_key].unwrap_or(one_mutation);
       let gamma = gammas[&edge_key];
 
       debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-      let distribution = partitions.with_edge(edge_key, |contributions| {
-        compute_branch_length_distribution(
-          contributions,
-          indels.term(edge_key),
-          branch_length,
-          one_mutation,
-          GRID_POINTS,
-          clock_rate * gamma,
-          max_grid_points,
-        )
-      })?;
+      let distribution = partitions
+        .with_edge(edge_key, |contributions| {
+          compute_branch_length_distribution(
+            contributions,
+            indels.term(edge_key),
+            branch_length,
+            one_mutation,
+            GRID_POINTS,
+            clock_rate * gamma,
+            max_grid_points,
+          )
+        })
+        .wrap_grid_request(|| GridRequest::new(GridOperation::BranchDistribution(child), []))?;
 
       let time_length = distribution.likely_time()?;
       if let Some(likely_time) = time_length {
@@ -328,7 +372,7 @@ pub(super) fn create_branch_distributions_input_mode(
       let distribution = model
         .likelihood(branch_length)
         .distribution(branch_rate, max_grid_points)
-        .wrap_err_with(|| format!("When building the input branch-length distribution of edge {key:?}"))?;
+        .wrap_grid_request(|| GridRequest::new(GridOperation::BranchDistribution(edge_ref.target()), []))?;
       let branch = BranchLikelihood {
         distribution: Some(distribution),
         time_length: Some(branch_length / branch_rate),

@@ -4,6 +4,9 @@ use crate::progress::LogSink;
 use crate::progress_warn;
 use crate::timetree::inference::bad_branches::applied_date_constraint;
 use crate::timetree::inference::coalescent_factor::apply_leaf_coalescent_factor;
+use crate::timetree::inference::grid_request::{
+  GridOperand, GridOperation, GridOrigin, GridRequest, OperandRole, WrapGridRequest,
+};
 use crate::timetree::inference::result::{
   BranchLikelihood, NodeBackward, PosteriorView, TimeDistribution, likely_time_of_node,
 };
@@ -96,11 +99,22 @@ where
       max_points,
     } = *self.inputs;
     let date_constraint = applied_date_constraint(constraints, key, bad_branches[&key]);
-    let NodeBackward { subtree, to_parent } = backward;
-    let parent_edge = self.schedule.parents(key).first().map(|&(_, edge_key)| ParentEdge {
-      branch: &branches[&edge_key],
-      msg_to_parent: to_parent.as_deref(),
-    });
+    let NodeBackward {
+      subtree,
+      to_parent,
+      subtree_origin,
+      to_parent_origin,
+    } = backward;
+    let parent_edge = self
+      .schedule
+      .parents(key)
+      .first()
+      .map(|&(parent_key, edge_key)| ParentEdge {
+        parent_key,
+        branch: &branches[&edge_key],
+        msg_to_parent: to_parent.as_deref(),
+        msg_origin: to_parent_origin,
+      });
 
     let is_leaf = self.schedule.children(key).is_empty();
     let refinement = refine_distribution_from_parent(ForwardStep {
@@ -111,6 +125,7 @@ where
       parent,
       edge: parent_edge,
       subtree: subtree.as_deref(),
+      subtree_origin,
       max_points,
     })?;
     let normalized_subtree = || -> Result<_, Report> {
@@ -119,10 +134,10 @@ where
         .map(|subtree| subtree.normalize().map(Arc::new))
         .transpose()
     };
-    let (distribution, contradicted) = match refinement {
-      ForwardRefinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
-      ForwardRefinement::Unrefined => (normalized_subtree()?, false),
-      ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
+    let (distribution, origin, contradicted) = match refinement {
+      ForwardRefinement::Refined { distribution, origin } => (Some(Arc::new(distribution)), origin, false),
+      ForwardRefinement::Unrefined => (normalized_subtree()?, subtree_origin, false),
+      ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, subtree_origin, true),
     };
 
     let is_root = self.schedule.parents(key).is_empty();
@@ -151,7 +166,12 @@ where
       undated,
       contradicted,
     };
-    Ok((output, Posterior { distribution, time }))
+    let posterior = Posterior {
+      distribution,
+      time,
+      origin,
+    };
+    Ok((output, posterior))
   }
 }
 
@@ -179,6 +199,7 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
     parent,
     edge,
     subtree,
+    subtree_origin,
     max_points,
   } = step;
   let (Some(parent), Some(edge)) = (parent, edge) else {
@@ -191,33 +212,55 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
   let (Some(parent_time_dist), Some(branch_dist)) = (&parent.distribution, &edge.branch.distribution) else {
     return Ok(ForwardRefinement::Unrefined);
   };
+  let branch_operand = GridOperand::of(OperandRole::Branch(key), branch_dist, GridOrigin::branch(key));
 
   let Some(subtree_dist) = subtree else {
-    let forward = convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)?;
-    let ForwardPosterior { posterior, spacing, .. } = forward
-      .resolve_posterior(TRIM_EPS, |message| {
-        apply_leaf_coalescent_factor(leaf_prior, key, message.clone())?
-          .normalize()
-          .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))
-      })?
-      .into_untrimmed();
+    let operands = [
+      GridOperand::of(OperandRole::Posterior(edge.parent_key), parent_time_dist, parent.origin),
+      branch_operand,
+    ];
+    let ForwardPosterior { posterior, spacing, .. } =
+      convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)
+        .and_then(|forward| {
+          forward.resolve_posterior(TRIM_EPS, |message| {
+            apply_leaf_coalescent_factor(leaf_prior, key, message.clone())?
+              .normalize()
+              .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))
+          })
+        })
+        .wrap_grid_request(|| GridRequest::new(GridOperation::ForwardMessage(key), operands))?
+        .into_untrimmed();
     log_refinement(names, key, parent_time_dist, &posterior, spacing, &posterior);
-    return Ok(ForwardRefinement::Refined(posterior));
+    return Ok(ForwardRefinement::Refined {
+      distribution: posterior,
+      origin: GridOperation::ForwardMessage(key).origin(operands.into_iter()),
+    });
   };
 
-  let parent_except_subtree = match edge.msg_to_parent {
-    Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent, max_points)?,
-    None => parent_time_dist.as_ref().clone(),
-  };
-  let forward = convolve_forward_across_edge(&parent_except_subtree, branch_dist, EPS, GRID_POINTS, max_points)?;
+  let parent_operand = GridOperand::of(OperandRole::Posterior(edge.parent_key), parent_time_dist, parent.origin);
+  let (parent_except_subtree, parent_operand) =
+    parent_without_child(key, parent_time_dist, parent_operand, edge, max_points)?;
+  let operands = [parent_operand, branch_operand];
+  let message_origin = GridOperation::ForwardMessage(key).origin(operands.into_iter());
+  let subtree_operand = |subtree_dist| GridOperand::of(OperandRole::Subtree(key), subtree_dist, subtree_origin);
   let ForwardPosterior {
     message: dist_from_parent,
     posterior: combined,
     spacing,
-  } = forward
-    .resolve_posterior(TRIM_EPS, |message| {
-      normalized_product(key, message, subtree_dist, max_points)
-    })?
+  } = convolve_forward_across_edge(&parent_except_subtree, branch_dist, EPS, GRID_POINTS, max_points)
+    .and_then(|forward| {
+      forward.resolve_posterior(TRIM_EPS, |message| {
+        let message_operand = GridOperand::of(OperandRole::ForwardMessage(key), message, message_origin);
+        normalized_product(
+          key,
+          message,
+          subtree_dist,
+          [message_operand, subtree_operand(subtree_dist)],
+          max_points,
+        )
+      })
+    })
+    .wrap_grid_request(|| GridRequest::new(GridOperation::ForwardMessage(key), operands))?
     .trim_posterior_to_mass(TRIM_EPS)
     .wrap_err_with(|| format!("When trimming the time distribution of node {key} to its mass"))?;
   log_refinement(names, key, parent_time_dist, &dist_from_parent, spacing, &combined);
@@ -226,7 +269,35 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
     log_kept_given_date(names, key, date_constraint, &dist_from_parent);
     return Ok(ForwardRefinement::ContradictedGivenDate);
   }
-  Ok(ForwardRefinement::Refined(combined))
+  let product_operands = [
+    GridOperand::of(OperandRole::ForwardMessage(key), &dist_from_parent, message_origin),
+    subtree_operand(subtree_dist),
+  ];
+  Ok(ForwardRefinement::Refined {
+    distribution: combined,
+    origin: GridOperation::Posterior(key).origin(product_operands.into_iter()),
+  })
+}
+
+fn parent_without_child(
+  key: GraphNodeKey,
+  parent_time_dist: &Distribution<NegLog>,
+  parent_operand: GridOperand,
+  edge: ParentEdge<'_>,
+  max_points: MaxGridPoints,
+) -> Result<(Distribution<NegLog>, GridOperand), Report> {
+  let Some(msg_to_parent) = edge.msg_to_parent else {
+    return Ok((parent_time_dist.clone(), parent_operand));
+  };
+  let operands = [
+    parent_operand,
+    GridOperand::of(OperandRole::ChildMessage(key), msg_to_parent, edge.msg_origin),
+  ];
+  let divided = distribution_division(parent_time_dist, msg_to_parent, max_points)
+    .wrap_grid_request(|| GridRequest::new(GridOperation::ParentWithoutChild(key), operands))?;
+  let origin = GridOperation::ParentWithoutChild(key).origin(operands.into_iter());
+  let operand = GridOperand::of(OperandRole::ParentWithoutChild(key), &divided, origin);
+  Ok((divided, operand))
 }
 
 #[derive(Clone, Copy)]
@@ -238,6 +309,7 @@ struct ForwardStep<'a> {
   parent: Option<&'a Posterior>,
   edge: Option<ParentEdge<'a>>,
   subtree: Option<&'a Distribution<NegLog>>,
+  subtree_origin: GridOrigin,
   max_points: MaxGridPoints,
 }
 
@@ -245,23 +317,30 @@ fn normalized_product(
   key: GraphNodeKey,
   dist_from_parent: &Distribution<NegLog>,
   subtree_dist: &Distribution<NegLog>,
+  operands: [GridOperand; 2],
   max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
-  distribution_multiplication(dist_from_parent, subtree_dist, max_points)?
+  distribution_multiplication(dist_from_parent, subtree_dist, max_points)
+    .wrap_grid_request(|| GridRequest::new(GridOperation::Posterior(key), operands))?
     .normalize()
     .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))
 }
 
 #[derive(Clone, Copy)]
 struct ParentEdge<'a> {
+  parent_key: GraphNodeKey,
   branch: &'a BranchLikelihood,
   msg_to_parent: Option<&'a Distribution<NegLog>>,
+  msg_origin: GridOrigin,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum ForwardRefinement {
   Unrefined,
-  Refined(Distribution<NegLog>),
+  Refined {
+    distribution: Distribution<NegLog>,
+    origin: GridOrigin,
+  },
   ContradictedGivenDate,
 }
 
@@ -282,6 +361,7 @@ fn commit_node_time(
 struct Posterior {
   distribution: TimeDistribution,
   time: Option<f64>,
+  origin: GridOrigin,
 }
 
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
