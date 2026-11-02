@@ -349,6 +349,47 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::mode_with_weak_decay_before_cap( (5,  2.0), 2.5)]
+  #[case::mode_beyond_cap(                 (20, 2.0), 5.0)]
+  #[trace]
+  fn test_branch_length_likelihood_grid_without_decay_before_max_branch_length_ends_hard_at_it(
+    #[case] (indel_count, indel_rate): (usize, f64),
+    #[case] expected_peak: f64,
+  ) -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      IndelTerm::new(indel_count, indel_rate),
+      1e-3,
+      1e-3,
+      GRID_POINTS,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
+
+    let Distribution::Function(function) = distribution.as_ref() else {
+      panic!("branch-length distribution must be a Function");
+    };
+    let right = function.right_extrap();
+    assert!(
+      matches!(right, BoundaryBehavior::Hard),
+      "right boundary must be hard at the largest branch length, got {right:?}"
+    );
+
+    let (_t_min, t_max) = distribution.time_bounds().unwrap();
+    assert!(t_max <= 5.0, "grid must end at or below the largest branch length 5, got {t_max}");
+
+    let peak_time = distribution.likely_time()?.expect("distribution has a peak");
+    let spacing = function.dx();
+    assert!(
+      (peak_time - expected_peak).abs() <= spacing,
+      "peak {peak_time} must lie within one grid spacing {spacing} of {expected_peak}"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use itertools::izip;

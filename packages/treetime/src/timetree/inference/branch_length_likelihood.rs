@@ -5,7 +5,7 @@ use crate::timetree::inference::runner::EPS;
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, ArrayView1, Axis, concatenate, s};
 use ndarray_stats::QuantileExt;
-use std::iter::successors;
+use std::iter::{once, successors};
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
@@ -34,7 +34,11 @@ pub(crate) fn compute_branch_length_distribution(
     one_mutation * MIN_BRANCH_LENGTH_MUTATION_FRACTION
   };
 
-  let PilotGrid { grid, log_lh } = pilot_grid(
+  let PilotGrid {
+    grid,
+    log_lh,
+    right_edge,
+  } = pilot_grid(
     contributions,
     indels,
     current_branch_length,
@@ -58,13 +62,19 @@ pub(crate) fn compute_branch_length_distribution(
     BoundaryBehavior::HardApproach(law)
   };
 
-  let right_boundary = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
-    format!("When fitting the branch-length likelihood soft tail near t_max over [{time_min}, {time_max}]")
-  })?;
+  let right_boundary = match right_edge {
+    RightEdge::Hard => BoundaryBehavior::Hard,
+    RightEdge::Soft => {
+      let law = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+        format!("When fitting the branch-length likelihood soft tail near t_max over [{time_min}, {time_max}]")
+      })?;
+      BoundaryBehavior::Linear(law)
+    },
+  };
 
   let distribution_fn = DistributionFunction::from_grid_fn(f)
     .with_left_extrap(left_boundary)?
-    .with_right_extrap(BoundaryBehavior::Linear(right_boundary))?;
+    .with_right_extrap(right_boundary)?;
 
   let distribution = Distribution::Function(distribution_fn);
   let distribution = rewindow_to_mass(&distribution, EPS, n_grid_points, max_points)?;
@@ -85,9 +95,24 @@ fn pilot_grid(
   min_bl: f64,
 ) -> Result<PilotGrid, Report> {
   let max_bl = divergence_upper_end(center, one_mutation);
-  let pilot = PilotGrid::evaluate(Array1::linspace(min_bl, max_bl, n_points), contributions, indels)?;
-  match decayed_upper_end(&pilot, contributions, indels)? {
-    Some(max_bl) => pilot.extend_to(max_bl, n_points * MAX_PILOT_GROWTH, contributions, indels),
+  let pilot = PilotGrid::evaluate(
+    Array1::linspace(min_bl, max_bl, n_points),
+    RightEdge::Soft,
+    contributions,
+    indels,
+  )?;
+  let max_points = n_points * MAX_PILOT_GROWTH;
+  match pilot_extension(&pilot, contributions, indels)? {
+    Some(Extension::Decayed(max_bl)) => pilot.extend_to(max_bl, max_points, contributions, indels),
+    Some(Extension::Capped) => {
+      let n_points = pilot.points_at_spacing(MAX_BRANCH_LENGTH).min(max_points);
+      PilotGrid::evaluate(
+        Array1::linspace(min_bl, MAX_BRANCH_LENGTH, n_points),
+        RightEdge::Hard,
+        contributions,
+        indels,
+      )
+    },
     None => Ok(pilot),
   }
 }
@@ -103,55 +128,71 @@ fn divergence_upper_end(center: f64, one_mutation: f64) -> f64 {
   .min(MAX_BRANCH_LENGTH)
 }
 
-fn decayed_upper_end(
+fn pilot_extension(
   pilot: &PilotGrid,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
-) -> Result<Option<f64>, Report> {
+) -> Result<Option<Extension>, Report> {
+  let pilot_peak = *pilot.log_lh.max()?;
   let mut probe = DecayProbe {
     contributions,
     indels,
-    peak: *pilot.log_lh.max()?,
+    peak: pilot_peak,
     drop: -EPS.ln(),
   };
   let end = last(&pilot.grid);
-  if end >= MAX_BRANCH_LENGTH || probe.is_decayed(last(&pilot.log_lh)) || !probe.decays_at(MAX_BRANCH_LENGTH)? {
+  if end >= MAX_BRANCH_LENGTH || probe.is_decayed(last(&pilot.log_lh)) {
     return Ok(None);
   }
 
   let mut below = end;
-  let mut above = MAX_BRANCH_LENGTH;
-  for branch_length in successors(Some(2.0 * end), |x| Some(2.0 * x)).take_while(|x| *x < MAX_BRANCH_LENGTH) {
+  for branch_length in outward_probes(end) {
     if probe.decays_at(branch_length)? {
-      above = branch_length;
-      break;
+      return Ok(Some(Extension::Decayed(probe.bisect(below, branch_length)?)));
     }
     below = branch_length;
   }
-  for _ in 0..DECAY_BISECTION_STEPS {
-    let middle = f64::midpoint(below, above);
-    if probe.decays_at(middle)? {
-      above = middle;
-    } else {
-      below = middle;
-    }
-  }
-  Ok(Some(above))
+  Ok((probe.peak > pilot_peak).then_some(Extension::Capped))
+}
+
+enum Extension {
+  Decayed(f64),
+  Capped,
+}
+
+fn outward_probes(end: f64) -> impl Iterator<Item = f64> {
+  successors(Some(2.0 * end), |x| Some(2.0 * x))
+    .take_while(|x| *x < MAX_BRANCH_LENGTH)
+    .chain(once(MAX_BRANCH_LENGTH))
 }
 
 struct PilotGrid {
   grid: Array1<f64>,
   log_lh: Array1<f64>,
+  right_edge: RightEdge,
 }
 
 impl PilotGrid {
   fn evaluate(
     grid: Array1<f64>,
+    right_edge: RightEdge,
     contributions: &[OptimizationContribution],
     indels: IndelTerm,
   ) -> Result<Self, Report> {
     let log_lh = evaluate_log_lh_on_grid(grid.view(), contributions, indels)?;
-    Ok(Self { grid, log_lh })
+    Ok(Self {
+      grid,
+      log_lh,
+      right_edge,
+    })
+  }
+
+  fn spacing(&self) -> f64 {
+    (last(&self.grid) - first(&self.grid)) / (self.grid.len() - 1).to_f64_exact()
+  }
+
+  fn points_at_spacing(&self, max_bl: f64) -> usize {
+    f64_to_usize_saturating(((max_bl - first(&self.grid)) / self.spacing()).ceil()) + 1
   }
 
   fn extend_to(
@@ -163,17 +204,31 @@ impl PilotGrid {
   ) -> Result<Self, Report> {
     let n_points = self.grid.len();
     let min_bl = first(&self.grid);
-    let spacing = (last(&self.grid) - min_bl) / (n_points - 1).to_f64_exact();
-    let n_extended = f64_to_usize_saturating(((max_bl - min_bl) / spacing).ceil()) + 1;
+    let n_extended = self.points_at_spacing(max_bl);
     if n_extended > max_points {
-      return Self::evaluate(Array1::linspace(min_bl, max_bl, max_points), contributions, indels);
+      return Self::evaluate(
+        Array1::linspace(min_bl, max_bl, max_points),
+        RightEdge::Soft,
+        contributions,
+        indels,
+      );
     }
-    let max_bl = min_bl + spacing * (n_extended - 1).to_f64_exact();
+    let max_bl = min_bl + self.spacing() * (n_extended - 1).to_f64_exact();
     let grid = Array1::linspace(min_bl, max_bl, n_extended);
     let added = evaluate_log_lh_on_grid(grid.slice(s![n_points..]), contributions, indels)?;
     let log_lh = concatenate(Axis(0), &[self.log_lh.view(), added.view()])?;
-    Ok(Self { grid, log_lh })
+    Ok(Self {
+      grid,
+      log_lh,
+      right_edge: RightEdge::Soft,
+    })
   }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum RightEdge {
+  Soft,
+  Hard,
 }
 
 struct DecayProbe<'a> {
@@ -188,6 +243,20 @@ impl DecayProbe<'_> {
     let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indels, branch_length)?.value();
     self.peak = self.peak.max(log_lh);
     Ok(self.is_decayed(log_lh))
+  }
+
+  fn bisect(&mut self, below: f64, above: f64) -> Result<f64, Report> {
+    let mut below = below;
+    let mut above = above;
+    for _ in 0..DECAY_BISECTION_STEPS {
+      let middle = f64::midpoint(below, above);
+      if self.decays_at(middle)? {
+        above = middle;
+      } else {
+        below = middle;
+      }
+    }
+    Ok(above)
   }
 
   fn is_decayed(&self, log_lh: f64) -> bool {
