@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::negated;
   use crate::MaxGridPoints;
   use crate::*;
   use eyre::Report;
@@ -10,6 +11,10 @@ mod tests {
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+
+  const BRANCH: (f64, f64) = (0.1, 135.431_597_963_692_52);
+
+  const DATE: f64 = 2026.0 + 3.0 / 365.0;
 
   #[rustfmt::skip]
   #[rstest]
@@ -139,9 +144,45 @@ mod tests {
   #[test]
   fn test_gridfn_negate_arg_inplace() -> Result<(), Report> {
     let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    grid_fn.negate_arg_inplace()?;
+    grid_fn.negate_arg_inplace();
     let expected = GridFn::from_range_values((-2.0, 0.0), array![3.0, 2.0, 1.0])?;
     assert_eq!(expected, grid_fn);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::shift(          |f: &GridFn<f64>| Ok(f.shift_x(DATE)),                     (BRANCH.0 + DATE,     BRANCH.1 + DATE))]
+  #[case::negate(         |f: &GridFn<f64>| Ok(negated(f)),                          (-BRANCH.1,           -BRANCH.0))]
+  #[case::negate_zero_end(|f: &GridFn<f64>| Ok(negated(&f.shift_x(-BRANCH.0))),      (BRANCH.0 - BRANCH.1, 0.0))]
+  #[case::scale(          |f: &GridFn<f64>| f.scale_x(3.0),                          (BRANCH.0 * 3.0,      BRANCH.1 * 3.0))]
+  #[trace]
+  fn test_gridfn_end_maps_take_each_end_with_one_rounding(
+    #[case]
+    #[notrace]
+    map: fn(&GridFn<f64>) -> Result<GridFn<f64>, Report>,
+    #[case] expected: (f64, f64),
+  ) -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values(BRANCH, array![4.0, 3.0, 2.0, 1.0, 0.0])?;
+    let actual = map(&grid_fn)?;
+    let signed = |(x_min, x_max): (f64, f64)| ((x_min, x_min.is_sign_negative()), (x_max, x_max.is_sign_negative()));
+    assert_eq!(signed(expected), signed((actual.x_min(), actual.x_max())));
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::slice(         |f: &GridFn<f64>| f.slice(2..=4))]
+  #[case::anchored_right(|f: &GridFn<f64>| f.resample_range_dx_clamped(BRANCH, 0.3, Side::Right, MaxGridPoints::default()))]
+  #[trace]
+  fn test_gridfn_grids_that_keep_the_right_end_end_at_it(
+    #[case]
+    #[notrace]
+    derive: fn(&GridFn<f64>) -> Result<GridFn<f64>, Report>,
+  ) -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values(BRANCH, array![4.0, 3.0, 2.0, 1.0, 0.0])?;
+    let actual = derive(&grid_fn)?;
+    pretty_assert_ulps_eq!(BRANCH.1, actual.x_max(), max_ulps = 0);
     Ok(())
   }
 
@@ -318,5 +359,26 @@ mod tests {
       "Cell 1 is outside the grid of 2 points"
     );
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::past_the_end(3..=5, "Points 3..=5 are not a grid of at least 2 points within the grid of 5 points")]
+  #[case::single_point(2..=2, "Points 2..=2 are not a grid of at least 2 points within the grid of 5 points")]
+  #[trace]
+  fn test_gridfn_slice_outside_the_grid_is_error(#[case] points: RangeInclusive<usize>, #[case] expected: &str) -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values(BRANCH, array![4.0, 3.0, 2.0, 1.0, 0.0])?;
+    assert_error!(grid_fn.slice(points), expected);
+    Ok(())
+  }
+
+  mod helpers {
+    use crate::GridFn;
+
+    pub(super) fn negated(grid_fn: &GridFn<f64>) -> GridFn<f64> {
+      let mut negated = grid_fn.clone();
+      negated.negate_arg_inplace();
+      negated
+    }
   }
 }

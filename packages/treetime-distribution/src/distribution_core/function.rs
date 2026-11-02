@@ -46,6 +46,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Self::from_grid_fn(grid_fn))
   }
 
+  #[cfg_attr(
+    dylint_lib = "custom",
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
+  )]
   pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,
@@ -83,7 +90,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     &self.grid_fn
   }
 
-  pub(crate) fn t(&self) -> Array1<T>
+  pub fn t(&self) -> Array1<T>
   where
     T: Float,
   {
@@ -103,6 +110,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub fn dx(&self) -> T {
     self.grid_fn.dx()
+  }
+
+  pub fn x_at(&self, idx: usize) -> T
+  where
+    T: Float,
+  {
+    self.grid_fn.x_at(idx)
   }
 
   pub fn y(&self) -> &Array1<T> {
@@ -316,15 +330,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.is_empty()
   }
 
-  pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report>
+  pub(crate) fn negate_arg_inplace(&mut self)
   where
     T: Float,
   {
-    self.grid_fn.negate_arg_inplace()?;
+    self.grid_fn.negate_arg_inplace();
     self.left_extrap = scale_tail_law(self.left_extrap, -1.0);
     self.right_extrap = scale_tail_law(self.right_extrap, -1.0);
     std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
-    Ok(())
   }
 
   pub(crate) fn likely_time(&self) -> Result<Option<T>, Report>
@@ -370,6 +383,16 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
     ))
   }
 
+  #[must_use]
+  pub fn shift_time(&self, shift: f64) -> Self {
+    Self::from_grid_fn_with_extrap(
+      self.grid_fn.shift_x(shift),
+      self.ampl,
+      shift_tail_law(self.left_extrap, shift),
+      shift_tail_law(self.right_extrap, shift),
+    )
+  }
+
   pub fn repeak(&self) -> Result<Option<Self>, Report> {
     let stored = self.y();
     let extremum = if Y::likely_is_maximum() {
@@ -411,6 +434,14 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
 
 fn unit_amplitude<T: InterpElem, Y: YAxisPolicy>() -> T {
   Y::from_plain(1.0).into()
+}
+
+fn shift_tail_law(behavior: BoundaryBehavior, shift: f64) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.shift_arg(shift)),
+    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.shift_arg(shift)),
+    BoundaryBehavior::Error | BoundaryBehavior::Hard | BoundaryBehavior::Linear(_) => behavior,
+  }
 }
 
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {

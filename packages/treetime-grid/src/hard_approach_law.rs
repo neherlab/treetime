@@ -84,6 +84,14 @@ impl HardApproachLaw {
       b: self.b,
     }
   }
+
+  #[must_use]
+  pub fn shift_arg(&self, shift: f64) -> Self {
+    Self {
+      t_hard: self.t_hard + shift,
+      ..*self
+    }
+  }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

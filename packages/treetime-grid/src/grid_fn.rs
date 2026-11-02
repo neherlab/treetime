@@ -8,7 +8,7 @@ use crate::hard_approach_law::{HardApproachLaw, Side};
 use crate::hard_cell::HardCell;
 use crate::max_grid_points::MaxGridPoints;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, s};
 use num::Float;
 use std::fmt::Debug;
 use std::ops::RangeInclusive;
@@ -21,7 +21,7 @@ pub struct GridFn<T: InterpElem> {
 }
 
 impl<T: InterpElem> GridFn<T> {
-  fn from_grid_array(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
+  pub fn from_grid_values(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
     if grid.n_points() != y.len() {
       return make_error!(
         "Grid has {} points but y array has {} elements",
@@ -44,7 +44,7 @@ impl<T: InterpElem> GridFn<T> {
       );
     }
     let grid = Grid::from_array(x)?;
-    Self::from_grid_array(grid, y)
+    Self::from_grid_values(grid, y)
   }
 
   pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
@@ -52,7 +52,7 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
   {
     let grid = Grid::from_start_dx(x_min, dx, y.len())?;
-    Self::from_grid_array(grid, y)
+    Self::from_grid_values(grid, y)
   }
 
   pub fn from_range_values((x_min, x_max): (T, T), y: Array1<T>) -> Result<Self, Report>
@@ -60,7 +60,7 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
   {
     let grid = Grid::from_range_n_points(x_min, x_max, y.len())?;
-    Self::from_grid_array(grid, y)
+    Self::from_grid_values(grid, y)
   }
 
   // TODO: inefficient. Try to remove this method
@@ -75,8 +75,20 @@ impl<T: InterpElem> GridFn<T> {
     &self.y
   }
 
-  pub(crate) fn grid(&self) -> &Grid<T> {
+  pub fn grid(&self) -> &Grid<T> {
     &self.grid
+  }
+
+  pub fn with_values(&self, y: Array1<T>) -> Result<Self, Report> {
+    Self::from_grid_values(self.grid, y)
+  }
+
+  pub fn slice(&self, points: RangeInclusive<usize>) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    let grid = self.grid.slice(points.clone())?;
+    Self::from_grid_values(grid, self.y.slice(s![points]).to_owned())
   }
 
   pub fn x_min(&self) -> T {
@@ -104,6 +116,13 @@ impl<T: InterpElem> GridFn<T> {
 
   pub fn dx(&self) -> T {
     self.grid.dx()
+  }
+
+  pub fn x_at(&self, idx: usize) -> T
+  where
+    T: Float,
+  {
+    self.grid.x_at(idx)
   }
 
   pub fn coincides(&self, a: f64, b: f64) -> bool
@@ -333,7 +352,7 @@ impl<T: InterpElem> GridFn<T> {
     let x0 = self.grid.x_at(idx);
     let y0 = self.y[idx];
     let y1 = self.y[idx + 1];
-    let t = (q - x0) / self.grid.dx();
+    let t = (q - x0) / (self.grid.x_at(idx + 1) - x0);
     let t_f64: f64 = t.into();
     if t_f64 <= 0.0 {
       return Ok(y0);
@@ -403,31 +422,32 @@ impl<T: InterpElem> GridFn<T> {
       return make_error!("Argument scale factor must be positive, got {factor:?}");
     }
     Ok(Self {
-      grid: Grid::from_start_dx(
-        self.grid.x_min() * factor,
-        self.grid.dx() * factor,
-        self.grid.n_points(),
-      )?,
+      grid: self.grid.scaled(factor)?,
       y: self.y.clone(),
     })
   }
 
-  #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
-  pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
+  #[must_use]
+  pub fn shift_x(&self, delta: T) -> Self
   where
     T: Float,
   {
-    let x_max = self.grid.x_max();
-    let dx = self.grid.dx();
-    let n_points = self.grid.n_points();
-    self.grid = Grid::from_start_dx(-x_max, dx, n_points)?;
+    Self {
+      grid: self.grid.shifted(delta),
+      y: self.y.clone(),
+    }
+  }
 
+  #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
+  pub fn negate_arg_inplace(&mut self)
+  where
+    T: Float,
+  {
+    self.grid = self.grid.negated();
     let n = self.y.len();
     for i in 0..n / 2 {
       self.y.swap(i, n - 1 - i);
     }
-
-    Ok(())
   }
 
   pub fn resample_with_extrap(
@@ -443,7 +463,7 @@ impl<T: InterpElem> GridFn<T> {
     let y_new = (0..n_points)
       .map(|i| self.interp_with_extrap(grid.x_at(i), left_extrap, right_extrap))
       .collect::<Result<Vec<T>, Report>>()?;
-    Self::from_grid_array(*grid, Array1::from_vec(y_new))
+    Self::from_grid_values(*grid, Array1::from_vec(y_new))
   }
 
   pub fn resample_range_dx_clamped(
@@ -462,7 +482,7 @@ impl<T: InterpElem> GridFn<T> {
     let y_new = (0..grid.n_points())
       .map(|i| self.interp(grid.x_at(i).max(x_min).min(x_max)))
       .collect::<Result<Vec<T>, Report>>()?;
-    Self::from_grid_array(grid, Array1::from_vec(y_new))
+    Self::from_grid_values(grid, Array1::from_vec(y_new))
   }
 }
 
