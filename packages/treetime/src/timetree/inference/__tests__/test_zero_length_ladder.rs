@@ -21,7 +21,6 @@ mod tests {
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridFn, MaxGridPoints, Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
-  use treetime_utils::pretty_assert_abs_diff_eq;
 
   const SITES: f64 = 754.0;
   const CLOCK_RATE: f64 = 0.0014;
@@ -30,26 +29,37 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tips_20(  20)]
-  #[case::tips_50(  50)]
-  #[case::tips_200(200)]
+  #[case::tips_20(  20, [300,  599, 1197])]
+  #[case::tips_50(  50, [300,  599, 1197])]
+  #[case::tips_200(200, [1197, 2393, 4785])]
   #[trace]
-  #[ignore = "kb/issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md"]
-  fn test_zero_length_ladder_log_marginal_likelihood_matches_the_exact_value(#[case] n_tips: usize) -> Result<(), Report> {
-    let ladder = helpers::Ladder::new(n_tips)?;
-
-    let backward = ladder.backward(MaxGridPoints::default())?;
-    let actual = log_marginal_likelihood(&backward, ladder.graph.root_key()?, None)?.expect("the root has a subtree");
-
+  fn test_zero_length_ladder_log_marginal_likelihood_converges_at_second_order_to_the_exact_value(
+    #[case] n_tips: usize,
+    #[case] branch_points: [usize; 3],
+  ) -> Result<(), Report> {
     let expected = helpers::exact_log_z_from_independent_gaps(n_tips);
-    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
+
+    let errors: Vec<f64> = branch_points
+      .iter()
+      .map(|&points| -> Result<f64, Report> {
+        let ladder = helpers::Ladder::new(n_tips, points)?;
+        let backward = ladder.backward(MaxGridPoints::default())?;
+        let actual = log_marginal_likelihood(&backward, ladder.graph.root_key()?, None)?.expect("the root has a subtree");
+        Ok((actual - expected).abs())
+      })
+      .try_collect()?;
+
+    let reductions = [errors[0] / errors[1], errors[1] / errors[2]];
+    assert!(
+      reductions.iter().all(|&reduction| reduction >= 3.0),
+      "errors {errors:?} fall by {reductions:?} per halving of the branch grid spacing"
+    );
     Ok(())
   }
 
   #[test]
-  #[ignore = "kb/issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md"]
   fn test_zero_length_ladder_of_400_tips_dates_every_node_within_the_default_grid_point_limit() -> Result<(), Report> {
-    let ladder = helpers::Ladder::new(400)?;
+    let ladder = helpers::Ladder::new(400, GRID_POINTS)?;
 
     let backward = ladder.backward(MaxGridPoints::default())?;
     let posterior = ladder.forward(backward, MaxGridPoints::default())?;
@@ -70,12 +80,12 @@ mod tests {
     }
 
     impl Ladder {
-      pub(super) fn new(n_tips: usize) -> Result<Self, Report> {
+      pub(super) fn new(n_tips: usize, branch_points: usize) -> Result<Self, Report> {
         let newick = caterpillar_newick(n_tips);
         let parsed = nwk_read(newick.as_bytes())?;
         let names = parsed.names.clone();
         let graph = parsed.graph;
-        let branch = zero_mutation_branch()?;
+        let branch = zero_mutation_branch(branch_points)?;
         let branches = graph
           .get_nodes()
           .filter(|node| !node.is_root())
@@ -150,9 +160,9 @@ mod tests {
       format!("{root};")
     }
 
-    fn zero_mutation_branch() -> Result<Arc<Distribution<NegLog>>, Report> {
+    fn zero_mutation_branch(points: usize) -> Result<Arc<Distribution<NegLog>>, Report> {
       let lambda = SITES * CLOCK_RATE;
-      let t = Array1::linspace(0.0, BRANCH_GRID_END, GRID_POINTS);
+      let t = Array1::linspace(0.0, BRANCH_GRID_END, points);
       let f = GridFn::from_range_values((0.0, BRANCH_GRID_END), t.mapv(|t| lambda * t))?;
       let right = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let distribution = DistributionFunction::from_grid_fn(f)
@@ -161,7 +171,7 @@ mod tests {
       let distribution = rewindow_to_mass(
         &Distribution::Function(distribution),
         EPS,
-        GRID_POINTS,
+        points,
         MaxGridPoints::default(),
       )?;
       Ok(Arc::new(distribution))

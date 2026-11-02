@@ -8,8 +8,9 @@ use crate::distribution_ops::time_bounds::distribution_support_n_points;
 use crate::policy::NegLog;
 use eyre::Report;
 use itertools::Itertools;
-use ndarray::Array1;
+use ndarray::{Array1, Zip};
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
 use treetime_ops::{convolve_direct_at, convolve_fft};
 use treetime_utils::array::ndarray::{max_or, min_or};
@@ -290,19 +291,23 @@ fn convolution_function_function_fine(
 
   let amplitude = a.amplitude() + b.amplitude();
 
-  let (pa, peak_a) = to_peak_normalized_plain(a.y());
-  let (pb, peak_b) = to_peak_normalized_plain(b.y());
-  if !(peak_a.is_finite() && peak_b.is_finite()) {
-    let a_domain = conv_operand_domain(peak_a.is_finite());
-    let b_domain = conv_operand_domain(peak_b.is_finite());
+  let operands = ConvOperands {
+    a: PeakNormalizedOperand::new(a.y()),
+    b: PeakNormalizedOperand::new(b.y()),
+    hard_left: !a.left_extrap().is_soft() && !b.left_extrap().is_soft(),
+    hard_right: !a.right_extrap().is_soft() && !b.right_extrap().is_soft(),
+  };
+  if !(operands.a.peak.is_finite() && operands.b.peak.is_finite()) {
+    let a_domain = conv_operand_domain(operands.a.peak.is_finite());
+    let b_domain = conv_operand_domain(operands.b.peak.is_finite());
     return guarded_empty_result("convolution", a_domain, b_domain);
   }
 
   let result_range = (a.x_min() + b.x_min(), a.x_max() + b.x_max());
   max_points.point_count((a.len() + b.len() - 1).to_f64_exact(), result_range, dx)?;
-  let conv = convolve_fft(dx, &pa, &pb)?;
+  let conv = convolve_fft(dx, &operands.a.plain, &operands.b.plain)?;
 
-  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &pa, &pb)? else {
+  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &operands)? else {
     let a_domain = conv_operand_domain(true);
     let b_domain = conv_operand_domain(true);
     return guarded_empty_result("convolution", a_domain, b_domain);
@@ -310,7 +315,7 @@ fn convolution_function_function_fine(
 
   let x_min = a.x_min() + b.x_min() + reconstructed.start_offset.to_f64_exact() * dx;
 
-  let offset = peak_a + peak_b;
+  let offset = operands.a.peak + operands.b.peak;
   let y = reconstructed.neg_log.mapv(|v| v + offset);
 
   if y.len() == 1 {
@@ -353,21 +358,11 @@ pub(super) fn coarsen_convolution(
   Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx, max_points)?))
 }
 
-fn to_peak_normalized_plain(neg_log: &Array1<f64>) -> (Array1<f64>, f64) {
-  let peak = min_or(neg_log, f64::INFINITY);
-  if !peak.is_finite() {
-    return (Array1::zeros(neg_log.len()), peak);
-  }
-  let plain = neg_log.mapv(|nl| (peak - nl).exp());
-  (plain, peak)
-}
-
 #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn reconstruct_neg_log_tails(
   conv: &Array1<f64>,
   dx: f64,
-  pa: &Array1<f64>,
-  pb: &Array1<f64>,
+  operands: &ConvOperands,
 ) -> Result<Option<ReconstructedConv>, Report> {
   let peak = max_or(conv, 0.0);
   if peak <= 0.0 {
@@ -381,36 +376,48 @@ fn reconstruct_neg_log_tails(
     return Ok(None);
   };
 
-  let trusted_y = neg_log_with_quadrature_in_valleys(conv, first, last, floor, dx, pa, pb)?;
+  let trusted_y =
+    neg_log_with_quadrature_in_valleys(conv, first, last, floor, dx, &operands.a.plain, &operands.b.plain)?;
   let n = trusted_y.len();
   let margin = CONV_TAIL_MARGIN.min(n / 3);
   if margin < 1 {
     return make_error!("Convolution left too few trusted points to reconstruct tails");
   }
 
-  let left_slope = (trusted_y[margin] - trusted_y[0]) / (margin.to_f64_exact() * dx);
-  let right_slope = (trusted_y[n - 1] - trusted_y[n - 1 - margin]) / (margin.to_f64_exact() * dx);
-
-  let left_start = if first > 0 && left_slope < 0.0 { 0 } else { first };
-  let right_end = if last + 1 < conv.len() && right_slope > 0.0 {
+  let trusted_slopes = EndSlopes::of(&trusted_y, margin, dx);
+  let left_start = if first > 0 && trusted_slopes.left < 0.0 {
+    0
+  } else {
+    first
+  };
+  let right_end = if last + 1 < conv.len() && trusted_slopes.right > 0.0 {
     conv.len() - 1
   } else {
     last
   };
 
-  let mut neg_log = Array1::<f64>::zeros(right_end - left_start + 1);
-  for i in first..=last {
-    neg_log[i - left_start] = trusted_y[i - first];
-  }
-  for i in left_start..first {
-    neg_log[i - left_start] = trusted_y[0] + left_slope * ((i.to_f64_exact() - first.to_f64_exact()) * dx);
-  }
-  for i in (last + 1)..=right_end {
-    neg_log[i - left_start] = trusted_y[n - 1] + right_slope * ((i.to_f64_exact() - last.to_f64_exact()) * dx);
-  }
+  let resolved = neg_log_at_ends_by_tilting(trusted_y, first, left_start, right_end, margin, dx, operands)?;
+  let resolved_end = resolved.start + resolved.neg_log.len() - 1;
+  let slopes = EndSlopes::of(&resolved.neg_log, margin, dx);
+  let left_edge = resolved.neg_log[0];
+  let right_edge = resolved.neg_log[resolved.neg_log.len() - 1];
+  let start = if operands.hard_left { resolved.start } else { left_start };
+  let end = if operands.hard_right { resolved_end } else { right_end };
+
+  let neg_log = (start..=end)
+    .map(|i| {
+      if i < resolved.start {
+        left_edge + slopes.left * ((i.to_f64_exact() - resolved.start.to_f64_exact()) * dx)
+      } else if i > resolved_end {
+        right_edge + slopes.right * ((i.to_f64_exact() - resolved_end.to_f64_exact()) * dx)
+      } else {
+        resolved.neg_log[i - resolved.start]
+      }
+    })
+    .collect();
 
   Ok(Some(ReconstructedConv {
-    start_offset: left_start,
+    start_offset: start,
     neg_log,
   }))
 }
@@ -434,6 +441,146 @@ fn neg_log_with_quadrature_in_valleys(
       Ok(-c.ln())
     })
     .collect()
+}
+
+fn neg_log_at_ends_by_tilting(
+  trusted_y: Array1<f64>,
+  first: usize,
+  left_start: usize,
+  right_end: usize,
+  margin: usize,
+  dx: f64,
+  operands: &ConvOperands,
+) -> Result<ResolvedNegLog, Report> {
+  let mut values: VecDeque<f64> = trusted_y.into_iter().collect();
+  let mut start = first;
+
+  while start + values.len() <= right_end {
+    let slope = (values[values.len() - 1] - values[values.len() - 1 - margin]) / (margin.to_f64_exact() * dx);
+    if slope <= 0.0 {
+      break;
+    }
+    let tilted = TiltedConvolution::new(operands, dx, slope)?;
+    let next = start + values.len();
+    let added = (next..=right_end).map_while(|i| tilted.neg_log_at(i)).collect_vec();
+    if added.is_empty() {
+      break;
+    }
+    values.extend(added);
+  }
+
+  while start > left_start {
+    let slope = (values[margin] - values[0]) / (margin.to_f64_exact() * dx);
+    if slope >= 0.0 {
+      break;
+    }
+    let tilted = TiltedConvolution::new(operands, dx, slope)?;
+    let added = (left_start..start)
+      .rev()
+      .map_while(|i| tilted.neg_log_at(i))
+      .collect_vec();
+    if added.is_empty() {
+      break;
+    }
+    start -= added.len();
+    added.into_iter().for_each(|value| values.push_front(value));
+  }
+
+  Ok(ResolvedNegLog {
+    start,
+    neg_log: values.into_iter().collect(),
+  })
+}
+
+struct ConvOperands {
+  a: PeakNormalizedOperand,
+  b: PeakNormalizedOperand,
+  hard_left: bool,
+  hard_right: bool,
+}
+
+struct PeakNormalizedOperand {
+  peak: f64,
+  relative_neg_log: Array1<f64>,
+  plain: Array1<f64>,
+}
+
+impl PeakNormalizedOperand {
+  fn new(neg_log: &Array1<f64>) -> Self {
+    let peak = min_or(neg_log, f64::INFINITY);
+    if !peak.is_finite() {
+      return Self {
+        peak,
+        relative_neg_log: Array1::from_elem(neg_log.len(), f64::INFINITY),
+        plain: Array1::zeros(neg_log.len()),
+      };
+    }
+    let relative_neg_log = neg_log.mapv(|nl| nl - peak);
+    let plain = relative_neg_log.mapv(|r| (-r).exp());
+    Self {
+      peak,
+      relative_neg_log,
+      plain,
+    }
+  }
+
+  fn tilted(&self, theta: f64, dx: f64) -> Array1<f64> {
+    Zip::indexed(&self.relative_neg_log).map_collect(|i, &r| r - theta * (i.to_f64_exact() * dx))
+  }
+}
+
+struct EndSlopes {
+  left: f64,
+  right: f64,
+}
+
+impl EndSlopes {
+  fn of(neg_log: &Array1<f64>, margin: usize, dx: f64) -> Self {
+    let n = neg_log.len();
+    let width = margin.to_f64_exact() * dx;
+    Self {
+      left: (neg_log[margin] - neg_log[0]) / width,
+      right: (neg_log[n - 1] - neg_log[n - 1 - margin]) / width,
+    }
+  }
+}
+
+struct TiltedConvolution {
+  conv: Array1<f64>,
+  floor: f64,
+  offset: f64,
+  theta: f64,
+  dx: f64,
+}
+
+impl TiltedConvolution {
+  fn new(operands: &ConvOperands, dx: f64, theta: f64) -> Result<Self, Report> {
+    let za = operands.a.tilted(theta, dx);
+    let zb = operands.b.tilted(theta, dx);
+    let min_a = min_or(&za, f64::INFINITY);
+    let min_b = min_or(&zb, f64::INFINITY);
+    let pa = za.mapv(|z| (min_a - z).exp());
+    let pb = zb.mapv(|z| (min_b - z).exp());
+    let conv = convolve_fft(dx, &pa, &pb)?;
+    let floor = max_or(&conv, 0.0) * CONV_TRUST_FRACTION;
+    Ok(Self {
+      conv,
+      floor,
+      offset: min_a + min_b,
+      theta,
+      dx,
+    })
+  }
+
+  fn neg_log_at(&self, i: usize) -> Option<f64> {
+    let c = self.conv[i];
+    (c > self.floor).then(|| -c.ln() + self.offset + self.theta * (i.to_f64_exact() * self.dx))
+  }
+}
+
+struct ResolvedNegLog {
+  start: usize,
+  neg_log: Array1<f64>,
 }
 
 struct ReconstructedConv {
