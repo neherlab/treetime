@@ -496,7 +496,7 @@ mod tests {
         let (u_lo, u_hi) = ((t - s_hi).max(-6.0), (t - s_lo).min(6.0));
         -d * d / 4.0 + ln_gauss_integral(u_lo - d / 2.0, u_hi - d / 2.0)
       });
-      let (a, b) = (log_masses[0], log_masses[1]);
+      let [a, b] = log_masses;
       let (hi, lo) = (a.max(b), a.min(b));
       if hi == f64::NEG_INFINITY {
         return f64::INFINITY;
