@@ -155,7 +155,7 @@ Collapses internal edges whose optimal length is zero or near-zero, reparenting 
 
 v0: `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
 
-v1 collapses internal edges driven to exactly zero during optimization. It does not implement v0's post-convergence near-zero threshold plus probability criterion. The prune command separately provides `--collapse-short` and `--collapse-empty`.
+v1 collapses internal edges driven to exactly zero during optimization (`optimize` only). After the `optimize` loop and in the `timetree` pre-loop, `fn collapse_short_internal_edges()` in [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs) applies v0's criterion: an internal edge shorter than $0.1/L$ whose marginal reconstruction places no substitution and no gap change on it. Because $P(0)$ is the identity matrix, v0's $P(0) > 0.1$ holds exactly when the parent and child sequences agree at every site, and v0's nucleotide alphabet has the gap as a state. The prune command separately provides `--collapse-short` and `--collapse-empty`.
 
 ---
 

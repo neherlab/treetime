@@ -12,6 +12,7 @@
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
 - [x] ML branch-length optimization pre-step (v0: `optimize_tree(max_iter=1)` before and after rerooting)
+- [x] Short-branch collapse in the pre-loop (v0 `prune_short_branches()`): after each ML branch-length step, and once before the first reroot on a marginal reconstruction of the input tree with input branch lengths and an alignment; the rule and code are those of the `optimize` collapse after its loop, `fn collapse_short_internal_edges()`
 - [ ] Tree inference from alignment: v0 calls IQ-TREE, FastTree, or RAxML as subprocesses; v1 requires `--tree` ([kb/issues/M-timetree-tree-inference-unimplemented.md](../issues/M-timetree-tree-inference-unimplemented.md))
 
 ## Time Distribution Propagation
