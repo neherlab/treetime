@@ -23,8 +23,30 @@ The full Kingman density couples all node times through $k(t)$. The linear-time 
 
 `test_marginal_exact.rs` ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs)) integrates exact posteriors with JC69 branches of known substitution counts:
 
-- Without a prior, on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, the time passes match the exact posterior to within $2.9 \cdot 10^{-3}$ in CDF at 300 grid points (node R, both tip branches with zero counts), a difference that falls at second order with the grid ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70)). Without a prior no mean field enters, so this difference comes from the discretization ([M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md))
-- With the mean-field prior, on `((A,B)X,(C,D)Y)R` with overlapping sibling clades, the node marginals match the exact Kingman posterior to within $1.62 \cdot 10^{-2}$ in CDF at $T_c = 1$ and $T_c = 10$ (node X, overlapping clades, $T_c = 1$; [packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112)), with per-node limits between $10^{-3}$ and $10^{-1}$. Lineage counts frozen at point times were off by 0.08-0.38 on the same tree
+- Without a prior, on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, the time passes match the exact posterior to within $2.9 \cdot 10^{-3}$ in CDF at 300 grid points (node R, both tip branches with zero counts), a difference that falls at second order with the grid ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L71](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L71)). Without a prior no mean field enters, so this difference comes from the discretization ([M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md))
+- With the mean-field prior, on `((A,B)X,(C,D)Y)R` with tips at 2012, 2010.5, 2011.5 and 2010, the model error of the mean field is the CDF difference between two exact posteriors: the exact posterior of the mean-field factor graph (branch likelihoods and the frozen prior factors of `CoalescentPrior`, the oracle of `test_marginal_exact_mean_field_passes_converge_to_the_exact_mean_field_posterior`, [packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L73-L116](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L73-L116)) and the exact Kingman posterior, which couples the node times through the lineage count. The model error is up to $1.59 \cdot 10^{-2}$ (node X, overlapping clades, $T_c = 1$). Lineage counts frozen at point times were off by 0.08-0.38 on the same tree
+
+Largest CDF difference per case and node, measured on `rust` at f452d6572 (2026-11-02). Counts are the substitutions on the branches above A, B, C, D, X and Y. "Passes to Kingman" is the comparison that the test suite made before the oracle of the mean field replaced it: the time passes at the default grid against the Kingman posterior summed on a 0.02-year grid from 2003. "Model error" compares the exact mean-field posterior with the Kingman posterior summed on a 0.01-year grid from 1995; the Richardson estimate of the error of that Kingman sum is at most $2.4 \cdot 10^{-4}$ (node Y, short internal branches, $T_c = 1$) and below $1.5 \cdot 10^{-4}$ elsewhere. "Numerical error" compares the passes at the default grid with the exact mean-field posterior:
+
+| Case (counts A, B, C, D, X, Y), $T_c$ | Node | Passes to Kingman | Model error | Numerical error |
+| --- | --- | --- | --- | --- |
+| short internal branches (3, 0, 2, 1, 1, 2), 1 | X | $1.67 \cdot 10^{-3}$ | $1.50 \cdot 10^{-3}$ | $3.98 \cdot 10^{-4}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 1 | Y | $1.60 \cdot 10^{-2}$ | $5.77 \cdot 10^{-3}$ | $1.68 \cdot 10^{-2}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 1 | R | $4.44 \cdot 10^{-3}$ | $3.08 \cdot 10^{-3}$ | $3.32 \cdot 10^{-3}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 10 | X | $9.99 \cdot 10^{-4}$ | $8.69 \cdot 10^{-4}$ | $3.17 \cdot 10^{-4}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 10 | Y | $6.46 \cdot 10^{-3}$ | $1.23 \cdot 10^{-3}$ | $6.65 \cdot 10^{-3}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 10 | R | $2.17 \cdot 10^{-3}$ | $8.61 \cdot 10^{-4}$ | $1.49 \cdot 10^{-3}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 1 | X | $1.62 \cdot 10^{-2}$ | $1.59 \cdot 10^{-2}$ | $3.82 \cdot 10^{-4}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 1 | Y | $1.25 \cdot 10^{-2}$ | $1.21 \cdot 10^{-2}$ | $6.35 \cdot 10^{-4}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 1 | R | $8.51 \cdot 10^{-3}$ | $8.21 \cdot 10^{-3}$ | $3.91 \cdot 10^{-4}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 10 | X | $1.85 \cdot 10^{-3}$ | $1.70 \cdot 10^{-3}$ | $1.08 \cdot 10^{-4}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 10 | Y | $1.63 \cdot 10^{-3}$ | $1.46 \cdot 10^{-3}$ | $1.47 \cdot 10^{-4}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 10 | R | $1.53 \cdot 10^{-3}$ | $1.69 \cdot 10^{-3}$ | $1.80 \cdot 10^{-4}$ |
+| long internal branches (2, 1, 1, 2, 3, 3), 1 | X | $5.97 \cdot 10^{-3}$ | $1.08 \cdot 10^{-3}$ | $6.22 \cdot 10^{-3}$ |
+| long internal branches (2, 1, 1, 2, 3, 3), 1 | Y | $2.68 \cdot 10^{-3}$ | $2.49 \cdot 10^{-3}$ | $6.63 \cdot 10^{-4}$ |
+| long internal branches (2, 1, 1, 2, 3, 3), 1 | R | $1.32 \cdot 10^{-3}$ | $1.62 \cdot 10^{-3}$ | $8.08 \cdot 10^{-4}$ |
+
+The model error is largest with the strong prior on overlapping clades, where the sibling subtrees share the time span in which the lineage count changes. Where the numerical error exceeds the model error (node Y of the short internal branches, node X of the long internal branches), the old comparison measured mostly the discretization of the passes; [M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md) records how it falls with the grid
 
 ### Calibration on simulated data
 

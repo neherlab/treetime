@@ -1,6 +1,6 @@
 # Time-pass posteriors on long branches keep a CDF error of 2.5e-4 that more grid points do not remove
 
-Without a coalescent prior, the marginal time inference is exact message passing on a tree, so its node posteriors should match the exact posterior up to the discretization of the passes. `test_marginal_exact_time_passes_match_the_integrated_posterior_without_a_prior` [packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70) compares them on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, JC69 branches of 1000 sites with known substitution counts, and an oracle that integrates the exact joint density on a 0.005-year grid. Each case asserts its own limit per node.
+Without a coalescent prior, the marginal time inference is exact message passing on a tree, so its node posteriors should match the exact posterior up to the discretization of the passes. `test_marginal_exact_time_passes_match_the_integrated_posterior_without_a_prior` [packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L71](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L71) compares them on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, JC69 branches of 1000 sites with known substitution counts, and an oracle that integrates the exact joint density on a 0.005-year grid. Each case asserts its own limit per node.
 
 The time passes run with the production discretization: branch distributions of `fn compute_branch_length_distribution()`, backward and forward messages of 300 points (`GRID_POINTS`) with mass windows at `EPS` $= 5 \cdot 10^{-4}$, and the convolution of two functions by the trapezoid rule over each overlap.
 
@@ -35,7 +35,34 @@ Refining the message grid (`GRID_POINTS` 300, 600, 900; 2026-10-24) separates tw
 > [!IMPORTANT]
 > **Investigation required.** The source of the floor of about $2.5 \cdot 10^{-4}$ on the long-branch case, which neither the message grid nor the mass window sets. Candidates: the range or the uniform spacing of the branch grid ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md)), and the cells at the hard edges of the convolution (anchoring resampled operands at their denser end, 0d1cf2121, leaves this case unchanged: node R $2.865 \cdot 10^{-4}$ before and after; [kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md#operands-resampled-to-a-common-spacing-keep-their-denser-end-on-a-grid-point)). Refine the branch grid alone and record how the difference changes.
 
-The mean-field test of the same file ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112)) measures up to $1.62 \cdot 10^{-2}$ against the exact Kingman posterior (node X, overlapping clades, strong prior). Halving the step of its 0.02-year oracle changes the oracle CDFs by $1.1 \cdot 10^{-5}$ to $7.1 \cdot 10^{-4}$, and the differences change by less than $5 \cdot 10^{-4}$ against the finer oracle, so the oracle does not explain them. They are the error of the mean-field approximation together with the discretization ([M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md](M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md)).
+With the mean-field coalescent prior, `test_marginal_exact_mean_field_passes_converge_to_the_exact_mean_field_posterior` ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L73-L116](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L73-L116)) compares the passes on `((A,B)X,(C,D)Y)R` (tips at 2012, 2010.5, 2011.5 and 2010) with the exact posterior of the same factor graph: the JC69 branch likelihoods and the frozen prior factors of `CoalescentPrior`, integrated by the trapezoid rule over the joint times of X, Y and R on a 0.00125-year grid from 1995. The model error of the mean field against the Kingman posterior is in [M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md](M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md).
+
+- **Oracle error**: the CDFs of the oracle converge at second order (the difference to a 0.000625-year oracle falls 4.2 to 5.0 times per halving of the step from 0.005 years). The Richardson estimate of the error of the 0.00125-year oracle is at most $4.5 \cdot 10^{-6}$ (node Y, short internal branches, $T_c = 1$). A grid start in 2003 cut off $2.5 \cdot 10^{-4}$ of the root mass at $T_c = 10$ on the overlapping clades; from 1995 the cut is below $10^{-20}$
+- **Assertions**: the largest CDF difference per node must fall at least 3 times per halving of the spacing of the branch grids (300, 599 and 1197 points), and the oracle error must stay below one tenth of the difference at 1197 points. A prior factor scaled by 1.001 in the passes fails every case
+- **Convergence**: on `rust` at f452d6572 every node converges to the oracle, with factors 3.10 to 8.56 per halving. The smallest factors are those of node X of the overlapping clades at $T_c = 10$ (3.10 and 3.46); between 1197 and 2393 points the differences of that case level off near $5 \cdot 10^{-6}$ to $1 \cdot 10^{-5}$
+
+Largest CDF difference to the oracle per case and node at 300, 599 and 1197 points of the branch grid (counts on the branches above A, B, C, D, X and Y):
+
+| Case, $T_c$ | Node | 300 | 599 | 1197 |
+| --- | --- | --- | --- | --- |
+| short internal branches (3, 0, 2, 1, 1, 2), 1 | X | $3.99 \cdot 10^{-4}$ | $9.01 \cdot 10^{-5}$ | $1.50 \cdot 10^{-5}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 1 | Y | $1.68 \cdot 10^{-2}$ | $2.70 \cdot 10^{-3}$ | $5.12 \cdot 10^{-4}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 1 | R | $3.32 \cdot 10^{-3}$ | $7.58 \cdot 10^{-4}$ | $1.24 \cdot 10^{-4}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 10 | X | $3.17 \cdot 10^{-4}$ | $7.38 \cdot 10^{-5}$ | $1.56 \cdot 10^{-5}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 10 | Y | $6.65 \cdot 10^{-3}$ | $1.01 \cdot 10^{-3}$ | $1.35 \cdot 10^{-4}$ |
+| short internal branches (3, 0, 2, 1, 1, 2), 10 | R | $1.49 \cdot 10^{-3}$ | $3.31 \cdot 10^{-4}$ | $5.14 \cdot 10^{-5}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 1 | X | $3.82 \cdot 10^{-4}$ | $8.11 \cdot 10^{-5}$ | $1.95 \cdot 10^{-5}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 1 | Y | $6.35 \cdot 10^{-4}$ | $1.05 \cdot 10^{-4}$ | $2.63 \cdot 10^{-5}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 1 | R | $3.91 \cdot 10^{-4}$ | $1.03 \cdot 10^{-4}$ | $2.39 \cdot 10^{-5}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 10 | X | $1.08 \cdot 10^{-4}$ | $3.48 \cdot 10^{-5}$ | $1.01 \cdot 10^{-5}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 10 | Y | $1.47 \cdot 10^{-4}$ | $3.13 \cdot 10^{-5}$ | $6.18 \cdot 10^{-6}$ |
+| overlapping clades (6, 3, 4, 3, 3, 4), 10 | R | $1.80 \cdot 10^{-4}$ | $5.09 \cdot 10^{-5}$ | $9.33 \cdot 10^{-6}$ |
+| long internal branches (2, 1, 1, 2, 3, 3), 1 | X | $6.22 \cdot 10^{-3}$ | $1.37 \cdot 10^{-3}$ | $1.61 \cdot 10^{-4}$ |
+| long internal branches (2, 1, 1, 2, 3, 3), 1 | Y | $6.63 \cdot 10^{-4}$ | $1.00 \cdot 10^{-4}$ | $1.89 \cdot 10^{-5}$ |
+| long internal branches (2, 1, 1, 2, 3, 3), 1 | R | $8.08 \cdot 10^{-4}$ | $1.84 \cdot 10^{-4}$ | $3.17 \cdot 10^{-5}$ |
+
+> [!IMPORTANT]
+> **Investigation required.** At the default grid the error reaches $1.68 \cdot 10^{-2}$ (node Y, short internal branches, $T_c = 1$) and $6.2 \cdot 10^{-3}$ (node X, long internal branches, $T_c = 1$), above every case without a prior. Both errors fall at second order or faster, so they are discretization error, but their size at 300 points is not explained. Find which spacing sets them (branch grid, message grid, or the sampling of the prior factor on the message grid) and record whether the default grid needs more points where a hard tip date bounds a short branch.
 
 ## Validation
 
