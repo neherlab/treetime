@@ -38,4 +38,5 @@ Validation must include an inverted-mode case and dated-leaf boundaries once the
 
 ## Related issues
 
+- [M-timetree-times-one-ulp-apart-count-as-backward-branches.md](M-timetree-times-one-ulp-apart-count-as-backward-branches.md) - the one-ulp inversion of the evidence above stops polytomy resolution and inflates the backward-branch warning
 - [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) - per-pass tail semantics can change posterior peaks but do not jointly constrain marginal modes

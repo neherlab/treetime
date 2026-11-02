@@ -22,7 +22,8 @@ The v1 pre-loop (`fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.r
 
 ## Impact
 
-Arbitrary bifurcations from the input tree stay in the topology. Temporal polytomy resolution (the default unless `--keep-polytomies`) acts only on existing polytomies, so it cannot reorder these splits by the sampling dates. On trees with many near-identical sequences, v1 timetrees can therefore keep clades that conflict with the temporal order and differ in topology from v0 output.
+- **Topology**: arbitrary bifurcations from the input tree stay in the topology. Temporal polytomy resolution (the default unless `--keep-polytomies`) acts only on existing polytomies, so it cannot reorder these splits by the sampling dates. On trees with many near-identical sequences, v1 timetrees can therefore keep clades that conflict with the temporal order and differ in topology from v0 output
+- **Time inference**: the kept bifurcations form chains of zero-length internal branches, along which the backward time messages lose accuracy ([H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md)). The IQ-TREE trees of four Nextstrain production builds hold such chains of 288 to 511 edges: rubella E1, oropouche S, and the H5N1 cattle-outbreak builds of PB2 and HA. v1 stops on each of them at the grid point limit, at the fixed clock rates of their workflows, while v0 completes them. With the short branches collapsed before `timetree` (`treetime prune --collapse-short 0.1/L`, which tests the branch length only, as a stand-in for the v0 rule), each build finishes at the same rate
 
 ## Expected behavior
 
@@ -43,3 +44,4 @@ Before the timetree loop, after the pre-loop ancestral reconstruction or branch-
 ## Validation
 
 - flu/h3n2/20 and a dataset with many identical sequences: count pruned branches and compare topology with v0 `treetime` output with default options
+- rubella E1, oropouche S, and the two cattle-outbreak builds finish at the fixed clock rates of their workflows

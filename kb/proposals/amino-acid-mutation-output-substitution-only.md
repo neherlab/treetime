@@ -2,7 +2,7 @@
 
 ## Motivation
 
-TreeTime v1 emits amino-acid mutations as substitutions plus range-based insertion and deletion events. The nucleotide track was recently made substitution-only so that the Auspice `mutations.nuc` list matches the augur node-data contract, but the amino-acid track still carries indel tokens. This proposal records the question of whether the amino-acid track should likewise be restricted to substitutions, and the tension that decision has with reference parity.
+TreeTime v1 emits amino-acid mutations as substitutions plus range-based insertion and deletion events. The nucleotide track is substitution-only, although augur writes gap changes on that track too (`A123-`), and the amino-acid track carries indel tokens. This proposal records the question of whether the amino-acid track should likewise be restricted to substitutions, and the tension that decision has with reference parity.
 
 The two tracks are produced by different code:
 
@@ -14,7 +14,7 @@ The two tracks are produced by different code:
 
 augur does not model insertions or deletions as range events on either track. It compares aligned sequences position by position and writes each difference as a single `<from><pos><to>` string, allowing `-` on either side as an ordinary aligned character.
 
-Nucleotide muts come from the TreeTime substitution list, one string per differing site [[src](https://github.com/nextstrain/augur/blob/d8e38736037ba9474a809f9a5a63bc2b279d2407/augur/ancestral.py#L218)] inside `def collect_mutations()` [[src](https://github.com/nextstrain/augur/blob/d8e38736037ba9474a809f9a5a63bc2b279d2407/augur/ancestral.py#L185)].
+Nucleotide muts come from the TreeTime v0 mutation list, in which the gap is a fifth state, one string per differing site [[src](https://github.com/nextstrain/augur/blob/d8e38736037ba9474a809f9a5a63bc2b279d2407/augur/ancestral.py#L218)] inside `def collect_mutations()` [[src](https://github.com/nextstrain/augur/blob/d8e38736037ba9474a809f9a5a63bc2b279d2407/augur/ancestral.py#L185)].
 
 Amino-acid muts come from a direct column comparison of the translated reference against each node's translation, with no gap filtering [[src](https://github.com/nextstrain/augur/blob/d8e38736037ba9474a809f9a5a63bc2b279d2407/augur/translate.py#L305)]:
 
@@ -72,4 +72,4 @@ Decision required from the team. The narrow request that motivated this proposal
 
 ## Related
 
-- [kb/issues/N-amino-acid-mutation-indel-representation-undecided.md](../issues/N-amino-acid-mutation-indel-representation-undecided.md)
+- [kb/issues/M-ancestral-augur-node-data-indel-representation-undecided.md](../issues/M-ancestral-augur-node-data-indel-representation-undecided.md)

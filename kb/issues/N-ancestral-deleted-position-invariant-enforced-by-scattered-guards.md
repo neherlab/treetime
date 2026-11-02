@@ -50,4 +50,4 @@ Introduced by neherlab/treetime PR #890 "fix: the fitch/parsimony sequence recon
 
 ## Related issues
 
-- [N-amino-acid-mutation-indel-representation-undecided.md](N-amino-acid-mutation-indel-representation-undecided.md)
+- [M-ancestral-augur-node-data-indel-representation-undecided.md](M-ancestral-augur-node-data-indel-representation-undecided.md)
