@@ -54,6 +54,18 @@ mod tests {
     assert_eq!(expected, error_message(check_run_paths(&inputs, &outputs)));
   }
 
+  #[test]
+  #[ignore = "kb/issues/M-cli-run-path-check-rejects-augur-translation-templates.md"]
+  fn test_run_paths_accept_augur_translation_templates_in_one_folder() {
+    let inputs = [run_path("translations", "aa/%GENE.fasta", PathRole::InputTemplate)];
+    let outputs = [run_path(
+      "output_translations",
+      "aa/%GENE_withInternalNodes.fasta",
+      PathRole::Output,
+    )];
+    assert_eq!(None, error_message(check_run_paths(&inputs, &outputs)));
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::once(            &[("tree", "-")],                                         None)]
