@@ -79,14 +79,10 @@ pub(crate) fn trim_with_profile(
   let window = cuts.settled_window(lower, upper)?;
   let left = cuts.cut_side(Side::Left, window.lower)?;
   let right = cuts.cut_side(Side::Right, window.upper)?;
-  let trimmed = DistributionFunction::from_start_dx_values(
-    t[window.first],
-    f.dx(),
-    y.slice(s![window.first..=window.end]).to_owned(),
-  )?
-  .with_amplitude(f.amplitude())
-  .with_left_extrap(left)?
-  .with_right_extrap(right)?;
+  let trimmed = DistributionFunction::from_grid_fn(f.grid_fn().slice(window.first..=window.end)?)
+    .with_amplitude(f.amplitude())
+    .with_left_extrap(left)?
+    .with_right_extrap(right)?;
   Ok(Distribution::Function(trimmed))
 }
 
@@ -436,11 +432,7 @@ fn window_edge_tail_law(
   if finite < 2 {
     return SoftTailLaw::fit(resampled.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS);
   }
-  let window_edge = GridFn::from_start_dx_values(
-    input.x_min() + first.to_f64_exact() * input.dx(),
-    input.dx(),
-    input.y().slice(s![first..=end]).to_owned(),
-  )?;
+  let window_edge = input.grid_fn().slice(first..=end)?;
   SoftTailLaw::fit(&window_edge, side, DEFAULT_TAIL_FIT_POINTS)
 }
 

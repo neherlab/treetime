@@ -39,7 +39,7 @@ where
   }
 
   let result: Distribution<NegLog> = if let Distribution::Function(f) = distribution {
-    let combined_fn = DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), combined)?
+    let combined_fn = DistributionFunction::from_grid_fn(f.grid_fn().with_values(combined)?)
       .with_left_extrap(weighted_tail_law(f, Side::Left, &outward_slope)?)?
       .with_right_extrap(weighted_tail_law(f, Side::Right, &outward_slope)?)?;
     Distribution::Function(combined_fn.with_amplitude(amplitude))

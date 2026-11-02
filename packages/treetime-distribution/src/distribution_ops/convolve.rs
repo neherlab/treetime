@@ -11,7 +11,7 @@ use itertools::Itertools;
 use ndarray::{Array1, Zip};
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
+use treetime_grid::{BoundaryBehavior, Grid, GridFn, MaxGridPoints, Side};
 use treetime_ops::{convolve_direct_at, convolve_fft};
 use treetime_utils::array::ndarray::{max_or, min_or};
 use treetime_utils::cast::ToF64Exact;
@@ -55,7 +55,7 @@ pub(crate) fn distribution_convolution(
       Ok(convolution_point_range(a, b))
     },
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      Ok(Distribution::Function(convolution_point_function(a, b)?))
+      Ok(Distribution::Function(convolution_point_function(a, b)))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
       convolution_range_function(a, b, max_points)
@@ -106,14 +106,10 @@ fn convolution_range_function(
     f.dx()
   };
   let n_points = distribution_support_n_points((lo, hi), dx, max_points)?.max(2 + hard_ends);
-  let dx = (hi - lo) / (n_points - 1).to_f64_exact();
-  let y = (0..n_points)
-    .map(|i| {
-      let t = if i == n_points - 1 {
-        hi
-      } else {
-        lo + dx * i.to_f64_exact()
-      };
+  let grid = Grid::from_range_n_points(lo, hi, n_points)?;
+  let y = grid
+    .iter()
+    .map(|t| {
       let s_lo = left.clamp_lower(t - r.end());
       let s_hi = right.clamp_upper(t - r.start());
       if s_lo < s_hi {
@@ -125,14 +121,15 @@ fn convolution_range_function(
     .collect::<Result<Array1<f64>, Report>>()?;
   if !y.iter().any(|y| y.is_finite()) {
     return make_internal_error!(
-      "Convolution of the range [{}, {}] with a function on [{}, {}] left no point with density at spacing {dx}",
+      "Convolution of the range [{}, {}] with a function on [{}, {}] left no point with density at spacing {}",
       r.start(),
       r.end(),
       f.x_min(),
-      f.x_max()
+      f.x_max(),
+      grid.dx()
     );
   }
-  let g = DistributionFunction::from_range_values((lo, hi), y)?
+  let g = DistributionFunction::from_grid_fn(GridFn::from_grid_values(grid, y)?)
     .with_left_extrap(left.result_tail())?
     .with_right_extrap(right.result_tail())?;
   Ok(Distribution::Function(g.with_amplitude(r.amplitude() + f.amplitude())))
@@ -156,25 +153,17 @@ fn narrowest_support_component(
       let start = match (first, left.soft) {
         (0, true) => f64::NEG_INFINITY,
         (0, false) => left.t,
-        _ => grid_x(f, first - 1),
+        _ => f.x_at(first - 1),
       };
       let end = match (end == last, right.soft) {
         (true, true) => f64::INFINITY,
         (true, false) => right.t,
-        (false, _) => grid_x(f, end + 1),
+        (false, _) => f.x_at(end + 1),
       };
       let width = end - start;
       (width > 0.0).then_some(width)
     })
     .reduce(f64::min)
-}
-
-fn grid_x(f: &DistributionFunction<f64, NegLog>, i: usize) -> f64 {
-  if i == f.len() - 1 {
-    f.x_max()
-  } else {
-    f.x_min() + f.dx() * i.to_f64_exact()
-  }
 }
 
 #[derive(Clone, Copy)]
@@ -193,9 +182,9 @@ impl SupportEnd {
       Side::Right => (f.right_extrap(), last, y.iter().rposition(|y| y.is_finite())),
     };
     match (outermost_finite, side) {
-      (Some(i), Side::Left) if i != edge_index => Self::new(BoundaryBehavior::Hard, grid_x(f, i - 1)),
-      (Some(i), Side::Right) if i != edge_index => Self::new(BoundaryBehavior::Hard, grid_x(f, i + 1)),
-      _ => Self::new(behavior, grid_x(f, edge_index)),
+      (Some(i), Side::Left) if i != edge_index => Self::new(BoundaryBehavior::Hard, f.x_at(i - 1)),
+      (Some(i), Side::Right) if i != edge_index => Self::new(BoundaryBehavior::Hard, f.x_at(i + 1)),
+      _ => Self::new(behavior, f.x_at(edge_index)),
     }
   }
 
@@ -233,22 +222,8 @@ impl SupportEnd {
 fn convolution_point_function(
   p: &DistributionPoint<f64, NegLog>,
   f: &DistributionFunction<f64, NegLog>,
-) -> Result<DistributionFunction<f64, NegLog>, Report> {
-  let shifted = DistributionFunction::from_start_dx_values(f.x_min() + p.t(), f.dx(), f.y().clone())?
-    .with_left_extrap(shift_tail_law(f.left_extrap(), p.t()))?
-    .with_right_extrap(shift_tail_law(f.right_extrap(), p.t()))?;
-  Ok(shifted.with_amplitude(f.amplitude() + p.amplitude()))
-}
-
-fn shift_tail_law(behavior: BoundaryBehavior, shift: f64) -> BoundaryBehavior {
-  match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(HardApproachLaw {
-      t_hard: law.t_hard + shift,
-      ..law
-    }),
-    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.shift_arg(shift)),
-    other => other,
-  }
+) -> DistributionFunction<f64, NegLog> {
+  f.shift_time(p.t()).with_amplitude(f.amplitude() + p.amplitude())
 }
 
 fn convolution_function_function(
@@ -313,16 +288,19 @@ fn convolution_function_function_fine(
     return guarded_empty_result("convolution", a_domain, b_domain);
   };
 
-  let x_min = a.x_min() + b.x_min() + reconstructed.start_offset.to_f64_exact() * dx;
+  let full_grid = Grid::from_ends_dx(result_range.0, result_range.1, dx, conv.len())?;
+  let first = reconstructed.start_offset;
+  let last = first + reconstructed.neg_log.len() - 1;
 
   let offset = operands.a.peak + operands.b.peak;
   let y = reconstructed.neg_log.mapv(|v| v + offset);
 
   if y.len() == 1 {
-    return Ok(Distribution::point(x_min, amplitude + y[0]));
+    return Ok(Distribution::point(full_grid.x_at(first), amplitude + y[0]));
   }
 
-  let conv_distr = DistributionFunction::from_start_dx_values(x_min, dx, y)?.with_amplitude(amplitude);
+  let grid_fn = GridFn::from_grid_values(full_grid.slice(first..=last)?, y)?;
+  let conv_distr = DistributionFunction::from_grid_fn(grid_fn).with_amplitude(amplitude);
   Ok(Distribution::Function(conv_distr))
 }
 

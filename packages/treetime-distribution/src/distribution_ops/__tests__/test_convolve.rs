@@ -539,6 +539,27 @@ mod tests {
   }
 
   #[test]
+  fn test_convolution_point_negated_branch_ends_at_the_point() -> Result<(), Report> {
+    let date = 2026.0 + 3.0 / 365.0;
+    let branch = function_on((0.0, 135.431_597_963_692_52), 5, |t| t)?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+    let negated = DistributionNegLog::Function(branch).negate()?;
+
+    let actual = distribution_convolution(
+      &DistributionNegLog::point(date, 0.0),
+      &negated,
+      MaxGridPoints::default(),
+    )?;
+
+    let DistributionNegLog::Function(g) = &actual else {
+      panic!("expected a Function result, got {actual:?}");
+    };
+    pretty_assert_ulps_eq!(date, g.x_max(), max_ulps = 0);
+    Ok(())
+  }
+
+  #[test]
   fn test_convolution_function_function_basic() -> Result<(), Report> {
     let a = DistributionNegLog::function(array![0.0, 1.0, 2.0], neg_log(&array![1.0, 2.0, 1.0]))?;
     let b = DistributionNegLog::function(array![0.0, 1.0], neg_log(&array![1.0, 2.0]))?;

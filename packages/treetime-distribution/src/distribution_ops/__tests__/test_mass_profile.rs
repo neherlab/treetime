@@ -14,6 +14,21 @@ mod tests {
 
   const HARD: BoundaryBehavior = BoundaryBehavior::Hard;
 
+  #[test]
+  fn test_mass_profile_spans_the_exact_ends_of_a_shifted_grid() -> Result<(), Report> {
+    let (start, end, shift) = (0.1, 135.431_597_963_692_52, -2026.5);
+    let f = helpers::function((start, end), array![1.0, 0.0, 0.5, 2.0, 3.0], HARD, HARD)?.shift_time(shift);
+    let profile = MassProfile::new(&f)?;
+    let total = profile.fractions(TailMass::Required).unwrap().total();
+    pretty_assert_ulps_eq!(
+      array![start + shift, end + shift],
+      array![profile.x_min(), profile.x_max()],
+      max_ulps = 0
+    );
+    pretty_assert_ulps_eq!(total, profile.mass_between(start + shift, end + shift)?, max_ulps = 4);
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::rising(         0.7, (2.1,           0.3          ), 0.35 * ((-2.1_f64).exp() + (-0.3_f64).exp()))]

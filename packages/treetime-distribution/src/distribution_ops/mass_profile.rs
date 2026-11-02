@@ -6,9 +6,9 @@ use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::cmp::Ordering;
 use std::sync::OnceLock;
-use treetime_grid::{BoundaryBehavior, CellEnd, EdgeCell, Side};
+use treetime_grid::{BoundaryBehavior, CellEnd, EdgeCell, Grid, Side};
 use treetime_utils::array::ndarray::partition_point;
-use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
+use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::make_error;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,8 +20,7 @@ pub enum TailMass {
 #[derive(Clone, Debug)]
 pub struct MassProfile {
   y_peak: f64,
-  x_min: f64,
-  dx: f64,
+  grid: Grid<f64>,
   r: Array1<f64>,
   laws: CellLaws,
   prefix: Array1<f64>,
@@ -46,7 +45,6 @@ impl MassProfile {
     if f.y().iter().any(|y| y.is_nan()) {
       return make_error!("Mass profile requires ordinates without NaN");
     }
-    let dx = f.dx();
     let r = f.y().mapv(|y| y - y_peak);
     let (left_extrap, right_extrap) = (f.left_extrap(), f.right_extrap());
     let hard_cells: Vec<HardCellPower> = (0..n - 1)
@@ -68,9 +66,8 @@ impl MassProfile {
       })
       .try_collect()?;
     let laws = CellLaws { hard_cells, edge_cells };
-    let x_at = |idx: usize| f.x_min() + dx * idx.to_f64_exact();
     let masses = (0..n - 1)
-      .map(|j| full_cell_mass(&r, &laws, x_at(j + 1) - x_at(j), j).linear())
+      .map(|j| full_cell_mass(&r, &laws, f.x_at(j + 1) - f.x_at(j), j).linear())
       .collect_vec();
     let prefix = running_sums(masses.iter().copied());
     let mut suffix = running_sums(masses.iter().rev().copied());
@@ -79,8 +76,7 @@ impl MassProfile {
     let right = TailLaw::new(right_extrap, Side::Right, f.x_max(), r[n - 1]);
     Ok(Self {
       y_peak,
-      x_min: f.x_min(),
-      dx,
+      grid: *f.grid_fn().grid(),
       r,
       laws,
       prefix,
@@ -110,7 +106,7 @@ impl MassProfile {
   }
 
   pub fn fractions(&self, policy: TailMass) -> Option<MassFractions<'_>> {
-    let left = resolve_tail(self.left, policy, Side::Left, self.x_min)?;
+    let left = resolve_tail(self.left, policy, Side::Left, self.x_min())?;
     let right = resolve_tail(self.right, policy, Side::Right, self.x_max())?;
     let left_total = left.total()?;
     let right_total = right.total()?;
@@ -129,11 +125,11 @@ impl MassProfile {
   }
 
   pub fn x_min(&self) -> f64 {
-    self.x_min
+    self.grid.x_min()
   }
 
   pub fn x_max(&self) -> f64 {
-    self.x_at(self.r.len() - 1)
+    self.grid.x_max()
   }
 
   pub(crate) fn extrap(&self, side: Side) -> BoundaryBehavior {
@@ -144,7 +140,7 @@ impl MassProfile {
   }
 
   fn x_at(&self, idx: usize) -> f64 {
-    self.x_min + self.dx * idx.to_f64_exact()
+    self.grid.x_at(idx)
   }
 
   fn width(&self, j: usize) -> f64 {
@@ -159,7 +155,7 @@ impl MassProfile {
     if a.is_nan() || b.is_nan() || a > b {
       return make_error!("Mass between {a} and {b} requires ordered bounds");
     }
-    let x_min = self.x_min;
+    let x_min = self.x_min();
     let x_max = self.x_max();
     let left_mass = if a < x_min {
       let Some(law) = left else {
@@ -193,7 +189,7 @@ impl MassProfile {
 
   fn locate(&self, x: f64) -> CellPosition {
     let last_cell = self.r.len() - 2;
-    let j = f64_to_usize_saturating(((x - self.x_min) / self.dx).floor()).min(last_cell);
+    let j = f64_to_usize_saturating(((x - self.x_min()) / self.grid.dx()).floor()).min(last_cell);
     let j = if j < last_cell && x >= self.x_at(j + 1) {
       j + 1
     } else if j > 0 && x < self.x_at(j) {
@@ -334,7 +330,7 @@ impl MassFractions<'_> {
       Ordering::Equal => side == tail_side,
       order => order == outward,
     };
-    let density = if in_tail(self.profile.x_min, Ordering::Less, Side::Left) {
+    let density = if in_tail(self.profile.x_min(), Ordering::Less, Side::Left) {
       self.left.density_at(x, side)
     } else if in_tail(self.profile.x_max(), Ordering::Greater, Side::Right) {
       self.right.density_at(x, side)
@@ -345,7 +341,7 @@ impl MassFractions<'_> {
   }
 
   fn mass_below(&self, x: f64) -> f64 {
-    let x_min = self.profile.x_min;
+    let x_min = self.profile.x_min();
     let x_max = self.profile.x_max();
     if x <= x_min {
       self.left.mass_within(f64::NEG_INFINITY, x).linear()
@@ -357,7 +353,7 @@ impl MassFractions<'_> {
   }
 
   fn mass_above(&self, x: f64) -> f64 {
-    let x_min = self.profile.x_min;
+    let x_min = self.profile.x_min();
     let x_max = self.profile.x_max();
     if x >= x_max {
       self.right.mass_within(x, f64::INFINITY).linear()
