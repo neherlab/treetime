@@ -176,7 +176,6 @@ These issues give wrong results or failures under specific settings, or block ca
 
 These issues cover parity gaps, robustness, performance, tests, and tooling, and do not change results on default settings.
 
-- **[kb/issues/N-timetree-grid-point-limit-error-blames-the-clock-rate.md](issues/N-timetree-grid-point-limit-error-blames-the-clock-rate.md)**: name the operation, the node, and the span and spacing of the requested grid, and the clock rate only when a branch distribution sets the spacing
 - **[kb/issues/N-timetree-indel-rate-recomputed-per-iteration.md](issues/N-timetree-indel-rate-recomputed-per-iteration.md)**: estimate the indel rates once before the timetree loop, as optimize does
 - **[kb/issues/M-grid-invalid-numeric-domain.md](issues/M-grid-invalid-numeric-domain.md)**: reject NaN endpoints and non-increasing spacing in the grid constructors
 - **[kb/issues/N-app-examples-download-panic-leaves-running-state.md](issues/N-app-examples-download-panic-leaves-running-state.md)**: catch a panic of the download thread and publish an error state
