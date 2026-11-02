@@ -47,7 +47,3 @@ Behavior must remain unchanged under every option: the reconstruction output and
 ## Source
 
 Introduced by neherlab/treetime PR #890 "fix: the fitch/parsimony sequence reconstruction did not resolve indels and substitutions correctly", fix commit [`6774b77`](https://github.com/neherlab/treetime/commit/6774b77092e42e31e77628eec102561dba1057aa).
-
-## Related issues
-
-- [M-ancestral-augur-node-data-indel-representation-undecided.md](M-ancestral-augur-node-data-indel-representation-undecided.md)

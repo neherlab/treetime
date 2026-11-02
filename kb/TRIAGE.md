@@ -9,7 +9,6 @@ The work on these issues waits on a maintainer decision or a measurement.
 Each line names the issue and the options that a maintainer must choose from.
 
 - **[kb/issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md](issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md)**: honor each of the two flags that the amino-acid path ignores, reject the combination, or document the flag as nucleotide-only
-- **[kb/issues/M-ancestral-augur-node-data-indel-representation-undecided.md](issues/M-ancestral-augur-node-data-indel-representation-undecided.md)**: write the indels as augur tokens on both mutation tracks, write substitutions only on both, or move the indels to a separate node-data field
 - **[kb/issues/M-ancestral-internal-node-without-data-emits-n.md](issues/M-ancestral-internal-node-without-data-emits-n.md)**: keep `N` at internal nodes without data and record the difference from v0, emit the most likely base as v0 does, or keep `N` and write the changes to `N` per tip in the augur outputs
 - **[kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](issues/M-app-runs-folder-grows-without-retention-or-quota.md)**: choose a quota, an age-based retention, or both, their defaults for the deploy, and whether the UI warns before it removes a run
 - **[kb/issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md](issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md)**: take the slack and the coupling of the relaxed clock as two flags, as one comma-separated value, or keep the two space-separated values of TreeTime 0.x

@@ -78,6 +78,7 @@
 - [x] `--reconstruct-tip-states` (v0-compatible alias enabling both `--include-leaves` and `--impute-missing-data`)
 - [x] `--model` and `--model-params` apply only with `--method-anc marginal`; with parsimony they stop the run with an argument error (parsimony uses no model)
 - [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)
+- [x] Mutation lists of the augur node data (`muts`, `aa_muts`), the Auspice JSON, and the Newick comments: one augur token per alignment column in column order, gap changes included on every track (`A4-` for a deleted site, `-4A` for an inserted one), as `augur ancestral` and `augur translate` write them
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` for reproducibility; a generated seed is logged when sampling runs without one (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [x] `--model-params` (`key=value` parameters of a named model, as v0 `--gtr-params`; an unknown key or a malformed item is an error)

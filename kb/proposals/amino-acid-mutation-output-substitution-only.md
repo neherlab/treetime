@@ -1,5 +1,7 @@
 # Restrict amino-acid mutation output to substitutions
 
+Status: **closed, not adopted**. Both mutation tracks write each gap change as an augur token at its alignment column (`A123-`, `-123A`, `K100-`), in the augur node data and in the Auspice JSON alike: option A1b with scope A2a. One rule writes every mutation list, `fn mutation_strings()` in `packages/treetime/src/seq/mutation.rs`. Indel ranges are ranges of alignment columns, so the insertion tokens of both tracks name augur's columns; on a nucleotide case with an insertion and a deletion, the tokens equal those of v0 run as `augur ancestral` runs it. The sections below describe the code and the open question before this decision.
+
 ## Motivation
 
 TreeTime v1 emits amino-acid mutations as substitutions plus range-based insertion and deletion events. The nucleotide track is substitution-only, although augur writes gap changes on that track too (`A123-`), and the amino-acid track carries indel tokens. This proposal records the question of whether the amino-acid track should likewise be restricted to substitutions, and the tension that decision has with reference parity.
@@ -69,7 +71,3 @@ Decision required from the team. The narrow request that motivated this proposal
 
 - No change to the nucleotide track.
 - No change to UShER MAT indel encoding, which has its own format contract.
-
-## Related
-
-- [kb/issues/M-ancestral-augur-node-data-indel-representation-undecided.md](../issues/M-ancestral-augur-node-data-indel-representation-undecided.md)
