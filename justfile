@@ -105,11 +105,11 @@ wasm_mt_config := "--config=dev/cargo/wasm-mt.toml" + if path_exists("/.cargo/wa
 # The package that emcc and wasm-bindgen write for the WebAssembly back end of
 # the web2 app: the single-threaded module in st/ and the threaded module in mt/,
 # each a JavaScript module and a WebAssembly binary under the names that emcc
-# gives them in deps/ of the target folder, and the TypeScript declarations that
-# both modules share. The threaded JavaScript starts its pthread workers from
-# its own file name, so the recipes copy the files of deps/ instead of the
-# `app-wasm.js` that cargo renames. Only the declarations are committed
-# (`just gen wasm-types`).
+# gives them in its link folder (dev/wasm-link-dir), and the TypeScript
+# declarations that both modules share. The threaded JavaScript starts its
+# pthread workers from its own file name, so the recipes copy the files of the
+# link folder instead of the `app-wasm.js` that cargo renames. Only the
+# declarations are committed (`just gen wasm-types`).
 # The build modes: dev and release are the cargo profiles of the same name; prod,
 # the shipped build, is the cargo profile dist. Cargo writes the dev profile to
 # the debug folder.
@@ -220,21 +220,23 @@ build-napi profile="dev":
 [script]
 build-wasm mode="dev": (_compile-wasm mode)
     out={{ quote(CARGO_TARGET_DIR / "wasm32-unknown-emscripten" / (if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode })) }}
+    link="$(dev/wasm-link-dir "${out}")"
     mkdir -p {{ wasm_pkg }}/st
-    cp "${out}/deps/app_wasm.js" "${out}/deps/app_wasm.wasm" {{ wasm_pkg }}/st/
-    cp "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts
+    cp "${link}/app_wasm.js" "${link}/app_wasm.wasm" {{ wasm_pkg }}/st/
+    cp "${link}/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts
 
 # Build the threaded WebAssembly back end of the web2 app into packages/app-wasm/pkg/mt/: just build-wasm-mt [dev|release|prod]; fails when its exports differ from the declarations of the single-threaded build
 [group("build")]
 [script]
 build-wasm-mt mode="dev": (_compile-wasm-mt mode)
     out={{ quote(wasm_mt_target_dir / "wasm32-unknown-emscripten" / (if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode })) }}
-    if ! cmp -s "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts; then
+    link="$(dev/wasm-link-dir "${out}")"
+    if ! cmp -s "${link}/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts; then
       printf 'The threaded module declares other exports than %s. Run `just build-wasm` or `just gen wasm-types` after a change of the exports.\n' {{ quote(wasm_pkg / "app_wasm.d.ts") }} >&2
       exit 1
     fi
     mkdir -p {{ wasm_pkg }}/mt
-    cp "${out}/deps/app_wasm.js" "${out}/deps/app_wasm.wasm" {{ wasm_pkg }}/mt/
+    cp "${link}/app_wasm.js" "${link}/app_wasm.wasm" {{ wasm_pkg }}/mt/
 
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]

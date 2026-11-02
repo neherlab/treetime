@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <profile-dir>
+#
+# Print the folder where emcc linked the WebAssembly back end of the web2 app,
+# for the cargo profile folder <profile-dir> (such as
+# target/wasm32-unknown-emscripten/debug). emcc writes app_wasm.js,
+# app_wasm.wasm, and the TypeScript declarations app-wasm.d.ts into that folder.
+#
+# The folder is internal to cargo: deps/ in the layout of stable cargo,
+# build/app-wasm/<hash>/out/ in the layout of newer nightlies. Cargo hardlinks
+# the linked app_wasm.wasm into <profile-dir>, so the folder is the one whose
+# app_wasm.wasm is the same file as <profile-dir>/app_wasm.wasm.
+#
+# Examples:
+#   $0 target/wasm32-unknown-emscripten/debug
+#
+set -euo pipefail
+trap "exit" INT
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  [[ "${1:-}" =~ ^(-h|--help)$ ]] && {
+    show_help
+    exit 0
+  }
+  (($# == 1)) || {
+    show_help >&2
+    exit 1
+  }
+
+  local profile_dir="${1}"
+  local module="${profile_dir}/app_wasm.wasm"
+  if [[ ! -f "${module}" ]]; then
+    printf 'No linked module %s: build app-wasm for this profile first\n' "${module}" >&2
+    exit 1
+  fi
+
+  local found
+  found="$(find "${profile_dir}" -mindepth 2 -name app_wasm.wasm -samefile "${module}")"
+  local matches=()
+  [[ -z "${found}" ]] || mapfile -t matches <<<"${found}"
+  if ((${#matches[@]} != 1)); then
+    printf 'Expected one link output of %s under %s, found %d\n' "${module}" "${profile_dir}" "${#matches[@]}" >&2
+    printf '%s\n' "${matches[@]}" >&2
+    exit 1
+  fi
+
+  dirname -- "${matches[0]}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
