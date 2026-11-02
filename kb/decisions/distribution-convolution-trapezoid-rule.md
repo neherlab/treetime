@@ -29,7 +29,7 @@ $$
 c_n = h \sum_{i = i_0}^{i_1} f_i\, g_{n-i} - \frac{h}{2}\left(f_{i_0}\, g_{n-i_0} + f_{i_1}\, g_{n-i_1}\right)
 $$
 
-The first and the last output, whose overlap is one sample, hold $h f_0 g_0 / 4$ and $h f_{F-1} g_{G-1} / 4$ instead of the exact 0, because exact zeros fall below the trust floor of the tail reconstruction (`CONV_TRUST_FRACTION`, $10^{-13}$ of the peak, in `fn reconstruct_neg_log_tails()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L349](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L349)). Their effect on the total mass is second order in $h$. Operands with fewer than 2 samples are rejected with an error; a `DistributionFunction` always holds at least 2 samples, and a one-sample distribution is a `Point`, which the convolution shifts by exactly.
+The first and the last output, whose overlap is one sample, hold $h f_0 g_0 / 4$ and $h f_{F-1} g_{G-1} / 4$ instead of the exact 0, because exact zeros fall below the trust floor of the tail reconstruction (`CONV_TRUST_FRACTION`, $10^{-13}$ of the peak, in `fn reconstruct_neg_log_tails()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L366](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L366)). Their effect on the total mass is second order in $h$. Operands with fewer than 2 samples are rejected with an error; a `DistributionFunction` always holds at least 2 samples, and a one-sample distribution is a `Point`, which the convolution shifts by exactly.
 
 The rectangle sum of v0 is the first term alone:
 
