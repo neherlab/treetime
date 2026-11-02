@@ -11,10 +11,6 @@ After refining a node's marginal distribution, [`committed_time()`](../../packag
 
 V0 [`ClockTree._ml_t_marginal()`](../../packages/legacy/treetime/treetime/clock_tree.py) commits each independent marginal peak without projection and explicitly notes that marginal reconstruction can produce negative branch lengths. The v1 projection is therefore an intentional-behavior candidate that has not been approved or specified in `kb/decisions/`.
 
-## Evidence
-
-`test_prop_timetree_simulated_invariants` [packages/treetime/src/timetree/__tests__/test_prop_timetree_simulated.rs](../../packages/treetime/src/timetree/__tests__/test_prop_timetree_simulated.rs) draws new cases in every run. On commit `d7cdd9688` its case with seed `17529602055128826800` (14 tips in four sampling batches, constant $T_c$ 5.0, random GTR, `mu` 0.003, 1040 sites) fails the invariant that no node is older than its parent: tip `tip_0005`, dated exactly at 2024.3333333333333, lies 2e-13 years before its parent `node_0001` at 2024.3333333333335. The projection above moves a node only after its parent, so an inferred node can end up after the exact date of one of its children. This inversion is one ulp long and comes from rounding of a grid end, not from the marginal modes.
-
 ## Inconsistent derived state
 
 The projection changes only the committed node time:
@@ -38,5 +34,4 @@ Validation must include an inverted-mode case and dated-leaf boundaries once the
 
 ## Related issues
 
-- [M-timetree-parent-dated-one-ulp-after-the-exact-date-of-a-child.md](M-timetree-parent-dated-one-ulp-after-the-exact-date-of-a-child.md) - the cause of the one-ulp inversion of the evidence above: the grid end of a message from an exactly dated child
 - [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) - per-pass tail semantics can change posterior peaks but do not jointly constrain marginal modes

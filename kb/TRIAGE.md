@@ -162,7 +162,6 @@ These issues give wrong scientific results or crashes on default settings or exa
 
 These issues give wrong results or failures under specific settings, or block capabilities that users need soon.
 
-- **[kb/issues/M-timetree-parent-dated-one-ulp-after-the-exact-date-of-a-child.md](issues/M-timetree-parent-dated-one-ulp-after-the-exact-date-of-a-child.md)**: decide how a grid keeps its ends exact, so that a message from an exactly dated child ends at its date
 - **[kb/issues/M-clock-filter-residual-parity.md](issues/M-clock-filter-residual-parity.md)**: compute quartiles as v0 does and never flag children of the root
 - **[kb/issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md)**: leave undated tips out of the in-loop clock fit
 - **[kb/issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md](issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md)**: estimate the fallback substitution count of polytomy resolution from the clock-constrained branch length
