@@ -63,8 +63,8 @@ mod tests {
     use super::*;
 
     pub(super) struct Ladder {
-      pub graph: Graph,
-      pub names: NodeNames,
+      pub(super) graph: Graph,
+      names: NodeNames,
       branches: EdgeMap<BranchLikelihood>,
       constraints: DateConstraints,
     }

@@ -313,7 +313,11 @@ mod tests {
     let (mut graph, mut names, parent_key, mut children, _, mut branch_lengths) = polytomy_graph()?;
     let parent_time: f64 = 2026.3246575342469;
     let child_time: f64 = 2026.3246575342466;
-    assert_eq!(parent_time, child_time.next_up(), "the two times are adjacent floats");
+    assert_eq!(
+      child_time.to_bits() + 1,
+      parent_time.to_bits(),
+      "the two times are adjacent floats"
+    );
     children[0].time = child_time;
     children[1].time = 2026.5;
     children[2].time = 2026.6;
