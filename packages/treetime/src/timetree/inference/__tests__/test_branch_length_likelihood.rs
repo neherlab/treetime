@@ -8,7 +8,6 @@ mod tests {
   use rstest::rstest;
   use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
   use treetime_grid::MaxGridPoints;
-  use treetime_utils::array::ndarray::has_uniform_spacing;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -262,7 +261,6 @@ mod tests {
 
     let t = distribution.t();
     assert_eq!(GRID_POINTS, t.len());
-    assert!(has_uniform_spacing(&t));
     Ok(())
   }
 

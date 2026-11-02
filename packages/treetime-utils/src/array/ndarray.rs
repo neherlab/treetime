@@ -154,19 +154,3 @@ pub fn sort_inplace<T: FloatCore>(arr: &mut Array1<T>) {
     *arr = Array1::from_iter(arr.iter().copied().sorted_by_key(|x| OrderedFloat(*x)));
   }
 }
-
-const MAX_SPACING_ULPS: f64 = 64.0;
-
-pub fn has_uniform_spacing<T: Float + From<f64>>(grid: &Array1<T>) -> bool {
-  if grid.len() < 2 {
-    return true;
-  }
-
-  let spacing = grid[1] - grid[0];
-  let scale = grid[0].abs().max(grid[grid.len() - 1].abs());
-  let tolerance = <T as From<f64>>::from(MAX_SPACING_ULPS) * scale * T::epsilon();
-  grid
-    .windows(2)
-    .into_iter()
-    .all(|w| (w[1] - w[0] - spacing).abs() <= tolerance)
-}

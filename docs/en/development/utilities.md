@@ -44,7 +44,6 @@ Crate root: `packages/treetime-utils/src/` (module list in `lib.rs`).
 - Math: `exp()`, `log()`, `cumsum_axis()`
 - Creation and padding: `zeros()`
 - 1D helpers: `first()`, `last()`, `reverse()`, `reverse_inplace()`, `sorted()`, `sort_inplace()`, `partition_point()` (binary search on an owned array or a view, any layout accepted)
-- Grid checks: `has_uniform_spacing()`
 - Matrix construction: `outer()`
 
 Other `array` modules:

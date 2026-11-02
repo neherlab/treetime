@@ -8,7 +8,7 @@ mod tests {
   use crate::array::ndarray::*;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
-  use ndarray::{Array1, Array2, Axis, array};
+  use ndarray::{Array2, Axis, array};
   use rstest::rstest;
   use std::sync::LazyLock;
 
@@ -115,54 +115,5 @@ mod tests {
     let result_outer_ti_pi = outer(&ti, &pi).unwrap();
     pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, max_ulps = 4);
     pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, max_ulps = 4);
-  }
-
-  #[rstest]
-  #[case::origin(0.0, 1e-3, 200)]
-  #[case::calendar_offset(2014.18, 1e-3, 200)]
-  #[case::calendar_offset_fine(2014.18, 5e-4, 300)]
-  #[case::negative_calendar_offset(-2014.18, 1e-3, 200)]
-  #[case::large_offset_small_spacing(1e6, 1e-2, 500)]
-  #[case::zero_crossing(-0.1, 1e-3, 201)]
-  fn test_has_uniform_spacing_accepts_regenerated_grid(#[case] x_min: f64, #[case] dx: f64, #[case] n: usize) {
-    let grid = helpers::regenerate_uniform(x_min, dx, n);
-    assert!(has_uniform_spacing(&grid));
-  }
-
-  #[rstest]
-  #[case::empty(array![])]
-  #[case::single(array![2014.18])]
-  #[case::two_points(array![2014.18, 2014.181])]
-  fn test_has_uniform_spacing_accepts_degenerate(#[case] grid: Array1<f64>) {
-    assert!(has_uniform_spacing(&grid));
-  }
-
-  #[test]
-  fn test_has_uniform_spacing_rejects_nonuniform() {
-    let grid = array![0.0, 1.0, 3.0];
-    assert!(!has_uniform_spacing(&grid));
-  }
-
-  #[test]
-  fn test_has_uniform_spacing_rejects_perturbation_above_tolerance() {
-    let mut grid = helpers::regenerate_uniform(1000.0, 1.0, 100);
-    grid[50] += 1e-9;
-    assert!(!has_uniform_spacing(&grid));
-  }
-
-  #[test]
-  fn test_has_uniform_spacing_accepts_perturbation_below_tolerance() {
-    let mut grid = helpers::regenerate_uniform(1000.0, 1.0, 100);
-    grid[50] += 1e-12;
-    assert!(has_uniform_spacing(&grid));
-  }
-
-  mod helpers {
-    use crate::cast::ToF64Exact;
-    use ndarray::Array1;
-
-    pub(super) fn regenerate_uniform(x_min: f64, dx: f64, n: usize) -> Array1<f64> {
-      Array1::from_shape_fn(n, |i| x_min + dx * i.to_f64_exact())
-    }
   }
 }
