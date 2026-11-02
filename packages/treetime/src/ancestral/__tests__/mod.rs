@@ -12,6 +12,7 @@ mod test_fitch_pass_failure;
 mod test_fitch_pass_support;
 mod test_fitch_reroot;
 mod test_fitch_sub;
+mod test_internal_unknown_states;
 mod test_marginal_analytical;
 mod test_marginal_branch_length;
 mod test_marginal_consistency;

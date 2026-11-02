@@ -133,7 +133,7 @@ impl SparseForwardPass<'_> {
       parent_obs,
       edge_obs,
       backward,
-      partition.impute_missing_data,
+      partition.impute_missing_data || !is_leaf,
     )?;
 
     let n_events =
@@ -187,9 +187,7 @@ impl SparseForwardPass<'_> {
       } else {
         &mut node.profile.variable
       };
-      for (&pos, entry) in &child_missing.variable {
-        outside.insert(pos, entry.state, entry.dis);
-      }
+      outside.merge(child_missing.variable);
     }
 
     let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, node, obs, edge_obs, backward)?;
@@ -225,7 +223,7 @@ fn compute_msg_to_child(
   parent_obs: &SparseNodeObs,
   edge_obs: &SparseEdgeObs,
   backward: &SparseEdgeBackward,
-  impute_missing_data: bool,
+  outside_at_missing: bool,
 ) -> Result<OutsideMessage, Report> {
   let child_dis = &backward.msg_from_child;
   let n_events = 2 * (edge_obs.fitch_subs().len() + parent.profile.variable.len() + child_dis.variable.len());
@@ -279,14 +277,14 @@ fn compute_msg_to_child(
     let parent_state = parent.sequence[pos];
     if alphabet.is_canonical(parent_state) {
       removed[parent_state] += 1;
-      if impute_missing_data {
+      if outside_at_missing {
         let posterior = parent.profile.variable.get(pos).map_or_else(
           || parent.profile.fixed[parent_state].dis.as_slice(),
           |distribution| distribution.dis,
         );
         child_missing.insert(pos, parent_state, posterior);
       }
-    } else if impute_missing_data && let Some(posterior) = parent.profile.variable.get(pos) {
+    } else if outside_at_missing && let Some(posterior) = parent.profile.variable.get(pos) {
       child_missing.insert(pos, posterior.state, posterior.dis);
     }
   }

@@ -1,6 +1,8 @@
 use crate::partition::storage::sparse::{SiteProfile, VarPos};
+use itertools::{EitherOrBoth, Itertools};
 use smallvec::smallvec;
 use std::iter::Map;
+use std::mem;
 use std::slice::Iter;
 use treetime_primitives::AsciiChar;
 
@@ -65,6 +67,20 @@ impl VarPosMap {
       Ok(index) => self.entries[index] = entry,
       Err(index) => self.entries.insert(index, entry),
     }
+  }
+
+  pub(crate) fn merge(&mut self, other: VarPosMap) {
+    if other.entries.is_empty() {
+      return;
+    }
+    let entries = mem::take(&mut self.entries);
+    self.entries = entries
+      .into_iter()
+      .merge_join_by(other.entries, |(left, _, _), (right, _, _)| left.cmp(right))
+      .map(|entry| match entry {
+        EitherOrBoth::Left(entry) | EitherOrBoth::Right(entry) | EitherOrBoth::Both(_, entry) => entry,
+      })
+      .collect();
   }
 
   pub(crate) fn iter(&self) -> impl Iterator<Item = (&usize, VarPos<'_>)> {

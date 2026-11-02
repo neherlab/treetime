@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
+use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
@@ -103,7 +104,10 @@ impl SparseBackwardPass<'_> {
           }],
         )
       },
-      (None, None) => (msg_to_parent, PerEdge::new()),
+      (None, None) => (
+        with_equilibrium_at(msg_to_parent, &no_data, gtr, &partition.alphabet),
+        PerEdge::new(),
+      ),
       _ => {
         return Err(make_internal_report!(
           "Sparse marginal backward pass received an inconsistent parent edge at node {key}"
@@ -222,6 +226,22 @@ pub(crate) fn own_state(
   } else {
     state
   }
+}
+
+fn with_equilibrium_at(
+  mut profile: SparseSeqDistribution,
+  no_data: &[(usize, usize)],
+  gtr: &GTR,
+  alphabet: &Alphabet,
+) -> SparseSeqDistribution {
+  let pi = gtr.pi();
+  let state = alphabet.char(most_likely_state(pi).unwrap_or(0));
+  let mut equilibrium = VarPosMap::default();
+  for pos in no_data.iter().flat_map(|&(start, end)| start..end) {
+    equilibrium.insert_with(pos, state, pi.len(), |row| aview_mut1(row).assign(pi));
+  }
+  profile.variable.merge(equilibrium);
+  profile
 }
 
 fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDistribution, Report> {

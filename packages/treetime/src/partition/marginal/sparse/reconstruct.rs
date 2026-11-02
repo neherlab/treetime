@@ -8,6 +8,7 @@ use ndarray::{Array1, aview1};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_primitives::{AsciiChar, Seq};
+use treetime_utils::interval::range_difference::range_difference;
 
 pub(crate) fn parsimony_seq(
   parent_seq: &Seq,
@@ -29,7 +30,7 @@ pub(crate) fn parsimony_seq(
     }
   }
 
-  for r in &node_obs.unknown {
+  for r in range_difference(&node_obs.unknown, &node_obs.gaps) {
     seq[r.0..r.1].fill(alphabet.unknown());
   }
 
@@ -75,7 +76,7 @@ fn variable_states<'a>(
     .profile
     .variable
     .iter()
-    .filter(|&(&pos, _)| has_fitch_state(node, pos, alphabet))
+    .filter(|&(&pos, _)| !is_gap(node, pos, alphabet))
     .map(move |(&pos, var)| (pos, alphabet.char(resolve_profile(aview1(var.dis), resolve))))
 }
 
@@ -115,7 +116,7 @@ pub(crate) fn internal_ambiguity(
     .profile
     .variable
     .iter()
-    .filter(|&(&pos, _)| has_fitch_state(node, pos, alphabet))
+    .filter(|&(&pos, _)| !is_gap(node, pos, alphabet))
     .filter_map(|(&pos, var)| {
       threshold
         .ambiguity_char(&aview1(var.dis), alphabet)
@@ -204,9 +205,8 @@ pub(crate) fn leaf_posterior(
   Some(posterior)
 }
 
-fn has_fitch_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> bool {
-  let state = node.sequence[pos];
-  state != alphabet.gap() && state != alphabet.unknown()
+fn is_gap(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> bool {
+  node.sequence[pos] == alphabet.gap()
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {

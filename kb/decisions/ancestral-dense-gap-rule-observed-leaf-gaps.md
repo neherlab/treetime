@@ -24,7 +24,7 @@ Tree `((L1,L2)X,L3)root`, six columns:
 | L2   | `ACNNGT` |
 | L3   | `AC--GT` |
 
-Columns 2-3 of X have only unknown children, so X is unknown there and reconstructs as `ACNNGT`. Sparse gives the same result.
+Columns 2-3 of X have only unknown children, so X is unknown there, and the forward pass gives it the gap of the root: X reconstructs as `AC--GT`, as v0 reconstructs it (`treetime ancestral --gtr JC69`), and L1 and L2 keep their observed `N`. Sparse gives the same result.
 
 Before this rule, the forward pass copied the root gap at columns 2-3 into X and then into L1 and L2. The second backward pass read L1 and L2 as gapped, so X became `AC--GT`. The dense result depended on the number of passes: the nucleotide ancestral command ran two passes, the amino-acid path one, and timetree and optimize many. The test `test_marginal_consistency_leaf_unknown_under_gapped_ancestor_stays_unknown` ([`packages/treetime/src/ancestral/__tests__/test_marginal_consistency.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_consistency.rs)) checks this example, and `test_prop_marginal_dense_update_idempotent` ([`packages/treetime/src/ancestral/__tests__/test_marginal_idempotency_prop.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_idempotency_prop.rs)) checks that a second pass returns the result of the first.
 
@@ -38,5 +38,5 @@ v0 is not a reference for this case: it models the gap as a fifth state of the `
 
 ## Impact
 
-- Output changes only for dense runs (`--representation dense`) in which a leaf has an unknown character under a gapped ancestor. Internal nodes then show `N` instead of `-` at these positions
-- On the smoke datasets this changed the internal sequences of `ebola/20`, `ebola/100`, `lassa/L/20`, `lassa/L/50`, `mpox/clade-ii/20` and `mpox/clade-ii/100` with `--representation dense`, and every changed position now equals the sparse result
+- Output changes only for dense runs (`--representation dense`) in which a leaf has an unknown character under a gapped ancestor: the result no longer depends on the number of passes
+- An internal node without data below a gapped ancestor shows the inherited gap `-`, as in v0, in dense and sparse runs; its leaves keep their observed `N`

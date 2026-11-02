@@ -48,20 +48,20 @@ mod tests {
   #[case::dense_default_hides_unknown(RepresentationCli::Dense, false, false, btreemap! {})]
   #[case::sparse_default_hides_unknown(RepresentationCli::Sparse, false, false, btreemap! {})]
   #[case::dense_default_hides_imputed_from_unknown(RepresentationCli::Dense, false, true, btreemap! {})]
-  #[case::dense_reports_unknown_above_clade(RepresentationCli::Dense, true, false, btreemap! {
-    o!("P2") => vec_of_owned!["A2N"],
+  #[case::dense_reports_unknown_on_each_tip(RepresentationCli::Dense, true, false, btreemap! {
+    o!("C1") => vec_of_owned!["A2N"],
+    o!("C2") => vec_of_owned!["A2N"],
+    o!("C3") => vec_of_owned!["A2N"],
   })]
-  #[case::sparse_reports_unknown_above_clade(RepresentationCli::Sparse, true, false, btreemap! {
-    o!("P2") => vec_of_owned!["A2N"],
+  #[case::sparse_reports_unknown_on_each_tip(RepresentationCli::Sparse, true, false, btreemap! {
+    o!("C1") => vec_of_owned!["A2N"],
+    o!("C2") => vec_of_owned!["A2N"],
+    o!("C3") => vec_of_owned!["A2N"],
   })]
-  #[case::dense_reports_imputed_tips_below_unknown(RepresentationCli::Dense, true, true, btreemap! {
-    o!("C1") => vec_of_owned!["N2A"],
-    o!("C2") => vec_of_owned!["N2A"],
-    o!("C3") => vec_of_owned!["N2A"],
-    o!("P2") => vec_of_owned!["A2N"],
-  })]
+  #[case::dense_imputed_tips_keep_the_inferred_state(RepresentationCli::Dense, true, true, btreemap! {})]
+  #[case::sparse_imputed_tips_keep_the_inferred_state(RepresentationCli::Sparse, true, true, btreemap! {})]
   #[trace]
-  fn test_report_ambiguous_shows_transitions_of_internal_unknown_state(
+  fn test_report_ambiguous_shows_changes_to_unknown_on_each_tip_of_a_clade_without_data(
     #[case] representation: RepresentationCli,
     #[case] report_ambiguous: bool,
     #[case] impute: bool,
@@ -79,32 +79,10 @@ mod tests {
       .into_iter()
       .filter(|(_, muts)| !muts.is_empty())
       .collect();
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_report_ambiguous_sparse_reports_imputed_tips_below_unknown() -> Result<(), Report> {
-    let (report_ambiguous, impute_missing_data) = (true, true);
-    let written = written_mutations(
-      UNKNOWN_CLADE_TREE,
-      UNKNOWN_CLADE_ALIGNMENT,
-      report_ambiguous,
-      impute_missing_data,
-      RepresentationCli::Sparse,
-    )?;
-    let actual: BTreeMap<String, Vec<String>> = written
-      .augur_muts
-      .into_iter()
-      .filter(|(_, muts)| !muts.is_empty())
-      .collect();
-    let expected = btreemap! {
-      o!("C1") => vec_of_owned!["N2A"],
-      o!("C2") => vec_of_owned!["N2A"],
-      o!("C3") => vec_of_owned!["N2A"],
-      o!("P2") => vec_of_owned!["A2N"],
-    };
-    assert_eq!(expected, actual);
+    assert_eq!(
+      expected, actual,
+      "augur ancestral --keep-ambiguous with TreeTime 0.x writes the changes to N on each tip of the clade"
+    );
     Ok(())
   }
 

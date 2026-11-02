@@ -395,8 +395,10 @@ fn forward_post_dense(
   for gap in &node.seq.gaps {
     node.seq.sequence[gap.0..gap.1].fill(alphabet.gap());
   }
-  for unknown in &node.seq.unknown {
-    node.seq.sequence[unknown.0..unknown.1].fill(alphabet.unknown());
+  if is_leaf {
+    for unknown in &node.seq.unknown {
+      node.seq.sequence[unknown.0..unknown.1].fill(alphabet.unknown());
+    }
   }
   Ok(indels)
 }

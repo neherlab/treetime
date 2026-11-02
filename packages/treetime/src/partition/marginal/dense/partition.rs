@@ -215,7 +215,7 @@ impl PartitionMarginalDense {
         .collect()
     } else {
       (0..profile.nrows())
-        .filter(|&pos| !range_contains(&seq_info.seq.gaps, pos) && !range_contains(&seq_info.seq.unknown, pos))
+        .filter(|&pos| !range_contains(&seq_info.seq.gaps, pos))
         .filter_map(|pos| {
           threshold
             .ambiguity_char(&profile.row(pos), &self.alphabet)
@@ -267,9 +267,6 @@ fn assign_sequence_sampled(seq_info: &DenseNodeState, alphabet: &Alphabet, resol
   let mut seq = prof2seq_sampled(&seq_info.profile, alphabet, resolve);
   for gap in &seq_info.seq.gaps {
     seq[gap.0..gap.1].fill(alphabet.gap());
-  }
-  for unk in &seq_info.seq.unknown {
-    seq[unk.0..unk.1].fill(alphabet.unknown());
   }
   seq
 }

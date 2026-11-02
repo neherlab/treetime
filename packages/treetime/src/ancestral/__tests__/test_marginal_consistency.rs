@@ -321,18 +321,18 @@ mod tests {
     let (_, sparse) =
       run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
 
-    let expected = "ACNNGT";
+    let expected = "AC--GT";
     let dense_x = dense.node_sequence(&graph, false, x_key)?;
     let sparse_x = sparse.node_sequence(&graph, false, x_key)?;
     assert_eq!(
       expected,
       dense_x.to_string(),
-      "X has only unknown children at columns 2-3, so a pass that reads observed leaf gaps keeps them unknown"
+      "X has no data at columns 2-3 and inherits the gap of the root, as v0 treetime ancestral --gtr JC69 reconstructs X"
     );
     assert_eq!(
       expected,
       sparse_x.to_string(),
-      "sparse reads observed leaf gaps from its single Fitch pass"
+      "sparse X inherits the root gap as dense does"
     );
     for (leaf, expected_leaf) in [("L1", "ACNNGT"), ("L2", "ACNNGT"), ("L3", "AC--GT")] {
       let leaf_key = find_node_key_by_name(&graph, &names, leaf).expect("leaf must exist");
