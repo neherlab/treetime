@@ -3,6 +3,7 @@ use crate::grid_iter::GridIter;
 use crate::hard_approach_law::Side;
 use crate::max_grid_points::MaxGridPoints;
 use eyre::Report;
+use itertools::Itertools;
 use ndarray::Array1;
 use num_traits::Float;
 use std::cmp::min;
@@ -13,7 +14,7 @@ use treetime_utils::make_error;
 
 const MAX_COINCIDENCE_ULPS: f64 = 4.0;
 
-const MIN_SPACING_EPSILONS: f64 = 4.0;
+const MAX_ARRAY_DEVIATION_CELLS: f64 = 0.25;
 
 impl<T: InterpElem> IntoIterator for &Grid<T>
 where
@@ -43,31 +44,40 @@ impl<T: InterpElem> Grid<T> {
     if n_points < 2 {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
+    ensure_finite("x_min", x_min)?;
+    ensure_finite("x_max", x_max)?;
     if x_max <= x_min {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
     let dx = (x_max - x_min) / from_count::<T>(n_points - 1);
-    let resolution = <T as From<f64>>::from(MIN_SPACING_EPSILONS) * T::epsilon() * x_min.abs().max(x_max.abs());
-    if dx.is_nan() || dx <= resolution {
+    if !dx.is_finite() || dx <= T::zero() {
       return make_error!(
-        "Grid of {n_points} points over [{x_min:?}, {x_max:?}] has spacing {dx:?}, not above the rounding resolution {resolution:?} of its coordinates"
+        "Grid of {n_points} points over [{x_min:?}, {x_max:?}] has spacing {dx:?}, which is not a finite positive number"
       );
     }
-    Ok(Self {
+    let grid = Self {
       x_min,
       x_max,
       dx,
       n_points,
-    })
+    };
+    match grid.iter().tuple_windows().position(|(left, right)| right <= left) {
+      Some(i) => make_error!(
+        "Grid of {n_points} points over [{x_min:?}, {x_max:?}] with spacing {dx:?} does not increase strictly: x[{}] = {:?} is not above x[{i}] = {:?}",
+        i + 1,
+        grid.x_at(i + 1),
+        grid.x_at(i)
+      ),
+      None => Ok(grid),
+    }
   }
 
   pub(crate) fn from_start_dx(x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
   where
     T: Float,
   {
-    if dx <= T::zero() {
-      return make_error!("Grid spacing dx ({dx:?}) must be positive");
-    }
+    ensure_finite("x_min", x_min)?;
+    ensure_spacing(dx)?;
     if n_points < 2 {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
@@ -107,13 +117,24 @@ impl<T: InterpElem> Grid<T> {
     if n_points < 2 {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
+    if let Some(i) = x.iter().position(|value| !value.is_finite()) {
+      return make_error!("x array is not a grid: x[{i}] is {:?}, which is not finite", x[i]);
+    }
+    if let Some(i) = x.iter().tuple_windows().position(|(left, right)| right <= left) {
+      return make_error!(
+        "x array is not a grid: x[{}] = {:?} is not above x[{i}] = {:?}",
+        i + 1,
+        x[i + 1],
+        x[i]
+      );
+    }
     let grid = Self::from_range_n_points(x[0], x[n_points - 1], n_points)?;
     let scale: f64 = x[0].abs().max(x[n_points - 1].abs()).into();
-    match x
-      .iter()
-      .zip(grid.iter())
-      .position(|(&given, at)| !coordinates_coincide(given.into(), at.into(), scale))
-    {
+    let max_deviation: f64 = (grid.dx * <T as From<f64>>::from(MAX_ARRAY_DEVIATION_CELLS)).into();
+    match x.iter().zip(grid.iter()).position(|(&given, at)| {
+      let (given, at): (f64, f64) = (given.into(), at.into());
+      !coordinates_coincide(given, at, scale) || (given - at).abs() > max_deviation
+    }) {
       Some(i) => make_error!(
         "x array is not a uniform grid: x[{i}] is {:?}, but the uniform grid from x[0] = {:?} to x[{}] = {:?} has {:?} there",
         x[i],
@@ -130,9 +151,9 @@ impl<T: InterpElem> Grid<T> {
   where
     T: Float,
   {
-    if dx <= T::zero() {
-      return make_error!("Grid spacing dx ({dx:?}) must be positive");
-    }
+    ensure_finite("x_min", x_min)?;
+    ensure_finite("x_max", x_max)?;
+    ensure_spacing(dx)?;
     if x_max <= x_min {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
@@ -251,6 +272,22 @@ impl<T: InterpElem> Grid<T> {
 
 pub fn coordinates_coincide(a: f64, b: f64, scale: f64) -> bool {
   within_epsilons_of_scale(a, b, scale, MAX_COINCIDENCE_ULPS)
+}
+
+fn ensure_finite<T: InterpElem + Float>(name: &str, value: T) -> Result<(), Report> {
+  if value.is_finite() {
+    Ok(())
+  } else {
+    make_error!("Grid {name} ({value:?}) must be finite")
+  }
+}
+
+fn ensure_spacing<T: InterpElem + Float>(dx: T) -> Result<(), Report> {
+  if dx.is_finite() && dx > T::zero() {
+    Ok(())
+  } else {
+    make_error!("Grid spacing dx ({dx:?}) must be a finite positive number")
+  }
 }
 
 pub(crate) fn from_count<T: InterpElem>(count: usize) -> T {

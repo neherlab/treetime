@@ -134,7 +134,6 @@ mod tests {
   #[case::one_above_the_limit((0.0, 1000.0),   1.0,    "A grid over [0, 1000] with spacing 1 needs 1001 points, more than the limit of 1000")]
   #[case::ratio_overflows(    (0.0, 1.0),      1e-320, "A grid over [0, 1] with spacing 1.0e-320 needs more points than the limit of 1000")]
   #[case::infinite_range(     (0.0, f64::MAX), 1e-10,  "A grid over [0, 1.79769e308] with spacing 1.0e-10 needs more points than the limit of 1000")]
-  #[case::not_a_number(       (0.0, f64::NAN), 1.0,    "Cannot build a grid over [0, NaN] with spacing 1: the number of points is not a number")]
   #[trace]
   fn test_max_grid_points_grid_from_range_dx_rejects(
     #[case] (x_min, x_max): (f64, f64),

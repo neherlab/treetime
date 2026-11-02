@@ -5292,6 +5292,7 @@ dependencies = [
  "derive_more",
  "deser",
  "eyre",
+ "itertools",
  "ndarray",
  "num",
  "num-traits",
