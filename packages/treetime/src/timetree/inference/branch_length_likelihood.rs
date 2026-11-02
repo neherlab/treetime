@@ -5,7 +5,7 @@ use crate::timetree::inference::runner::EPS;
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, ArrayView1, Axis, concatenate, s};
 use ndarray_stats::QuantileExt;
-use std::iter::{once, successors};
+use std::iter::successors;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
@@ -102,9 +102,10 @@ fn pilot_grid(
     indels,
   )?;
   let max_points = n_points * MAX_PILOT_GROWTH;
-  match pilot_extension(&pilot, contributions, indels)? {
-    Some(Extension::Decayed(max_bl)) => pilot.extend_to(max_bl, max_points, contributions, indels),
-    Some(Extension::Capped) => {
+  match pilot_end(&pilot, max_bl, contributions, indels)? {
+    PilotEnd::Keep(right_edge) => Ok(PilotGrid { right_edge, ..pilot }),
+    PilotEnd::ExtendTo(max_bl) => pilot.extend_to(max_bl, max_points, contributions, indels),
+    PilotEnd::ExtendToCap => {
       let n_points = pilot.points_at_spacing(MAX_BRANCH_LENGTH).min(max_points);
       PilotGrid::evaluate(
         Array1::linspace(min_bl, MAX_BRANCH_LENGTH, n_points),
@@ -113,7 +114,6 @@ fn pilot_grid(
         indels,
       )
     },
-    None => Ok(pilot),
   }
 }
 
@@ -128,42 +128,54 @@ fn divergence_upper_end(center: f64, one_mutation: f64) -> f64 {
   .min(MAX_BRANCH_LENGTH)
 }
 
-fn pilot_extension(
+fn pilot_end(
   pilot: &PilotGrid,
+  max_bl: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
-) -> Result<Option<Extension>, Report> {
-  let pilot_peak = *pilot.log_lh.max()?;
+) -> Result<PilotEnd, Report> {
   let mut probe = DecayProbe {
     contributions,
     indels,
-    peak: pilot_peak,
+    peak: *pilot.log_lh.max()?,
+    floor: *pilot.log_lh.min()?,
     drop: -EPS.ln(),
   };
-  let end = last(&pilot.grid);
-  if end >= MAX_BRANCH_LENGTH || probe.is_decayed(last(&pilot.log_lh)) {
-    return Ok(None);
+  if probe.is_decayed(last(&pilot.log_lh)) {
+    return Ok(PilotEnd::Keep(RightEdge::Soft));
   }
 
-  let mut below = end;
-  for branch_length in outward_probes(end) {
+  let mut below = max_bl;
+  for branch_length in outward_probes(max_bl) {
     if probe.decays_at(branch_length)? {
-      return Ok(Some(Extension::Decayed(probe.bisect(below, branch_length)?)));
+      return Ok(PilotEnd::ExtendTo(probe.bisect(below, branch_length)?));
     }
     below = branch_length;
   }
-  Ok((probe.peak > pilot_peak).then_some(Extension::Capped))
+
+  Ok(if probe.is_constant() {
+    PilotEnd::Keep(RightEdge::Soft)
+  } else if max_bl < MAX_BRANCH_LENGTH {
+    PilotEnd::ExtendToCap
+  } else {
+    PilotEnd::Keep(RightEdge::Hard)
+  })
 }
 
-enum Extension {
-  Decayed(f64),
-  Capped,
+#[expect(
+  variant_size_differences,
+  reason = "a pilot end lives only until the grid is chosen, so the size of the larger variant costs nothing"
+)]
+enum PilotEnd {
+  Keep(RightEdge),
+  ExtendTo(f64),
+  ExtendToCap,
 }
 
 fn outward_probes(end: f64) -> impl Iterator<Item = f64> {
   successors(Some(2.0 * end), |x| Some(2.0 * x))
     .take_while(|x| *x < MAX_BRANCH_LENGTH)
-    .chain(once(MAX_BRANCH_LENGTH))
+    .chain((end < MAX_BRANCH_LENGTH).then_some(MAX_BRANCH_LENGTH))
 }
 
 struct PilotGrid {
@@ -235,6 +247,7 @@ struct DecayProbe<'a> {
   contributions: &'a [OptimizationContribution],
   indels: IndelTerm,
   peak: f64,
+  floor: f64,
   drop: f64,
 }
 
@@ -242,6 +255,7 @@ impl DecayProbe<'_> {
   fn decays_at(&mut self, branch_length: f64) -> Result<bool, Report> {
     let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indels, branch_length)?.value();
     self.peak = self.peak.max(log_lh);
+    self.floor = self.floor.min(log_lh);
     Ok(self.is_decayed(log_lh))
   }
 
@@ -261,6 +275,14 @@ impl DecayProbe<'_> {
 
   fn is_decayed(&self, log_lh: f64) -> bool {
     self.peak - log_lh >= self.drop
+  }
+
+  #[expect(
+    clippy::float_cmp,
+    reason = "a constant likelihood has the same value at every evaluated branch length"
+  )]
+  fn is_constant(&self) -> bool {
+    self.peak == self.floor
   }
 }
 

@@ -57,15 +57,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::t_0_05( 0.05)]
+  #[case::t_0_2(  0.2)]
   #[case::t_0_5(  0.5)]
-  #[case::t_2(    2.0)]
-  #[case::t_4(    4.0)]
   #[trace]
   fn test_branch_length_likelihood_indel_rate_only_matches_poisson_shape(#[case] t: f64) -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
-    let indel_rate = 1.0;
-    let expected = indel_rate * t;
+    let expected = helpers::INDEL_RATE * t;
     pretty_assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-10);
 
     Ok(())
@@ -94,7 +93,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::just_past_tmax(  9.0)]
+  #[case::just_past_tmax(  1.0)]
   #[case::far_past_tmax(  15.0)]
   #[trace]
   fn test_branch_length_likelihood_right_soft_tail_extrapolates_poisson_decay(#[case] t: f64) -> Result<(), Report> {
@@ -103,8 +102,7 @@ mod tests {
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
     assert!(t > t_max, "query {t} must be beyond t_max {t_max}");
 
-    let indel_rate = 1.0;
-    let expected = indel_rate * t;
+    let expected = helpers::INDEL_RATE * t;
     pretty_assert_abs_diff_eq!(distribution.eval(t)?, expected, epsilon = 1e-10);
     Ok(())
   }
@@ -271,7 +269,7 @@ mod tests {
   #[test]
   fn test_branch_length_likelihood_grid_holds_target_mass_fraction() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
-    let (indel_count, indel_rate) = (1_usize, 1.0);
+    let (indel_count, indel_rate) = (1_usize, 10.0);
     let distribution = compute_branch_length_distribution(
       &contributions,
       IndelTerm::new(indel_count, indel_rate),
@@ -351,18 +349,20 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::mode_with_weak_decay_before_cap( (5,  2.0), 2.5)]
-  #[case::mode_beyond_cap(                 (20, 2.0), 5.0)]
+  #[case::extension_mode_with_weak_decay_before_cap( (5,  2.0, 1e-3), 2.5)]
+  #[case::extension_mode_beyond_cap(                 (20, 2.0, 1e-3), 5.0)]
+  #[case::pilot_mode_with_weak_decay_before_cap(     (5,  2.0, 1.0),  2.5)]
+  #[case::pilot_mode_beyond_cap(                     (20, 2.0, 1.0),  5.0)]
   #[trace]
   fn test_branch_length_likelihood_grid_without_decay_before_max_branch_length_ends_hard_at_it(
-    #[case] (indel_count, indel_rate): (usize, f64),
+    #[case] (indel_count, indel_rate, current_branch_length): (usize, f64, f64),
     #[case] expected_peak: f64,
   ) -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
       IndelTerm::new(indel_count, indel_rate),
-      1e-3,
+      current_branch_length,
       1e-3,
       GRID_POINTS,
       1.0,
@@ -379,7 +379,7 @@ mod tests {
     );
 
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
-    assert!(t_max <= 5.0, "grid must end at or below the largest branch length 5, got {t_max}");
+    pretty_assert_abs_diff_eq!(t_max, 5.0, epsilon = 1e-12);
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");
     let spacing = function.dx();
@@ -390,11 +390,74 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::mode_beyond_cap(              (20, 2.0))]
+  #[case::mode_with_weak_decay(         (5,  2.0))]
+  #[case::mode_on_hard_bound_slow_decay((0,  1.0))]
+  #[trace]
+  fn test_branch_length_likelihood_grid_without_decay_before_max_branch_length_ignores_start_length(
+    #[case] (indel_count, indel_rate): (usize, f64),
+  ) -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let support = |current_branch_length: f64| -> Result<((f64, f64), bool), Report> {
+      let distribution = compute_branch_length_distribution(
+        &contributions,
+        IndelTerm::new(indel_count, indel_rate),
+        current_branch_length,
+        1e-3,
+        GRID_POINTS,
+        1.0,
+        MaxGridPoints::default(),
+      )?;
+      let Distribution::Function(function) = distribution.as_ref() else {
+        panic!("branch-length distribution must be a Function");
+      };
+      let hard_right = matches!(function.right_extrap(), BoundaryBehavior::Hard);
+      Ok((distribution.time_bounds().unwrap(), hard_right))
+    };
+
+    let ((short_min, short_max), short_hard) = support(1e-3)?;
+    let ((long_min, long_max), long_hard) = support(1.0)?;
+
+    assert!(short_hard && long_hard, "both right edges must be hard, got {short_hard} and {long_hard}");
+    pretty_assert_abs_diff_eq!(short_min, long_min, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(short_max, 5.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(long_max, 5.0, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[test]
+  fn test_branch_length_likelihood_constant_likelihood_at_max_branch_length_keeps_soft_edge() -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      IndelTerm::new(0, 0.0),
+      2.0,
+      1e-3,
+      GRID_POINTS,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
+
+    let Distribution::Function(function) = distribution.as_ref() else {
+      panic!("branch-length distribution must be a Function");
+    };
+    let right = function.right_extrap();
+    assert!(
+      matches!(right, BoundaryBehavior::Linear(_)),
+      "a constant likelihood keeps its soft right edge, got {right:?}"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use itertools::izip;
     use std::sync::Arc;
     use treetime_utils::cast::ToF64Exact;
+
+    pub(super) const INDEL_RATE: f64 = 10.0;
 
     pub(super) fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
       distribution.eval(t).unwrap_or(0.0)
@@ -439,7 +502,7 @@ mod tests {
       let contributions: Vec<OptimizationContribution> = vec![];
       compute_branch_length_distribution(
         &contributions,
-        IndelTerm::new(0, 1.0),
+        IndelTerm::new(0, INDEL_RATE),
         1.0,
         1e-3,
         GRID_POINTS,
