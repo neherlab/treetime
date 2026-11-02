@@ -10,3 +10,4 @@ mod test_marginal_likelihood;
 mod test_prop_runner;
 mod test_runner;
 mod test_time_passes;
+mod test_zero_length_ladder;
