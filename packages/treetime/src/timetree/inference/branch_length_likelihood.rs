@@ -3,8 +3,9 @@ use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::timetree::inference::runner::EPS;
 use eyre::{Report, WrapErr};
-use ndarray::Array1;
+use ndarray::{Array1, ArrayView1, Axis, concatenate, s};
 use ndarray_stats::QuantileExt;
+use std::iter::successors;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
@@ -13,6 +14,7 @@ use treetime_distribution::rewindow_to_mass;
 use treetime_grid::GridFn;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::{first, last};
+use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
 pub(crate) fn compute_branch_length_distribution(
   contributions: &[OptimizationContribution],
@@ -32,9 +34,14 @@ pub(crate) fn compute_branch_length_distribution(
     one_mutation * MIN_BRANCH_LENGTH_MUTATION_FRACTION
   };
 
-  let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points, min_bl);
-
-  let log_lh = evaluate_log_lh_on_grid(&grid, contributions, indels)?;
+  let PilotGrid { grid, log_lh } = pilot_grid(
+    contributions,
+    indels,
+    current_branch_length,
+    one_mutation,
+    n_grid_points,
+    min_bl,
+  )?;
 
   let log_lh = peak_normalize_neg_log(&log_lh)?;
 
@@ -65,22 +72,131 @@ pub(crate) fn compute_branch_length_distribution(
 }
 
 const MIN_BRANCH_LENGTH_MUTATION_FRACTION: f64 = 0.01;
+const MAX_BRANCH_LENGTH: f64 = 5.0;
+const DECAY_BISECTION_STEPS: usize = 4;
+const MAX_PILOT_GROWTH: usize = 10;
 
-fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize, min_bl: f64) -> Array1<f64> {
+fn pilot_grid(
+  contributions: &[OptimizationContribution],
+  indels: IndelTerm,
+  center: f64,
+  one_mutation: f64,
+  n_points: usize,
+  min_bl: f64,
+) -> Result<PilotGrid, Report> {
+  let max_bl = divergence_upper_end(center, one_mutation);
+  let pilot = PilotGrid::evaluate(Array1::linspace(min_bl, max_bl, n_points), contributions, indels)?;
+  match decayed_upper_end(&pilot, contributions, indels)? {
+    Some(max_bl) => pilot.extend_to(max_bl, n_points * MAX_PILOT_GROWTH, contributions, indels),
+    None => Ok(pilot),
+  }
+}
+
+fn divergence_upper_end(center: f64, one_mutation: f64) -> f64 {
   const PEAK_BRANCH_LENGTH_MULTIPLE: f64 = 5.0;
   const MIN_GRID_SPAN_MUTATIONS: f64 = 10.0;
-  const MAX_BRANCH_LENGTH: f64 = 5.0;
 
-  let peak_max_bl = f64::max(
+  f64::max(
     center * PEAK_BRANCH_LENGTH_MULTIPLE,
     one_mutation * MIN_GRID_SPAN_MUTATIONS,
-  );
-  let max_bl = peak_max_bl.min(MAX_BRANCH_LENGTH);
-  Array1::linspace(min_bl, max_bl, n_points)
+  )
+  .min(MAX_BRANCH_LENGTH)
+}
+
+fn decayed_upper_end(
+  pilot: &PilotGrid,
+  contributions: &[OptimizationContribution],
+  indels: IndelTerm,
+) -> Result<Option<f64>, Report> {
+  let mut probe = DecayProbe {
+    contributions,
+    indels,
+    peak: *pilot.log_lh.max()?,
+    drop: -EPS.ln(),
+  };
+  let end = last(&pilot.grid);
+  if end >= MAX_BRANCH_LENGTH || probe.is_decayed(last(&pilot.log_lh)) || !probe.decays_at(MAX_BRANCH_LENGTH)? {
+    return Ok(None);
+  }
+
+  let mut below = end;
+  let mut above = MAX_BRANCH_LENGTH;
+  for branch_length in successors(Some(2.0 * end), |x| Some(2.0 * x)).take_while(|x| *x < MAX_BRANCH_LENGTH) {
+    if probe.decays_at(branch_length)? {
+      above = branch_length;
+      break;
+    }
+    below = branch_length;
+  }
+  for _ in 0..DECAY_BISECTION_STEPS {
+    let middle = 0.5 * (below + above);
+    if probe.decays_at(middle)? {
+      above = middle;
+    } else {
+      below = middle;
+    }
+  }
+  Ok(Some(above))
+}
+
+struct PilotGrid {
+  grid: Array1<f64>,
+  log_lh: Array1<f64>,
+}
+
+impl PilotGrid {
+  fn evaluate(
+    grid: Array1<f64>,
+    contributions: &[OptimizationContribution],
+    indels: IndelTerm,
+  ) -> Result<Self, Report> {
+    let log_lh = evaluate_log_lh_on_grid(grid.view(), contributions, indels)?;
+    Ok(Self { grid, log_lh })
+  }
+
+  fn extend_to(
+    self,
+    max_bl: f64,
+    max_points: usize,
+    contributions: &[OptimizationContribution],
+    indels: IndelTerm,
+  ) -> Result<Self, Report> {
+    let n_points = self.grid.len();
+    let min_bl = first(&self.grid);
+    let spacing = (last(&self.grid) - min_bl) / (n_points - 1).to_f64_exact();
+    let n_extended = f64_to_usize_saturating(((max_bl - min_bl) / spacing).ceil()) + 1;
+    if n_extended > max_points {
+      return Self::evaluate(Array1::linspace(min_bl, max_bl, max_points), contributions, indels);
+    }
+    let max_bl = min_bl + spacing * (n_extended - 1).to_f64_exact();
+    let grid = Array1::linspace(min_bl, max_bl, n_extended);
+    let added = evaluate_log_lh_on_grid(grid.slice(s![n_points..]), contributions, indels)?;
+    let log_lh = concatenate(Axis(0), &[self.log_lh.view(), added.view()])?;
+    Ok(Self { grid, log_lh })
+  }
+}
+
+struct DecayProbe<'a> {
+  contributions: &'a [OptimizationContribution],
+  indels: IndelTerm,
+  peak: f64,
+  drop: f64,
+}
+
+impl DecayProbe<'_> {
+  fn decays_at(&mut self, branch_length: f64) -> Result<bool, Report> {
+    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indels, branch_length)?.value();
+    self.peak = self.peak.max(log_lh);
+    Ok(self.is_decayed(log_lh))
+  }
+
+  fn is_decayed(&self, log_lh: f64) -> bool {
+    self.peak - log_lh >= self.drop
+  }
 }
 
 fn evaluate_log_lh_on_grid(
-  grid: &Array1<f64>,
+  grid: ArrayView1<f64>,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
 ) -> Result<Array1<f64>, Report> {

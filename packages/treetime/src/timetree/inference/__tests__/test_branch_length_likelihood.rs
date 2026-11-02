@@ -298,8 +298,60 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::peak_beyond_divergence_span( (5,  100.0,  1e-3,  1e-3))]
+  #[case::peak_near_divergence_span(   (2,  1000.0, 2e-3,  1e-4))]
+  #[case::peak_inside_divergence_span( (50, 1000.0, 5e-2,  1e-3))]
+  #[trace]
+  fn test_branch_length_likelihood_grid_holds_peak_and_decaying_tail(
+    #[case] (indel_count, indel_rate, current_branch_length, one_mutation): (usize, f64, f64, f64),
+  ) -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      IndelTerm::new(indel_count, indel_rate),
+      current_branch_length,
+      one_mutation,
+      GRID_POINTS,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
+    let k = indel_count.to_f64_exact();
+
+    let Distribution::Function(function) = distribution.as_ref() else {
+      panic!("branch-length distribution must be a Function");
+    };
+    let slope = function.right_extrap().soft_law().expect("a soft Linear tail carries a law").slope;
+    assert!(slope > 0.0, "the right tail must decay, got neg-log slope {slope}");
+
+    let peak_time = distribution.likely_time()?.expect("distribution has a peak");
+    let spacing = function.dx();
+    assert!(
+      (peak_time - k / indel_rate).abs() <= spacing,
+      "peak {peak_time} must lie within one grid spacing {spacing} of the Gamma mode {}",
+      k / indel_rate
+    );
+
+    let (lo, hi) = distribution.time_bounds().unwrap();
+    let fraction = helpers::gamma_mass_fraction_inside(k, indel_rate, lo, hi);
+    assert!(
+      fraction >= 1.0 - 2.0 * EPS,
+      "stored grid holds only {fraction} of the mass, below 1 - 2*EPS = {}",
+      1.0 - 2.0 * EPS
+    );
+
+    let survival_quantile = helpers::gamma_survival_quantile(k, indel_rate, EPS);
+    assert!(
+      hi <= 2.0 * survival_quantile,
+      "stored grid ends at {hi}, beyond twice the EPS survival quantile {survival_quantile}"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
+    use itertools::izip;
     use std::sync::Arc;
     use treetime_utils::cast::ToF64Exact;
 
@@ -308,22 +360,35 @@ mod tests {
     }
 
     pub(super) fn gamma_mass_fraction_inside(k: f64, mu: f64, lo: f64, hi: f64) -> f64 {
+      let (t, area) = gamma_trapezoid_areas(k, mu);
+      let total: f64 = area.iter().sum();
+      let inside: f64 = izip!(&t, &area).filter(|(t, _)| **t >= lo && **t <= hi).map(|(_, a)| a).sum();
+      inside / total
+    }
+
+    pub(super) fn gamma_survival_quantile(k: f64, mu: f64, eps: f64) -> f64 {
+      let (t, area) = gamma_trapezoid_areas(k, mu);
+      let total: f64 = area.iter().sum();
+      let survival = area.iter().rev().scan(0.0, |above, a| {
+        *above += a;
+        Some(*above)
+      });
+      let index_from_end = survival.take_while(|above| *above <= eps * total).count();
+      t[t.len() - 1 - index_from_end]
+    }
+
+    fn gamma_trapezoid_areas(k: f64, mu: f64) -> (Vec<f64>, Vec<f64>) {
       const N: usize = 2_000_001;
-      let t_far = 60.0;
+      let t_far = (k + 60.0) / mu;
       let dt = t_far / (N.to_f64_exact() - 1.0);
       let density = |t: f64| t.powf(k) * (-mu * t).exp();
-      let mut total = 0.0;
-      let mut inside = 0.0;
-      for i in 0..N {
-        let t = i.to_f64_exact() * dt;
-        let weight = if i == 0 || i == N - 1 { 0.5 } else { 1.0 };
-        let area = weight * density(t) * dt;
-        total += area;
-        if t >= lo && t <= hi {
-          inside += area;
-        }
-      }
-      inside / total
+      (0..N)
+        .map(|i| {
+          let t = i.to_f64_exact() * dt;
+          let weight = if i == 0 || i == N - 1 { 0.5 } else { 1.0 };
+          (t, weight * density(t) * dt)
+        })
+        .unzip()
     }
 
     pub(super) fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
