@@ -144,7 +144,7 @@ mod tests {
   #[test]
   fn test_gridfn_negate_arg_inplace() -> Result<(), Report> {
     let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    grid_fn.negate_arg_inplace();
+    grid_fn.negate_arg_inplace()?;
     let expected = GridFn::from_range_values((-2.0, 0.0), array![3.0, 2.0, 1.0])?;
     assert_eq!(expected, grid_fn);
     Ok(())
@@ -152,9 +152,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::shift(          |f: &GridFn<f64>| Ok(f.shift_x(DATE)),                     (BRANCH.0 + DATE,     BRANCH.1 + DATE))]
-  #[case::negate(         |f: &GridFn<f64>| Ok(negated(f)),                          (-BRANCH.1,           -BRANCH.0))]
-  #[case::negate_zero_end(|f: &GridFn<f64>| Ok(negated(&f.shift_x(-BRANCH.0))),      (BRANCH.0 - BRANCH.1, 0.0))]
+  #[case::shift(          |f: &GridFn<f64>| f.shift_x(DATE),                         (BRANCH.0 + DATE,     BRANCH.1 + DATE))]
+  #[case::negate(         |f: &GridFn<f64>| negated(f),                              (-BRANCH.1,           -BRANCH.0))]
+  #[case::negate_zero_end(|f: &GridFn<f64>| negated(&f.shift_x(-BRANCH.0)?),         (BRANCH.0 - BRANCH.1, 0.0))]
   #[case::scale(          |f: &GridFn<f64>| f.scale_x(3.0),                          (BRANCH.0 * 3.0,      BRANCH.1 * 3.0))]
   #[trace]
   fn test_gridfn_end_maps_take_each_end_with_one_rounding(
@@ -375,10 +375,12 @@ mod tests {
   mod helpers {
     use crate::GridFn;
 
-    pub(super) fn negated(grid_fn: &GridFn<f64>) -> GridFn<f64> {
+    use eyre::Report;
+
+    pub(super) fn negated(grid_fn: &GridFn<f64>) -> Result<GridFn<f64>, Report> {
       let mut negated = grid_fn.clone();
-      negated.negate_arg_inplace();
-      negated
+      negated.negate_arg_inplace()?;
+      Ok(negated)
     }
   }
 }

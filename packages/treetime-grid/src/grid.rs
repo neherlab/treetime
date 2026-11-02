@@ -7,12 +7,13 @@ use ndarray::Array1;
 use num_traits::Float;
 use std::cmp::min;
 use std::ops::RangeInclusive;
-use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::float_compare::within_epsilons_of_scale;
 use treetime_utils::make_error;
 
 const MAX_COINCIDENCE_ULPS: f64 = 4.0;
+
+const MIN_SPACING_EPSILONS: f64 = 4.0;
 
 impl<T: InterpElem> IntoIterator for &Grid<T>
 where
@@ -35,37 +36,6 @@ pub struct Grid<T: InterpElem> {
 }
 
 impl<T: InterpElem> Grid<T> {
-  pub(crate) fn from_start_dx(x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    if n_points < 2 {
-      return make_error!("Grid must have at least 2 points, got {n_points}");
-    }
-    Self::from_ends_dx(x_min, x_min + dx * from_count::<T>(n_points - 1), dx, n_points)
-  }
-
-  pub fn from_ends_dx(x_min: T, x_max: T, dx: T, n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    if dx <= T::zero() {
-      return make_error!("Grid spacing dx ({dx:?}) must be positive");
-    }
-    if n_points < 2 {
-      return make_error!("Grid must have at least 2 points, got {n_points}");
-    }
-    if x_max <= x_min {
-      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
-    }
-    Ok(Self {
-      x_min,
-      x_max,
-      dx,
-      n_points,
-    })
-  }
-
   pub fn from_range_n_points(x_min: T, x_max: T, n_points: usize) -> Result<Self, Report>
   where
     T: Float,
@@ -77,7 +47,31 @@ impl<T: InterpElem> Grid<T> {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
     let dx = (x_max - x_min) / from_count::<T>(n_points - 1);
-    Self::from_ends_dx(x_min, x_max, dx, n_points)
+    let resolution = <T as From<f64>>::from(MIN_SPACING_EPSILONS) * T::epsilon() * x_min.abs().max(x_max.abs());
+    if dx.is_nan() || dx <= resolution {
+      return make_error!(
+        "Grid of {n_points} points over [{x_min:?}, {x_max:?}] has spacing {dx:?}, not above the rounding resolution {resolution:?} of its coordinates"
+      );
+    }
+    Ok(Self {
+      x_min,
+      x_max,
+      dx,
+      n_points,
+    })
+  }
+
+  pub(crate) fn from_start_dx(x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    if dx <= T::zero() {
+      return make_error!("Grid spacing dx ({dx:?}) must be positive");
+    }
+    if n_points < 2 {
+      return make_error!("Grid must have at least 2 points, got {n_points}");
+    }
+    Self::from_range_n_points(x_min, x_min + dx * from_count::<T>(n_points - 1), n_points)
   }
 
   pub fn from_range_dx(x_min: T, x_max: T, dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
@@ -101,7 +95,7 @@ impl<T: InterpElem> Grid<T> {
     let n_points = Self::range_dx_point_count(x_min, x_max, dx, max_points)?;
     match anchor {
       Side::Left => Self::from_start_dx(x_min, dx, n_points),
-      Side::Right => Self::from_ends_dx(x_max - dx * from_count::<T>(n_points - 1), x_max, dx, n_points),
+      Side::Right => Self::from_range_n_points(x_max - dx * from_count::<T>(n_points - 1), x_max, n_points),
     }
   }
 
@@ -109,13 +103,27 @@ impl<T: InterpElem> Grid<T> {
   where
     T: Float,
   {
-    if x.len() < 2 {
-      return make_error!("Grid must have at least 2 points, got {}", x.len());
+    let n_points = x.len();
+    if n_points < 2 {
+      return make_error!("Grid must have at least 2 points, got {n_points}");
     }
-    if !has_uniform_spacing(x) {
-      return make_error!("x array must be uniformly spaced");
+    let grid = Self::from_range_n_points(x[0], x[n_points - 1], n_points)?;
+    let scale: f64 = x[0].abs().max(x[n_points - 1].abs()).into();
+    match x
+      .iter()
+      .zip(grid.iter())
+      .position(|(&given, at)| !coordinates_coincide(given.into(), at.into(), scale))
+    {
+      Some(i) => make_error!(
+        "x array is not a uniform grid: x[{i}] is {:?}, but the uniform grid from x[0] = {:?} to x[{}] = {:?} has {:?} there",
+        x[i],
+        x[0],
+        n_points - 1,
+        x[n_points - 1],
+        grid.x_at(i)
+      ),
+      None => Ok(grid),
     }
-    Self::from_ends_dx(x[0], x[x.len() - 1], x[1] - x[0], x.len())
   }
 
   fn range_dx_point_count(x_min: T, x_max: T, dx: T, max_points: MaxGridPoints) -> Result<usize, Report>
@@ -136,40 +144,25 @@ impl<T: InterpElem> Grid<T> {
     Ok(n_points)
   }
 
-  #[must_use]
-  pub(crate) fn shifted(&self, delta: T) -> Self
+  pub(crate) fn shifted(&self, delta: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    Self {
-      x_min: self.x_min + delta,
-      x_max: self.x_max + delta,
-      ..*self
-    }
+    Self::from_range_n_points(self.x_min + delta, self.x_max + delta, self.n_points)
   }
 
-  #[must_use]
-  pub(crate) fn negated(&self) -> Self
+  pub(crate) fn negated(&self) -> Result<Self, Report>
   where
     T: Float,
   {
-    Self {
-      x_min: T::zero() - self.x_max,
-      x_max: T::zero() - self.x_min,
-      ..*self
-    }
+    Self::from_range_n_points(T::zero() - self.x_max, T::zero() - self.x_min, self.n_points)
   }
 
   pub(crate) fn scaled(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    Self::from_ends_dx(
-      self.x_min * factor,
-      self.x_max * factor,
-      self.dx * factor,
-      self.n_points,
-    )
+    Self::from_range_n_points(self.x_min * factor, self.x_max * factor, self.n_points)
   }
 
   pub fn slice(&self, points: RangeInclusive<usize>) -> Result<Self, Report>
@@ -183,7 +176,7 @@ impl<T: InterpElem> Grid<T> {
         self.n_points
       );
     }
-    Self::from_ends_dx(self.x_at(first), self.x_at(last), self.dx, last - first + 1)
+    Self::from_range_n_points(self.x_at(first), self.x_at(last), last - first + 1)
   }
 
   pub fn x_min(&self) -> T {

@@ -11,7 +11,7 @@ pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> R
     Distribution::Empty => Ok(Distribution::empty()),
     Distribution::Point(p) => Ok(negate_point(p)),
     Distribution::Range(r) => Ok(negate_range(r)),
-    Distribution::Function(f) => Ok(negate_function(f)),
+    Distribution::Function(f) => negate_function(f),
     Distribution::Formula(_) => make_error!("Negation not implemented for Formula distributions"),
   }
 }
@@ -24,8 +24,8 @@ fn negate_range<Y: YAxisPolicy>(range: &DistributionRange<f64, Y>) -> Distributi
   Distribution::range((-range.end(), -range.start()), range.amplitude())
 }
 
-fn negate_function<Y: YAxisPolicy>(func: &DistributionFunction<f64, Y>) -> Distribution<Y> {
+fn negate_function<Y: YAxisPolicy>(func: &DistributionFunction<f64, Y>) -> Result<Distribution<Y>, Report> {
   let mut result = func.clone();
-  result.negate_arg_inplace();
-  Distribution::Function(result)
+  result.negate_arg_inplace()?;
+  Ok(Distribution::Function(result))
 }

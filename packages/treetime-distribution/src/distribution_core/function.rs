@@ -330,14 +330,15 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.is_empty()
   }
 
-  pub(crate) fn negate_arg_inplace(&mut self)
+  pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
   {
-    self.grid_fn.negate_arg_inplace();
+    self.grid_fn.negate_arg_inplace()?;
     self.left_extrap = scale_tail_law(self.left_extrap, -1.0);
     self.right_extrap = scale_tail_law(self.right_extrap, -1.0);
     std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
+    Ok(())
   }
 
   pub(crate) fn likely_time(&self) -> Result<Option<T>, Report>
@@ -383,14 +384,13 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
     ))
   }
 
-  #[must_use]
-  pub fn shift_time(&self, shift: f64) -> Self {
-    Self::from_grid_fn_with_extrap(
-      self.grid_fn.shift_x(shift),
+  pub fn shift_time(&self, shift: f64) -> Result<Self, Report> {
+    Ok(Self::from_grid_fn_with_extrap(
+      self.grid_fn.shift_x(shift)?,
       self.ampl,
       shift_tail_law(self.left_extrap, shift),
       shift_tail_law(self.right_extrap, shift),
-    )
+    ))
   }
 
   pub fn repeak(&self) -> Result<Option<Self>, Report> {

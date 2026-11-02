@@ -55,7 +55,7 @@ pub(crate) fn distribution_convolution(
       Ok(convolution_point_range(a, b))
     },
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      Ok(Distribution::Function(convolution_point_function(a, b)))
+      Ok(Distribution::Function(convolution_point_function(a, b)?))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
       convolution_range_function(a, b, max_points)
@@ -222,8 +222,8 @@ impl SupportEnd {
 fn convolution_point_function(
   p: &DistributionPoint<f64, NegLog>,
   f: &DistributionFunction<f64, NegLog>,
-) -> DistributionFunction<f64, NegLog> {
-  f.shift_time(p.t()).with_amplitude(f.amplitude() + p.amplitude())
+) -> Result<DistributionFunction<f64, NegLog>, Report> {
+  Ok(f.shift_time(p.t())?.with_amplitude(f.amplitude() + p.amplitude()))
 }
 
 fn convolution_function_function(
@@ -288,7 +288,7 @@ fn convolution_function_function_fine(
     return guarded_empty_result("convolution", a_domain, b_domain);
   };
 
-  let full_grid = Grid::from_ends_dx(result_range.0, result_range.1, dx, conv.len())?;
+  let full_grid = Grid::from_range_n_points(result_range.0, result_range.1, conv.len())?;
   let first = reconstructed.start_offset;
   let last = first + reconstructed.neg_log.len() - 1;
 

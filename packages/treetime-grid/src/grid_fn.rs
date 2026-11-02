@@ -427,27 +427,27 @@ impl<T: InterpElem> GridFn<T> {
     })
   }
 
-  #[must_use]
-  pub fn shift_x(&self, delta: T) -> Self
+  pub fn shift_x(&self, delta: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    Self {
-      grid: self.grid.shifted(delta),
+    Ok(Self {
+      grid: self.grid.shifted(delta)?,
       y: self.y.clone(),
-    }
+    })
   }
 
   #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
-  pub fn negate_arg_inplace(&mut self)
+  pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
   {
-    self.grid = self.grid.negated();
+    self.grid = self.grid.negated()?;
     let n = self.y.len();
     for i in 0..n / 2 {
       self.y.swap(i, n - 1 - i);
     }
+    Ok(())
   }
 
   pub fn resample_with_extrap(

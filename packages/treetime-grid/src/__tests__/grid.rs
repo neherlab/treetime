@@ -1,9 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::{Grid, coordinates_coincide};
+  use crate::{Grid, GridFn, coordinates_coincide};
   use eyre::Report;
+  use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::assert_error;
+
+  const ULP_2000: f64 = 1024.0 * f64::EPSILON;
 
   #[rustfmt::skip]
   #[rstest]
@@ -46,5 +50,32 @@ mod tests {
   fn test_coordinates_coincide(#[case] (a, b, scale): (f64, f64, f64), #[case] expected: bool) {
     let actual = coordinates_coincide(a, b, scale);
     assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::spacing_below_one_ulp(  array![2000.0, 2000.0 + 2.0 * ULP_2000, 2000.0 + 3.0 * ULP_2000, 2000.0 + 4.0 * ULP_2000], "Grid of 4 points over [2000.0, 2000.000000000001] has spacing 3.0316490059097606e-13, not above the rounding resolution 1.7763568394002513e-12 of its coordinates")]
+  #[case::nonuniform(             array![0.0, 1.0, 3.0],                                                                        "x array is not a uniform grid: x[1] is 1.0, but the uniform grid from x[0] = 0.0 to x[2] = 3.0 has 1.5 there")]
+  #[trace]
+  fn test_grid_from_array_rejects_coordinates_it_cannot_represent(#[case] x: Array1<f64>, #[case] expected: &str) {
+    assert_error!(Grid::from_array(&x), expected);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::range_below_resolution((2000.0, 2000.0 + 4.0 * ULP_2000), 5, "Grid of 5 points over [2000.0, 2000.000000000001] has spacing 2.2737367544323206e-13, not above the rounding resolution 1.7763568394002513e-12 of its coordinates")]
+  #[trace]
+  fn test_grid_from_range_n_points_rejects_spacing_below_rounding_resolution(#[case] (x_min, x_max): (f64, f64), #[case] n_points: usize, #[case] expected: &str) {
+    assert_error!(Grid::from_range_n_points(x_min, x_max, n_points), expected);
+  }
+
+  #[test]
+  fn test_grid_shift_that_collapses_the_spacing_is_error() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1e-12), array![0.0, 1.0, 2.0])?;
+    assert_error!(
+      grid_fn.shift_x(2000.0),
+      "Grid of 3 points over [2000.0, 2000.000000000001] has spacing 4.547473508864641e-13, not above the rounding resolution 1.7763568394002513e-12 of its coordinates"
+    );
+    Ok(())
   }
 }

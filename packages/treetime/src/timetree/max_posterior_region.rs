@@ -214,7 +214,7 @@ fn function_max_posterior_region(
 ) -> Result<PosteriorRegion, Report> {
   let peak = latest_peak_index(function.y().view());
   let origin = function.x_at(peak);
-  let local = function.shift_time(-origin);
+  let local = function.shift_time(-origin)?;
   let profile = MassProfile::new(&local)?;
   let Some(fractions) = profile.fractions(TailMass::ZeroWhereUndefined) else {
     return make_error!(

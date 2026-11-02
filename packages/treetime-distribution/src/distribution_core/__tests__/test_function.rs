@@ -76,7 +76,7 @@ mod tests {
       .with_right_extrap(right)?;
 
     let mut actual = function;
-    actual.negate_arg_inplace();
+    actual.negate_arg_inplace()?;
 
     assert_eq!(
       BoundaryBehavior::Linear(SoftTailLaw { slope: -0.7 }),
