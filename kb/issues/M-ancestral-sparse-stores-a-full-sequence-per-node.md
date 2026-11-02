@@ -25,3 +25,7 @@ This was verified per edge on `data/sc2/5100`: across all 10198 edges there are 
 ## Fix approach
 
 See the proposal [Mutation-first sequence representation](../proposals/mutation-first-sequence-representation.md) for the design axes, staging and validation plan. The open axes are the random-access `PartitionBranchOps::node_sequence` accessor, `--sample-from-profile=all` (whose realization is not compressible), and whether the augur per-node `sequence` field can be gated behind a flag.
+
+## Related issues
+
+- [M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md](M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md): the per-site profiles of columns without data in any tip, an $O(N \cdot K)$ cost of the sparse marginal passes besides the per-node sequences

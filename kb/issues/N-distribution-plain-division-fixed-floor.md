@@ -19,3 +19,7 @@ Choose and validate the numerical contract before implementation:
 - reject non-finite, negative, and zero Plain divisors while dividing every strictly positive value without a fixed floor.
 
 The decision must define zero-over-zero behavior and include a timetree cavity-message oracle. Implementation waits until this contract is resolved.
+
+## Related issues
+
+- [N-distribution-convolution-valley-quadrature-turns-exact-zero-into-finite-density.md](N-distribution-convolution-valley-quadrature-turns-exact-zero-into-finite-density.md): the valley quadrature of the convolution clamps an exact zero to the smallest normal double

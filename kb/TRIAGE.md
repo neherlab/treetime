@@ -98,6 +98,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-utils-mean-by-key-empty-and-integer-semantics.md](issues/N-utils-mean-by-key-empty-and-integer-semantics.md)**: return `Option<U>`, restrict the function to floating-point keys, or keep the current contract and document it
 - **[kb/issues/N-utils-softmax-all-neg-inf-returns-uniform.md](issues/N-utils-softmax-all-neg-inf-returns-uniform.md)**: keep the uniform profile for an all-impossible row, return an error that names the site, or return NaN as v0 does
 - **[kb/issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md](issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md)**: keep wasm-bindgen and upgrade it with Emscripten under a CI check, or replace it with C exports of the module
+- **[kb/issues/N-test-sc2-optimize-convergence-test-runs-near-the-nextest-timeout.md](issues/N-test-sc2-optimize-convergence-test-runs-near-the-nextest-timeout.md)**: move the sc2 convergence test to the slow tier, give it a longer timeout, or find a smaller dataset that shows the same two-cycle
 
 ### Research
 
@@ -149,6 +150,8 @@ Each line names the issue and the measurement or analysis that must come first.
 - **[kb/issues/N-timetree-forward-fine-fallback-can-build-large-grids.md](issues/N-timetree-forward-fine-fallback-can-build-large-grids.md)**: find which forward stage builds the 43 513-point grid of `mpox/clade-ii/1000` at 5e-4 and why its window is so wide
 - **[kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md](issues/N-timetree-gm-runner-dataset-cases-disabled.md)**: find out why the v0 capture does not reproduce the committed fixture, and why the dense `mpox_clade_ii_20` case is slow
 - **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the memory of the tab in the browsers with runs computing at the same time and after several large runs in one page session
+- **[kb/issues/N-distribution-convolution-valley-quadrature-turns-exact-zero-into-finite-density.md](issues/N-distribution-convolution-valley-quadrature-turns-exact-zero-into-finite-density.md)**: find whether a time message with an interior support gap, or a convolution operand with a valley deeper than 745 nats, is reachable from `timetree` inputs
+- **[kb/issues/N-timetree-backward-message-can-miss-the-date-of-its-child-by-half-a-cell.md](issues/N-timetree-backward-message-can-miss-the-date-of-its-child-by-half-a-cell.md)**: measure how often the hard end of a resampled branch distribution moves in the backward pass, and the change of the node dates when it stays on a grid point
 
 ## Fix now
 
@@ -201,3 +204,7 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/N-app-reset-form-keeps-uploads-of-the-pending-run.md](issues/N-app-reset-form-keeps-uploads-of-the-pending-run.md)**: release the uploads of the pending run when the form resets
 - **[kb/issues/N-app-web-production-builds-not-in-ci.md](issues/N-app-web-production-builds-not-in-ci.md)**: add `build-web` and `test-wasm-mt` to a check group
 - **[kb/issues/N-web2-jobs-parameter-lost-after-navigation.md](issues/N-web2-jobs-parameter-lost-after-navigation.md)**: keep the `jobs` parameter across navigation
+- **[kb/issues/M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md](issues/M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md)**: represent the columns without data in any tip once, with the shared profile of the equilibrium frequencies, instead of one entry per internal node
+- **[kb/issues/N-timetree-marginal-clock-rate-probes-report-grid-limit-errors-without-explanation.md](issues/N-timetree-marginal-clock-rate-probes-report-grid-limit-errors-without-explanation.md)**: explain grid point limit errors of the clock-rate probes as `run_timetree()` explains its own
+- **[kb/issues/N-cli-pipeline-step-collision-check-skips-translation-outputs.md](issues/N-cli-pipeline-step-collision-check-skips-translation-outputs.md)**: expand the translation templates of each pipeline step before the collision and upstream checks
+- **[kb/issues/N-distribution-negated-tail-laws-carry-negative-zero.md](issues/N-distribution-negated-tail-laws-carry-negative-zero.md)**: negate the coordinates of tail laws by subtraction from zero
