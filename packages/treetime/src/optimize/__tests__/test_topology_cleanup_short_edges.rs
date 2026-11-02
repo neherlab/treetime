@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::sub;
-  use crate::optimize::indel::EdgeIndels;
   use crate::optimize::topology::collapse::collapse_short_internal_edges;
+  use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use eyre::Report;
-  use helpers::ShortEdgeCase;
+  use helpers::{ShortEdgeCase, gap_change};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
@@ -13,19 +13,21 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::short_without_substitution(0.05 * ONE_MUTATION, vec![],                   "(C,D,A,B)root;"    )]
-  #[case::short_with_substitution(   0.05 * ONE_MUTATION, vec![sub(b'A', 0, b'T')], "((A,B)P,C,D)root;" )]
-  #[case::long_without_substitution( 0.2 * ONE_MUTATION,  vec![],                   "((A,B)P,C,D)root;" )]
-  #[case::zero_with_substitution(    0.0,                 vec![sub(b'A', 0, b'T')], "(C,D,A,B)root;"    )]
+  #[case::short_without_change(   (0.05 * ONE_MUTATION, vec![],                   vec![]            ), "(C,D,A,B)root;"   )]
+  #[case::zero_without_change(    (0.0,                 vec![],                   vec![]            ), "(C,D,A,B)root;"   )]
+  #[case::short_with_substitution((0.05 * ONE_MUTATION, vec![sub(b'A', 0, b'T')], vec![]            ), "((A,B)P,C,D)root;")]
+  #[case::zero_with_substitution( (0.0,                 vec![sub(b'A', 0, b'T')], vec![]            ), "((A,B)P,C,D)root;")]
+  #[case::zero_with_gap_change(   (0.0,                 vec![],                   vec![gap_change()]), "((A,B)P,C,D)root;")]
+  #[case::at_threshold(           (0.1 * ONE_MUTATION,  vec![],                   vec![]            ), "((A,B)P,C,D)root;")]
+  #[case::long_without_change(    (0.2 * ONE_MUTATION,  vec![],                   vec![]            ), "((A,B)P,C,D)root;")]
   #[trace]
-  fn test_topology_cleanup_collapses_internal_edges_shorter_than_a_tenth_of_a_mutation_without_substitutions(
-    #[case] length: f64,
-    #[case] estimate: Vec<Sub>,
+  fn test_topology_cleanup_collapses_internal_edges_shorter_than_a_tenth_of_a_mutation_without_state_change(
+    #[case] (length, estimate, indels): (f64, Vec<Sub>, Vec<InDel>),
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let mut case = ShortEdgeCase::new(length, estimate)?;
+    let mut case = ShortEdgeCase::new(length, estimate, indels)?;
 
-    case.collapse(&EdgeIndels::Excluded)?;
+    case.collapse()?;
 
     assert_eq!(expected, case.topology()?);
     Ok(())
@@ -35,12 +37,17 @@ mod tests {
     use super::*;
     use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::{empty_sparse_recon, populate_test_nodes};
     use crate::partition::set::PartitionSet;
-    use crate::test_utils::{find_edge_key, fitch_edge_obs};
+    use crate::test_utils::{deletion, find_edge_key, fitch_edge_obs, sparse_edge_obs};
     use treetime_graph::graph::Graph;
     use treetime_graph::key_map::EdgeMap;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
+    use treetime_primitives::AsciiChar;
+
+    pub(super) fn gap_change() -> InDel {
+      deletion((3, 5), [AsciiChar::from_byte_unchecked(b'A'); 2].as_slice())
+    }
 
     pub(super) struct ShortEdgeCase {
       graph: Graph,
@@ -50,7 +57,7 @@ mod tests {
     }
 
     impl ShortEdgeCase {
-      pub(super) fn new(length: f64, estimate: Vec<Sub>) -> Result<Self, Report> {
+      pub(super) fn new(length: f64, estimate: Vec<Sub>, indels: Vec<InDel>) -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)P:0.1,C:0.1,D:0.1)root;".as_slice())?;
         let graph = nwk_parsed.graph;
         let names = nwk_parsed.names;
@@ -68,7 +75,7 @@ mod tests {
         reconstruction
           .partition
           .obs_edges
-          .insert(short_edge, fitch_edge_obs(estimate.clone()));
+          .insert(short_edge, sparse_edge_obs(estimate.clone(), indels));
         reconstruction.edges.estimates.insert(short_edge, estimate);
         branch_lengths.insert(short_edge, Some(length));
         Ok(Self {
@@ -79,14 +86,13 @@ mod tests {
         })
       }
 
-      pub(super) fn collapse(&mut self, indels: &EdgeIndels) -> Result<(), Report> {
-        let partitions = collapse_short_internal_edges(
+      pub(super) fn collapse(&mut self) -> Result<(), Report> {
+        let collapsed = collapse_short_internal_edges(
           &mut self.graph,
           self.partitions.take().unwrap(),
-          indels,
           &mut self.branch_lengths,
         )?;
-        self.partitions = Some(partitions);
+        self.partitions = Some(collapsed.partitions);
         Ok(())
       }
 

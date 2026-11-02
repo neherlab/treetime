@@ -98,8 +98,7 @@ pub(crate) fn run_optimize_loop(
   }
 
   if topology_ops.collapse_short_branches && max_iter > 0 {
-    let current_indels = indels.recount(graph, &partitions)?;
-    partitions = collapse_short_internal_edges(graph, partitions, &current_indels, &mut branch_lengths)?;
+    partitions = collapse_short_internal_edges(graph, partitions, &mut branch_lengths)?.partitions;
   }
 
   Ok(OptimizeLoopResult {

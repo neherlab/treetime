@@ -1,5 +1,4 @@
 use crate::branch_lengths::one_mutation;
-use crate::optimize::indel::EdgeIndels;
 use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::{
@@ -84,9 +83,8 @@ pub(crate) fn collapse_edge(
 pub(crate) fn collapse_short_internal_edges(
   graph: &mut Graph,
   mut partitions: PartitionSet,
-  indels: &EdgeIndels,
   branch_lengths: &mut EdgeMap<Option<f64>>,
-) -> Result<PartitionSet, Report> {
+) -> Result<CollapsedShortEdges, Report> {
   let total_length = partitions.total_length();
   let threshold = if total_length > 0 {
     SHORT_BRANCH_MUTATIONS * one_mutation(total_length)
@@ -99,16 +97,16 @@ pub(crate) fn collapse_short_internal_edges(
     .iter()
     .filter(|&&node_key| !graph.is_leaf(node_key))
     .flat_map(|&node_key| schedule.parents(node_key).iter().map(|&(_, edge_key)| edge_key))
-    .filter(|&edge_key| !indels.term(edge_key).requires_positive_length())
-    .map(|edge_key| -> Result<_, Report> {
-      let length = branch_lengths[&edge_key].unwrap_or(0.0);
-      let is_short = length == 0.0 || (length < threshold && !carries_substitution(graph, &partitions, edge_key)?);
-      Ok(is_short.then_some(edge_key))
-    })
+    .filter(|&edge_key| branch_lengths[&edge_key].unwrap_or(0.0) < threshold)
+    .map(|edge_key| -> Result<_, Report> { Ok((!changes_state(graph, &partitions, edge_key)?).then_some(edge_key)) })
     .flatten_ok()
     .try_collect()?;
   if short_edges.is_empty() {
-    return Ok(partitions);
+    return Ok(CollapsedShortEdges {
+      partitions,
+      count: 0,
+      threshold,
+    });
   }
 
   let sparse = partitions.sparse_mut();
@@ -117,16 +115,29 @@ pub(crate) fn collapse_short_internal_edges(
     collapse_edge(graph, sparse, &groups, edge_key, branch_lengths)?;
   }
   debug!(
-    "Collapsed {} internal edges shorter than {threshold} without substitutions after the optimization loop",
+    "Collapsed {} internal edges shorter than {threshold} without a state change",
     short_edges.len()
   );
   graph.build()?;
-  Ok(partitions.reconcile_node_states(graph))
+  Ok(CollapsedShortEdges {
+    partitions: partitions.reconcile_node_states(graph),
+    count: short_edges.len(),
+    threshold,
+  })
 }
 
-fn carries_substitution(graph: &Graph, partitions: &PartitionSet, edge_key: GraphEdgeKey) -> Result<bool, Report> {
+pub(crate) struct CollapsedShortEdges {
+  pub partitions: PartitionSet,
+  pub count: usize,
+  pub threshold: f64,
+}
+
+fn changes_state(graph: &Graph, partitions: &PartitionSet, edge_key: GraphEdgeKey) -> Result<bool, Report> {
   partitions
     .iter()
-    .map(|partition| partition.edge_sub_count(graph, edge_key))
-    .process_results(|mut counts| counts.any(|count| count.is_none_or(|count| count > 0)))
+    .map(|partition| -> Result<bool, Report> {
+      let carries_substitution = partition.edge_sub_count(graph, edge_key)?.is_none_or(|count| count > 0);
+      Ok(carries_substitution || !partition.edge_indels(edge_key).is_empty())
+    })
+    .process_results(|mut changes| changes.any(|changes| changes))
 }
