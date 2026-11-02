@@ -19,6 +19,7 @@ pub struct TimetreeParams {
   pub allow_negative_rate: bool,
   pub clock_filter: f64,
   pub prune_tips: PruneTips,
+  pub collapse_short_branches: bool,
   pub max_iter: usize,
   pub resolve_polytomies: bool,
   pub relax: Vec<f64>,

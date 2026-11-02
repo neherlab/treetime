@@ -57,7 +57,7 @@ pub(crate) fn run_pre_loop(
     state
   } else {
     let state = ml_optimize(state, params, "post-reroot", &mut convergence, log)?;
-    collapse_short_branches(state, None, &inputs.context.date_constraints, "post-reroot", log)?
+    collapse_short_branches(inputs, state, None, "post-reroot", log)?
   };
   convergence.report(BranchOptMethod::Brent, log);
   cancel.check()?;
@@ -92,13 +92,7 @@ fn reroot_before_filter(
   let params = inputs.params;
   let state = if inputs.has_alignment {
     let state = ml_optimize(state, params, "pre-reroot", convergence, log)?;
-    collapse_short_branches(
-      state,
-      input_reconstruction,
-      &inputs.context.date_constraints,
-      "pre-reroot",
-      log,
-    )?
+    collapse_short_branches(inputs, state, input_reconstruction, "pre-reroot", log)?
   } else {
     state
   };
@@ -151,12 +145,16 @@ fn ml_optimize(
 }
 
 fn collapse_short_branches(
+  inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
   input_reconstruction: Option<PartitionSet>,
-  date_constraints: &DateConstraints,
   label: &str,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
+  if !inputs.params.collapse_short_branches {
+    return Ok(state);
+  }
+  let date_constraints = &inputs.context.date_constraints;
   let PreLoopState {
     mut graph,
     mut branch_lengths,

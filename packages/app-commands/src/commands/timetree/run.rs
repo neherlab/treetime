@@ -199,6 +199,7 @@ fn timetree_params(
     sequence_outputs_requested,
     seed,
     max_grid_points: args.dating.max_grid_points,
+    collapse_short_branches: true,
   }
 }
 

@@ -40,7 +40,7 @@ mod tests {
     #[case] sequences: Sequences,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let actual = run_topology(ZERO_LENGTH_CHAIN, ZERO_LENGTH_CHAIN_FASTA, mode, dense, sequences, &[])?;
+    let actual = run_topology(ZERO_LENGTH_CHAIN, ZERO_LENGTH_CHAIN_FASTA, mode, dense, sequences, &[], true)?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -56,7 +56,7 @@ mod tests {
     #[case] fasta: &str,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let actual = run_topology(SHORT_EDGE, fasta, BranchLengthMode::Input, Some(false), Sequences::Alignment, &[])?;
+    let actual = run_topology(SHORT_EDGE, fasta, BranchLengthMode::Input, Some(false), Sequences::Alignment, &[], true)?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -75,9 +75,30 @@ mod tests {
       Some(false),
       Sequences::Alignment,
       &[("Y", 2005.0)],
+      true,
     )?;
 
     assert_eq!("(((C,A,B)Y,D)Z,(E,F)W)root;", actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::marginal(BranchLengthMode::Marginal)]
+  #[case::input(   BranchLengthMode::Input)]
+  #[trace]
+  fn test_pipeline_short_branches_stay_when_the_collapse_is_off(#[case] mode: BranchLengthMode) -> Result<(), Report> {
+    let actual = run_topology(
+      ZERO_LENGTH_CHAIN,
+      ZERO_LENGTH_CHAIN_FASTA,
+      mode,
+      Some(false),
+      Sequences::Alignment,
+      &[],
+      false,
+    )?;
+
+    assert_eq!("((((A,B)X,C)Y,D)Z,(E,F)W)root;", actual);
     Ok(())
   }
 
@@ -180,6 +201,7 @@ mod tests {
       dense: Option<bool>,
       sequences: Sequences,
       internal_dates: &[(&str, f64)],
+      collapse_short_branches: bool,
     ) -> Result<String, Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names.clone();
@@ -218,6 +240,7 @@ mod tests {
         branch_length_mode: mode,
         dense,
         clock_rate: Some(CLOCK_RATE),
+        collapse_short_branches,
         ..marginal_timetree_params()
       };
       let output = pipeline::run(&params, input, None, None, &NoopCancel, &NoopProgress, &NoopProgress)

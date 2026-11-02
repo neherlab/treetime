@@ -99,6 +99,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     sequence_outputs_requested: false,
     seed: 0,
     max_grid_points: MaxGridPoints::default(),
+    collapse_short_branches: true,
   }
 }
 

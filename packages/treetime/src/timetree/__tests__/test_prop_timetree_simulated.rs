@@ -8,7 +8,6 @@ mod tests {
     younger_parents,
   };
   use proptest::prelude::{ProptestConfig, prop_assert_eq, proptest};
-  use std::collections::BTreeSet;
   use treetime_graph::clades::TipIds;
 
   proptest! {
@@ -30,7 +29,7 @@ mod tests {
       let mut ids = TipIds::default();
       let true_keys = clade_key_set(&case.tree.graph, &case.tree.names, &mut ids).map_err(|error| as_test_failure(&error))?;
       let keys = clade_key_set(&output.graph, &output.names, &mut ids).map_err(|error| as_test_failure(&error))?;
-      prop_assert_eq!(BTreeSet::<&Vec<usize>>::new(), keys.difference(&true_keys).collect());
+      prop_assert_eq!(true_keys, keys);
       prop_assert_eq!(Vec::<String>::new(), internal_nodes_without_valid_interval(&output));
     }
   }
