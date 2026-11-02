@@ -17,7 +17,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use treetime_io::nwk::NwkStyle;
@@ -290,6 +290,15 @@ impl OutputRequest {
       settings: self.settings,
     };
     output_plan::plan(&request).map_err(missing_outputs_argument_error)
+  }
+
+  pub(crate) fn given_selections(&self) -> BTreeSet<OutputSelection> {
+    self
+      .tree_paths
+      .overrides()
+      .into_keys()
+      .chain(given_paths(&self.file_paths).into_keys())
+      .collect()
   }
 }
 

@@ -9,6 +9,7 @@ use crate::commands::shared::ancestral_trees::{
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::partition::log_partitions;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
+use crate::commands::shared::run_paths::RunPaths;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
   AlignmentSource, TreeAndSources, ancestral_input, read_tree_and_sources,
@@ -54,6 +55,7 @@ pub fn run_ancestral_reconstruction(
   let resolved = args.outputs.resolve()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
+  let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
 
   let TreeAndSources {
     tree,
@@ -91,7 +93,6 @@ pub fn run_ancestral_reconstruction(
     .topology_order
     .resolve(&input.graph, &names, None, args.newick_dialect)?;
 
-  let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
   let mut seq_sink = AncestralSeqSink::new(&resolved, descs, ambiguity)?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
@@ -196,6 +197,7 @@ fn plan_aa_reconstructions<'a>(
   };
   let annotations = read_gff3_annotations(args.annotation.as_deref(), &args.cds_selection)?;
   let cdses = selected_cdses(&args.cds_selection, &annotations);
+  RunPaths::new(args.run_inputs.clone(), &args.outputs, resolved).check_with_cds_names(&cdses)?;
   let fasta_paths = aa_fasta
     .map(|file| planned_aa_fasta_paths(resolved, &file.path, &cdses))
     .transpose()?;

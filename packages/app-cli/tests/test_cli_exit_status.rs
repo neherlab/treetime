@@ -256,13 +256,81 @@ mod tests {
           code: Some(2),
           stdout: String::new(),
           stderr: format!(
-            "error: --translations '{template}' can name the same file as the output --output-sequences '{output}': \
-             the run would overwrite its own input\n"
+            "error: --translations '{output}' names the same file as the output --output-sequences '{output}': the run \
+             would overwrite its own input\n"
           ),
         },
         false
       ),
       (run, Path::new(&output).exists())
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::other_names(   &["G"],                        (0, ""),                                                                                                                                                                                     &["G.fasta", "G_withInternalNodes.fasta"], true)]
+  #[case::suffixed_name( &["X", "X_withInternalNodes"], (2, "error: --translations 'TR/X_withInternalNodes.fasta' names the same file as the output --output-translations 'TR/X_withInternalNodes.fasta': the run would overwrite its own input\n"), &["X.fasta", "X_withInternalNodes.fasta"], false)]
+  #[trace]
+  fn test_cli_augur_translation_templates_in_one_folder_collide_only_by_cds_names(
+    #[case] cdses: &[&str],
+    #[case] (code, stderr): (i32, &str),
+    #[case] files: &[&str],
+    #[case] node_data_written: bool,
+  ) {
+    let dir = tempdir().unwrap();
+    let tree = write_file(dir.path(), "tree.nwk", "((A:0.1,B:0.2):0.05,C:0.3);\n");
+    let alignment = write_file(dir.path(), "aln.fasta", ">A\nATGAAATAA\n>B\nATGAAGTAA\n>C\nATGCAATAA\n");
+    let gff = cdses
+      .iter()
+      .map(|cds| format!("ref\t.\tCDS\t1\t9\t.\t+\t0\tName={cds};gene={cds}\n"))
+      .collect::<Vec<_>>()
+      .concat();
+    let annotation = write_file(dir.path(), "genome.gff3", &format!("##gff-version 3\n{gff}"));
+    let translations = dir.path().join("tr");
+    fs::create_dir_all(&translations).unwrap();
+    let translation = ">A\nMK*\n>B\nMK*\n>C\nMQ*\n";
+    for cds in cdses {
+      write_file(&translations, &format!("{cds}.fasta"), translation);
+    }
+    let last_input = translations.join(format!("{}.fasta", cdses[cdses.len() - 1]));
+    let node_data = dir.path().join("out.json");
+    let tr = translations.to_str().unwrap();
+    let run = treetime(
+      &[
+        "ancestral",
+        "--tree",
+        &tree,
+        "--alignment",
+        &alignment,
+        "--annotation",
+        &annotation,
+        "--translations",
+        &format!("{tr}/%GENE.fasta"),
+        "--output-translations",
+        &format!("{tr}/%GENE_withInternalNodes.fasta"),
+        "--output-node-data",
+        node_data.to_str().unwrap(),
+      ],
+      &[],
+    );
+    let mut written = fs::read_dir(&translations)
+      .unwrap()
+      .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+      .collect::<Vec<_>>();
+    written.sort();
+    assert_eq!(
+      (
+        (Some(code), stderr.replace("TR", tr)),
+        files.iter().map(|file| (*file).to_owned()).collect::<Vec<_>>(),
+        node_data_written,
+        translation.to_owned(),
+      ),
+      (
+        (run.code, run.stderr),
+        written,
+        node_data.exists(),
+        fs::read_to_string(last_input).unwrap(),
+      )
     );
   }
 

@@ -1,63 +1,35 @@
 use crate::command::AppCommand;
+use crate::commands::ancestral::aa_node_data::{cds_output_paths, translation_path};
 use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::dependent_settings::setting_flag;
+use crate::commands::shared::output_args::OutputRequest;
 use crate::config::properties::{PathRole, setting_properties};
-use app_output::output_plan::{OutputSelection, PathPlaceholder, ResolvedOutputs};
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use eyre::Report;
 use itertools::Itertools;
-use ndarray::Array2;
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Component, Path, PathBuf, is_separator};
+use std::path::{Component, Path, PathBuf};
 use treetime_utils::io::file::{is_path_stdin, is_path_stdout};
 use treetime_utils::io::fs::absolute_path;
 
-const PLACEHOLDERS: [PathPlaceholder; 2] = [PathPlaceholder::Alignment, PathPlaceholder::Cds];
-
 const OUTPUT_ALL_KEY: &str = "output_all";
 
-pub fn check_command_paths(
+const CDS_SELECTION_KEY: &str = "cds_selection";
+
+pub(crate) fn check_command_paths(
   command: AppCommand,
   settings: &Map<String, Value>,
-  outputs: &ResolvedOutputs,
+  request: &OutputRequest,
 ) -> Result<(), Report> {
-  let inputs = run_inputs(command, settings)?;
-  let outputs = run_outputs(settings, &outputs.paths_by_selection());
-  check_run_paths(&inputs, &outputs)
-}
-
-pub fn check_run_paths(inputs: &[RunPath], outputs: &[RunPath]) -> Result<(), Report> {
-  reject_repeated_standard_input(inputs)?;
-  let outputs = outputs
-    .iter()
-    .filter(|output| !output.is_stdio())
-    .map(|output| Ok((output, output.pattern()?)))
-    .collect::<Result<Vec<_>, Report>>()?;
-  for input in inputs.iter().filter(|input| !input.is_stdio()) {
-    let input_pattern = input.pattern()?;
-    if let Some((output, output_pattern)) = outputs
-      .iter()
-      .find(|(_, output_pattern)| patterns_intersect(&input_pattern, output_pattern))
-    {
-      let verb = if is_literal(&input_pattern) && is_literal(output_pattern) {
-        "names"
-      } else {
-        "can name"
-      };
-      return Err(argument_error(
-        &[input.setting.as_str(), output.setting.as_str()],
-        format!(
-          "{} '{}' {verb} the same file as the output {} '{}': the run would overwrite its own input",
-          setting_flag(&input.setting),
-          input.path,
-          setting_flag(&output.setting),
-          output.path
-        ),
-      ));
-    }
+  let paths = RunPaths::new(run_inputs(command, settings)?, request, &request.resolve()?);
+  paths.check_without_cds_names()?;
+  let cdses = listed_cds_names(settings);
+  if cdses.is_empty() {
+    return Ok(());
   }
-  Ok(())
+  paths.check_with_cds_names(&cdses)
 }
 
 pub fn run_inputs(command: AppCommand, settings: &Map<String, Value>) -> Result<Vec<RunPath>, Report> {
@@ -82,16 +54,16 @@ pub fn run_inputs(command: AppCommand, settings: &Map<String, Value>) -> Result<
   )
 }
 
-pub fn run_outputs(
-  settings: &Map<String, Value>,
+pub(crate) fn run_outputs(
+  request: &OutputRequest,
   by_selection: &BTreeMap<OutputSelection, Vec<PathBuf>>,
 ) -> Vec<RunPath> {
+  let given = request.given_selections();
   by_selection
     .iter()
     .flat_map(|(selection, paths)| {
-      let key = selection.setting_key();
-      let setting = if settings.get(&key).is_some_and(|value| !value.is_null()) {
-        key
+      let setting = if given.contains(selection) {
+        selection.setting_key()
       } else {
         OUTPUT_ALL_KEY.to_owned()
       };
@@ -102,6 +74,97 @@ pub fn run_outputs(
       })
     })
     .collect()
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct RunPaths {
+  pub(crate) inputs: Vec<RunPath>,
+  pub(crate) outputs: Vec<RunPath>,
+  pub(crate) cds_outputs: Vec<RunPath>,
+}
+
+impl RunPaths {
+  pub(crate) fn new(inputs: Vec<RunPath>, request: &OutputRequest, resolved: &ResolvedOutputs) -> Self {
+    let (cds_outputs, outputs): (BTreeMap<_, _>, BTreeMap<_, _>) = resolved
+      .paths_by_selection()
+      .into_iter()
+      .partition(|(selection, _)| *selection == OutputSelection::Translations);
+    Self {
+      inputs,
+      outputs: run_outputs(request, &outputs),
+      cds_outputs: run_outputs(request, &cds_outputs),
+    }
+  }
+
+  pub(crate) fn check_without_cds_names(&self) -> Result<(), Report> {
+    reject_repeated_standard_input(&self.inputs)?;
+    reject_overwritten_inputs(
+      self.inputs.iter().filter(|input| input.role != PathRole::InputTemplate),
+      &self.outputs,
+    )
+  }
+
+  pub(crate) fn check_with_cds_names(&self, cdses: &[String]) -> Result<(), Report> {
+    let inputs = self
+      .inputs
+      .iter()
+      .flat_map(|input| {
+        if input.role == PathRole::InputTemplate {
+          cdses
+            .iter()
+            .map(|cds| input.expanded(&translation_path(&input.path, cds)))
+            .collect_vec()
+        } else {
+          vec![input.clone()]
+        }
+      })
+      .collect_vec();
+    let cds_outputs = self
+      .cds_outputs
+      .iter()
+      .map(|output| {
+        Ok(
+          cds_output_paths(Path::new(&output.path), cdses)?
+            .into_values()
+            .map(|path| output.expanded(&path))
+            .collect_vec(),
+        )
+      })
+      .flatten_ok()
+      .collect::<Result<Vec<_>, Report>>()?;
+    reject_overwritten_inputs(&inputs, self.outputs.iter().chain(&cds_outputs))
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RunPath {
+  pub setting: String,
+  pub path: String,
+  pub role: PathRole,
+}
+
+impl RunPath {
+  pub fn is_stdio(&self) -> bool {
+    match self.role {
+      PathRole::Input | PathRole::InputTemplate => is_path_stdin(&self.path),
+      PathRole::Output => is_path_stdout(&self.path),
+    }
+  }
+
+  fn expanded(&self, path: &Path) -> Self {
+    Self {
+      setting: self.setting.clone(),
+      path: path.to_string_lossy().into_owned(),
+      role: match self.role {
+        PathRole::Input | PathRole::InputTemplate => PathRole::Input,
+        PathRole::Output => PathRole::Output,
+      },
+    }
+  }
+
+  fn opened(&self) -> Result<PathBuf, Report> {
+    Ok(opened_path(&absolute_path(&self.path)?))
+  }
 }
 
 fn reject_repeated_standard_input(inputs: &[RunPath]) -> Result<(), Report> {
@@ -128,29 +191,31 @@ fn reject_repeated_standard_input(inputs: &[RunPath]) -> Result<(), Report> {
   Err(argument_error(&settings, message))
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RunPath {
-  pub setting: String,
-  pub path: String,
-  pub role: PathRole,
-}
-
-impl RunPath {
-  pub fn is_stdio(&self) -> bool {
-    match self.role {
-      PathRole::Input | PathRole::InputTemplate => is_path_stdin(&self.path),
-      PathRole::Output => is_path_stdout(&self.path),
+fn reject_overwritten_inputs<'a>(
+  inputs: impl IntoIterator<Item = &'a RunPath>,
+  outputs: impl IntoIterator<Item = &'a RunPath>,
+) -> Result<(), Report> {
+  let outputs = outputs
+    .into_iter()
+    .filter(|output| !output.is_stdio())
+    .map(|output| Ok((output, output.opened()?)))
+    .collect::<Result<Vec<_>, Report>>()?;
+  for input in inputs.into_iter().filter(|input| !input.is_stdio()) {
+    let opened = input.opened()?;
+    if let Some((output, _)) = outputs.iter().find(|(_, output_opened)| *output_opened == opened) {
+      return Err(argument_error(
+        &[input.setting.as_str(), output.setting.as_str()],
+        format!(
+          "{} '{}' names the same file as the output {} '{}': the run would overwrite its own input",
+          setting_flag(&input.setting),
+          input.path,
+          setting_flag(&output.setting),
+          output.path
+        ),
+      ));
     }
   }
-
-  fn pattern(&self) -> Result<Vec<PatternChar>, Report> {
-    let path = opened_path(&absolute_path(&self.path)?);
-    let text = path.to_string_lossy();
-    Ok(match self.role {
-      PathRole::Input => text.chars().map(PatternChar::Literal).collect(),
-      PathRole::InputTemplate | PathRole::Output => template_pattern(&text),
-    })
-  }
+  Ok(())
 }
 
 #[cfg_attr(
@@ -183,73 +248,20 @@ fn opened_path(path: &Path) -> PathBuf {
   })
 }
 
+fn listed_cds_names(settings: &Map<String, Value>) -> Vec<String> {
+  settings
+    .get(CDS_SELECTION_KEY)
+    .and_then(Value::as_array)
+    .map_or_else(Vec::new, |names| {
+      names.iter().filter_map(Value::as_str).map(ToOwned::to_owned).collect()
+    })
+}
+
 fn setting_paths(value: Option<&Value>) -> Vec<String> {
   match value {
     Some(Value::String(path)) => vec![path.clone()],
     Some(Value::Array(items)) => items.iter().filter_map(Value::as_str).map(ToOwned::to_owned).collect(),
     _ => vec![],
-  }
-}
-
-fn template_pattern(text: &str) -> Vec<PatternChar> {
-  let tokens = PLACEHOLDERS
-    .iter()
-    .flat_map(|placeholder| placeholder.tokens())
-    .collect_vec();
-  let mut pattern = Vec::with_capacity(text.len());
-  let mut rest = text;
-  while !rest.is_empty() {
-    if let Some(after) = tokens.iter().find_map(|token| rest.strip_prefix(*token)) {
-      pattern.push(PatternChar::AnyInName);
-      rest = after;
-    } else {
-      let mut chars = rest.chars();
-      pattern.extend(chars.next().map(PatternChar::Literal));
-      rest = chars.as_str();
-    }
-  }
-  pattern
-}
-
-fn is_literal(pattern: &[PatternChar]) -> bool {
-  !pattern.contains(&PatternChar::AnyInName)
-}
-
-fn patterns_intersect(left: &[PatternChar], right: &[PatternChar]) -> bool {
-  let (left_len, right_len) = (left.len(), right.len());
-  let mut matches = Array2::from_elem((left_len + 1, right_len + 1), false);
-  matches[[left_len, right_len]] = true;
-  for i in (0..=left_len).rev() {
-    for j in (0..=right_len).rev() {
-      if i == left_len && j == right_len {
-        continue;
-      }
-      matches[[i, j]] = match (left.get(i), right.get(j)) {
-        (Some(PatternChar::AnyInName), next) => {
-          matches[[i + 1, j]] || (next.is_some_and(|c| !c.is_separator()) && matches[[i, j + 1]])
-        },
-        (next, Some(PatternChar::AnyInName)) => {
-          matches[[i, j + 1]] || (next.is_some_and(|c| !c.is_separator()) && matches[[i + 1, j]])
-        },
-        (Some(PatternChar::Literal(left_char)), Some(PatternChar::Literal(right_char))) => {
-          left_char == right_char && matches[[i + 1, j + 1]]
-        },
-        _ => false,
-      };
-    }
-  }
-  matches[[0, 0]]
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum PatternChar {
-  Literal(char),
-  AnyInName,
-}
-
-impl PatternChar {
-  fn is_separator(self) -> bool {
-    matches!(self, Self::Literal(c) if is_separator(c))
   }
 }
 

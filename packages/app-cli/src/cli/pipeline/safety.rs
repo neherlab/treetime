@@ -202,7 +202,7 @@ mod tests {
     );
     assert_error!(
       result,
-      "in pipeline step `a`: --translations '/pipeline/aa/{cds}.fasta' can name the same file as the output \
+      "in pipeline step `a`: --translations '/pipeline/aa/S.fasta' names the same file as the output \
        --output-sequences '/pipeline/aa/S.fasta': the run would overwrite its own input"
     );
   }

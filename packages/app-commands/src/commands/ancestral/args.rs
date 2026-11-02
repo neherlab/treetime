@@ -1,3 +1,4 @@
+use crate::command::{AppCommand, settings_map};
 use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::ancestral::aa_node_data::{cds_output_paths, validate_aa_args};
 use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
@@ -19,6 +20,7 @@ use crate::commands::shared::partition::{PartitionArgs, PartitionSpec, partition
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
 use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli, representation_dense};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::run_paths::{RunPath, run_inputs};
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
@@ -85,6 +87,7 @@ pub struct TreetimeAncestralArgs {
   pub(crate) ambiguity_outputs: AmbiguityOutputs,
   pub(crate) topology_order: TopologyOrder,
   pub(crate) outputs: OutputRequest,
+  pub(crate) run_inputs: Vec<RunPath>,
 }
 
 impl TreetimeAncestralArgs {
@@ -118,6 +121,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
     reason = "the CLI reads its own settings before the conversion, and `..` would hide every setting that no run reads"
   )]
   fn try_from(raw: TreetimeAncestralArgsRaw) -> Result<Self, Report> {
+    let run_inputs = run_inputs(AppCommand::Ancestral, &settings_map(&raw)?)?;
     let TreetimeAncestralArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
@@ -214,6 +218,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       aa_model,
       ambiguity_outputs: resolve_ambiguity_outputs(ambiguity_threshold, &ambiguity_outputs)?,
       topology_order: ancestral_topology_order(topology_order)?,
+      run_inputs,
     })
   }
 }

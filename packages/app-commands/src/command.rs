@@ -289,7 +289,7 @@ macro_rules! impl_raw_config {
       fn into_args(self) -> Result<$args, Report> {
         let settings = settings_map(&self)?;
         let args = <$args>::try_from(self)?;
-        check_command_paths(Self::COMMAND, &settings, &args.outputs.resolve()?)?;
+        check_command_paths(Self::COMMAND, &settings, &args.outputs)?;
         Ok(args)
       }
 
