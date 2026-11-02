@@ -8,6 +8,7 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_grid::coordinates_coincide;
 use treetime_primitives::LogLh;
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -167,4 +168,8 @@ pub(crate) fn date_branch_lengths(graph: &Graph, node_dates: &NodeTimes) -> Edge
       (edge.key(), length)
     })
     .collect()
+}
+
+pub(crate) fn runs_backwards(parent_time: f64, child_time: f64) -> bool {
+  child_time < parent_time && !coordinates_coincide(child_time, parent_time, parent_time.abs().max(child_time.abs()))
 }

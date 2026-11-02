@@ -13,6 +13,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::key_map::EdgeMap;
 
@@ -175,20 +176,31 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_blended_clock_branch_lengths_warns_about_inverted_branches() -> Result<(), Report> {
-    let fixture = helpers::BlendFixture::new()?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::two_years_before_parent(2002.0,                 1)]
+  #[case::one_ulp_before_parent(  2004.0_f64.next_down(), 0)]
+  #[trace]
+  fn test_blended_clock_branch_lengths_warns_about_inverted_branches(
+    #[case] child_time: f64,
+    #[case] expected_inverted: usize,
+  ) -> Result<(), Report> {
+    let fixture = helpers::BlendFixture::new()?.with_time("B", child_time);
     let log = RecordingLog::default();
 
     fixture.blend(&log);
 
-    let expected = vec![
-      "Timetree: 1 branch(es) run backwards in time, i.e. the child is dated before its parent. Their clock \
-       branch lengths were committed as zero. This is expected only where an observed leaf date or an exact \
-       internal-node date conflicts with the fitted clock, since the forward pass clamps the other internal nodes \
-       to their parent but leaves exact dates as given."
-        .to_owned(),
-    ];
+    let expected: Vec<String> = (expected_inverted > 0)
+      .then(|| {
+        format!(
+          "Timetree: {expected_inverted} branch(es) run backwards in time, i.e. the child is dated before its \
+           parent. Their clock branch lengths were committed as zero. This is expected only where an observed leaf \
+           date or an exact internal-node date conflicts with the fitted clock, since the forward pass clamps the \
+           other internal nodes to their parent but leaves exact dates as given."
+        )
+      })
+      .into_iter()
+      .collect();
     assert_eq!(expected, log.warnings());
     Ok(())
   }
@@ -271,6 +283,12 @@ mod tests {
           node_times,
           gammas,
         })
+      }
+
+      pub(super) fn with_time(mut self, name: &str, time: f64) -> Self {
+        let key = find_node_key_by_name(&self.graph, &self.names, name).expect("fixture node must exist");
+        self.node_times.insert(key, Some(time));
+        self
       }
 
       pub(super) fn blend(&self, log: &dyn LogSink) -> EdgeMap<f64> {

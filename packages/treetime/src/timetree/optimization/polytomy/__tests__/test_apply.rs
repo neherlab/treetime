@@ -8,6 +8,7 @@ mod tests {
   use treetime_graph::keymap;
 
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -308,7 +309,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "kb/issues/M-timetree-times-one-ulp-apart-count-as-backward-branches.md"]
   fn test_apply_plan_accepts_a_child_dated_one_ulp_before_its_parent() -> Result<(), Report> {
     let (mut graph, mut names, parent_key, mut children, _, mut branch_lengths) = polytomy_graph()?;
     let parent_time: f64 = 2026.3246575342469;
@@ -337,6 +337,36 @@ mod tests {
     )?;
 
     assert_eq!(keymap! {}, created);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::child_a_year_before_parent((2021.0, vec![],                vec![0, 1, 2]), "Polytomy plan child 0 time must be finite and not older than its parent at 2021, got 2020. This is an internal error. Please report it to developers.")]
+  #[case::merger_before_parent(      (2000.0, vec![(1999.0, 1, 2)], vec![0, 3]),    "Polytomy plan merger 0 time must be finite and not older than its parent at 2000, got 1999. This is an internal error. Please report it to developers.")]
+  #[case::merger_after_lineage(      (2000.0, vec![(2017.0, 1, 2)], vec![0, 3]),    "Polytomy plan merger 0 at 2017 is more recent than lineage 2 at 2016. This is an internal error. Please report it to developers.")]
+  #[trace]
+  fn test_apply_plan_rejects_a_lineage_dated_before_its_parent(
+    #[case] (parent_time, mergers, roots): (f64, Vec<(f64, usize, usize)>, Vec<usize>),
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let (mut graph, mut names, parent_key, children, _, mut branch_lengths) = polytomy_graph()?;
+    let plan = SubtreePlan {
+      mergers: mergers.into_iter().map(|(time, left, right)| Merger { time, left, right }).collect(),
+      roots,
+    };
+
+    let actual = apply_plan(
+      &mut graph,
+      &mut names,
+      parent_key,
+      parent_time,
+      &children,
+      &plan,
+      &mut branch_lengths,
+    );
+
+    assert_error!(actual, expected);
     Ok(())
   }
 }

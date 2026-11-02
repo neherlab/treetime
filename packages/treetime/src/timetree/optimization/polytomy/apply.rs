@@ -1,3 +1,4 @@
+use crate::timetree::inference::result::runs_backwards;
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
@@ -49,9 +50,9 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
   let n_lineages = n_children + plan.mergers.len();
   let mut times = Vec::with_capacity(n_lineages);
   for (index, child) in children.iter().enumerate() {
-    if !child.time.is_finite() || child.time < parent_time {
+    if !child.time.is_finite() || runs_backwards(parent_time, child.time) {
       return make_internal_error!(
-        "Polytomy plan child {index} time must be finite and not older than its parent at {parent_time:.6e}, got {:.6e}",
+        "Polytomy plan child {index} time must be finite and not older than its parent at {parent_time}, got {}",
         child.time
       );
     }
@@ -60,9 +61,9 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
 
   let mut consumed = vec![false; n_lineages];
   for (index, merger) in plan.mergers.iter().enumerate() {
-    if !merger.time.is_finite() || merger.time <= parent_time {
+    if !merger.time.is_finite() || runs_backwards(parent_time, merger.time) {
       return make_internal_error!(
-        "Polytomy plan merger {index} time must be finite and more recent than its parent at {parent_time:.6e}, got {:.6e}",
+        "Polytomy plan merger {index} time must be finite and not older than its parent at {parent_time}, got {}",
         merger.time
       );
     }
@@ -75,9 +76,9 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
       if consumed[lineage] {
         return make_internal_error!("Polytomy plan consumed lineage {lineage} more than once");
       }
-      if times[lineage] < merger.time {
+      if runs_backwards(merger.time, times[lineage]) {
         return make_internal_error!(
-          "Polytomy plan merger {index} at {:.6e} is more recent than lineage {lineage} at {:.6e}",
+          "Polytomy plan merger {index} at {} is more recent than lineage {lineage} at {}",
           merger.time,
           times[lineage]
         );
@@ -94,9 +95,9 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
     if consumed[lineage] {
       return make_internal_error!("Polytomy plan consumed lineage {lineage} more than once");
     }
-    if times[lineage] < parent_time {
+    if runs_backwards(parent_time, times[lineage]) {
       return make_internal_error!(
-        "Polytomy plan root lineage {lineage} at {:.6e} is older than its parent at {parent_time:.6e}",
+        "Polytomy plan root lineage {lineage} at {} is older than its parent at {parent_time}",
         times[lineage]
       );
     }
