@@ -16,6 +16,7 @@
     "build-profiles",
     "performance",
     "dependencies",
+    "utilities",
     "releases",
     "ci"
   ]
