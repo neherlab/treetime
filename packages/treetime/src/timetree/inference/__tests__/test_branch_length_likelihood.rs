@@ -362,7 +362,10 @@ mod tests {
     pub(super) fn gamma_mass_fraction_inside(k: f64, mu: f64, lo: f64, hi: f64) -> f64 {
       let (t, area) = gamma_trapezoid_areas(k, mu);
       let total: f64 = area.iter().sum();
-      let inside: f64 = izip!(&t, &area).filter(|(t, _)| **t >= lo && **t <= hi).map(|(_, a)| a).sum();
+      let inside: f64 = izip!(&t, &area)
+        .filter(|(t, _)| **t >= lo && **t <= hi)
+        .map(|(_, a)| a)
+        .sum();
       inside / total
     }
 

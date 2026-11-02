@@ -129,7 +129,7 @@ fn decayed_upper_end(
     below = branch_length;
   }
   for _ in 0..DECAY_BISECTION_STEPS {
-    let middle = 0.5 * (below + above);
+    let middle = f64::midpoint(below, above);
     if probe.decays_at(middle)? {
       above = middle;
     } else {
@@ -195,6 +195,10 @@ impl DecayProbe<'_> {
   }
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 fn evaluate_log_lh_on_grid(
   grid: ArrayView1<f64>,
   contributions: &[OptimizationContribution],
