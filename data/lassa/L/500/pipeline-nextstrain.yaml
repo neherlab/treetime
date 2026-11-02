@@ -11,9 +11,7 @@
 # `augur ancestral --inference joint`, `augur traits --columns country --confidence`.
 # `reroot: midpoint` roots the tree at the middle of its longest tip-to-tip path, as
 # `--root mid_point` does. TreeTime resolves polytomies at random, so `seed` makes
-# the run reproducible; augur resolves them greedily. With the clock filter off, the
-# timetree step stops today on a backward time message that holds NaN:
-# kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md.
+# the run reproducible; augur resolves them greedily.
 #
 # Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
 # augur becomes marginal with imputed tips, `no_indels` leaves indels out of the

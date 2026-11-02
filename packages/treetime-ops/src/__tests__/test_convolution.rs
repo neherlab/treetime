@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::traits::ConvolveAlgo;
-  use crate::{DirectConvolve, FftConvolve, NdarrayConvolve};
+  use crate::{DirectConvolve, FftConvolve, NdarrayConvolve, convolve_direct_at};
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -39,6 +39,20 @@ mod tests {
     let trapezoid_by_hand = array![1.25, 1.75, 4.75, 4.75, 2.5, 2.625];
     let actual = algo.convolve(0.5, &f, &g).unwrap();
     pretty_assert_abs_diff_eq!(trapezoid_by_hand, actual, epsilon = 1e-14);
+  }
+
+  #[test]
+  fn test_convolve_direct_at_gives_each_trapezoid_output_alone() {
+    let (f, g) = (array![2.0, 1.0, 3.0], array![5.0, 1.0, 1.0, 7.0]);
+    let trapezoid_by_hand = array![1.25, 1.75, 4.75, 4.75, 2.5, 2.625];
+    let actual: Array1<f64> = (0..trapezoid_by_hand.len())
+      .map(|n| convolve_direct_at(0.5, &f, &g, n).unwrap())
+      .collect();
+    pretty_assert_abs_diff_eq!(trapezoid_by_hand, actual, epsilon = 1e-14);
+    assert_error!(
+      convolve_direct_at(0.5, &f, &g, 6),
+      "Convolution sample 6 is outside the full convolution of 6 samples"
+    );
   }
 
   #[test]

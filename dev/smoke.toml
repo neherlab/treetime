@@ -922,12 +922,11 @@ datasets = ["mpox/clade-ii/20"]
 args = "--clock-rate=0.5 --max-iter=1"
 fail = "stops at the grid point limit: kb/decisions/distribution-grid-point-limit.md"
 
-# The input root kept with a fixed clock rate and a coalescent prior: a backward time message holds NaN
+# The input root kept with a fixed clock rate and a coalescent prior: backward time messages with valleys below the FFT trust floor
 [[timetree]]
 variant = "keep-root-fixed-clock"
 datasets = ["lassa/L/500"]
 args = "--keep-root --clock-rate=0.00078 --coalescent=opt"
-fail = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"
 
 
 # A Nexus input tree
@@ -995,7 +994,6 @@ pattern = "*.yaml"
 
 [config.fail]
 "dengue/2000/mugration-serotype" = "a trait with one state: kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md"
-"lassa/L/500/pipeline-nextstrain" = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"
 "lassa/L/20/timetree" = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
 "tb/149/ancestral-vcf" = "kb/issues/M-io-vcf-input-output-unimplemented.md"
 "zika/86/ancestral-phylip" = "kb/issues/M-io-phylip-alignment-input-unsupported.md"

@@ -337,7 +337,6 @@ mod tests {
   #[case::backward(Side::Left)]
   #[case::forward( Side::Right)]
   #[trace]
-  #[ignore = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"]
   fn test_edge_convolution_bimodal_operand_with_deep_valley_keeps_both_modes(#[case] soft: Side) -> Result<(), Report> {
     let result = convolve_across_edge(
       &two_gaussians(20.0, 80.0, 1.0, 1001)?,
@@ -359,7 +358,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"]
   fn test_convolution_of_bimodal_operand_with_deep_valley_matches_its_oracles() -> Result<(), Report> {
     let (a, b) = (two_gaussians(20.0, 80.0, 1.0, 1441)?, gaussian(1.0)?);
     let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?;
@@ -372,7 +370,6 @@ mod tests {
     let exact = t.mapv(deep_valley_exact_neg_log);
     let quadrature = log_space_trapezoid_convolution(&a, &b, &t)?;
     let exact_peak = min_or(&exact, f64::INFINITY);
-    let y_peak = min_or(y, f64::INFINITY);
 
     let mode_samples = t
       .iter()
@@ -408,16 +405,11 @@ mod tests {
       .filter(|&i| t[i] > 20.0 && t[i] < 80.0 && quadrature[i] - exact_peak > CONV_TRUST_DEPTH + 1.0)
       .collect_vec();
     assert!(!below_fft_range.is_empty());
-    for i in below_fft_range {
-      assert!(
-        y[i] - y_peak >= CONV_TRUST_DEPTH - 1e-9 && y[i] <= quadrature[i] + 1e-9,
-        "at t = {}: the convolution {} must lie between the trust floor {} and the quadrature {}",
-        t[i],
-        y[i],
-        y_peak + CONV_TRUST_DEPTH,
-        quadrature[i],
-      );
-    }
+    pretty_assert_abs_diff_eq!(
+      quadrature.select(Axis(0), &below_fft_range),
+      y.select(Axis(0), &below_fft_range),
+      epsilon = 1e-9
+    );
     Ok(())
   }
 

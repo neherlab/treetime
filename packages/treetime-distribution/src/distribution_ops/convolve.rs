@@ -8,10 +8,10 @@ use crate::distribution_ops::time_bounds::distribution_support_n_points;
 use crate::policy::NegLog;
 use eyre::Report;
 use itertools::Itertools;
-use ndarray::{Array1, s};
+use ndarray::Array1;
 use std::borrow::Cow;
 use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
-use treetime_ops::convolve_fft;
+use treetime_ops::{convolve_direct_at, convolve_fft};
 use treetime_utils::array::ndarray::{max_or, min_or};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
@@ -302,7 +302,7 @@ fn convolution_function_function_fine(
   max_points.point_count((a.len() + b.len() - 1).to_f64_exact(), result_range, dx)?;
   let conv = convolve_fft(dx, &pa, &pb)?;
 
-  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx)? else {
+  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &pa, &pb)? else {
     let a_domain = conv_operand_domain(true);
     let b_domain = conv_operand_domain(true);
     return guarded_empty_result("convolution", a_domain, b_domain);
@@ -363,7 +363,12 @@ fn to_peak_normalized_plain(neg_log: &Array1<f64>) -> (Array1<f64>, f64) {
 }
 
 #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
-fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<ReconstructedConv>, Report> {
+fn reconstruct_neg_log_tails(
+  conv: &Array1<f64>,
+  dx: f64,
+  pa: &Array1<f64>,
+  pb: &Array1<f64>,
+) -> Result<Option<ReconstructedConv>, Report> {
   let peak = max_or(conv, 0.0);
   if peak <= 0.0 {
     return Ok(None);
@@ -376,7 +381,7 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<Recon
     return Ok(None);
   };
 
-  let trusted_y = conv.slice(s![first..=last]).mapv(|c| -c.ln());
+  let trusted_y = neg_log_with_quadrature_in_valleys(conv, first, last, floor, dx, pa, pb)?;
   let n = trusted_y.len();
   let margin = CONV_TAIL_MARGIN.min(n / 3);
   if margin < 1 {
@@ -408,6 +413,27 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<Recon
     start_offset: left_start,
     neg_log,
   }))
+}
+
+fn neg_log_with_quadrature_in_valleys(
+  conv: &Array1<f64>,
+  first: usize,
+  last: usize,
+  floor: f64,
+  dx: f64,
+  pa: &Array1<f64>,
+  pb: &Array1<f64>,
+) -> Result<Array1<f64>, Report> {
+  (first..=last)
+    .map(|i| {
+      let c = if conv[i] > floor {
+        conv[i]
+      } else {
+        convolve_direct_at(dx, pa, pb, i)?.max(f64::MIN_POSITIVE)
+      };
+      Ok(-c.ln())
+    })
+    .collect()
 }
 
 struct ReconstructedConv {

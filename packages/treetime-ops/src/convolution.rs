@@ -85,6 +85,29 @@ pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> 
   Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
 }
 
+pub fn convolve_direct_at(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>, n: usize) -> Result<f64, Report> {
+  check_operand_lengths(f_values, g_values)?;
+  let (last_f, last_g) = (f_values.len() - 1, g_values.len() - 1);
+  let last_n = last_f + last_g;
+  if n > last_n {
+    return make_error!(
+      "Convolution sample {n} is outside the full convolution of {} samples",
+      last_n + 1
+    );
+  }
+  if n == 0 || n == last_n {
+    let (i, j) = if n == 0 { (0, 0) } else { (last_f, last_g) };
+    return Ok(0.25 * f_values[i] * g_values[j] * dx);
+  }
+  let (first_i, last_i) = (n.saturating_sub(last_g), n.min(last_f));
+  let sum: f64 = (first_i..=last_i).map(|i| f_values[i] * g_values[n - i]).sum();
+  let ends = f64::midpoint(
+    f_values[first_i] * g_values[n - first_i],
+    f_values[last_i] * g_values[n - last_i],
+  );
+  Ok((sum - ends) * dx)
+}
+
 fn check_operand_lengths(f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<(), Report> {
   if f_values.len() < 2 || g_values.len() < 2 {
     return make_error!(
