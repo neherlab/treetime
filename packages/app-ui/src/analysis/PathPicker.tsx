@@ -116,7 +116,10 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
 
   return (
     <div className="flex shrink-0 gap-1">
-      <input {...dialog.getInputProps()} aria-label={`${title} ${list ? "files" : "file"} to upload`} />
+      <input
+        {...dialog.getInputProps({ className: "absolute" })}
+        aria-label={`${title} ${list ? "files" : "file"} to upload`}
+      />
       <Button type="button" variant="outline" size="sm" onClick={onChoose} disabled={busy}>
         {busy && <Spinner />}
         {buttonText(busy, filled, list)}

@@ -99,7 +99,7 @@ function InputSlotRow({
         ),
       })}
     >
-      <input {...getInputProps()} aria-label={`Dropped ${slot.label} files`} />
+      <input {...getInputProps({ className: "absolute" })} aria-label={`Dropped ${slot.label} files`} />
       <div className="grid gap-0.5">
         <span className="font-bold">{slot.label}</span>
         <span className="text-muted-foreground text-xs">
