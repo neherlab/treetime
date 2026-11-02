@@ -306,4 +306,33 @@ mod tests {
     assert_eq!(before, after, "plan validation must finish before graph mutation");
     Ok(())
   }
+
+  #[test]
+  #[ignore = "kb/issues/M-timetree-times-one-ulp-apart-count-as-backward-branches.md"]
+  fn test_apply_plan_accepts_a_child_dated_one_ulp_before_its_parent() -> Result<(), Report> {
+    let (mut graph, mut names, parent_key, mut children, _, mut branch_lengths) = polytomy_graph()?;
+    let parent_time: f64 = 2026.3246575342469;
+    let child_time: f64 = 2026.3246575342466;
+    assert_eq!(parent_time, child_time.next_up(), "the two times are adjacent floats");
+    children[0].time = child_time;
+    children[1].time = 2026.5;
+    children[2].time = 2026.6;
+    let plan = SubtreePlan {
+      mergers: vec![],
+      roots: vec![0, 1, 2],
+    };
+
+    let created = apply_plan(
+      &mut graph,
+      &mut names,
+      parent_key,
+      parent_time,
+      &children,
+      &plan,
+      &mut branch_lengths,
+    )?;
+
+    assert_eq!(keymap! {}, created);
+    Ok(())
+  }
 }
