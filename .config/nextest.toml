@@ -7,10 +7,11 @@ fail-fast = false
 # five periods (5 minutes), so a hung test cannot stall the run indefinitely.
 slow-timeout = { period = "60s", terminate-after = 5 }
 # Tests with a path segment that starts with `test_sim_` (simulation tests with
-# many replicates: the test function, every rstest case below it, and every
-# test of a `test_sim_` module) belong to the slow tier: only the `slow`
-# profile runs them. A command-line filter narrows this set further.
-default-filter = 'not test(/(^|::)test_sim_/)'
+# many replicates) or `test_slow_` (other long tests, such as runs on large
+# datasets) belong to the slow tier: the test function, every rstest case below
+# it, and every test of a module with such a name. Only the `slow` profile runs
+# them. A command-line filter narrows this set further.
+default-filter = 'not test(/(^|::)test_(sim|slow)_/)'
 
 # CI profile: emit a JUnit report under $CARGO_TARGET_DIR/nextest/ci/.
 [profile.ci]
@@ -19,13 +20,13 @@ slow-timeout = { period = "60s", terminate-after = 5 }
 [profile.ci.junit]
 path = "junit.xml"
 
-# Slow tier: only the tests with a `test_sim_` path segment, run by
-# `just test-slow-rs`. Each test is designed to finish within 10 minutes
+# Slow tier: only the tests with a `test_sim_` or `test_slow_` path segment,
+# run by `just test-slow-rs`. Each test is designed to finish within 10 minutes
 # on an unloaded host. On a shared, loaded build host the same tests take
 # several times longer, so the safety stop terminates a test only after
 # 40 minutes.
 [profile.slow]
-default-filter = 'test(/(^|::)test_sim_/)'
+default-filter = 'test(/(^|::)test_(sim|slow)_/)'
 slow-timeout = { period = "60s", terminate-after = 40 }
 
 # Each simulation test runs its replicates on its own rayon pool of

@@ -20,7 +20,7 @@ mod tests {
   use treetime_io::nwk::nwk_read;
 
   #[test]
-  fn test_convergence_sc2_sparse_converges_on_sc2_2844() -> Result<(), Report> {
+  fn test_slow_convergence_sc2_sparse_converges_on_sc2_2844() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let aln = TestDataset::Sc2_2844.alignment()?;
     let nwk_parsed = nwk_read(TestDataset::Sc2_2844.tree().as_bytes())?;

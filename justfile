@@ -278,7 +278,7 @@ test: _js
 test-rs *args:
     cargo nextest run --locked --workspace "$@"
 
-# Slow Rust tests (simulation tests named `test_sim_*`), release build, nextest profile `slow`
+# Slow Rust tests (simulation tests named `test_sim_*`, other long tests named `test_slow_*`), release build, nextest profile `slow`
 [group("test")]
 test-slow-rs *args:
     cargo nextest run --locked --workspace --cargo-profile release --profile slow "$@"

@@ -98,7 +98,6 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-utils-mean-by-key-empty-and-integer-semantics.md](issues/N-utils-mean-by-key-empty-and-integer-semantics.md)**: return `Option<U>`, restrict the function to floating-point keys, or keep the current contract and document it
 - **[kb/issues/N-utils-softmax-all-neg-inf-returns-uniform.md](issues/N-utils-softmax-all-neg-inf-returns-uniform.md)**: keep the uniform profile for an all-impossible row, return an error that names the site, or return NaN as v0 does
 - **[kb/issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md](issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md)**: keep wasm-bindgen and upgrade it with Emscripten under a CI check, or replace it with C exports of the module
-- **[kb/issues/N-test-sc2-optimize-convergence-test-runs-near-the-nextest-timeout.md](issues/N-test-sc2-optimize-convergence-test-runs-near-the-nextest-timeout.md)**: move the sc2 convergence test to the slow tier, give it a longer timeout, or find a smaller dataset that shows the same two-cycle
 
 ### Research
 
