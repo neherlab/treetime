@@ -191,7 +191,9 @@ mod tests {
           .filter_map(|(k, y)| {
             let oracle = self.oracle(k);
             let tolerance = self.round_off_tolerance(k, y);
-            let matches = y == oracle || (y - oracle).abs() <= tolerance;
+            let same_infinity =
+              y.is_infinite() && oracle.is_infinite() && y.is_sign_positive() == oracle.is_sign_positive();
+            let matches = same_infinity || (y - oracle).abs() <= tolerance;
             (!matches).then_some((k, y, oracle, tolerance))
           })
           .collect_vec();
@@ -343,7 +345,7 @@ mod tests {
       let (log_integrals, log_errors): (Vec<f64>, Vec<f64>) = [(0.0, 0.0), (25.0, 200.0)]
         .into_iter()
         .map(|(mu, neg_log_weight)| {
-          let middle = (t + mu) / 2.0;
+          let middle = f64::midpoint(t, mu);
           let log_scale = -neg_log_weight - (t - mu).powi(2) / 4.0;
           let log_integral = log_scale + ln_gauss_integral(lo - middle, hi - middle);
           let log_error = log_scale + ((hi - lo) * dx * dx / 6.0).ln();
