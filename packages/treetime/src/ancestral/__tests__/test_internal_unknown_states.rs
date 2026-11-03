@@ -146,6 +146,34 @@ mod tests {
 
   #[rstest]
   #[trace]
+  fn test_dense_and_sparse_agree_on_columns_without_data_in_any_tip(
+    #[values(oracle_model(), GtrModel::JC69(JC69Params::default()))] model: GtrModel,
+    #[values(false, true)] impute: bool,
+    #[values(false, true)] report_unknown: bool,
+  ) -> Result<(), Report> {
+    let alignment = ">A\nACGTN--TN\n>B\nACGAN--TN\n>C\nTCGTN-NAN\n>D\nCCTCN-NTN\n>E\nCGCCN-NTN\n";
+    let reconstruct_with = |representation| {
+      reconstruct(
+        ORACLE_TREE,
+        alignment,
+        ReconstructionMethod::Marginal(representation),
+        &model,
+        impute,
+        report_unknown,
+      )
+    };
+    let dense = reconstruct_with(Representation::Dense)?;
+    let sparse = reconstruct_with(Representation::Sparse)?;
+    assert_eq!(
+      (&dense.sequences, &dense.mutations),
+      (&sparse.sequences, &sparse.mutations),
+      "dense marginal reconstruction, which v0 cross-checks"
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[trace]
   fn test_dense_and_sparse_agree_on_a_clade_without_data(#[values(false, true)] impute: bool) -> Result<(), Report> {
     let dense = masked_clade_sequences(Representation::Dense, impute)?;
     let sparse = masked_clade_sequences(Representation::Sparse, impute)?;
@@ -281,7 +309,7 @@ mod tests {
         .iter()
         .zip(applied.iter())
         .map(|(&child, &applied)| {
-          if !report_unknown && child == alphabet.unknown() {
+          if alphabet.is_gap(applied) || (!report_unknown && child == alphabet.unknown()) {
             applied
           } else {
             child
@@ -291,7 +319,7 @@ mod tests {
       assert_eq!(
         child.as_str(),
         applied.as_str(),
-        "parent sequence plus the mutations of the edge must give the sequence of {child_name}, with unknown tip states read as missing data unless reported"
+        "parent sequence plus the mutations of the edge must give the sequence of {child_name}, with unknown tip states read as missing data unless reported, and gaps of the parent left to the indels"
       );
     }
 
