@@ -164,6 +164,41 @@ mod tests {
   }
 
   #[test]
+  fn test_edge_convolution_message_ends_at_the_subtree_end_when_the_coarser_branch_is_denser_at_its_far_end()
+  -> Result<(), Report> {
+    let t = Array1::<f64>::linspace(0.0, 2.0, 41);
+    let branch =
+      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 2.0), t.mapv(|t| 4.0 * (t - 1.8).powi(2)))?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
+    let t = Array1::<f64>::linspace(2000.0, 2000.99, 23);
+    let subtree = DistributionFunction::<f64, NegLog>::from_range_values(
+      (2000.0, 2000.99),
+      t.mapv(|t| 50.0 * (t - 2000.9).powi(2)),
+    )?
+    .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -10.0 }))?
+    .with_right_extrap(BoundaryBehavior::Hard)?;
+
+    let message = convolve_across_edge(
+      &Distribution::Function(subtree.clone()),
+      &Distribution::Function(branch).negate()?,
+      Side::Left,
+      1e-6,
+      300,
+      MaxGridPoints::default(),
+      &FftPlans::new(),
+    )?;
+
+    let Distribution::Function(f) = &message else {
+      panic!("expected a gridded Function message, got {message:?}");
+    };
+    let shortest_branch_length = 0.0;
+    let support_end_of_the_sum = subtree.x_max() - shortest_branch_length;
+    pretty_assert_ulps_eq!(support_end_of_the_sum, f.x_max(), max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
   fn test_edge_convolution_exact_dated_leaf_messages_multiply() -> Result<(), Report> {
     let negated = branch(
       BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }),

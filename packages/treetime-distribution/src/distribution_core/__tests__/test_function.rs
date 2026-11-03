@@ -4,7 +4,7 @@ mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::policy::{NegLog, Plain};
   use eyre::Report;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{EdgeCellLaw, HardApproachLaw, Side, SoftTailLaw};
@@ -12,6 +12,10 @@ mod tests {
 
   type DistFn = DistributionFunction<f64, Plain>;
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
+
+  const HARD: BoundaryBehavior = BoundaryBehavior::Hard;
+  const SOFT_LEFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
+  const SOFT_RIGHT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 });
 
   #[test]
   fn test_distribution_function_shift_y_shifts_values_and_preserves_tails() -> Result<(), Report> {
@@ -191,6 +195,35 @@ mod tests {
     let resampled = f.resample_dx(0.3, MaxGridPoints::default())?;
 
     pretty_assert_ulps_eq!(f.x_max(), resampled.x_max(), max_ulps = 4);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard_left_and_denser_soft_right( (HARD,      SOFT_RIGHT, array![3.0, 2.0, 1.0]), Side::Left )]
+  #[case::soft_left_and_denser_hard_right( (SOFT_LEFT, HARD,       array![3.0, 2.0, 1.0]), Side::Right)]
+  #[case::denser_soft_left_and_hard_right( (SOFT_LEFT, HARD,       array![1.0, 2.0, 3.0]), Side::Right)]
+  #[case::soft_left_and_hard_right_equal(  (SOFT_LEFT, HARD,       array![3.0, 2.0, 3.0]), Side::Right)]
+  #[case::both_hard_and_denser_right(      (HARD,      HARD,       array![3.0, 2.0, 1.0]), Side::Right)]
+  #[case::both_hard_and_denser_left(       (HARD,      HARD,       array![1.0, 2.0, 3.0]), Side::Left )]
+  #[case::both_soft_and_denser_right(      (SOFT_LEFT, SOFT_RIGHT, array![3.0, 2.0, 1.0]), Side::Right)]
+  #[case::both_soft_and_equal_ends(        (SOFT_LEFT, SOFT_RIGHT, array![3.0, 2.0, 3.0]), Side::Left )]
+  #[trace]
+  fn test_distribution_function_resample_dx_keeps_the_single_hard_end_or_else_the_denser_end_on_a_grid_point(
+    #[case] (left, right, y): (BoundaryBehavior, BoundaryBehavior, Array1<f64>),
+    #[case] kept: Side,
+  ) -> Result<(), Report> {
+    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 1.0), y)?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+
+    let resampled = f.resample_dx(0.3, MaxGridPoints::default())?;
+
+    let (given, actual) = match kept {
+      Side::Left => (f.x_min(), resampled.x_min()),
+      Side::Right => (f.x_max(), resampled.x_max()),
+    };
+    pretty_assert_ulps_eq!(given, actual, max_ulps = 0);
     Ok(())
   }
 

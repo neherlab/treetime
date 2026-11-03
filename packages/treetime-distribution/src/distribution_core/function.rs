@@ -308,17 +308,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     let y = self.y();
-    let (first, last): (f64, f64) = (y[0].into(), y[y.len() - 1].into());
-    let right_end_denser = if Y::likely_is_maximum() {
-      last > first
-    } else {
-      last < first
-    };
-    let anchor = if right_end_denser && !Y::same_value(first, last) {
-      Side::Right
-    } else {
-      Side::Left
-    };
+    let anchor = resample_anchor::<Y>(self.left_extrap, self.right_extrap, y[0].into(), y[y.len() - 1].into());
     self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, anchor, max_points)
   }
 
@@ -429,6 +419,20 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
     }
+  }
+}
+
+fn resample_anchor<Y: YAxisPolicy>(left: BoundaryBehavior, right: BoundaryBehavior, first: f64, last: f64) -> Side {
+  let right_end_denser = if Y::likely_is_maximum() {
+    last > first
+  } else {
+    last < first
+  };
+  match (left.is_soft(), right.is_soft()) {
+    (false, true) => Side::Left,
+    (true, false) => Side::Right,
+    _ if right_end_denser && !Y::same_value(first, last) => Side::Right,
+    _ => Side::Left,
   }
 }
 
