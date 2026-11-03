@@ -67,6 +67,7 @@ The golden masters and the property and consistency tests are the independent or
 - `fn apply_initial_guess_mode()`: no test for finite negative branch lengths in `Never` mode
 - `fn run_optimize()`: no integration test proving negative branch lengths rejected
 - `fn OptimizationContribution::from_sparse()` and `fn get_coefficients()`: not exercised through real sparse fixtures
+- Zero-length collapse of edges with a Fitch substitution: `test_run_optimize_loop_collapses_a_zero_length_edge_that_carries_a_fitch_substitution` [packages/treetime/src/optimize/__tests__/test_topology_cleanup.rs#L611](../../packages/treetime/src/optimize/__tests__/test_topology_cleanup.rs#L611) asserts only that the node count drops by 1. On its bifurcating root, the collapse of the edge without a Fitch substitution (root to `CD`) passes it too, as on the code before the rule, so the test does not show that an edge with a Fitch substitution collapses. Assert the clade that the collapse removes
 - Damping guard of `fn check_params()` [packages/treetime/src/optimize/pipeline.rs#L138-L143](../../packages/treetime/src/optimize/pipeline.rs#L138-L143): no test that `damping >= 1.0` and `damping < 0.0` return the invalid-parameter error
 
 ### Mugration and prune
