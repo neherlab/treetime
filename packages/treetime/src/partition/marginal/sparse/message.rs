@@ -50,6 +50,17 @@ pub(crate) fn combine_messages(
     .iter()
     .map(|msg| msg.fixed.map_dis(|profile| profile.iter().map(|p| p.ln()).collect()))
     .collect();
+  let shared: SmallVec<[SharedProfile; INLINE_STATES]> = canonical
+    .iter()
+    .map(|&state| {
+      let mut dis = initial_log.clone();
+      for log_fixed in &log_fixed {
+        add_log(&mut dis, log_fixed[state].dis.iter().copied());
+      }
+      let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut dis));
+      SharedProfile { dis, log_norm }
+    })
+    .collect();
 
   for (pos, state, references) in sites.iter() {
     let mut all_states_equal = true;
@@ -81,7 +92,9 @@ pub(crate) fn combine_messages(
       weights[index] -= 1.0;
     }
 
-    if !is_site_resolved(&dis, EPS) || !all_states_equal {
+    let is_shared = is_site_resolved(&dis, EPS)
+      && (all_states_equal || index.is_some_and(|index| is_shared_profile(&dis, &shared[index].dis, index)));
+    if !is_shared {
       let label = if let Some(index) = index {
         kept_counts[index] = kept_counts[index].saturating_sub(1);
         state
@@ -92,16 +105,9 @@ pub(crate) fn combine_messages(
     }
   }
 
-  for (index, &state) in canonical.iter().enumerate() {
-    let mut log_vec = initial_log.clone();
-
-    for log_fixed in &log_fixed {
-      add_log(&mut log_vec, log_fixed[state].dis.iter().copied());
-    }
-
-    let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
+  for (index, (&state, SharedProfile { dis, log_norm })) in izip!(&canonical, shared).enumerate() {
     seq_dis.log_lh += LogLh::new(weights[index] * log_norm);
-    seq_dis.fixed.insert(state, kept_counts[index], log_vec);
+    seq_dis.fixed.insert(state, kept_counts[index], dis);
   }
   Ok(seq_dis)
 }
@@ -194,6 +200,10 @@ fn is_site_resolved(dis: &[f64], epsilon: f64) -> bool {
   is_max_above(&aview1(dis), 1.0 - epsilon)
 }
 
+fn is_shared_profile(dis: &[f64], shared: &[f64], state_index: usize) -> bool {
+  dis == shared && most_likely_state(&aview1(dis)) == Some(state_index)
+}
+
 pub(crate) fn normalize_1d_inplace(mut dis: ArrayViewMut1<'_, f64>, weight: f64) -> f64 {
   let norm = dis.sum();
   if norm > 0.0 && norm.is_finite() {
@@ -204,4 +214,9 @@ pub(crate) fn normalize_1d_inplace(mut dis: ArrayViewMut1<'_, f64>, weight: f64)
     dis.fill(uniform);
     f64::NEG_INFINITY
   }
+}
+
+struct SharedProfile {
+  dis: SiteProfile,
+  log_norm: f64,
 }
