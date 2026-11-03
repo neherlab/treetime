@@ -28,4 +28,4 @@ See the proposal [Mutation-first sequence representation](../proposals/mutation-
 
 ## Related issues
 
-- [M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md](M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md): the per-site profiles of columns without data in any tip, an $O(N \cdot K)$ cost of the sparse marginal passes besides the per-node sequences
+- [M-ancestral-sparse-marginal-stores-a-profile-per-clade-level-no-data-site.md](M-ancestral-sparse-marginal-stores-a-profile-per-clade-level-no-data-site.md): the per-site profiles of clade-level no-data sites, a cost of the sparse marginal passes that grows with the internal nodes of a clade times its no-data sites, besides the per-node sequences

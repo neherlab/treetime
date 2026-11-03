@@ -1,32 +1,36 @@
-# Sparse marginal reconstruction stores a profile per globally missing site in every internal node
+# Sparse marginal reconstruction stores a profile per clade-level no-data site in every internal node of the clade
 
-A column without data in any tip (globally missing: `N`, `-`, or another non-character in every sequence) has the equilibrium frequencies $\pi$ as its posterior at every node, because $\pi P(t) = \pi$ for every branch length $t$. The sparse marginal passes still store one per-site profile for each such column in every internal node, so memory and run time grow with $N \cdot K$ for $N$ internal nodes and $K$ globally missing columns.
+A clade-level no-data site of an internal node is a position where the subtree of the node has no data while other tips of the tree have data there. Its posterior at the node is the message from the rest of the tree, which depends on the path to the node, so the sparse forward pass stores one per-site entry for each such site in every internal node of the clade. Memory and run time grow with the number of internal nodes times the length of their no-data ranges, for example with long runs of `N` in a clade of tips sequenced with the same primer scheme.
+
+Columns without data in any tip are not part of this cost: their posterior is $\pi$ at every node, and the sparse passes store their ranges once per update with $\pi$ (`struct GloballyMissing` in [packages/treetime/src/partition/marginal/sparse/globally_missing.rs](../../packages/treetime/src/partition/marginal/sparse/globally_missing.rs)), as [kb/algo/ancestral.md](../algo/ancestral.md) describes under "Globally missing columns".
 
 ## Mechanism
 
-- **Root**: the backward pass gives the root the intersection of the no-data ranges of its children (`fn node()`, [packages/treetime/src/partition/marginal/sparse/backward.rs#L85](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L85)); a leaf contributes its gaps and unknown ranges ([#L81](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L81)). `fn with_equilibrium_at()` ([packages/treetime/src/partition/marginal/sparse/backward.rs#L231-L245](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L231-L245)), called at [#L108](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L108), expands every root no-data range into single `VarPosMap` entries holding $\pi$, one per position, ranges of gaps included
-- **Forward pass**: `fn compute_msg_to_child()` collects an outside profile for every position of the child's no-data ranges ([packages/treetime/src/partition/marginal/sparse/forward.rs#L272-L291](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L272-L291)). For an internal child the flag `outside_at_missing` is always set ([#L136](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L136)). Where the parent's sequence holds a gap or another non-character, the `else if` branch at [#L287](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L287) copies the parent's per-site entry. `fn edge()` then propagates these entries along the branch and merges them into the profile of the internal child ([#L176-L190](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L176-L190)). A globally missing column lies in the no-data ranges of every node, so every internal node receives and propagates one entry per column
-
-Commit `430a86373` ("infer internal states without descendant data from the whole tree") added the root expansion and the outside entries at the no-data sites of internal nodes, so that an internal node without descendant data takes the most likely state of its posterior, as v0 does ([kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md)). For a clade without data below a node, the posterior depends on the path from the rest of the tree, and a per-site entry is needed. For a globally missing column, the posterior is $\pi$ at every node, and its most likely state is the same everywhere: on `sc2/2844` with masked columns, all 1951 internal nodes write `T`, the most likely state of $\pi$, where `d45ee9861` wrote `N`. Where the tips hold gaps, the internal nodes inherit the gap, so the propagated profile is not used for the output at all: at column 95 of `lassa/L/500` (gaps in 413 tips, `N` in one), all 412 internal nodes write `-`.
+`fn compute_msg_to_child()` ([packages/treetime/src/partition/marginal/sparse/forward.rs#L284-L305](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L284-L305)) collects the undivided parent posterior at every position of the child's no-data range outside the globally missing columns. For an internal child the flag `outside_at_missing` is always set ([#L138](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L138)), and `fn edge()` propagates these entries along the branch and merges them into the profile of the child ([#L179-L194](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L179-L194)). Commit `430a86373` added these entries so that an internal node without descendant data takes the most likely state of its posterior, as v0 does ([kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md)).
 
 Commit `2a41a522e` removed the shared profiles of sites without data below a child, which grouped such sites by their pattern of children without data, and recorded speed and memory on alignments with long runs of `N` as the cost.
 
 ## Measurement
 
-Release build, `treetime ancestral --method-anc=marginal --representation=sparse -j 4` on omega, peak resident memory from `/usr/bin/time`. "Before" is `430a86373^` (`d45ee9861`), "after" is `4535dcd01`. The masked inputs replace columns of `data/sc2/2844/aln.fasta.xz` with `N` in every sequence. Of the example datasets in `data/`, only `ebola`, `lassa/L`, and `mpox/clade-ii/20` have globally missing columns.
+Release builds, `treetime ancestral --method-anc=marginal --representation=sparse -j 4` on omega, peak resident memory from `/usr/bin/time`. "Before" is `430a86373^` (`d45ee9861`), the commit without outside entries at no-data sites. A temporary counter at `62465d626` counted the per-site entries in the profiles of internal nodes after the forward pass and split off the entries at globally missing columns, which the current representation no longer stores; the clade-level and the other entries are the same in both representations. "Memory now" is the build with the shared representation of the globally missing columns. The masked input replaces columns 10 001 to 20 000 of `data/sc2/2844/aln.fasta.xz` with `N` in every sequence.
 
-| Input | Internal nodes | Globally missing columns | Before: time, memory | After: time, memory |
-| --- | ---: | ---: | --- | --- |
-| `sc2/2844` | 1951 | 0 | 1.51 s, 0.61 GB | 1.54 s, 0.58 GB |
-| `sc2/2844`, columns 10 001-20 000 masked | 1951 | 10 000 | 1.86 s, 0.58 GB | 4.90 s, 1.80 GB |
-| `sc2/2844`, columns 5 001-25 000 masked | 1951 | 20 000 | 1.81 s, 0.48 GB | 7.53 s, 2.99 GB |
-| `lassa/L/500` | 412 | 2 334 | 0.80 s, 0.22 GB | 1.09 s, 0.28 GB |
+| Input | Internal nodes | Clade-level entries | Other entries | Clade-level share | Memory before | Memory now | Ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `lassa/L/500` | 412 | 392 608 | 290 909 | 57% | 214 MB | 233 MB | 1.09 |
+| `ebola/362` | 359 | 102 333 | 1 605 | 98% | 80 MB | 85 MB | 1.05 |
+| `mpox/clade-ii/2000` | 1987 | 3 377 769 | 60 686 | 98% | 3429 MB | 3297 MB | 0.96 |
+| `sc2/5100` | 5099 | 1 314 464 | 32 430 | 98% | 1606 MB | 1525 MB | 0.95 |
+| `sc2/2844`, masked | 1951 | 318 522 | 6 776 | 98% | 579 MB | 559 MB | 0.97 |
 
-The extra memory grows linearly with the number of masked columns: about 64 bytes per internal node and globally missing column (1.22 GB for $1951 \times 10\,000$ entries, 2.51 GB for $1951 \times 20\,000$).
+Only `lassa/L/500` and `ebola/362` use more memory than before, by 9% and 5%. On the other inputs, later changes of the sparse backend more than offset the clade-level entries.
 
-## Fix direction
-
-Represent the globally missing columns of a partition once, as ranges with the shared profile $\pi$, instead of per-site entries: the root keeps the ranges, the forward pass skips them, and the reconstruction writes the most likely state of $\pi$ (or the gap that the internal nodes inherit where the tips hold gaps) at every internal node. Clade-level no-data sites keep their per-site entries. Compare the states at these columns with the dense backend and with the outputs of `430a86373` on the masked `sc2/2844` input.
+> [!IMPORTANT]
+> **Decision required.** The clade-level entries cost up to 9% of peak memory on the example datasets. The options:
+>
+> - Keep one per-site entry per clade-level no-data site, and close this issue as an accepted cost
+> - Share one profile among the sites of a clade-level no-data run, grouped by the pattern of children without data. This reverses `2a41a522e`, which removed such shared profiles to keep one kind of shared profile in the sparse passes
+>
+> Evidence: the table above. A run of `N` in a large clade multiplies the cost by the number of internal nodes of the clade; no example dataset shows a case above 9%.
 
 ## Related issues
 

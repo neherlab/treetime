@@ -15,4 +15,4 @@ A larger inline capacity is not a remedy: a capacity of 20 makes every nucleotid
 
 ## Related issues
 
-- [M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md](M-ancestral-sparse-marginal-stores-a-profile-per-globally-missing-site-in-every-internal-node.md): one per-site profile per internal node at every column without data in any tip, each of which allocates with an amino-acid alphabet
+- [M-ancestral-sparse-marginal-stores-a-profile-per-clade-level-no-data-site.md](M-ancestral-sparse-marginal-stores-a-profile-per-clade-level-no-data-site.md): one per-site profile per internal node of a clade at every no-data site of the clade, each of which allocates with an amino-acid alphabet
