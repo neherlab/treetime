@@ -14,7 +14,7 @@ TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`, 
 
 Contribute the change to [nextstrain/auspice](https://github.com/nextstrain/auspice). After upgrading to an Auspice release that contains it, remove the change from the patch. The patch file also holds the changes in the other `N-app-ui-auspice-*-patch-upstream.md` issues. When the patch has no changes left, delete the patch file and its `patchedDependencies` entry. Bun refuses to install when the patch no longer applies to a new Auspice version, so an upgrade without this step fails visibly.
 
-The patch carries the same code as the Auspice patches of Nextclade, treeknit-rs and auspice-vscode for every fix that more than one of these viewers needs. Keep these parts identical when editing them, so that one upstream contribution removes the change from all four patches.
+Keep each fix of an Auspice defect free of TreeTime specifics when editing it, so that an upstream contribution can take its code unchanged and remove it from the patch.
 
 ## Editing the patch
 

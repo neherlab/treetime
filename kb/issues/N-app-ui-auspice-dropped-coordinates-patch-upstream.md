@@ -2,7 +2,7 @@
 
 ## Problem
 
-Auspice 3.2.0 turns a dropped CSV or TSV file with `latitude` and `longitude` (or `__latitude` and `__longitude`) columns into a map of the samples. The TreeTime apps do not offer dropping metadata onto the tree, so these defects do not show in TreeTime. The patch carries the fix because the Auspice patches of Nextclade, treeknit-rs and auspice-vscode carry it with the same code. Its parser has these defects:
+Auspice 3.2.0 turns a dropped CSV or TSV file with `latitude` and `longitude` (or `__latitude` and `__longitude`) columns into a map of the samples. The TreeTime apps do not offer dropping metadata onto the tree, so these defects do not show in TreeTime. The patch fixes the parser for an upstream contribution, because the defects affect every Auspice viewer that accepts dropped metadata. The parser has these defects:
 
 - **Coordinates-only files**: a file whose only columns besides the names are the coordinates is refused with "No valid columns", because the check for other columns runs before the coordinates are read
 - **Merged locations**: samples are grouped by the joined strings of their coordinates, so `(1, 23)` and `(12, 3)` are one location
