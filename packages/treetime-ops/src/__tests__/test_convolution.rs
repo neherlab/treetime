@@ -1,7 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::traits::ConvolveAlgo;
-  use crate::{DirectConvolve, FftConvolve, NdarrayConvolve, convolve_direct_at};
+  use crate::{
+    DirectConvolve, FftConvolve, FftConvolver, FftPlans, NdarrayConvolve, convolve_direct_at,
+    convolve_direct_neg_log_at,
+  };
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -52,6 +55,63 @@ mod tests {
     assert_error!(
       convolve_direct_at(0.5, &f, &g, 6),
       "Convolution sample 6 is outside the full convolution of 6 samples"
+    );
+  }
+
+  #[test]
+  fn test_convolution_overlap_sums_are_the_plain_sums_of_products_without_trapezoid_weights() {
+    let (f, g) = (array![2.0, 1.0, 3.0], array![5.0, 1.0, 1.0, 7.0]);
+    let plain_sums_by_hand = array![10.0, 7.0, 18.0, 18.0, 10.0, 21.0];
+    let actual = FftConvolver::new(3, 4, &FftPlans::new())
+      .unwrap()
+      .overlap_sums(&f, &g)
+      .unwrap();
+    pretty_assert_abs_diff_eq!(plain_sums_by_hand, actual, epsilon = 1e-13);
+  }
+
+  #[test]
+  fn test_convolve_direct_neg_log_at_is_the_neg_log_of_the_trapezoid_sum() {
+    let (f, g) = (array![2.0, 1.0, 3.0], array![5.0, 1.0, 1.0, 7.0]);
+    let (f_neg_log, g_neg_log) = (f.mapv(|v: f64| -v.ln()), g.mapv(|v: f64| -v.ln()));
+    let expected: Array1<f64> = (0..6)
+      .map(|n| -convolve_direct_at(0.5, &f, &g, n).unwrap().ln())
+      .collect();
+    let actual: Array1<f64> = (0..6)
+      .map(|n| convolve_direct_neg_log_at(0.5, &f_neg_log, &g_neg_log, n, 0..=n).unwrap())
+      .collect();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-14);
+    assert_error!(
+      convolve_direct_neg_log_at(0.5, &f_neg_log, &g_neg_log, 6, 0..=6),
+      "Convolution sample 6 is outside the full convolution of 6 samples"
+    );
+  }
+
+  #[test]
+  fn test_convolve_direct_neg_log_at_keeps_depths_below_the_smallest_double_and_exact_zeros() {
+    let f = array![1000.0, 1000.0, f64::INFINITY];
+    let g = array![2000.0, 2000.0, f64::INFINITY];
+    let at = |n: usize| convolve_direct_neg_log_at(0.5, &f, &g, n, 0..=n).unwrap();
+    pretty_assert_ulps_eq!(3000.0 - (0.5_f64).ln(), at(1), max_ulps = 4);
+    assert_eq!(f64::INFINITY, at(4));
+  }
+
+  #[test]
+  fn test_convolve_direct_neg_log_at_sums_only_the_pairs_of_its_index_range_with_the_weights_of_the_full_sum() {
+    let (f, g) = (array![2.0, 1.0, 3.0], array![5.0, 1.0, 1.0, 7.0]);
+    let (f_neg_log, g_neg_log) = (f.mapv(|v: f64| -v.ln()), g.mapv(|v: f64| -v.ln()));
+    let middle_pair_of_sample_2 = f[1] * g[1] * 0.5;
+    let actual = convolve_direct_neg_log_at(0.5, &f_neg_log, &g_neg_log, 2, 1..=1).unwrap();
+    pretty_assert_abs_diff_eq!(-middle_pair_of_sample_2.ln(), actual, epsilon = 1e-15);
+    let end_pairs_of_sample_2 = f64::midpoint(f[0] * g[2], f[2] * g[0]) * 0.5;
+    let actual = convolve_direct_neg_log_at(0.5, &f_neg_log, &g_neg_log, 2, 0..=2).unwrap();
+    pretty_assert_abs_diff_eq!(
+      -(end_pairs_of_sample_2 + middle_pair_of_sample_2).ln(),
+      actual,
+      epsilon = 1e-15
+    );
+    assert_eq!(
+      f64::INFINITY,
+      convolve_direct_neg_log_at(0.5, &f_neg_log, &g_neg_log, 2, 3..=5).unwrap()
     );
   }
 

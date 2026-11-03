@@ -1,15 +1,20 @@
 use crate::traits::ConvolveAlgo;
 use eyre::{Report, WrapErr};
-use ndarray::{Array1, s};
+use ndarray::{Array1, Zip, s};
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use parking_lot::RwLock;
 use realfft::num_complex::Complex;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 use std::collections::BTreeMap;
 use std::iter::successors;
+use std::ops::RangeInclusive;
 use std::sync::{Arc, OnceLock};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_report};
+
+const SINGLE_PAIR_WEIGHT: f64 = 0.25;
+
+const NEGLIGIBLE_TERM_DEPTH: f64 = 50.0;
 
 #[derive(Debug)]
 pub struct DirectConvolve;
@@ -104,6 +109,11 @@ impl FftConvolver {
   }
 
   pub fn convolve(&mut self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    let overlap_sums = self.overlap_sums(f_values, g_values)?;
+    Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+  }
+
+  pub fn overlap_sums(&mut self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
     if (f_values.len(), g_values.len()) != (self.f_len, self.g_len) {
       return make_error!(
         "FFT convolver for operands of {} and {} samples got operands of {} and {} samples",
@@ -149,11 +159,12 @@ impl FftConvolver {
       )
       .wrap_err("When computing the inverse FFT of the convolution product")?;
     let fft_len = self.fft_len.to_f64_exact();
-    let overlap_sums = self
-      .f_buffer
-      .slice(s![..self.f_len + self.g_len - 1])
-      .mapv(|sum| sum / fft_len);
-    Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+    Ok(
+      self
+        .f_buffer
+        .slice(s![..self.f_len + self.g_len - 1])
+        .mapv(|sum| sum / fft_len),
+    )
   }
 }
 
@@ -196,25 +207,76 @@ impl FftPlanPair {
 
 pub fn convolve_direct_at(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>, n: usize) -> Result<f64, Report> {
   check_operand_lengths(f_values.len(), g_values.len())?;
-  let (last_f, last_g) = (f_values.len() - 1, g_values.len() - 1);
-  let last_n = last_f + last_g;
-  if n > last_n {
-    return make_error!(
-      "Convolution sample {n} is outside the full convolution of {} samples",
-      last_n + 1
-    );
+  let (first_i, last_i) = overlap_of_sample(f_values.len(), g_values.len(), n)?;
+  if first_i == last_i {
+    return Ok(SINGLE_PAIR_WEIGHT * f_values[first_i] * g_values[n - first_i] * dx);
   }
-  if n == 0 || n == last_n {
-    let (i, j) = if n == 0 { (0, 0) } else { (last_f, last_g) };
-    return Ok(0.25 * f_values[i] * g_values[j] * dx);
-  }
-  let (first_i, last_i) = (n.saturating_sub(last_g), n.min(last_f));
   let sum: f64 = (first_i..=last_i).map(|i| f_values[i] * g_values[n - i]).sum();
   let ends = f64::midpoint(
     f_values[first_i] * g_values[n - first_i],
     f_values[last_i] * g_values[n - last_i],
   );
   Ok((sum - ends) * dx)
+}
+
+pub fn convolve_direct_neg_log_at(
+  dx: f64,
+  f_neg_log: &Array1<f64>,
+  g_neg_log: &Array1<f64>,
+  n: usize,
+  pairs: RangeInclusive<usize>,
+) -> Result<f64, Report> {
+  check_operand_lengths(f_neg_log.len(), g_neg_log.len())?;
+  let (full_first, full_last) = overlap_of_sample(f_neg_log.len(), g_neg_log.len(), n)?;
+  let (first_i, last_i) = (full_first.max(*pairs.start()), full_last.min(*pairs.end()));
+  if first_i > last_i {
+    return Ok(f64::INFINITY);
+  }
+  let neg_ln_weight = |i: usize| -trapezoid_weight(f_neg_log.len(), g_neg_log.len(), n, i).ln();
+  let (first_penalty, last_penalty) = (neg_ln_weight(full_first), neg_ln_weight(full_last));
+  let penalty = |q: usize| match first_i + q {
+    i if i == full_first => first_penalty,
+    i if i == full_last => last_penalty,
+    _ => 0.0,
+  };
+  let f_pairs = f_neg_log.slice(s![first_i..=last_i]);
+  let g_pairs = g_neg_log.slice(s![n - last_i..=n - first_i;-1]);
+  let pairs = || Zip::indexed(&f_pairs).and(&g_pairs);
+  let min_cost = pairs().fold(f64::INFINITY, |min, q, f, g| min.min(f + g + penalty(q)));
+  if !min_cost.is_finite() {
+    return Ok(f64::INFINITY);
+  }
+  let sum = pairs().fold(0.0, |sum, q, f, g| {
+    let depth = f + g + penalty(q) - min_cost;
+    if depth <= NEGLIGIBLE_TERM_DEPTH {
+      sum + (-depth).exp()
+    } else {
+      sum
+    }
+  });
+  Ok(min_cost - (sum * dx).ln())
+}
+
+pub fn trapezoid_weight(f_len: usize, g_len: usize, n: usize, i: usize) -> f64 {
+  let (first_i, last_i) = (n.saturating_sub(g_len - 1), n.min(f_len - 1));
+  if first_i == last_i {
+    SINGLE_PAIR_WEIGHT
+  } else if i == first_i || i == last_i {
+    0.5
+  } else {
+    1.0
+  }
+}
+
+fn overlap_of_sample(f_len: usize, g_len: usize, n: usize) -> Result<(usize, usize), Report> {
+  let last_n = f_len + g_len - 2;
+  if n > last_n {
+    return make_error!(
+      "Convolution sample {n} is outside the full convolution of {} samples",
+      last_n + 1
+    );
+  }
+  Ok((n.saturating_sub(g_len - 1), n.min(f_len - 1)))
 }
 
 fn check_operand_lengths(f_len: usize, g_len: usize) -> Result<(), Report> {
@@ -239,8 +301,8 @@ pub(crate) fn trapezoid_from_overlap_sums(
       f_values[last_i] * g_values[n - last_i],
     );
   }
-  overlap_sums[0] = 0.25 * f_values[0] * g_values[0];
-  overlap_sums[last_n] = 0.25 * f_values[last_f] * g_values[last_g];
+  overlap_sums[0] = SINGLE_PAIR_WEIGHT * f_values[0] * g_values[0];
+  overlap_sums[last_n] = SINGLE_PAIR_WEIGHT * f_values[last_f] * g_values[last_g];
   overlap_sums *= dx;
   overlap_sums
 }
