@@ -5347,6 +5347,7 @@ dependencies = [
  "approx",
  "ctor",
  "eyre",
+ "itertools",
  "ndarray",
  "ndarray-conv",
  "parking_lot",

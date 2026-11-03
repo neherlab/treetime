@@ -31,6 +31,7 @@ realfft = { workspace = true }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
+itertools = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
