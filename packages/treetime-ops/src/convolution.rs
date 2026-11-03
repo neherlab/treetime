@@ -115,7 +115,10 @@ impl FftConvolver {
     }
     let offset = self.g_len - 1;
     self.f_buffer.fill(0.0);
-    self.f_buffer.slice_mut(s![offset..offset + self.f_len]).assign(f_values);
+    self
+      .f_buffer
+      .slice_mut(s![offset..offset + self.f_len])
+      .assign(f_values);
     self.g_buffer.fill(0.0);
     self.g_buffer.slice_mut(s![..self.g_len]).assign(g_values);
     self
