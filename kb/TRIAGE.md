@@ -8,6 +8,7 @@ The work on these issues waits on a maintainer decision or a measurement.
 
 Each line names the issue and the options that a maintainer must choose from.
 
+- **[kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)**: keep the approximate fold below the root, fold exactly with one entry per site, or fold exactly with the class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](proposals/sparse-shared-profiles-for-sites-without-data.md)
 - **[kb/issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md](issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md)**: honor each of the two flags that the amino-acid path ignores, reject the combination, or document the flag as nucleotide-only
 - **[kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](issues/M-app-runs-folder-grows-without-retention-or-quota.md)**: choose a quota, an age-based retention, or both, their defaults for the deploy, and whether the UI warns before it removes a run
 - **[kb/issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md](issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md)**: take the slack and the coupling of the relaxed clock as two flags, as one comma-separated value, or keep the two space-separated values of TreeTime 0.x
