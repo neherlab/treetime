@@ -6,6 +6,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
   use rstest::rstest;
+  use std::iter::repeat_with;
   use std::sync::Arc;
   use treetime_utils::assert_error;
 
@@ -129,7 +130,7 @@ mod tests {
   fn test_convolution_fft_plans_of_one_length_are_shared_by_every_lookup() {
     let plans = FftPlans::new();
     let concurrent = helpers::pool().install(|| (0..64).into_par_iter().map(|_| plans.get(1705)).collect::<Vec<_>>());
-    let sequential = (0..2).map(|_| plans.get(1705)).collect_vec();
+    let sequential = repeat_with(|| plans.get(1705)).take(2).collect_vec();
 
     let first = &concurrent[0];
     let shares_first = concurrent
