@@ -1,14 +1,16 @@
 use crate::traits::ConvolveAlgo;
-use eyre::Report;
-use ndarray::Array1;
+use eyre::{Report, WrapErr};
+use ndarray::{Array1, s};
 use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode, get_fft_processor};
 use std::any::Any;
 use std::cell::RefCell;
 use parking_lot::RwLock;
+use realfft::num_complex::Complex;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::sync::{Arc, OnceLock};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_report};
 
 const FFT_PROCESSORS_PER_THREAD: usize = 8;
@@ -32,7 +34,7 @@ impl ConvolveAlgo for DirectConvolve {
 }
 
 fn convolve_direct(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  check_operand_lengths(f_values, g_values)?;
+  check_operand_lengths(f_values.len(), g_values.len())?;
   let mut overlap_sums = Array1::zeros(f_values.len() + g_values.len() - 1);
   for (i, &f_val) in f_values.iter().enumerate() {
     for (j, &g_val) in g_values.iter().enumerate() {
@@ -56,7 +58,7 @@ impl ConvolveAlgo for NdarrayConvolve {
 }
 
 fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  check_operand_lengths(f_values, g_values)?;
+  check_operand_lengths(f_values.len(), g_values.len())?;
   let overlap_sums = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
   Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
 }
@@ -75,7 +77,7 @@ impl ConvolveAlgo for FftConvolve {
 }
 
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  check_operand_lengths(f_values, g_values)?;
+  check_operand_lengths(f_values.len(), g_values.len())?;
   let padded_len = f_values.len() + 2 * g_values.len().saturating_sub(1);
   let fft_len = fft_len(padded_len.max(g_values.len()));
   let overlap_sums = if fft_len > MAX_CACHED_FFT_LEN {
@@ -87,6 +89,95 @@ pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> 
     })?
   };
   Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+}
+
+pub struct FftConvolver {
+  f_len: usize,
+  g_len: usize,
+  fft_len: usize,
+  plans: FftPlanPair,
+  f_buffer: Array1<f64>,
+  g_buffer: Array1<f64>,
+  f_spectrum: Array1<Complex<f64>>,
+  g_spectrum: Array1<Complex<f64>>,
+  scratch: Array1<Complex<f64>>,
+}
+
+impl FftConvolver {
+  pub fn new(f_len: usize, g_len: usize, plans: &FftPlans) -> Result<Self, Report> {
+    check_operand_lengths(f_len, g_len)?;
+    let fft_len = fft_len((f_len + 2 * (g_len - 1)).max(g_len));
+    let plans = plans.get(fft_len);
+    let spectrum_len = plans.forward.complex_len();
+    let scratch_len = plans.forward.get_scratch_len().max(plans.inverse.get_scratch_len());
+    Ok(Self {
+      f_len,
+      g_len,
+      fft_len,
+      plans,
+      f_buffer: Array1::zeros(fft_len),
+      g_buffer: Array1::zeros(fft_len),
+      f_spectrum: Array1::zeros(spectrum_len),
+      g_spectrum: Array1::zeros(spectrum_len),
+      scratch: Array1::zeros(scratch_len),
+    })
+  }
+
+  pub fn convolve(&mut self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    if (f_values.len(), g_values.len()) != (self.f_len, self.g_len) {
+      return make_error!(
+        "FFT convolver for operands of {} and {} samples got operands of {} and {} samples",
+        self.f_len,
+        self.g_len,
+        f_values.len(),
+        g_values.len()
+      );
+    }
+    let offset = self.g_len - 1;
+    self.f_buffer.fill(0.0);
+    self.f_buffer.slice_mut(s![offset..offset + self.f_len]).assign(f_values);
+    self.g_buffer.fill(0.0);
+    self.g_buffer.slice_mut(s![..self.g_len]).assign(g_values);
+    self
+      .plans
+      .forward
+      .process_with_scratch(
+        contiguous(&mut self.f_buffer)?,
+        contiguous(&mut self.f_spectrum)?,
+        contiguous(&mut self.scratch)?,
+      )
+      .wrap_err("When computing the forward FFT of the first convolution operand")?;
+    self
+      .plans
+      .forward
+      .process_with_scratch(
+        contiguous(&mut self.g_buffer)?,
+        contiguous(&mut self.g_spectrum)?,
+        contiguous(&mut self.scratch)?,
+      )
+      .wrap_err("When computing the forward FFT of the second convolution operand")?;
+    self.f_spectrum.zip_mut_with(&self.g_spectrum, |f, g| *f *= *g);
+    self.f_spectrum[0].im = 0.0;
+    if self.fft_len.is_multiple_of(2) {
+      let last = self.f_spectrum.len() - 1;
+      self.f_spectrum[last].im = 0.0;
+    }
+    self
+      .plans
+      .inverse
+      .process_with_scratch(
+        contiguous(&mut self.f_spectrum)?,
+        contiguous(&mut self.f_buffer)?,
+        contiguous(&mut self.scratch)?,
+      )
+      .wrap_err("When computing the inverse FFT of the convolution product")?;
+    let fft_len = self.fft_len.to_f64_exact();
+    let overlap_sums = self
+      .f_buffer
+      .slice(s![offset..offset + self.f_len + self.g_len - 1])
+      .mapv(|sum| sum / fft_len);
+    Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+  }
 }
 
 #[derive(Default)]
@@ -127,7 +218,7 @@ impl FftPlanPair {
 }
 
 pub fn convolve_direct_at(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>, n: usize) -> Result<f64, Report> {
-  check_operand_lengths(f_values, g_values)?;
+  check_operand_lengths(f_values.len(), g_values.len())?;
   let (last_f, last_g) = (f_values.len() - 1, g_values.len() - 1);
   let last_n = last_f + last_g;
   if n > last_n {
@@ -149,13 +240,9 @@ pub fn convolve_direct_at(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64
   Ok((sum - ends) * dx)
 }
 
-fn check_operand_lengths(f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<(), Report> {
-  if f_values.len() < 2 || g_values.len() < 2 {
-    return make_error!(
-      "Trapezoid convolution needs at least 2 samples per operand, got {} and {}",
-      f_values.len(),
-      g_values.len()
-    );
+fn check_operand_lengths(f_len: usize, g_len: usize) -> Result<(), Report> {
+  if f_len < 2 || g_len < 2 {
+    return make_error!("Trapezoid convolution needs at least 2 samples per operand, got {f_len} and {g_len}");
   }
   Ok(())
 }
@@ -220,4 +307,10 @@ fn processor_for_fft_len<P: Any>(
     .1
     .downcast_mut::<P>()
     .ok_or_else(|| make_internal_report!("FFT processor cache holds a processor of another type"))
+}
+
+fn contiguous<T>(array: &mut Array1<T>) -> Result<&mut [T], Report> {
+  array
+    .as_slice_mut()
+    .ok_or_else(|| make_internal_report!("FFT buffer is not contiguous in memory"))
 }

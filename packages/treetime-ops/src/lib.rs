@@ -8,7 +8,7 @@ pub mod traits;
 mod __tests__;
 
 pub use convolution::{
-  DirectConvolve, FftConvolve, FftPlans, NdarrayConvolve, convolve_direct_at, convolve_fft,
+  DirectConvolve, FftConvolve, FftConvolver, FftPlans, NdarrayConvolve, convolve_direct_at, convolve_fft,
 };
 pub use multiplication::{AggressiveMultiply, LogScaleMultiply, PointwiseMultiply};
 pub use traits::{ConvolveAlgo, MultiplyAlgo};
