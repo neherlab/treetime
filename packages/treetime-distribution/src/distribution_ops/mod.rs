@@ -1,6 +1,7 @@
 pub(crate) mod convolve;
 pub(crate) mod divide;
 pub(crate) mod edge_convolution;
+pub(crate) mod exact_tails;
 pub(crate) mod mass_domain;
 pub(crate) mod mass_profile;
 pub(crate) mod multiply;

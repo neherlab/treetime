@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::convolve::distribution_convolution_fine;
@@ -457,7 +457,7 @@ mod tests {
     Ok(())
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use super::*;
 
     pub(super) fn gaussian_at(sigma: f64, dx: f64) -> Result<DistributionNegLog, Report> {
@@ -547,7 +547,7 @@ mod tests {
       -(2.0 * mode_mass * kernel_mass).ln()
     }
 
-    fn ln_gauss_integral(lo: f64, hi: f64) -> f64 {
+    pub(crate) fn ln_gauss_integral(lo: f64, hi: f64) -> f64 {
       let ln_half_sqrt_pi = (PI.sqrt() / 2.0).ln();
       if hi <= lo {
         f64::NEG_INFINITY

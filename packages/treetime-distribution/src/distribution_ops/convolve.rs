@@ -2,6 +2,7 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::exact_tails::{ExactTailOperands, IndexWindow, neg_log_on_whole_support};
 use crate::distribution_ops::mass_profile::MassProfile;
 use crate::distribution_ops::multiply::{HardDomain, distribution_hard_domain, guarded_empty_result};
 use crate::distribution_ops::time_bounds::distribution_support_n_points;
@@ -12,12 +13,12 @@ use ndarray::{Array1, Zip};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use treetime_grid::{BoundaryBehavior, Grid, GridFn, MaxGridPoints, Side};
-use treetime_ops::{FftConvolver, FftPlans, convolve_direct_at};
+use treetime_ops::{FftConvolver, FftPlans, convolve_direct_at, convolve_direct_neg_log_at};
 use treetime_utils::array::ndarray::{max_or, min_or};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 
-const CONV_TRUST_FRACTION: f64 = 1e-13;
+pub(crate) const CONV_TRUST_FRACTION: f64 = 1e-13;
 
 const CONV_TAIL_MARGIN: usize = 3;
 
@@ -69,6 +70,16 @@ pub(crate) fn distribution_convolution(
     },
   }
 }
+
+pub(crate) trait SampleTrace {
+  fn fft_sample(&mut self, _sample: usize, _theta: f64, _window_a: IndexWindow, _window_b: IndexWindow) {}
+
+  fn quadrature_sample(&mut self, _sample: usize) {}
+}
+
+struct NoTrace;
+
+impl SampleTrace for NoTrace {}
 
 fn convolution_point_point(
   a: &DistributionPoint<f64, NegLog>,
@@ -251,6 +262,16 @@ fn convolution_function_function_fine(
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
+  convolution_function_function_fine_traced(a, b, max_points, fft_plans, &mut NoTrace)
+}
+
+pub(crate) fn convolution_function_function_fine_traced(
+  a: &DistributionFunction<f64, NegLog>,
+  b: &DistributionFunction<f64, NegLog>,
+  max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
+  trace: &mut impl SampleTrace,
+) -> Result<Distribution<NegLog>, Report> {
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
     let b_domain = conv_operand_domain(!b.is_empty());
@@ -291,7 +312,7 @@ fn convolution_function_function_fine(
   let mut convolver = FftConvolver::new(operands.a.plain.len(), operands.b.plain.len(), fft_plans)?;
   let conv = convolver.convolve(dx, &operands.a.plain, &operands.b.plain)?;
 
-  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &operands, &mut convolver)? else {
+  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &operands, &mut convolver, fft_plans, trace)? else {
     let a_domain = conv_operand_domain(true);
     let b_domain = conv_operand_domain(true);
     return guarded_empty_result("convolution", a_domain, b_domain);
@@ -351,6 +372,8 @@ fn reconstruct_neg_log_tails(
   dx: f64,
   operands: &ConvOperands,
   convolver: &mut FftConvolver,
+  fft_plans: &FftPlans,
+  trace: &mut impl SampleTrace,
 ) -> Result<Option<ReconstructedConv>, Report> {
   let peak = max_or(conv, 0.0);
   if peak <= 0.0 {
@@ -364,8 +387,7 @@ fn reconstruct_neg_log_tails(
     return Ok(None);
   };
 
-  let trusted_y =
-    neg_log_with_quadrature_in_valleys(conv, first, last, floor, dx, &operands.a.plain, &operands.b.plain)?;
+  let trusted_y = neg_log_with_quadrature_in_valleys(conv, first, last, floor, dx, operands, trace)?;
   let n = trusted_y.len();
   let margin = CONV_TAIL_MARGIN.min(n / 3);
   if margin < 1 {
@@ -395,7 +417,31 @@ fn reconstruct_neg_log_tails(
       convolver,
       dx,
     },
+    trace,
   )?;
+  let resolved_end = resolved.start + resolved.neg_log.len() - 1;
+  let target = IndexWindow {
+    first: if operands.hard_left { 0 } else { resolved.start },
+    last: if operands.hard_right {
+      conv.len() - 1
+    } else {
+      resolved_end
+    },
+  };
+  let resolved = if target.first < resolved.start || target.last > resolved_end {
+    let exact = ExactTailOperands {
+      a: &operands.a.relative_neg_log,
+      b: &operands.b.relative_neg_log,
+      dx,
+      fft_plans,
+    };
+    let Some(resolved) = neg_log_on_whole_support(exact, &resolved, target, trace)? else {
+      return Ok(None);
+    };
+    resolved
+  } else {
+    resolved
+  };
   let resolved_end = resolved.start + resolved.neg_log.len() - 1;
   let slopes = EndSlopes::of(&resolved.neg_log, margin, dx);
   let left_edge = resolved.neg_log[0];
@@ -427,17 +473,25 @@ fn neg_log_with_quadrature_in_valleys(
   last: usize,
   floor: f64,
   dx: f64,
-  pa: &Array1<f64>,
-  pb: &Array1<f64>,
+  operands: &ConvOperands,
+  trace: &mut impl SampleTrace,
 ) -> Result<Array1<f64>, Report> {
+  let (a, b) = (&operands.a, &operands.b);
+  let (full_a, full_b) = (IndexWindow::of_len(a.plain.len()), IndexWindow::of_len(b.plain.len()));
   (first..=last)
     .map(|i| {
-      let c = if conv[i] > floor {
-        conv[i]
+      if conv[i] > floor {
+        trace.fft_sample(i, 0.0, full_a, full_b);
+        return Ok(-conv[i].ln());
+      }
+      trace.quadrature_sample(i);
+      let plain = convolve_direct_at(dx, &a.plain, &b.plain, i)?;
+      let pairs = i.min(full_a.last) + 1 - i.saturating_sub(full_b.last);
+      if plain >= pairs.to_f64_exact() * f64::MIN_POSITIVE * dx.max(1.0) {
+        Ok(-plain.ln())
       } else {
-        convolve_direct_at(dx, pa, pb, i)?.max(f64::MIN_POSITIVE)
-      };
-      Ok(-c.ln())
+        convolve_direct_neg_log_at(dx, &a.relative_neg_log, &b.relative_neg_log, i, 0..=i)
+      }
     })
     .collect()
 }
@@ -449,7 +503,10 @@ fn neg_log_at_ends_by_tilting(
   right_end: usize,
   margin: usize,
   tilting: &mut Tilting<'_>,
+  trace: &mut impl SampleTrace,
 ) -> Result<ResolvedNegLog, Report> {
+  let full_a = IndexWindow::of_len(tilting.operands.a.plain.len());
+  let full_b = IndexWindow::of_len(tilting.operands.b.plain.len());
   let mut values: VecDeque<f64> = trusted_y.into_iter().collect();
   let mut start = first;
 
@@ -464,6 +521,7 @@ fn neg_log_at_ends_by_tilting(
     if added.is_empty() {
       break;
     }
+    (next..next + added.len()).for_each(|i| trace.fft_sample(i, slope, full_a, full_b));
     values.extend(added);
   }
 
@@ -480,6 +538,7 @@ fn neg_log_at_ends_by_tilting(
     if added.is_empty() {
       break;
     }
+    (start - added.len()..start).for_each(|i| trace.fft_sample(i, slope, full_a, full_b));
     start -= added.len();
     added.into_iter().for_each(|value| values.push_front(value));
   }
@@ -585,9 +644,9 @@ impl TiltedConvolution {
   }
 }
 
-struct ResolvedNegLog {
-  start: usize,
-  neg_log: Array1<f64>,
+pub(crate) struct ResolvedNegLog {
+  pub(crate) start: usize,
+  pub(crate) neg_log: Array1<f64>,
 }
 
 struct ReconstructedConv {

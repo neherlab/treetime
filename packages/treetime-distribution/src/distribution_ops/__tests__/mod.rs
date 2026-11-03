@@ -1,5 +1,6 @@
 mod test_amplitude;
 mod test_convolve;
+mod test_convolve_exact_tails;
 mod test_divide;
 mod test_edge_cell;
 mod test_edge_convolution;
