@@ -1,8 +1,9 @@
 import { datasetSummary } from "auspice/src/components/info/datasetSummary";
 import { MUTATION_COUNT_PREFIX } from "auspice/src/util/computeDistanceMetric";
+import { calcEntropyInView } from "auspice/src/util/entropy";
 
 import { translateAuspice } from "./i18n";
-import { isDatedTree, type AuspiceState } from "./state";
+import { isDatedTree, type AuspiceEntropyLoaded, type AuspiceState } from "./state";
 
 export function downloadPrefix(runs: FigureRuns): string {
   if (runs.length === 1) {
@@ -36,6 +37,20 @@ export function figureSummary({
     temporalTree: isDatedTree(controls),
     t: translateAuspice,
   });
+}
+
+export function entropyTable({
+  entropy,
+  tree,
+}: Pick<AuspiceState, "entropy" | "tree">): Required<AuspiceEntropyLoaded> | undefined {
+  if (!entropy.loaded || tree.nodes === null || tree.visibility === null) {
+    return undefined;
+  }
+
+  const bars =
+    entropy.bars ?? calcEntropyInView(tree.nodes, tree.visibility, entropy.selectedCds, entropy.showCounts)[0];
+
+  return { ...entropy, bars };
 }
 
 export type FigureRuns = readonly [FigureRun] | readonly [FigureRun, FigureRun];

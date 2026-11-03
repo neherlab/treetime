@@ -2,7 +2,7 @@ import type { AnyAction } from "redux";
 import type { ThunkDispatch } from "redux-thunk";
 
 import type {
-  AuspiceEntropyState,
+  AuspiceEntropyLoaded,
   AuspiceMetadataState,
   AuspiceNode,
   AuspicePublication,
@@ -44,6 +44,10 @@ export declare function strainTSV(
   nodeVisibilities: readonly number[],
 ): void;
 
-export declare function entropyTSV(dispatch: AuspiceDispatch, filePrefix: string, entropy: AuspiceEntropyState): void;
+export declare function entropyTSV(
+  dispatch: AuspiceDispatch,
+  filePrefix: string,
+  entropy: Required<AuspiceEntropyLoaded>,
+): void;
 
 export declare function auspiceJSON(dispatch: AuspiceDispatch, state: AuspiceState, filePrefix: string): void;

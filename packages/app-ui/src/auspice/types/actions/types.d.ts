@@ -1,5 +1,7 @@
 export declare const CLEAN_START: "CLEAN_START";
 
+export declare const ENTROPY_DATA: "ENTROPY_DATA";
+
 export declare const NEW_COLORS: "NEW_COLORS";
 
 export declare const SELECT_NODE: "SELECT_NODE";

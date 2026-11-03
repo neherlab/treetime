@@ -14,7 +14,7 @@ import { useCallback, useMemo } from "react";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 
 import { figureCaption } from "./caption";
-import { downloadPrefix, figureSummary, treeFilePrefix, type FigureRuns } from "./downloads";
+import { downloadPrefix, entropyTable, figureSummary, treeFilePrefix, type FigureRuns } from "./downloads";
 import { translateAuspice } from "./i18n";
 import { isDatedTree, type AuspiceSharing, type AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
@@ -76,7 +76,7 @@ const TREE_DOWNLOADS: readonly TreeDownload[] = [
     name: () => "Diversity (TSV)",
     description: "The values of the entropy chart",
     available: ({ sharing, entropyLoaded }) => sharing.entropy === true && entropyLoaded,
-    save: ({ store, prefix }) => entropyTSV(store.dispatch, prefix, store.getState().entropy),
+    save: saveEntropyTable,
   },
   {
     name: () => "Auspice JSON",
@@ -170,6 +170,18 @@ function DownloadItem({
       <span className="text-muted-foreground text-xs">{download.description}</span>
     </DropdownMenuItem>
   );
+}
+
+function saveEntropyTable({ store, prefix, fail }: DownloadContext): void {
+  const table = entropyTable(store.getState());
+
+  if (table === undefined) {
+    fail("The diversity table cannot be saved", "The tree or its genome annotations are not loaded");
+
+    return;
+  }
+
+  entropyTSV(store.dispatch, prefix, table);
 }
 
 function saveFigure(context: DownloadContext): void {

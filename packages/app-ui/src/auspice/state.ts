@@ -108,8 +108,29 @@ interface AuspiceSelectedNode {
 
 export type AuspicePanelLayout = "full" | "grid";
 
-export interface AuspiceEntropyState {
-  loaded: boolean;
+export type AuspiceEntropyState = AuspiceEntropyUnloaded | AuspiceEntropyLoaded;
+
+export interface AuspiceEntropyUnloaded {
+  loaded: false;
+  showCounts: boolean;
+}
+
+export interface AuspiceEntropyLoaded {
+  loaded: true;
+  showCounts: boolean;
+  selectedCds: AuspiceSelectedCds;
+  bars?: readonly AuspiceEntropyBar[];
+}
+
+export type AuspiceSelectedCds = "nuc" | AuspiceCds;
+
+export interface AuspiceCds {
+  name: string;
+}
+
+export interface AuspiceEntropyBar {
+  x: number;
+  y: number | string;
 }
 
 export interface AuspiceNotificationsState {
