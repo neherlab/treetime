@@ -92,9 +92,25 @@ mod tests {
   #[case::spacing_underflows(     (0.0,                   5e-324),                 3, "Grid of 3 points over [0.0, 5e-324] has spacing 0.0, which is not a finite positive number")]
   #[case::repeated_first_point(   (2000.0,                2000.0 + ULP_2000),      3, "Grid of 3 points over [2000.0, 2000.0000000000002] with spacing 1.1368683772161603e-13 does not increase strictly: x[1] = 2000.0 is not above x[0] = 2000.0")]
   #[case::repeated_stored_end(    (2000.0 + ULP_2000,     2000.0 + 2.0 * ULP_2000), 3, "Grid of 3 points over [2000.0000000000002, 2000.0000000000005] with spacing 1.1368683772161603e-13 does not increase strictly: x[2] = 2000.0000000000005 is not above x[1] = 2000.0000000000005")]
+  #[case::inexact_point_count(    (0.0,                   1.0),                    (1 << 53) + 2, "Grid of 9007199254740994 points over [0.0, 1.0] has more points than 9007199254740991, the largest count with exact coordinates")]
+  #[case::first_inexact_count(    (0.0,                   1.0),                    1 << 53,       "Grid of 9007199254740992 points over [0.0, 1.0] has more points than 9007199254740991, the largest count with exact coordinates")]
   #[trace]
   fn test_grid_from_range_n_points_rejects_invalid_ranges(#[case] (x_min, x_max): (f64, f64), #[case] n_points: usize, #[case] expected: &str) {
     assert_error!(Grid::from_range_n_points(x_min, x_max, n_points), expected);
+  }
+
+  #[test]
+  fn test_grid_from_start_dx_rejects_inexact_point_count() {
+    assert_error!(
+      Grid::from_start_dx(0.0, 1.0, (1 << 53) + 2),
+      "Grid of 9007199254740994 points from 0.0 with spacing 1.0 has more points than 9007199254740991, the largest count with exact coordinates"
+    );
+  }
+
+  #[test]
+  #[should_panic(expected = "index 5 is outside the grid of 5 points")]
+  fn test_grid_x_at_panics_past_the_last_point() {
+    Grid::from_range_n_points(0.0, 1.0, 5).unwrap().x_at(5);
   }
 
   #[rustfmt::skip]

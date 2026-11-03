@@ -7,8 +7,9 @@ use itertools::Itertools;
 use ndarray::Array1;
 use num_traits::Float;
 use std::cmp::min;
+use std::fmt::Arguments;
 use std::ops::RangeInclusive;
-use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::{F64_EXACT_INTEGER_LIMIT, ToF64Exact, usize_to_u64};
 use treetime_utils::float_compare::within_epsilons_of_scale;
 use treetime_utils::make_error;
 
@@ -51,7 +52,8 @@ impl<T: InterpElem> Grid<T> {
     if x_max <= x_min {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
-    let dx = (x_max - x_min) / from_count::<T>(n_points - 1);
+    let span = exact_span::<T>(n_points, format_args!("over [{x_min:?}, {x_max:?}]"))?;
+    let dx = (x_max - x_min) / span;
     if !dx.is_finite() || dx <= T::zero() {
       return make_error!(
         "Grid of {n_points} points over [{x_min:?}, {x_max:?}] has spacing {dx:?}, which is not a finite positive number"
@@ -86,7 +88,8 @@ impl<T: InterpElem> Grid<T> {
     if n_points < 2 {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
-    Self::from_range_n_points(x_min, x_min + dx * from_count::<T>(n_points - 1), n_points)
+    let span = exact_span::<T>(n_points, format_args!("from {x_min:?} with spacing {dx:?}"))?;
+    Self::from_range_n_points(x_min, x_min + dx * span, n_points)
   }
 
   pub fn from_range_dx(x_min: T, x_max: T, dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
@@ -110,7 +113,10 @@ impl<T: InterpElem> Grid<T> {
     let n_points = Self::range_dx_point_count(x_min, x_max, dx, max_points)?;
     match anchor {
       Side::Left => Self::from_start_dx(x_min, dx, n_points),
-      Side::Right => Self::from_range_n_points(x_max - dx * from_count::<T>(n_points - 1), x_max, n_points),
+      Side::Right => {
+        let span = exact_span::<T>(n_points, format_args!("over [{x_min:?}, {x_max:?}]"))?;
+        Self::from_range_n_points(x_max - dx * span, x_max, n_points)
+      },
     }
   }
 
@@ -246,10 +252,15 @@ impl<T: InterpElem> Grid<T> {
   where
     T: Float,
   {
+    assert!(
+      idx < self.n_points,
+      "index {idx} is outside the grid of {} points",
+      self.n_points
+    );
     if idx + 1 == self.n_points {
       self.x_max
     } else {
-      self.x_min + self.dx * from_count::<T>(idx)
+      self.x_min + self.dx * <T as From<f64>>::from(idx.to_f64_exact())
     }
   }
 
@@ -303,6 +314,12 @@ fn ensure_spacing<T: InterpElem + Float>(dx: T) -> Result<(), Report> {
   }
 }
 
-pub(crate) fn from_count<T: InterpElem>(count: usize) -> T {
-  count.to_f64_exact().into()
+fn exact_span<T: InterpElem>(n_points: usize, extent: Arguments<'_>) -> Result<T, Report> {
+  if usize_to_u64(n_points) >= F64_EXACT_INTEGER_LIMIT {
+    return make_error!(
+      "Grid of {n_points} points {extent} has more points than {}, the largest count with exact coordinates",
+      MaxGridPoints::MAX
+    );
+  }
+  Ok((n_points - 1).to_f64_exact().into())
 }
