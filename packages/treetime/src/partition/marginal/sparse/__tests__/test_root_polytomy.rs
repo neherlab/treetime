@@ -11,6 +11,8 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::long_branches_at_root(     LONG_BRANCHES,  Placement::AtRoot)]
+  #[ignore = "kb/issues/M-sparse-non-root-posterior-folds-sites-without-data-below-a-child.md: the forward pass folds these sites at 1 - 1e-4"]
+  #[case::long_branches_below_root(  LONG_BRANCHES,  Placement::BelowRoot)]
   #[case::short_branches_at_root(    SHORT_BRANCHES, Placement::AtRoot)]
   #[case::short_branches_below_root( SHORT_BRANCHES, Placement::BelowRoot)]
   #[trace]
