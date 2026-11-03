@@ -62,6 +62,33 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_convolution_of_a_subtree_message_with_a_plateau_tail_and_a_branch_is_exact_on_the_whole_support()
+  -> Result<(), Report> {
+    let (len_a, len_b) = (1163, 4321);
+    let a = hard_operand(0.0, 0.026, len_a, |i, _| {
+      let d = i.to_f64_exact() / len_a.to_f64_exact() - 0.264;
+      if d < 0.0 {
+        700.0 * d * d
+      } else {
+        1050.0 * d * d + 8000.0 * (d - 0.5).max(0.0).powi(2)
+      }
+    })?;
+    let b = hard_operand(0.0, 0.026, len_b, |j, _| {
+      let v = j.to_f64_exact() / len_b.to_f64_exact() - 0.2815;
+      if v < 0.0 {
+        115.0 * (v / 0.2815).powi(2)
+      } else {
+        -139.0 * (-(v / 0.27).powi(2)).exp_m1()
+      }
+    })?;
+    let traced = traced_convolution(&a, &b)?;
+    traced.assert_covers_the_whole_support();
+    assert_eq!(Vec::<usize>::new(), traced.infinite_samples());
+    traced.assert_matches_the_quadrature_oracle();
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::support_gap(  f64::INFINITY, (61..=159).collect_vec())]
