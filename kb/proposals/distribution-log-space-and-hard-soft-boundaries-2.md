@@ -461,7 +461,10 @@ The backward and forward passes then fit fresh tails **after** each convolution 
 <details>
 <summary>K12. convolution_range_function has three defects 💻🔬</summary>
 
-Main path [packages/treetime-distribution/src/distribution_ops/convolve.rs#L130-L161](packages/treetime-distribution/src/distribution_ops/convolve.rs#L130-L161), mask at [packages/treetime-distribution/src/distribution_ops/convolve.rs#L150-L159](packages/treetime-distribution/src/distribution_ops/convolve.rs#L150-L159):
+> [!WARNING]
+> **Needs review.** The mask that this item describes is gone. `fn convolution_range_function()` at [packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142](packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142) now widens the support by the range (`lo`, `hi`) and integrates the mass of the function through `MassProfile`, so the three defects below may be resolved
+
+Main path at the time of this proposal (the mask was part of it):
 
 1. **Truncated support**: it reuses the input extent, so there is no widening by $w$.
 2. **Dropped tails**: via `from_start_dx_values`.

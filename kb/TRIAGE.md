@@ -197,6 +197,7 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/N-test-quality-deficiencies.md](issues/N-test-quality-deficiencies.md)**: replace the symmetric-model, unsourced, and sign-only test assertions with sourced values
 - **[kb/issues/N-timetree-test-lineage-expectation-from-leaf-dates-has-non-positive-counts.md](issues/N-timetree-test-lineage-expectation-from-leaf-dates-has-non-positive-counts.md)**: build the lineage expectation of the test helper from a complete set of node times, such as the Gaussian timetree of the constraints
 - **[kb/issues/N-dev-taplo-lock-entry-without-checksum.md](issues/N-dev-taplo-lock-entry-without-checksum.md)**: relock taplo with checksums
+- **[kb/issues/N-app-commands-cds-selection-read-in-two-places.md](issues/N-app-commands-cds-selection-read-in-two-places.md)**: keep one reader of the CDS selection of the run settings
 - **[kb/issues/N-smoke-config-cases-report-snapshot-paths-as-changed.md](issues/N-smoke-config-cases-report-snapshot-paths-as-changed.md)**: replace the snapshot directory in compared output bytes, as in stderr
 - **[kb/issues/M-release-install-docs-and-system-requirements-missing.md](issues/M-release-install-docs-and-system-requirements-missing.md)**: write the installation page with the CPU and operating system requirements and point first-time users to the web app
 - **[kb/issues/N-release-downloads-need-a-triplet-choice.md](issues/N-release-downloads-need-a-triplet-choice.md)**: add an install script and ship one Linux CLI download per architecture
