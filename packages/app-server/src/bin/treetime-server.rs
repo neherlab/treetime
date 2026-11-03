@@ -182,13 +182,14 @@ mod tests {
     assert_eq!(expected, args.max_grid_points.get());
   }
 
-  #[test]
-  fn test_treetime_server_max_grid_points_below_minimum_fails() {
-    let error = ServerArgs::try_parse_from(server_args(&["--max-grid-points", "999"])).unwrap_err();
-    assert_eq!(
-      "error: invalid value '999' for '--max-grid-points <MAX_GRID_POINTS>': the grid point limit must be at least 1000 points, got 999\n\nFor more information, try '--help'.\n",
-      error.to_string()
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_minimum("999",              "error: invalid value '999' for '--max-grid-points <MAX_GRID_POINTS>': the grid point limit must be between 1000 and 9007199254740991 points, got 999\n\nFor more information, try '--help'.\n")]
+  #[case::above_maximum("9007199254740992", "error: invalid value '9007199254740992' for '--max-grid-points <MAX_GRID_POINTS>': the grid point limit must be between 1000 and 9007199254740991 points, got 9007199254740992\n\nFor more information, try '--help'.\n")]
+  #[trace]
+  fn test_treetime_server_max_grid_points_out_of_range_fails(#[case] value: &str, #[case] expected: &str) {
+    let error = ServerArgs::try_parse_from(server_args(&["--max-grid-points", value])).unwrap_err();
+    assert_eq!(expected, error.to_string());
   }
 
   fn server_args<'a>(extra: &[&'a str]) -> Vec<&'a str> {

@@ -1091,7 +1091,7 @@ export const zUiSettings = z.strictObject({
  * it.
  */
 export const zAnalysisSettings = z.strictObject({
-  max_grid_points: z.int().gte(1000).optional()
+  max_grid_points: z.int().gte(1000).lte(9007199254740991).optional()
 });
 
 /**
@@ -1497,7 +1497,7 @@ export const zTimetreeConfig = z.strictObject({
   branch_length_mode: zBranchLengthMode.optional(),
   max_iter: z.int().gte(0).optional(),
   confidence: z.boolean().optional(),
-  max_grid_points: z.int().gte(1000).optional(),
+  max_grid_points: z.int().gte(1000).lte(9007199254740991).optional(),
   keep_polytomies: z.boolean().optional(),
   coalescent: z.union([
     z.number().gt(0),

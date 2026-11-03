@@ -21,9 +21,10 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::minimum(       "1000",    1_000)]
-  #[case::default_value( "1000000", 1_000_000)]
-  #[case::padded(        " 2000 ",  2_000)]
+  #[case::minimum(       "1000",             1_000)]
+  #[case::default_value( "1000000",          1_000_000)]
+  #[case::padded(        " 2000 ",           2_000)]
+  #[case::maximum(       "9007199254740991", (1 << 53) - 1)]
   #[trace]
   fn test_max_grid_points_from_str_accepts(#[case] text: &str, #[case] expected: usize) {
     assert_eq!(expected, MaxGridPoints::from_str(text).unwrap().get());
@@ -31,13 +32,33 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::below_minimum("999",  "the grid point limit must be at least 1000 points, got 999")]
-  #[case::zero(         "0",    "the grid point limit must be at least 1000 points, got 0")]
+  #[case::below_minimum("999",              "the grid point limit must be between 1000 and 9007199254740991 points, got 999")]
+  #[case::zero(         "0",                "the grid point limit must be between 1000 and 9007199254740991 points, got 0")]
+  #[case::above_maximum("9007199254740992", "the grid point limit must be between 1000 and 9007199254740991 points, got 9007199254740992")]
   #[case::negative(     "-5",   "'-5' is not a whole number: invalid digit found in string")]
   #[case::fraction(     "1e6",  "'1e6' is not a whole number: invalid digit found in string")]
   #[trace]
   fn test_max_grid_points_from_str_rejects(#[case] text: &str, #[case] expected: &str) {
     assert_eq!(expected, MaxGridPoints::from_str(text).unwrap_err().to_string());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::minimum(1_000,         1_000)]
+  #[case::maximum((1 << 53) - 1, (1 << 53) - 1)]
+  #[trace]
+  fn test_max_grid_points_new_accepts(#[case] points: usize, #[case] expected: usize) -> Result<(), Report> {
+    assert_eq!(expected, MaxGridPoints::new(points)?.get());
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_minimum(999,     "the grid point limit must be between 1000 and 9007199254740991 points, got 999")]
+  #[case::above_maximum(1 << 53, "the grid point limit must be between 1000 and 9007199254740991 points, got 9007199254740992")]
+  #[trace]
+  fn test_max_grid_points_new_rejects(#[case] points: usize, #[case] expected: &str) {
+    assert_error!(MaxGridPoints::new(points).map_err(Report::new), expected);
   }
 
   #[test]
@@ -52,18 +73,19 @@ mod tests {
   fn test_max_grid_points_serde_rejects_below_minimum() {
     assert_error!(
       json_read_str::<MaxGridPoints>("999"),
-      "When parsing JSON: Unexpected: invalid value: the grid point limit must be at least 1000 points, got 999 at line 1 column 1"
+      "When parsing JSON: Unexpected: invalid value: the grid point limit must be between 1000 and 9007199254740991 points, got 999 at line 1 column 1"
     );
   }
 
   #[test]
-  fn test_max_grid_points_schema_states_the_minimum() {
+  fn test_max_grid_points_schema_states_the_range() {
     let expected = json!({
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "MaxGridPoints",
       "type": "integer",
       "format": "uint",
       "minimum": 1000,
+      "maximum": (1_u64 << 53) - 1,
     });
     assert_eq!(expected, schema_for!(MaxGridPoints).to_value());
   }

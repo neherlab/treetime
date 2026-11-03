@@ -6,7 +6,7 @@ use num_traits::ToPrimitive;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use std::borrow::Cow;
 use std::str::FromStr;
-use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::{F64_EXACT_INTEGER_LIMIT, ToF64Exact, usize_to_u64};
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -17,10 +17,20 @@ pub struct MaxGridPoints(usize);
 impl MaxGridPoints {
   pub const MIN: usize = 1_000;
 
+  #[expect(
+    clippy::as_conversions,
+    reason = "the conversion runs only when usize holds 2^53 - 1, so the value stays exact"
+  )]
+  pub const MAX: usize = if usize_to_u64(usize::MAX) < F64_EXACT_INTEGER_LIMIT - 1 {
+    usize::MAX
+  } else {
+    (F64_EXACT_INTEGER_LIMIT - 1) as usize
+  };
+
   const DEFAULT: usize = 1_000_000;
 
   pub fn new(points: usize) -> Result<Self, InvalidMaxGridPoints> {
-    if points < Self::MIN {
+    if !(Self::MIN..=Self::MAX).contains(&points) {
       return Err(InvalidMaxGridPoints { points });
     }
     Ok(Self(points))
@@ -107,6 +117,7 @@ impl JsonSchema for MaxGridPoints {
       "type": "integer",
       "format": "uint",
       "minimum": Self::MIN,
+      "maximum": Self::MAX,
     })
   }
 }
@@ -137,7 +148,11 @@ impl GridPointLimitExceeded {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Display, Error)]
-#[display("the grid point limit must be at least {} points, got {points}", MaxGridPoints::MIN)]
+#[display(
+  "the grid point limit must be between {} and {} points, got {points}",
+  MaxGridPoints::MIN,
+  MaxGridPoints::MAX
+)]
 pub struct InvalidMaxGridPoints {
   #[error(not(source))]
   pub points: usize,

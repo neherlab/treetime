@@ -5058,6 +5058,7 @@
             "type": "integer",
             "format": "uint",
             "minimum": 1000,
+            "maximum": 9007199254740991,
             "x-unset": true
           }
         },
@@ -6299,6 +6300,7 @@
             "type": "integer",
             "format": "uint",
             "minimum": 1000,
+            "maximum": 9007199254740991,
             "examples": [
               1000000
             ],
