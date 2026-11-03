@@ -17,6 +17,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+  use treetime_ops::FftPlans;
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -45,6 +46,7 @@ mod tests {
       &setup.bad_branches,
       branches,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
     let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?, None)?.expect("root has a distribution");
     let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
@@ -105,7 +107,7 @@ mod tests {
       model.as_ref(),
       &setup.bad_branches,
       branches,
-      MaxGridPoints::default(),
+      MaxGridPoints::default(), &FftPlans::new(),
     )?;
     let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?, None)?.expect("root has a distribution");
 

@@ -20,6 +20,7 @@ mod tests {
   use treetime_graph::node_names::NodeNames;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
+  use treetime_ops::FftPlans;
   use treetime_utils::error::report_to_string;
   use treetime_utils::{assert_error, make_report};
 
@@ -219,6 +220,7 @@ mod tests {
           &bad_branches,
           &branches,
           MaxGridPoints::new(1000)?,
+          &FftPlans::new(),
         )
         .map_err(|report| explain_grid_point_limit(report, &self.names, CLOCK_RATE, clock_rate_fixed))
       }

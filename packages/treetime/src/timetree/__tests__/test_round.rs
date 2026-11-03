@@ -32,6 +32,7 @@ mod tests {
   use itertools::Itertools;
   use maplit::btreemap;
   use treetime_graph::key_map::EdgeMap;
+  use treetime_ops::FftPlans;
 
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -432,6 +433,7 @@ mod tests {
         reference_rate,
         window: RateWindow::initial(),
         max_points: MaxGridPoints::default(),
+        fft_plans: &FftPlans::new(),
       })
       .map(|step| step.clock_rate)
     };
@@ -675,6 +677,7 @@ mod tests {
             regions: false,
             lineage_survival: true,
           },
+          fft_plans: &FftPlans::new(),
         },
         None,
         &NoopProgress,
@@ -794,6 +797,7 @@ mod tests {
         final_sequences: FinalSequences::Skip,
         date_constraints,
         sequence_length,
+        fft_plans: FftPlans::new(),
       }
     }
   }

@@ -5190,6 +5190,7 @@ dependencies = [
  "treetime-graph",
  "treetime-grid",
  "treetime-io",
+ "treetime-ops",
  "treetime-primitives",
  "treetime-simulation",
  "treetime-utils",

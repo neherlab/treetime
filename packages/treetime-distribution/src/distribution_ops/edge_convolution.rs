@@ -9,6 +9,7 @@ use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
 use crate::policy::NegLog;
 use eyre::Report;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
+use treetime_ops::FftPlans;
 use treetime_utils::cast::ToF64Exact;
 
 pub fn convolve_across_edge(
@@ -18,8 +19,9 @@ pub fn convolve_across_edge(
   eps: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
-  let conv = WindowedConvolution::new(a, b, soft, eps, max_points)?;
+  let conv = WindowedConvolution::new(a, b, soft, eps, max_points, fft_plans)?;
   match soft {
     Side::Right => conv.resample(grid_points, max_points, OutputSpacing::Capped),
     Side::Left => conv.resample(grid_points, max_points, OutputSpacing::Fine),
@@ -32,8 +34,9 @@ pub fn convolve_forward_across_edge(
   eps: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<ForwardConvolution, Report> {
-  let conv = WindowedConvolution::new(a, b, Side::Right, eps, max_points)?;
+  let conv = WindowedConvolution::new(a, b, Side::Right, eps, max_points, fft_plans)?;
   Ok(ForwardConvolution {
     conv,
     grid_points,
@@ -223,10 +226,11 @@ impl WindowedConvolution {
     soft: Side,
     eps: f64,
     max_points: MaxGridPoints,
+    fft_plans: &FftPlans,
   ) -> Result<Self, Report> {
     let cap = coarser_operand_spacing(a, b);
     let is_fft = cap.is_some();
-    let conv = distribution_convolution_fine(a, b, max_points)?;
+    let conv = distribution_convolution_fine(a, b, max_points, fft_plans)?;
     let conv = if is_fft || has_no_soft_law(&conv, soft) {
       conv.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?
     } else {

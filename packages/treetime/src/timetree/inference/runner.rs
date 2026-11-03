@@ -27,6 +27,7 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
+use treetime_ops::FftPlans;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
@@ -72,6 +73,7 @@ fn infer_times(
     clock_model,
     indel_policy,
     max_grid_points,
+    fft_plans,
     posterior_summaries,
     ..
   } = *inputs;
@@ -111,6 +113,7 @@ fn infer_times(
     &bad_branches,
     &branches,
     max_grid_points,
+    fft_plans,
   )?;
 
   let log_lh_time = log_marginal_likelihood(&backward, graph.root_key()?, coalescent)?.map(LogLh::new);
@@ -126,6 +129,7 @@ fn infer_times(
     names,
     branches: &branches,
     max_points: max_grid_points,
+    fft_plans,
   };
   let posterior = propagate_distributions_forward(
     graph,
@@ -157,6 +161,7 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub clock_rate_fixed: bool,
   pub indel_policy: IndelPolicy,
   pub max_grid_points: MaxGridPoints,
+  pub fft_plans: &'a FftPlans,
   pub posterior_summaries: PosteriorSummaries,
 }
 

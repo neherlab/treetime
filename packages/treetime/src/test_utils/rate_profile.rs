@@ -24,6 +24,7 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_grid::MaxGridPoints;
+use treetime_ops::FftPlans;
 use treetime_simulation::branch_lengths::realized;
 use treetime_simulation::tc_schedule::TcSchedule;
 use treetime_utils::make_error;
@@ -38,6 +39,7 @@ pub(crate) struct FrozenRateState {
   pub bad_branches: NodeMap<bool>,
   pub branches: EdgeMap<BranchLikelihood>,
   pub prior: CoalescentPrior,
+  pub fft_plans: FftPlans,
 }
 
 impl FrozenRateState {
@@ -77,6 +79,7 @@ impl FrozenRateState {
       bad_branches,
       branches,
       prior,
+      fft_plans: FftPlans::new(),
     })
   }
 
@@ -102,6 +105,7 @@ impl FrozenRateState {
       reference_rate: self.spec.mu,
       window: RateWindow::initial(),
       max_points: MaxGridPoints::default(),
+      fft_plans: &self.fft_plans,
     };
     let treetime_log_z = marginal_log_lh_at_rate(&inputs, rate)?;
     let log_normalization = prior.map_or(0.0, prior_log_normalization);
@@ -163,6 +167,7 @@ fn true_rate_branches(
       indel_policy: IndelPolicy::Include,
       max_grid_points: MaxGridPoints::default(),
       posterior_summaries: PosteriorSummaries::default(),
+      fft_plans: &FftPlans::new(),
     },
     None,
     &NoopProgress,

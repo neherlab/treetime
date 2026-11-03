@@ -67,7 +67,7 @@ impl ConvolveAlgo for FftConvolve {
   }
 }
 
-pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+pub(crate) fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
   FftConvolver::new(f_values.len(), g_values.len(), &FftPlans::new())?.convolve(dx, f_values, g_values)
 }
 

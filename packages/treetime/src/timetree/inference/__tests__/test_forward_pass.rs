@@ -31,6 +31,7 @@ mod tests {
   };
   use treetime_graph::key_map::NodeMap;
   use treetime_graph::keymap;
+  use treetime_ops::FftPlans;
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -371,6 +372,7 @@ mod tests {
         EPS,
         GRID_POINTS,
         MaxGridPoints::default(),
+        &FftPlans::new(),
       )?;
       let untrimmed = distribution_multiplication(&from_parent, subtree, MaxGridPoints::default())?;
       let Distribution::Function(untrimmed) = untrimmed else {
@@ -520,7 +522,7 @@ mod tests {
     let root = posterior[&root_key].distribution.as_deref().expect("the root has a posterior");
     let branch = inputs.branches[&parent_edge_key(&graph, node_key)].distribution.as_deref();
     let branch = branch.expect("the branch has a distribution");
-    let capped = convolve_across_edge(root, branch, Side::Right, EPS, GRID_POINTS, MaxGridPoints::default())?;
+    let capped = convolve_across_edge(root, branch, Side::Right, EPS, GRID_POINTS, MaxGridPoints::default(), &FftPlans::new())?;
     let (Distribution::Function(capped), Distribution::Function(root), Distribution::Function(branch)) =
       (capped, root, branch)
     else {
@@ -774,6 +776,7 @@ mod tests {
       pub bad_branches: NodeMap<bool>,
       pub branches: EdgeMap<BranchLikelihood>,
       pub backward: NodeMap<NodeBackward>,
+      pub fft_plans: FftPlans,
     }
 
     impl ForwardInputs {
@@ -786,6 +789,7 @@ mod tests {
             .get_nodes()
             .map(|node| (node.key(), NodeBackward::default()))
             .collect(),
+          fft_plans: FftPlans::new(),
         }
       }
     }
@@ -836,6 +840,7 @@ mod tests {
         names,
         branches: &inputs.branches,
         max_points: MaxGridPoints::default(),
+        fft_plans: &inputs.fft_plans,
       }
     }
 

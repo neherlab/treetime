@@ -8,6 +8,7 @@ mod tests {
   use eyre::Report;
   use helpers::{flat, flat_function, limit};
   use pretty_assertions::assert_eq;
+  use treetime_ops::FftPlans;
   use treetime_utils::assert_error;
 
   const ONE_ABOVE: &str = "A grid over [0, 1000] with spacing 1 needs 1001 points, more than the limit of 1000";
@@ -42,14 +43,19 @@ mod tests {
   #[test]
   fn test_grid_point_limit_convolution_operand_above_the_limit() {
     assert_error!(
-      distribution_convolution_fine(&flat(0.0, 999.0, 1_000), &flat(0.0, 1.0, 3), limit()),
+      distribution_convolution_fine(&flat(0.0, 999.0, 1_000), &flat(0.0, 1.0, 3), limit(), &FftPlans::new()),
       "A grid over [0, 999] with spacing 0.5 needs 1999 points, more than the limit of 1000"
     );
   }
 
   #[test]
   fn test_grid_point_limit_convolution_result_at_the_limit() -> Result<(), Report> {
-    let result = distribution_convolution_fine(&flat(0.0, 499.0, 500), &flat(0.0, 500.0, 501), limit())?;
+    let result = distribution_convolution_fine(
+      &flat(0.0, 499.0, 500),
+      &flat(0.0, 500.0, 501),
+      limit(),
+      &FftPlans::new(),
+    )?;
     assert_eq!(1_000, result.t().len());
     Ok(())
   }
@@ -57,7 +63,12 @@ mod tests {
   #[test]
   fn test_grid_point_limit_convolution_result_above_the_limit() {
     assert_error!(
-      distribution_convolution_fine(&flat(0.0, 499.0, 500), &flat(0.0, 501.0, 502), limit()),
+      distribution_convolution_fine(
+        &flat(0.0, 499.0, 500),
+        &flat(0.0, 501.0, 502),
+        limit(),
+        &FftPlans::new()
+      ),
       ONE_ABOVE
     );
   }

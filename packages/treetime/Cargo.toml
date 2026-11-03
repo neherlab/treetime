@@ -19,6 +19,7 @@ doctest = false
 treetime-distribution = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-grid = { workspace = true }
+treetime-ops = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
 util-augur-node-data-json = { workspace = true }

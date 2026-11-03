@@ -29,6 +29,7 @@ mod tests {
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
+  use treetime_ops::FftPlans;
   use treetime_primitives::AlignmentRecord;
 
   const CLOCK_RATE: f64 = 0.001;
@@ -194,6 +195,7 @@ mod tests {
           indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
           posterior_summaries: PosteriorSummaries::default(),
+          fft_plans: &FftPlans::new(),
         },
         None,
         &NoopProgress,

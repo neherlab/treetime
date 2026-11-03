@@ -28,6 +28,7 @@ pub(super) mod support {
   use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
   use treetime_graph::key_map::{EdgeMap, NodeMap};
+  use treetime_ops::FftPlans;
 
   use treetime_graph::graph::Graph;
 
@@ -124,6 +125,7 @@ pub(super) mod support {
           indel_policy,
           max_grid_points: MaxGridPoints::default(),
           posterior_summaries,
+          fft_plans: &FftPlans::new(),
         },
         coalescent,
         &NoopProgress,

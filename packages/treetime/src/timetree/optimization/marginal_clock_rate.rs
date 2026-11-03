@@ -8,6 +8,7 @@ use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_grid::MaxGridPoints;
+use treetime_ops::FftPlans;
 
 const PROBE_FACTOR: f64 = 1.25;
 const MAX_HALF_WIDTH_DIVISOR: f64 = 8.0;
@@ -60,6 +61,7 @@ pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rat
     inputs.bad_branches,
     &branches,
     inputs.max_points,
+    inputs.fft_plans,
   )?;
   log_marginal_likelihood(&backward, inputs.graph.root_key()?, inputs.coalescent)
 }
@@ -73,6 +75,7 @@ pub(crate) struct MarginalRateInputs<'a> {
   pub reference_rate: f64,
   pub window: RateWindow,
   pub max_points: MaxGridPoints,
+  pub fft_plans: &'a FftPlans,
 }
 
 pub(crate) fn branches_at_rate(

@@ -23,6 +23,7 @@ mod tests {
   use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
+  use treetime_ops::FftPlans;
   use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
   const RATE: f64 = 2.0;
@@ -221,6 +222,7 @@ mod tests {
         &bad_branches,
         &branches,
         MaxGridPoints::default(),
+        &FftPlans::new(),
       )?;
       let forward_inputs = ForwardPassInputs {
         constraints: &constraints,
@@ -229,6 +231,7 @@ mod tests {
         names: &names,
         branches: &branches,
         max_points: MaxGridPoints::default(),
+        fft_plans: &FftPlans::new(),
       };
       let posterior =
         propagate_distributions_forward(&graph, &forward_inputs, backward, full_posterior, &NoopProgress)?;
@@ -478,6 +481,7 @@ mod tests {
           &self.bad_branches,
           branches,
           MaxGridPoints::default(),
+          &FftPlans::new(),
         )?;
         let forward_inputs = ForwardPassInputs {
           constraints: &self.constraints,
@@ -486,6 +490,7 @@ mod tests {
           names: &self.names,
           branches,
           max_points: MaxGridPoints::default(),
+          fft_plans: &FftPlans::new(),
         };
         propagate_distributions_forward(&self.graph, &forward_inputs, backward, summarize, &NoopProgress)
       }

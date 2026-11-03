@@ -12,7 +12,7 @@ use ndarray::{Array1, Zip};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use treetime_grid::{BoundaryBehavior, Grid, GridFn, MaxGridPoints, Side};
-use treetime_ops::{convolve_direct_at, convolve_fft};
+use treetime_ops::{FftConvolver, FftPlans, convolve_direct_at};
 use treetime_utils::array::ndarray::{max_or, min_or};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
@@ -27,10 +27,13 @@ pub(crate) fn distribution_convolution_fine(
   a: &Distribution<NegLog>,
   b: &Distribution<NegLog>,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
   match (a, b) {
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine(a, b, max_points),
-    _ => distribution_convolution(a, b, max_points),
+    (Distribution::Function(a), Distribution::Function(b)) => {
+      convolution_function_function_fine(a, b, max_points, fft_plans)
+    },
+    _ => distribution_convolution(a, b, max_points, fft_plans),
   }
 }
 
@@ -38,6 +41,7 @@ pub(crate) fn distribution_convolution(
   a: &Distribution<NegLog>,
   b: &Distribution<NegLog>,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
   match (a, b) {
     (Distribution::Formula(_), _)
@@ -60,7 +64,9 @@ pub(crate) fn distribution_convolution(
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
       convolution_range_function(a, b, max_points)
     },
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function(a, b, max_points),
+    (Distribution::Function(a), Distribution::Function(b)) => {
+      convolution_function_function(a, b, max_points, fft_plans)
+    },
   }
 }
 
@@ -230,9 +236,10 @@ fn convolution_function_function(
   a: &DistributionFunction<f64, NegLog>,
   b: &DistributionFunction<f64, NegLog>,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
   let coarse_dx = a.dx().max(b.dx());
-  match convolution_function_function_fine(a, b, max_points)? {
+  match convolution_function_function_fine(a, b, max_points, fft_plans)? {
     Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx, max_points),
     other => Ok(other),
   }
@@ -242,6 +249,7 @@ fn convolution_function_function_fine(
   a: &DistributionFunction<f64, NegLog>,
   b: &DistributionFunction<f64, NegLog>,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
@@ -280,9 +288,10 @@ fn convolution_function_function_fine(
 
   let result_range = (a.x_min() + b.x_min(), a.x_max() + b.x_max());
   max_points.point_count((a.len() + b.len() - 1).to_f64_exact(), result_range, dx)?;
-  let conv = convolve_fft(dx, &operands.a.plain, &operands.b.plain)?;
+  let mut convolver = FftConvolver::new(operands.a.plain.len(), operands.b.plain.len(), fft_plans)?;
+  let conv = convolver.convolve(dx, &operands.a.plain, &operands.b.plain)?;
 
-  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &operands)? else {
+  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx, &operands, &mut convolver)? else {
     let a_domain = conv_operand_domain(true);
     let b_domain = conv_operand_domain(true);
     return guarded_empty_result("convolution", a_domain, b_domain);
@@ -341,6 +350,7 @@ fn reconstruct_neg_log_tails(
   conv: &Array1<f64>,
   dx: f64,
   operands: &ConvOperands,
+  convolver: &mut FftConvolver,
 ) -> Result<Option<ReconstructedConv>, Report> {
   let peak = max_or(conv, 0.0);
   if peak <= 0.0 {
@@ -374,7 +384,18 @@ fn reconstruct_neg_log_tails(
     last
   };
 
-  let resolved = neg_log_at_ends_by_tilting(trusted_y, first, left_start, right_end, margin, dx, operands)?;
+  let resolved = neg_log_at_ends_by_tilting(
+    trusted_y,
+    first,
+    left_start,
+    right_end,
+    margin,
+    &mut Tilting {
+      operands,
+      convolver,
+      dx,
+    },
+  )?;
   let resolved_end = resolved.start + resolved.neg_log.len() - 1;
   let slopes = EndSlopes::of(&resolved.neg_log, margin, dx);
   let left_edge = resolved.neg_log[0];
@@ -427,18 +448,17 @@ fn neg_log_at_ends_by_tilting(
   left_start: usize,
   right_end: usize,
   margin: usize,
-  dx: f64,
-  operands: &ConvOperands,
+  tilting: &mut Tilting<'_>,
 ) -> Result<ResolvedNegLog, Report> {
   let mut values: VecDeque<f64> = trusted_y.into_iter().collect();
   let mut start = first;
 
   while start + values.len() <= right_end {
-    let slope = (values[values.len() - 1] - values[values.len() - 1 - margin]) / (margin.to_f64_exact() * dx);
+    let slope = (values[values.len() - 1] - values[values.len() - 1 - margin]) / (margin.to_f64_exact() * tilting.dx);
     if slope <= 0.0 {
       break;
     }
-    let tilted = TiltedConvolution::new(operands, dx, slope)?;
+    let tilted = tilting.convolution(slope)?;
     let next = start + values.len();
     let added = (next..=right_end).map_while(|i| tilted.neg_log_at(i)).collect_vec();
     if added.is_empty() {
@@ -448,11 +468,11 @@ fn neg_log_at_ends_by_tilting(
   }
 
   while start > left_start {
-    let slope = (values[margin] - values[0]) / (margin.to_f64_exact() * dx);
+    let slope = (values[margin] - values[0]) / (margin.to_f64_exact() * tilting.dx);
     if slope >= 0.0 {
       break;
     }
-    let tilted = TiltedConvolution::new(operands, dx, slope)?;
+    let tilted = tilting.convolution(slope)?;
     let added = (left_start..start)
       .rev()
       .map_while(|i| tilted.neg_log_at(i))
@@ -523,6 +543,33 @@ impl EndSlopes {
   }
 }
 
+struct Tilting<'a> {
+  operands: &'a ConvOperands,
+  convolver: &'a mut FftConvolver,
+  dx: f64,
+}
+
+impl Tilting<'_> {
+  fn convolution(&mut self, theta: f64) -> Result<TiltedConvolution, Report> {
+    let dx = self.dx;
+    let za = self.operands.a.tilted(theta, dx);
+    let zb = self.operands.b.tilted(theta, dx);
+    let min_a = min_or(&za, f64::INFINITY);
+    let min_b = min_or(&zb, f64::INFINITY);
+    let pa = za.mapv(|z| (min_a - z).exp());
+    let pb = zb.mapv(|z| (min_b - z).exp());
+    let conv = self.convolver.convolve(dx, &pa, &pb)?;
+    let floor = max_or(&conv, 0.0) * CONV_TRUST_FRACTION;
+    Ok(TiltedConvolution {
+      conv,
+      floor,
+      offset: min_a + min_b,
+      theta,
+      dx,
+    })
+  }
+}
+
 struct TiltedConvolution {
   conv: Array1<f64>,
   floor: f64,
@@ -532,24 +579,6 @@ struct TiltedConvolution {
 }
 
 impl TiltedConvolution {
-  fn new(operands: &ConvOperands, dx: f64, theta: f64) -> Result<Self, Report> {
-    let za = operands.a.tilted(theta, dx);
-    let zb = operands.b.tilted(theta, dx);
-    let min_a = min_or(&za, f64::INFINITY);
-    let min_b = min_or(&zb, f64::INFINITY);
-    let pa = za.mapv(|z| (min_a - z).exp());
-    let pb = zb.mapv(|z| (min_b - z).exp());
-    let conv = convolve_fft(dx, &pa, &pb)?;
-    let floor = max_or(&conv, 0.0) * CONV_TRUST_FRACTION;
-    Ok(Self {
-      conv,
-      floor,
-      offset: min_a + min_b,
-      theta,
-      dx,
-    })
-  }
-
   fn neg_log_at(&self, i: usize) -> Option<f64> {
     let c = self.conv[i];
     (c > self.floor).then(|| -c.ln() + self.offset + self.theta * (i.to_f64_exact() * self.dx))

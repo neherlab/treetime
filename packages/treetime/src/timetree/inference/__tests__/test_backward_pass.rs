@@ -10,6 +10,7 @@ mod tests {
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
+  use treetime_ops::FftPlans;
 
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
@@ -615,6 +616,7 @@ mod tests {
         &inputs.bad_branches,
         &inputs.branches,
         MaxGridPoints::default(),
+        &FftPlans::new(),
       )
     }
 

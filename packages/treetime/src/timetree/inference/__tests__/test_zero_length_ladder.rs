@@ -20,6 +20,7 @@ mod tests {
   use treetime_graph::node_names::NodeNames;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridFn, MaxGridPoints, Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
+  use treetime_ops::FftPlans;
   use treetime_utils::cast::ToF64Exact;
 
   const SITES: f64 = 754.0;
@@ -116,6 +117,7 @@ mod tests {
           &self.bad_branches()?,
           &self.branches,
           max_points,
+          &FftPlans::new(),
         )
       }
 
@@ -132,6 +134,7 @@ mod tests {
           names: &self.names,
           branches: &self.branches,
           max_points,
+          fft_plans: &FftPlans::new(),
         };
         propagate_distributions_forward(&self.graph, &inputs, backward, full_posterior, &NoopProgress)
       }

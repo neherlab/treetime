@@ -18,6 +18,7 @@ mod tests {
   use std::f64::consts::{LN_10, PI, SQRT_2};
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
+  use treetime_ops::FftPlans;
   use treetime_utils::array::ndarray::min_or;
   use treetime_utils::cast::f64_to_usize_saturating;
   use treetime_utils::{make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -31,6 +32,7 @@ mod tests {
       1e-6,
       400,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
 
     let y0 = result.eval(0.0)?;
@@ -50,6 +52,7 @@ mod tests {
         1e-6,
         200,
         MaxGridPoints::default(),
+        &FftPlans::new(),
       )?;
       let Distribution::Function(f) = &result else {
         panic!("expected a gridded Function message");
@@ -84,6 +87,7 @@ mod tests {
       1e-6,
       400,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
 
     let Distribution::Function(f) = &result else {
@@ -106,6 +110,7 @@ mod tests {
       5e-4,
       300,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
 
     assert_eq!(Distribution::Function(steep), message);
@@ -123,6 +128,7 @@ mod tests {
       5e-4,
       300,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
 
     pretty_assert_abs_diff_eq!(branch.log_mass()? - 1.5, message.log_mass()?, epsilon = 1e-12);
@@ -141,6 +147,7 @@ mod tests {
       1e-6,
       300,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
 
     let Distribution::Function(f) = &message else {
@@ -171,6 +178,7 @@ mod tests {
         1e-6,
         300,
         MaxGridPoints::default(),
+        &FftPlans::new(),
       )
     });
     let [Ok(first), Ok(second)] = messages else {
@@ -205,7 +213,7 @@ mod tests {
     let fine = gaussian_at(sigma, 0.001)?;
     let coarse = gaussian_at(sigma, 0.01)?;
 
-    let result = convolve_across_edge(&fine, &coarse, soft, 5e-4, 300, MaxGridPoints::default())?;
+    let result = convolve_across_edge(&fine, &coarse, soft, 5e-4, 300, MaxGridPoints::default(), &FftPlans::new())?;
 
     let Distribution::Function(f) = &result else {
       panic!("expected a gridded Function message");
@@ -225,7 +233,7 @@ mod tests {
     let narrow_fine = gaussian_at(0.1, 0.001)?;
     let wide_coarse = gaussian_at(1.0, 0.02)?;
     let Distribution::Function(fine) =
-      distribution_convolution_fine(&narrow_fine, &wide_coarse, MaxGridPoints::default())?
+      distribution_convolution_fine(&narrow_fine, &wide_coarse, MaxGridPoints::default(), &FftPlans::new())?
     else {
       panic!("expected a gridded convolution");
     };
@@ -237,6 +245,7 @@ mod tests {
       5e-4,
       300,
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?;
 
     let Distribution::Function(f) = &result else {
@@ -273,7 +282,7 @@ mod tests {
       &gaussian_at(1.0, 0.02)?,
       5e-4,
       300,
-      MaxGridPoints::default(),
+      MaxGridPoints::default(), &FftPlans::new(),
     )?;
     let posterior = gaussian_at(posterior_sigma, 0.001)?;
 
@@ -317,7 +326,7 @@ mod tests {
       &gaussian_at(1.0, 0.02)?,
       5e-4,
       300,
-      MaxGridPoints::default(),
+      MaxGridPoints::default(), &FftPlans::new(),
     )?;
     let posterior = gaussian_at(posterior_sigma, 0.001)?;
 
@@ -344,7 +353,7 @@ mod tests {
       soft,
       1e-6,
       400,
-      MaxGridPoints::default(),
+      MaxGridPoints::default(), &FftPlans::new(),
     )?;
 
     let y20 = result.eval(20.0)?;
@@ -360,7 +369,7 @@ mod tests {
   #[test]
   fn test_convolution_of_bimodal_operand_with_deep_valley_matches_its_oracles() -> Result<(), Report> {
     let (a, b) = (two_gaussians(20.0, 80.0, 1.0, 1441)?, gaussian(1.0)?);
-    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?;
+    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
     let Distribution::Function(conv) = conv else {
       panic!("the convolution of two grid functions must be a grid function, got {conv}");
     };

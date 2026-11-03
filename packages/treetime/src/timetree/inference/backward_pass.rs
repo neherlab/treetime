@@ -21,6 +21,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::{MaxGridPoints, Side};
+use treetime_ops::FftPlans;
 
 pub(crate) fn propagate_distributions_backward(
   graph: &Graph,
@@ -29,6 +30,7 @@ pub(crate) fn propagate_distributions_backward(
   bad_branches: &NodeMap<bool>,
   branches: &EdgeMap<BranchLikelihood>,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<NodeMap<NodeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
@@ -38,6 +40,7 @@ pub(crate) fn propagate_distributions_backward(
     coalescent_model,
     branches,
     max_points,
+    fft_plans,
   };
   let outputs = schedule.scan_up(
     bad_branches.iter().map(|(key, &bad_branch)| (key, bad_branch)),
@@ -52,6 +55,7 @@ struct BackwardPass<'a> {
   coalescent_model: Option<&'a CoalescentPrior>,
   branches: &'a EdgeMap<BranchLikelihood>,
   max_points: MaxGridPoints,
+  fft_plans: &'a FftPlans,
 }
 
 impl BackwardPass<'_> {
@@ -67,6 +71,7 @@ impl BackwardPass<'_> {
       coalescent_model,
       branches,
       max_points,
+      fft_plans,
     } = *self;
     let date_constraint = applied_date_constraint(constraints, key, bad_branch);
     let children = schedule.children(key);
@@ -104,6 +109,7 @@ impl BackwardPass<'_> {
           subtree_origin,
           &branches[&edge_key],
           max_points,
+          fft_plans,
         )
       })
       .transpose()?
@@ -170,6 +176,7 @@ fn send_backward_message(
   subtree_origin: GridOrigin,
   branch: &BranchLikelihood,
   max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
 ) -> Result<TimeMessage, Report> {
   if bad_branch {
     return Ok(TimeMessage::default());
@@ -183,8 +190,16 @@ fn send_backward_message(
     GridOperand::of(OperandRole::Subtree(key), distribution, subtree_origin),
     GridOperand::of(OperandRole::Branch(key), &negated_branch, GridOrigin::branch(key)),
   ];
-  let message = convolve_across_edge(distribution, &negated_branch, Side::Left, EPS, GRID_POINTS, max_points)
-    .wrap_grid_request(|| GridRequest::new(GridOperation::BackwardMessage(key), operands))?;
+  let message = convolve_across_edge(
+    distribution,
+    &negated_branch,
+    Side::Left,
+    EPS,
+    GRID_POINTS,
+    max_points,
+    fft_plans,
+  )
+  .wrap_grid_request(|| GridRequest::new(GridOperation::BackwardMessage(key), operands))?;
 
   Ok(TimeMessage {
     distribution: Some(Arc::new(message)),

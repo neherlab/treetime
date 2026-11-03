@@ -8,6 +8,7 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use treetime_grid::{BoundaryBehavior, MaxGridPoints};
+  use treetime_ops::FftPlans;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
@@ -47,7 +48,7 @@ mod tests {
   fn test_amplitude_convolution_adds_log_masses() -> Result<(), Report> {
     let a = DistributionNegLog::Function(helpers::gaussian(0.0, 0.5)?.with_amplitude(2.0));
     let b = DistributionNegLog::Function(helpers::gaussian(1.0, 0.3)?.with_amplitude(-1.5));
-    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?
+    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default(), &FftPlans::new())?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
     pretty_assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-15);

@@ -11,6 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
+  use treetime_ops::FftPlans;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_relative_eq, pretty_assert_ulps_eq};
 
@@ -137,6 +138,7 @@ mod tests {
       &range,
       &Distribution::Function(poisson.function()?),
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?
     else {
       panic!("a range convolved with a function is a function");
@@ -165,6 +167,7 @@ mod tests {
       &point,
       &Distribution::Function(poisson.function()?),
       MaxGridPoints::default(),
+      &FftPlans::new(),
     )?
     else {
       panic!("a point convolved with a function is a function");
@@ -196,7 +199,7 @@ mod tests {
       soft,
       1e-6,
       100,
-      MaxGridPoints::default(),
+      MaxGridPoints::default(), &FftPlans::new(),
     )?
     else {
       panic!("a point convolved with a function is a function");
@@ -304,7 +307,12 @@ mod tests {
     let f = helpers::Poisson::one_mutation();
     let shift = 2.0 * f.h;
     let f_fn = Distribution::Function(f.function()?);
-    let shifted = distribution_convolution(&Distribution::point(shift, 0.0), &f_fn, MaxGridPoints::default())?;
+    let shifted = distribution_convolution(
+      &Distribution::point(shift, 0.0),
+      &f_fn,
+      MaxGridPoints::default(),
+      &FftPlans::new(),
+    )?;
     let Distribution::Function(product) = distribution_multiplication(&f_fn, &shifted, MaxGridPoints::default())?
     else {
       panic!("a product of functions is a function");

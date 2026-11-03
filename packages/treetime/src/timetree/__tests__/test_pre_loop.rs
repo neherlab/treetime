@@ -28,6 +28,7 @@ mod tests {
   use treetime_graph::key_map::EdgeMap;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
+  use treetime_ops::FftPlans;
   use treetime_primitives::AlignmentRecord;
 
   const INPUT_BRANCH_LENGTH: f64 = 0.5;
@@ -75,6 +76,7 @@ mod tests {
       final_sequences: FinalSequences::Skip,
       date_constraints,
       sequence_length: 16,
+      fft_plans: FftPlans::new(),
     };
     let params = marginal_timetree_params();
     let inputs = PreLoopInputs {
@@ -131,7 +133,7 @@ mod tests {
     let context = TimetreeContext {
       final_sequences: FinalSequences::Skip,
       date_constraints,
-      sequence_length: helpers::SEQUENCE_LENGTH,
+      sequence_length: helpers::SEQUENCE_LENGTH, fft_plans: FftPlans::new(),
     };
     let params = TimetreeParams {
       reroot_spec: Some(root.spec(&graph, &names)),

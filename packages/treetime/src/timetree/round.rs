@@ -334,6 +334,7 @@ fn marginal_clock_rate(
     reference_rate,
     window,
     max_points: inputs.params.max_grid_points,
+    fft_plans: &inputs.context.fft_plans,
   })
   .wrap_err("Failed to estimate the clock rate from the marginal likelihood of the node times")?;
   let MarginalRateStep {
@@ -377,6 +378,7 @@ impl RoundState {
       clock_rate_fixed: inputs.params.clock_rate.is_some(),
       indel_policy: inputs.params.indel_policy,
       max_grid_points: inputs.params.max_grid_points,
+      fft_plans: &inputs.context.fft_plans,
       posterior_summaries: PosteriorSummaries {
         regions: false,
         lineage_survival: inputs.reads_lineages(),

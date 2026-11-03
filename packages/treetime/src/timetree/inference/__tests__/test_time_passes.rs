@@ -25,6 +25,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
+  use treetime_ops::FftPlans;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -312,6 +313,7 @@ mod tests {
           &bad_branches,
           &self.branches,
           MaxGridPoints::default(),
+          &FftPlans::new(),
         )?;
         let forward_inputs = ForwardPassInputs {
           constraints,
@@ -320,6 +322,7 @@ mod tests {
           names: &self.names,
           branches: &self.branches,
           max_points: MaxGridPoints::default(),
+          fft_plans: &FftPlans::new(),
         };
         let posterior = propagate_distributions_forward(
           &self.graph,
@@ -394,6 +397,7 @@ mod tests {
           &bad_branches,
           &self.branches,
           MaxGridPoints::default(),
+          &FftPlans::new(),
         )?;
         let forward_inputs = ForwardPassInputs {
           constraints: &self.constraints,
@@ -402,6 +406,7 @@ mod tests {
           names: &self.names,
           branches: &self.branches,
           max_points: MaxGridPoints::default(),
+          fft_plans: &FftPlans::new(),
         };
         let mut posterior =
           propagate_distributions_forward(&self.graph, &forward_inputs, backward, full_posterior, &NoopProgress)?;

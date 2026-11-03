@@ -52,6 +52,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
+use treetime_ops::FftPlans;
 use treetime_primitives::date::DateConstraint;
 use treetime_utils::make_report;
 
@@ -387,6 +388,7 @@ fn prepare_inputs(
     final_sequences,
     date_constraints,
     sequence_length,
+    fft_plans: FftPlans::new(),
   })
 }
 

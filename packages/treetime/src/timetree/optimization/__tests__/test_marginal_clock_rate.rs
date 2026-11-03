@@ -10,6 +10,7 @@ mod tests {
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;
+  use treetime_ops::FftPlans;
 
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
@@ -157,6 +158,7 @@ mod tests {
       pub bad_branches: NodeMap<bool>,
       pub branches: EdgeMap<BranchLikelihood>,
       pub names: NodeNames,
+      pub fft_plans: FftPlans,
     }
 
     impl Cherry {
@@ -179,6 +181,7 @@ mod tests {
           reference_rate,
           window,
           max_points: MaxGridPoints::default(),
+          fft_plans: &self.fft_plans,
         }
       }
     }
@@ -214,6 +217,7 @@ mod tests {
         bad_branches,
         branches,
         names,
+        fft_plans: FftPlans::new(),
       })
     }
   }

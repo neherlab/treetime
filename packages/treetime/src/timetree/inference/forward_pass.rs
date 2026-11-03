@@ -29,6 +29,7 @@ use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::MaxGridPoints;
+use treetime_ops::FftPlans;
 
 pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   graph: &Graph,
@@ -97,6 +98,7 @@ where
       names,
       branches,
       max_points,
+      fft_plans,
     } = *self.inputs;
     let date_constraint = applied_date_constraint(constraints, key, bad_branches[&key]);
     let NodeBackward {
@@ -127,6 +129,7 @@ where
       subtree: subtree.as_deref(),
       subtree_origin,
       max_points,
+      fft_plans,
     })?;
     let normalized_subtree = || -> Result<_, Report> {
       subtree
@@ -182,6 +185,7 @@ pub(crate) struct ForwardPassInputs<'a> {
   pub names: &'a NodeNames,
   pub branches: &'a EdgeMap<BranchLikelihood>,
   pub max_points: MaxGridPoints,
+  pub fft_plans: &'a FftPlans,
 }
 
 struct ForwardOutput<S> {
@@ -201,6 +205,7 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
     subtree,
     subtree_origin,
     max_points,
+    fft_plans,
   } = step;
   let (Some(parent), Some(edge)) = (parent, edge) else {
     return Ok(ForwardRefinement::Unrefined);
@@ -220,7 +225,7 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
       branch_operand,
     ];
     let ForwardPosterior { posterior, spacing, .. } =
-      convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)
+      convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points, fft_plans)
         .and_then(|forward| {
           forward.resolve_posterior(TRIM_EPS, |message| {
             apply_leaf_coalescent_factor(leaf_prior, key, message.clone())?
@@ -247,22 +252,29 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
     message: dist_from_parent,
     posterior: combined,
     spacing,
-  } = convolve_forward_across_edge(&parent_except_subtree, branch_dist, EPS, GRID_POINTS, max_points)
-    .and_then(|forward| {
-      forward.resolve_posterior(TRIM_EPS, |message| {
-        let message_operand = GridOperand::of(OperandRole::ForwardMessage(key), message, message_origin);
-        normalized_product(
-          key,
-          message,
-          subtree_dist,
-          [message_operand, subtree_operand(subtree_dist)],
-          max_points,
-        )
-      })
+  } = convolve_forward_across_edge(
+    &parent_except_subtree,
+    branch_dist,
+    EPS,
+    GRID_POINTS,
+    max_points,
+    fft_plans,
+  )
+  .and_then(|forward| {
+    forward.resolve_posterior(TRIM_EPS, |message| {
+      let message_operand = GridOperand::of(OperandRole::ForwardMessage(key), message, message_origin);
+      normalized_product(
+        key,
+        message,
+        subtree_dist,
+        [message_operand, subtree_operand(subtree_dist)],
+        max_points,
+      )
     })
-    .wrap_grid_request(|| GridRequest::new(GridOperation::ForwardMessage(key), operands))?
-    .trim_posterior_to_mass(TRIM_EPS)
-    .wrap_err_with(|| format!("When trimming the time distribution of node {key} to its mass"))?;
+  })
+  .wrap_grid_request(|| GridRequest::new(GridOperation::ForwardMessage(key), operands))?
+  .trim_posterior_to_mass(TRIM_EPS)
+  .wrap_err_with(|| format!("When trimming the time distribution of node {key} to its mass"))?;
   log_refinement(names, key, parent_time_dist, &dist_from_parent, spacing, &combined);
 
   if combined.likely_time()?.is_none() && date_constraint.is_some() {
@@ -311,6 +323,7 @@ struct ForwardStep<'a> {
   subtree: Option<&'a Distribution<NegLog>>,
   subtree_origin: GridOrigin,
   max_points: MaxGridPoints,
+  fft_plans: &'a FftPlans,
 }
 
 fn normalized_product(

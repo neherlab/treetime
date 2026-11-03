@@ -25,6 +25,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeSet;
+  use treetime_ops::FftPlans;
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -163,6 +164,7 @@ mod tests {
       branch_model: BranchModel,
       branch_lengths: EdgeMap<Option<f64>>,
       clock_model: ClockModel,
+      fft_plans: FftPlans,
     }
 
     impl SusceptibilityFixture {
@@ -213,6 +215,7 @@ mod tests {
           branch_model: BranchModel::Marginal(reconstruction),
           branch_lengths,
           clock_model: ClockModel::for_testing(FIXTURE_CLOCK_RATE, 0.0),
+          fft_plans: FftPlans::new(),
         })
       }
 
@@ -234,6 +237,7 @@ mod tests {
           indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
           posterior_summaries: PosteriorSummaries::default(),
+          fft_plans: &self.fft_plans,
         }
       }
     }

@@ -7,6 +7,7 @@ use crate::timetree::coalescent_timescale::CoalescentMode;
 use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::MaxGridPoints;
+use treetime_ops::FftPlans;
 
 pub struct TimetreeParams {
   pub dense: Option<bool>,
@@ -41,6 +42,7 @@ pub(crate) struct TimetreeContext {
   pub final_sequences: FinalSequences,
   pub date_constraints: DateConstraints,
   pub sequence_length: usize,
+  pub fft_plans: FftPlans,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
