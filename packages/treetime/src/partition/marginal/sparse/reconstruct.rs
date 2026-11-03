@@ -241,11 +241,12 @@ fn is_gap(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> bool {
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
-  if let Some(state) = node.globally_missing.most_likely_state_at(pos) {
-    return state;
-  }
   match node.profile.variable.get(pos) {
     Some(var) => alphabet.char(most_likely_state(&aview1(var.dis)).unwrap_or(0)),
-    None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
+    None => node
+      .globally_missing
+      .most_likely_state_at(pos)
+      .or_else(|| node.sequence.get(pos).copied())
+      .unwrap_or_else(|| alphabet.char(0)),
   }
 }

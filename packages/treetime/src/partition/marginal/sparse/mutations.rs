@@ -163,12 +163,10 @@ fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> As
   if state == alphabet.gap() {
     return state;
   }
-  if let Some(state) = node.globally_missing.most_likely_state_at(pos) {
-    return state;
-  }
-  node.profile.variable.get(pos).map_or(state, |var| {
-    alphabet.char(resolve_profile(aview1(var.dis), &mut Resolve::Argmax))
-  })
+  node.profile.variable.get(pos).map_or_else(
+    || node.globally_missing.most_likely_state_at(pos).unwrap_or(state),
+    |var| alphabet.char(resolve_profile(aview1(var.dis), &mut Resolve::Argmax)),
+  )
 }
 
 struct LeafImputation<'a> {
