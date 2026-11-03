@@ -13,30 +13,17 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { I18nextProvider } from "react-i18next";
-import { Provider } from "react-redux";
-import { ThemeProvider } from "styled-components";
 
 import { MAIN_SCROLL_ID } from "../RootLayout";
 import { AuspicePanels } from "./AuspicePanels";
+import { AuspiceProviders } from "./AuspiceProviders";
 import { HideControlsButton, ShowControlsTab, SidebarControls } from "./AuspiceSidebar";
 import type { FigureRuns } from "./downloads";
-import { AUSPICE_I18N } from "./i18n";
 import { isSidebarDocked, SIDEBAR_WIDTH, startLayout } from "./layout";
 import { useNotificationToasts } from "./notifications";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
-
-const SIDEBAR_THEME = {
-  background: "var(--muted)",
-  color: "var(--foreground)",
-  "font-family": "var(--typeface-sans)",
-  sidebarBoxShadow: "rgba(0, 0, 0, 0.15)",
-  selectedColor: "var(--primary)",
-  unselectedColor: "var(--muted-foreground)",
-  alternateBackground: "var(--input)",
-};
 
 const SLIDE_MS = 300;
 
@@ -65,13 +52,9 @@ export function AuspiceTree({
   useNotificationToasts(store);
 
   return (
-    <I18nextProvider i18n={AUSPICE_I18N}>
-      <ThemeProvider theme={SIDEBAR_THEME}>
-        <Provider store={store}>
-          <Viewer store={store} runs={runs} version={version} entropy={entropy} />
-        </Provider>
-      </ThemeProvider>
-    </I18nextProvider>
+    <AuspiceProviders store={store}>
+      <Viewer store={store} runs={runs} version={version} entropy={entropy} />
+    </AuspiceProviders>
   );
 }
 
