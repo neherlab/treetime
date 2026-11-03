@@ -73,3 +73,4 @@ The backward messages must resolve their own slope: the spacing of a message mus
 
 - [M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md): the discretization error of the time passes on a three-tip tree, which a chain multiplies
 - [N-timetree-resampled-time-distributions-with-two-hard-ends-move-one-end-by-up-to-half-a-cell.md](N-timetree-resampled-time-distributions-with-two-hard-ends-move-one-end-by-up-to-half-a-cell.md): a resampled operand with two hard ends, such as the date range of a tip dated to a year, moves one hard end by up to half a cell
+- [H-timetree-deep-node-dates-differ-from-v0-by-decades.md](H-timetree-deep-node-dates-differ-from-v0-by-decades.md): the deep-node date differences between v0 and v1 on production builds, which this error does not explain
