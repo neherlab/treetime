@@ -814,7 +814,7 @@ index 5ce39213472cdb6ad959c587d0d3cd607df0db10..8a3d3e06f074ad16224854ddc35ea011
          </clipPath>
          <g id="Items">
 diff --git a/src/components/map/map.js b/src/components/map/map.js
-index f208ea58caf180a045c4387a4d88846750b6b987..5128a584c6abe032aa325810c9a8171864c6104e 100644
+index f208ea58caf180a045c4387a4d88846750b6b987..4c0bf3780e06f9e7b23d1438a107d1cbfefdcc0d 100644
 --- a/src/components/map/map.js
 +++ b/src/components/map/map.js
 @@ -106,39 +106,46 @@ class Map extends React.Component {
@@ -899,10 +899,10 @@ index f208ea58caf180a045c4387a4d88846750b6b987..5128a584c6abe032aa325810c9a81718
        transformRequest: (url) => {
          // Upgrade insecure URLs (e.g. Mapbox's TileJSON references tile URLs over http://).
 -        let next = url.startsWith('http://') ? `https://${url.slice('http://'.length)}` : url;
-+        // A URL of the page's own origin keeps its scheme: a page served over http, such as a
-+        // local server, serves its basemap over http only.
-+        const sameOrigin = url.startsWith(`${window.location.origin}/`);
-+        let next = url.startsWith('http://') && !sameOrigin ? `https://${url.slice('http://'.length)}` : url;
++        // URLs of the page's own origin load as the page does: a page served over http://, such
++        // as a local server, has no https:// counterpart for its own files (e.g. a basemap).
++        const isOwnOrigin = url.startsWith(`${window.location.origin}/`);
++        let next = url.startsWith('http://') && !isOwnOrigin ? `https://${url.slice('http://'.length)}` : url;
          // Substitute the access token into URLs that template it. The placeholder is the token
          // value only — the surrounding query param (?access_token=, ?key=, …) comes from the
          // provider's own URL structure — so this works regardless of tile provider.
@@ -1622,13 +1622,13 @@ index c4c224e7ffe0395e31721a0916664affe2e5c3d8..4c7c3a75d227f1fa234e34d126fe9ee0
 +  return genes;
 +}
 diff --git a/src/util/extensions.ts b/src/util/extensions.ts
-index 939d1156923c7603360fdcfdd42cadcef3adc3d9..188ab78199f4c52e840e191e6f61690f9432a45e 100644
+index 939d1156923c7603360fdcfdd42cadcef3adc3d9..be2e59994abb910b3dec8f78ebfd0f59ed8d5833 100644
 --- a/src/util/extensions.ts
 +++ b/src/util/extensions.ts
 @@ -1,37 +1,16 @@
-+/* Nextclade bundles the Auspice sources with its own webpack configuration. The stock registry reads a build-time
++/* TreeTime bundles the Auspice sources with its own Vite configuration. The stock registry reads a build-time
 +EXTENSION_DATA variable and loads components through webpack's `require.context("@extensions")`. Here "@extensions" is a
-+webpack alias to a module of the app whose default export is the registry itself. */
++module that a Vite plugin of the app provides, whose default export is the registry itself. */
 +import registry from "@extensions";
 +
  // TODO: Add typing for individual extensions.
