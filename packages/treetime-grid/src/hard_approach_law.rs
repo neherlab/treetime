@@ -86,6 +86,14 @@ impl HardApproachLaw {
   }
 
   #[must_use]
+  pub fn negate_arg(&self) -> Self {
+    Self {
+      t_hard: 0.0 - self.t_hard,
+      ..*self
+    }
+  }
+
+  #[must_use]
   pub fn shift_arg(&self, shift: f64) -> Self {
     Self {
       t_hard: self.t_hard + shift,

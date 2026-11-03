@@ -160,7 +160,7 @@ mod tests {
   #[test]
   fn test_soft_tail_law_reflection_is_involution() {
     let law = SoftTailLaw { slope: 0.8 };
-    assert_eq!(law, law.scale_arg(-1.0).scale_arg(-1.0));
+    assert_eq!(law, law.negate_arg().negate_arg());
   }
 
   #[test]

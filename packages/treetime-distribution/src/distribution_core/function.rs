@@ -335,8 +335,8 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     self.grid_fn.negate_arg_inplace()?;
-    self.left_extrap = scale_tail_law(self.left_extrap, -1.0);
-    self.right_extrap = scale_tail_law(self.right_extrap, -1.0);
+    self.left_extrap = negate_tail_law(self.left_extrap);
+    self.right_extrap = negate_tail_law(self.right_extrap);
     std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
     Ok(())
   }
@@ -441,6 +441,15 @@ fn shift_tail_law(behavior: BoundaryBehavior, shift: f64) -> BoundaryBehavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.shift_arg(shift)),
     BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.shift_arg(shift)),
     BoundaryBehavior::Error | BoundaryBehavior::Hard | BoundaryBehavior::Linear(_) => behavior,
+  }
+}
+
+fn negate_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.negate_arg()),
+    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law.negate_arg()),
+    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.negate_arg()),
+    BoundaryBehavior::Error | BoundaryBehavior::Hard => behavior,
   }
 }
 

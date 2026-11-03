@@ -20,6 +20,14 @@ impl EdgeCellLaw {
   }
 
   #[must_use]
+  pub fn negate_arg(&self) -> Self {
+    Self {
+      t_edge: 0.0 - self.t_edge,
+      ..*self
+    }
+  }
+
+  #[must_use]
   pub fn shift_arg(&self, shift: f64) -> Self {
     Self {
       t_edge: self.t_edge + shift,

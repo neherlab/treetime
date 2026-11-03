@@ -306,7 +306,7 @@ mod tests {
     let x = Array1::linspace(-4.0 * h, 0.0, 5);
     let y = x.mapv(|x| poisson.cost(-x));
     let grid_fn = GridFn::from_range_values((-4.0 * h, 0.0), y)?;
-    let law = poisson.law().scale_arg(-1.0);
+    let law = poisson.law().negate_arg();
 
     let actual = grid_fn.interp_with_extrap(-0.3 * h, BoundaryBehavior::Hard, BoundaryBehavior::HardEdgeCell(law))?;
     pretty_assert_relative_eq!(poisson.cost(0.3 * h), actual, max_relative = 1e-12);

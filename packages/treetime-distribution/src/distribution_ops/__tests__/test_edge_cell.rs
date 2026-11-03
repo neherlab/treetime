@@ -71,7 +71,7 @@ mod tests {
     let x = 0.3 * poisson.h;
 
     assert_eq!(
-      BoundaryBehavior::HardEdgeCell(poisson.law().scale_arg(-1.0)),
+      BoundaryBehavior::HardEdgeCell(poisson.law().negate_arg()),
       negated.right_extrap()
     );
     pretty_assert_relative_eq!(poisson.cost(x), negated.interp(-x)?, max_relative = 1e-12);

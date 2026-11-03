@@ -87,4 +87,11 @@ impl SoftTailLaw {
       slope: self.slope / factor,
     }
   }
+
+  #[must_use]
+  pub fn negate_arg(&self) -> Self {
+    SoftTailLaw {
+      slope: 0.0 - self.slope,
+    }
+  }
 }

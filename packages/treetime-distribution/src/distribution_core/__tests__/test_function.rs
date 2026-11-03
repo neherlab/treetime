@@ -7,7 +7,7 @@ mod tests {
   use ndarray::array;
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
+  use treetime_grid::{EdgeCellLaw, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   type DistFn = DistributionFunction<f64, Plain>;
@@ -83,8 +83,30 @@ mod tests {
       actual.left_extrap()
     );
     assert_eq!(
-      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -0.0, b: 1.0 }),
+      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }),
       actual.right_extrap()
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard_approach( BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }))]
+  #[case::hard_edge_cell(BoundaryBehavior::HardEdgeCell(EdgeCellLaw { t_edge: 0.0, offset: 0.5, b: 1.0 }))]
+  #[case::flat_soft_tail(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.0 }))]
+  #[trace]
+  fn test_function_negate_arg_inplace_keeps_a_positive_zero_in_the_tail_law(
+    #[case] law: BoundaryBehavior,
+  ) -> Result<(), Report> {
+    let mut actual: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![3.0, 2.5, 2.0])?
+      .with_left_extrap(law)?;
+
+    actual.negate_arg_inplace()?;
+
+    assert_eq!(law, actual.right_extrap());
+    assert_eq!(
+      Some(0.0_f64.to_bits()),
+      helpers::zero_coordinate(actual.right_extrap()).map(f64::to_bits)
     );
     Ok(())
   }
@@ -170,5 +192,18 @@ mod tests {
 
     pretty_assert_ulps_eq!(f.x_max(), resampled.x_max(), max_ulps = 4);
     Ok(())
+  }
+
+  mod helpers {
+    use crate::BoundaryBehavior;
+
+    pub(super) fn zero_coordinate(behavior: BoundaryBehavior) -> Option<f64> {
+      match behavior {
+        BoundaryBehavior::HardApproach(law) => Some(law.t_hard),
+        BoundaryBehavior::HardEdgeCell(law) => Some(law.t_edge),
+        BoundaryBehavior::Linear(law) => Some(law.slope),
+        BoundaryBehavior::Error | BoundaryBehavior::Hard => None,
+      }
+    }
   }
 }
