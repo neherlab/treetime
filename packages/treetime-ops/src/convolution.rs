@@ -5,8 +5,8 @@ use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use parking_lot::RwLock;
 use realfft::num_complex::Complex;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
-use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::iter::successors;
 use std::sync::{Arc, OnceLock};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_report};
@@ -86,7 +86,7 @@ pub struct FftConvolver {
 impl FftConvolver {
   pub fn new(f_len: usize, g_len: usize, plans: &FftPlans) -> Result<Self, Report> {
     check_operand_lengths(f_len, g_len)?;
-    let fft_len = fft_len((f_len + 2 * (g_len - 1)).max(g_len));
+    let fft_len = smooth_even_len(f_len + g_len - 1);
     let plans = plans.get(fft_len);
     let spectrum_len = plans.forward.complex_len();
     let scratch_len = plans.forward.get_scratch_len().max(plans.inverse.get_scratch_len());
@@ -113,12 +113,8 @@ impl FftConvolver {
         g_values.len()
       );
     }
-    let offset = self.g_len - 1;
     self.f_buffer.fill(0.0);
-    self
-      .f_buffer
-      .slice_mut(s![offset..offset + self.f_len])
-      .assign(f_values);
+    self.f_buffer.slice_mut(s![..self.f_len]).assign(f_values);
     self.g_buffer.fill(0.0);
     self.g_buffer.slice_mut(s![..self.g_len]).assign(g_values);
     self
@@ -140,11 +136,9 @@ impl FftConvolver {
       )
       .wrap_err("When computing the forward FFT of the second convolution operand")?;
     self.f_spectrum.zip_mut_with(&self.g_spectrum, |f, g| *f *= *g);
+    let last = self.f_spectrum.len() - 1;
     self.f_spectrum[0].im = 0.0;
-    if self.fft_len.is_multiple_of(2) {
-      let last = self.f_spectrum.len() - 1;
-      self.f_spectrum[last].im = 0.0;
-    }
+    self.f_spectrum[last].im = 0.0;
     self
       .plans
       .inverse
@@ -157,7 +151,7 @@ impl FftConvolver {
     let fft_len = self.fft_len.to_f64_exact();
     let overlap_sums = self
       .f_buffer
-      .slice(s![offset..offset + self.f_len + self.g_len - 1])
+      .slice(s![..self.f_len + self.g_len - 1])
       .mapv(|sum| sum / fft_len);
     Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
   }
@@ -251,23 +245,16 @@ pub(crate) fn trapezoid_from_overlap_sums(
   overlap_sums
 }
 
-#[expect(
-  clippy::integer_division,
-  reason = "reproduces the transform length of ndarray-conv, which steps down from a power of two by integer ratios, so outputs stay identical"
-)]
-fn fft_len(padded_len: usize) -> usize {
-  let mut len = padded_len.next_power_of_two();
-  for (numerator, denominator) in [(3, 4), (5, 6)] {
-    loop {
-      let smaller = len / denominator * numerator;
-      match smaller.cmp(&padded_len) {
-        Ordering::Less => break,
-        Ordering::Equal => return padded_len,
-        Ordering::Greater => len = smaller,
-      }
-    }
-  }
-  len
+pub(crate) fn smooth_even_len(min_len: usize) -> usize {
+  let min_len = min_len.max(1);
+  let powers_up_to_min = |base: usize| {
+    successors(Some(1_usize), move |&power| power.checked_mul(base)).take_while(move |&power| power <= min_len)
+  };
+  powers_up_to_min(3)
+    .flat_map(|power_of_3| powers_up_to_min(5).filter_map(move |power_of_5| power_of_3.checked_mul(power_of_5)))
+    .filter(|&odd| odd <= min_len)
+    .map(|odd| 2 * odd * min_len.div_ceil(2 * odd).next_power_of_two())
+    .fold(usize::MAX, usize::min)
 }
 
 fn contiguous<T>(array: &mut Array1<T>) -> Result<&mut [T], Report> {

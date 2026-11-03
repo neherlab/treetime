@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::convolution::{FftConvolver, FftPlans, convolve_fft};
+  use crate::convolution::{FftConvolver, FftPlans, convolve_fft, smooth_even_len};
+  use helpers::Shape;
   use itertools::Itertools;
   use ndarray::array;
   use pretty_assertions::assert_eq;
@@ -8,44 +9,64 @@ mod tests {
   use rstest::rstest;
   use std::iter::repeat_with;
   use std::sync::Arc;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
-  #[test]
-  fn test_convolution_fft_equals_ndarray_conv_across_interleaved_sizes() {
-    let operands = helpers::operands_of(&helpers::interleaved_lengths());
-
-    let expected = operands.iter().map(|(f, g)| helpers::fresh(0.1, f, g)).collect_vec();
-    let actual = operands
-      .iter()
-      .map(|(f, g)| convolve_fft(0.1, f, g).unwrap())
-      .collect_vec();
-
-    assert_eq!(expected, actual);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::gaussian_smallest(                Shape::Gaussian, (   2,    2))]
+  #[case::noise_smallest(                   Shape::Noise,    (   2,    2))]
+  #[case::gaussian_span_at_smallest_length( Shape::Gaussian, (   3,    2))]
+  #[case::gaussian_odd_span(                Shape::Gaussian, (1600,   40))]
+  #[case::noise_odd_span(                   Shape::Noise,    (1600,   40))]
+  #[case::gaussian_even_span(               Shape::Gaussian, (  37, 1200))]
+  #[case::noise_even_span(                  Shape::Noise,    (  37, 1200))]
+  #[case::gaussian_long_second_operand(     Shape::Gaussian, (   5, 4000))]
+  #[case::noise_long_second_operand(        Shape::Noise,    (   5, 4000))]
+  #[case::gaussian_span_at_smooth_length(   Shape::Gaussian, (1689,   40))]
+  #[case::noise_span_at_smooth_length(      Shape::Noise,    (1689,   40))]
+  #[case::gaussian_span_above_smooth_length(Shape::Gaussian, (1690,   40))]
+  #[case::noise_span_above_smooth_length(   Shape::Noise,    (1690,   40))]
+  #[case::gaussian_span_at_power_of_two(    Shape::Gaussian, (2000,   49))]
+  #[case::noise_span_above_power_of_two(    Shape::Noise,    (2000,   50))]
+  #[case::gaussian_largest_odd_span(        Shape::Gaussian, (4000, 4000))]
+  #[case::noise_largest_odd_span(           Shape::Noise,    (4000, 4000))]
+  #[case::gaussian_largest_even_span(       Shape::Gaussian, (4000, 3999))]
+  #[case::noise_largest_even_span(          Shape::Noise,    (4000, 3999))]
+  #[trace]
+  fn test_convolution_fft_equals_the_direct_sum_within_rounding_of_its_peak(
+    #[case] shape: Shape,
+    #[case] (f_len, g_len): (usize, usize),
+  ) {
+    let (f, g) = (shape.values(f_len, 0), shape.values(g_len, 1));
+    let direct = helpers::direct(0.1, &f, &g);
+    let actual = convolve_fft(0.1, &f, &g).unwrap();
+    pretty_assert_abs_diff_eq!(
+      helpers::over_peak_of(&direct, &direct),
+      helpers::over_peak_of(&direct, &actual),
+      epsilon = 1e-14
+    );
   }
 
   #[test]
-  fn test_convolution_fft_equals_ndarray_conv_for_equal_output_lengths_of_different_padding() {
+  fn test_convolution_fft_equals_the_direct_sum_for_operand_pairs_of_one_transform_length() {
     let operands = helpers::operands_of(&[(100, 900), (950, 50), (300, 700), (700, 300), (100, 900), (950, 50)]);
 
-    let expected = operands.iter().map(|(f, g)| helpers::fresh(0.1, f, g)).collect_vec();
+    let plans = FftPlans::new();
     let actual = operands
       .iter()
-      .map(|(f, g)| convolve_fft(0.1, f, g).unwrap())
+      .map(|(f, g)| {
+        FftConvolver::new(f.len(), g.len(), &plans)
+          .unwrap()
+          .convolve(0.1, f, g)
+          .unwrap()
+      })
       .collect_vec();
 
-    assert_eq!(expected, actual);
+    helpers::assert_equal_to_direct_sums(0.1, &operands, &actual);
   }
 
   #[test]
-  fn test_convolution_fft_equals_ndarray_conv_for_an_odd_transform_length() {
-    let (f, g) = helpers::operands(1600, 40, 3);
-    let expected = helpers::fresh(0.2, &f, &g);
-    let actual = convolve_fft(0.2, &f, &g).unwrap();
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_convolution_fft_convolver_reused_on_new_operands_equals_ndarray_conv() {
+  fn test_convolution_fft_convolver_reused_on_new_operands_equals_the_direct_sum() {
     let plans = FftPlans::new();
     let mut reused = FftConvolver::new(1500, 700, &plans).unwrap();
     let rounds = (0..4)
@@ -56,23 +77,22 @@ mod tests {
       })
       .collect_vec();
 
-    let expected = rounds
+    let (operands, actual): (Vec<_>, Vec<_>) = rounds
       .iter()
-      .map(|(f, g, a, b)| (helpers::fresh(0.25, f, g), helpers::fresh(0.25, a, b)))
-      .collect_vec();
-    let actual = rounds
-      .iter()
-      .map(|(f, g, a, b)| {
+      .flat_map(|(f, g, a, b)| {
         let reused_result = reused.convolve(0.25, f, g).unwrap();
         let other_result = FftConvolver::new(a.len(), b.len(), &plans)
           .unwrap()
           .convolve(0.25, a, b)
           .unwrap();
-        (reused_result, other_result)
+        [
+          ((f.clone(), g.clone()), reused_result),
+          ((a.clone(), b.clone()), other_result),
+        ]
       })
-      .collect_vec();
+      .unzip();
 
-    assert_eq!(expected, actual);
+    helpers::assert_equal_to_direct_sums(0.25, &operands, &actual);
   }
 
   #[test]
@@ -102,13 +122,12 @@ mod tests {
   }
 
   #[test]
-  fn test_convolution_fft_shared_plans_in_parallel_equal_ndarray_conv() {
+  fn test_convolution_fft_shared_plans_in_parallel_equal_the_direct_sum() {
     let lengths = helpers::interleaved_lengths()
       .into_iter()
-      .chain([(1600, 40), (1600, 40), (37, 1200), (2, 2), (5000, 3000)])
+      .chain([(1600, 40), (1600, 40), (37, 1200), (2, 2), (1689, 40), (5000, 3000)])
       .collect_vec();
     let operands = helpers::operands_of(&lengths);
-    let expected = operands.iter().map(|(f, g)| helpers::fresh(0.1, f, g)).collect_vec();
 
     let plans = FftPlans::new();
     let actual = helpers::pool().install(|| {
@@ -123,14 +142,14 @@ mod tests {
         .collect::<Vec<_>>()
     });
 
-    assert_eq!(expected, actual);
+    helpers::assert_equal_to_direct_sums(0.1, &operands, &actual);
   }
 
   #[test]
   fn test_convolution_fft_plans_of_one_length_are_shared_by_every_lookup() {
     let plans = FftPlans::new();
-    let concurrent = helpers::pool().install(|| (0..64).into_par_iter().map(|_| plans.get(1705)).collect::<Vec<_>>());
-    let sequential = repeat_with(|| plans.get(1705)).take(2).collect_vec();
+    let concurrent = helpers::pool().install(|| (0..64).into_par_iter().map(|_| plans.get(1728)).collect::<Vec<_>>());
+    let sequential = repeat_with(|| plans.get(1728)).take(2).collect_vec();
 
     let first = &concurrent[0];
     let shares_first = concurrent
@@ -141,13 +160,74 @@ mod tests {
     assert_eq!(vec![true; 66], shares_first);
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_four(            3,    4)]
+  #[case::below_eight(           7,    8)]
+  #[case::below_twelve(         11,   12)]
+  #[case::skips_odd_smooth(     13,   16)]
+  #[case::factors_two_and_three(1639, 1728)]
+  #[case::power_of_two(       2048, 2048)]
+  #[case::factors_of_all_three(2049, 2160)]
+  #[trace]
+  fn test_convolution_fft_transform_length_is_the_smallest_even_five_smooth_number_not_below_the_span(
+    #[case] span: usize,
+    #[case] expected: usize,
+  ) {
+    assert_eq!(expected, smooth_even_len(span));
+  }
+
   mod helpers {
-    use crate::convolution::trapezoid_from_overlap_sums;
-    use itertools::Itertools;
+    use crate::DirectConvolve;
+    use crate::traits::ConvolveAlgo;
+    use itertools::{Itertools, izip};
     use ndarray::Array1;
-    use ndarray_conv::{ConvFFTExt, ConvMode, PaddingMode};
     use rayon::{ThreadPool, ThreadPoolBuilder};
+    use treetime_utils::array::ndarray::max_or;
     use treetime_utils::cast::ToF64Exact;
+    use treetime_utils::pretty_assert_abs_diff_eq;
+
+    #[derive(Clone, Copy, Debug)]
+    pub(super) enum Shape {
+      Gaussian,
+      Noise,
+    }
+
+    impl Shape {
+      pub(super) fn values(self, len: usize, seed: usize) -> Array1<f64> {
+        let len_f64 = len.to_f64_exact();
+        match self {
+          Self::Gaussian => {
+            let (center, width) = (len_f64 * (0.4 + 0.1 * seed.to_f64_exact()), len_f64 / 8.0 + 1.0);
+            Array1::from_shape_fn(len, |i| (-0.5 * ((i.to_f64_exact() - center) / width).powi(2)).exp())
+          },
+          Self::Noise => Array1::from_shape_fn(len, |i| {
+            ((i + 7919 * seed).to_f64_exact() * 0.618_033_988_749_894_9).fract() + 0.01
+          }),
+        }
+      }
+    }
+
+    pub(super) fn direct(dx: f64, f: &Array1<f64>, g: &Array1<f64>) -> Array1<f64> {
+      DirectConvolve.convolve(dx, f, g).unwrap()
+    }
+
+    pub(super) fn over_peak_of(reference: &Array1<f64>, values: &Array1<f64>) -> Array1<f64> {
+      values / max_or(reference, f64::NAN)
+    }
+
+    pub(super) fn assert_equal_to_direct_sums(
+      dx: f64,
+      operands: &[(Array1<f64>, Array1<f64>)],
+      actual: &[Array1<f64>],
+    ) {
+      let direct_sums = operands.iter().map(|(f, g)| direct(dx, f, g)).collect_vec();
+      let expected = direct_sums.iter().map(|d| over_peak_of(d, d)).collect_vec();
+      let actual = izip!(&direct_sums, actual)
+        .map(|(d, a)| over_peak_of(d, a))
+        .collect_vec();
+      pretty_assert_abs_diff_eq!(expected[..], actual[..], epsilon = 1e-14);
+    }
 
     pub(super) fn interleaved_lengths() -> Vec<(usize, usize)> {
       let sizes = (100..1000)
@@ -167,10 +247,6 @@ mod tests {
 
     pub(super) fn operands(f_len: usize, g_len: usize, seed: usize) -> (Array1<f64>, Array1<f64>) {
       (values(f_len, seed), values(g_len, seed + 1))
-    }
-
-    pub(super) fn fresh(dx: f64, f: &Array1<f64>, g: &Array1<f64>) -> Array1<f64> {
-      trapezoid_from_overlap_sums(f.conv_fft(g, ConvMode::Full, PaddingMode::Zeros).unwrap(), dx, f, g)
     }
 
     pub(super) fn pool() -> ThreadPool {
