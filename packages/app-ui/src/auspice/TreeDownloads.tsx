@@ -88,10 +88,12 @@ const TREE_DOWNLOADS: readonly TreeDownload[] = [
 
 export function TreeDownloads({
   store,
+  panels,
   runs,
   version,
 }: {
   store: AuspiceStore;
+  panels: readonly string[];
   runs: FigureRuns;
   version: string | undefined;
 }) {
@@ -106,13 +108,14 @@ export function TreeDownloads({
     () => ({
       store,
       prefix,
+      panels,
       runs,
       version,
       fail: (title, description) => {
         toasts.add({ title, description, type: "error", timeout: 0 });
       },
     }),
-    [prefix, runs, store, toasts, version],
+    [panels, prefix, runs, store, toasts, version],
   );
 
   const downloads = TREE_DOWNLOADS.filter((download) => download.available(flags));
@@ -142,6 +145,7 @@ interface TreeDownload {
 interface DownloadContext {
   store: AuspiceStore;
   prefix: string;
+  panels: readonly string[];
   runs: FigureRuns;
   version: string | undefined;
   fail: (title: string, description: string) => void;
@@ -188,7 +192,7 @@ function saveFigure(context: DownloadContext): void {
   void writeFigure(context);
 }
 
-async function writeFigure({ store, prefix, runs, version, fail }: DownloadContext): Promise<void> {
+async function writeFigure({ store, prefix, panels, runs, version, fail }: DownloadContext): Promise<void> {
   const { metadata, tree, controls } = store.getState();
   const nodes = tree.nodes ?? [];
   const visibility = tree.visibility ?? [];
@@ -198,7 +202,7 @@ async function writeFigure({ store, prefix, runs, version, fail }: DownloadConte
     version,
     updated: metadata.updated,
     summary: figureSummary({ metadata, tree, controls }),
-    mapAttribution: controls.panelsToDisplay.includes("map") ? getMapTilesSettings().attribution : undefined,
+    mapAttribution: panels.includes("map") ? getMapTilesSettings().attribution : undefined,
     publications: RELEVANT_PUBLICATIONS,
   });
 
@@ -210,7 +214,7 @@ async function writeFigure({ store, prefix, runs, version, fail }: DownloadConte
       nodes,
       visibility,
       prefix,
-      controls.panelsToDisplay,
+      panels,
       controls.panelLayout,
       RELEVANT_PUBLICATIONS,
       isDatedTree(controls),

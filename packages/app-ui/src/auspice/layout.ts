@@ -10,6 +10,8 @@ export const CARD_TITLE_HEIGHT = 26;
 
 export const CARD_TITLE_HEIGHT_TWO_TREES = 46;
 
+const VIEW_PANELS = ["tree", "map", "entropy"] as const;
+
 export function isSidebarDocked(viewerWidth: number): boolean {
   return viewerWidth > controlsHiddenWidth;
 }
@@ -52,6 +54,28 @@ export function panelSizes({
   };
 }
 
+export function renderedPanels({
+  panelsToDisplay,
+  sizes,
+  webGl,
+  failed,
+}: {
+  panelsToDisplay: readonly string[];
+  sizes: PanelSizes;
+  webGl: boolean;
+  failed: ReadonlySet<ViewPanel>;
+}): readonly string[] {
+  const drawn: Readonly<Record<ViewPanel, boolean>> = {
+    tree: sizes.tree.height > 0,
+    map: webGl && (sizes.map?.height ?? 0) > 0,
+    entropy: (sizes.entropy?.height ?? 0) > 0,
+  };
+
+  return panelsToDisplay.filter((panel) => isViewPanel(panel) && drawn[panel] && !failed.has(panel));
+}
+
+export type ViewPanel = (typeof VIEW_PANELS)[number];
+
 export interface PanelSizesParams {
   panelsWidth: number;
   visibleHeight: number;
@@ -75,4 +99,8 @@ export interface DrawingSize {
 
 function drawingSize(card: DrawingSize, titleHeight: number): DrawingSize {
   return { width: Math.max(0, Math.floor(card.width)), height: Math.max(0, Math.floor(card.height - titleHeight)) };
+}
+
+function isViewPanel(panel: string): panel is ViewPanel {
+  return VIEW_PANELS.some((viewPanel) => viewPanel === panel);
 }

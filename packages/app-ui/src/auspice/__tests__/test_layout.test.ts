@@ -1,4 +1,4 @@
-import { isSidebarDocked, panelSizes, startLayout } from "../layout";
+import { isSidebarDocked, panelSizes, renderedPanels, startLayout, type ViewPanel } from "../layout";
 
 describe("viewer start layout (auspice controlsHiddenWidth 780, twoColumnBreakpoint 1600)", () => {
   test.each([
@@ -97,3 +97,86 @@ describe("panel sizes (auspice calcPanelDims: card paddings 40 and 100 px, 52 px
     ).toStrictEqual({ width: 960, height: 274 });
   });
 });
+
+describe("panels of the figure download (the panels of the store list that the view draws)", () => {
+  test.each([
+    {
+      view: "a view of all panels",
+      listed: ["tree", "map", "entropy"],
+      sized: ["tree", "map", "entropy"],
+      twoTrees: false,
+      webGl: true,
+      failed: [],
+      panels: ["tree", "map", "entropy"],
+    },
+    {
+      view: "a view without the entropy chart of the app",
+      listed: ["tree", "map", "entropy"],
+      sized: ["tree", "map"],
+      twoTrees: false,
+      webGl: true,
+      failed: [],
+      panels: ["tree", "map"],
+    },
+    {
+      view: "a view of two trees, which hides the map",
+      listed: ["tree", "map", "entropy"],
+      sized: ["tree", "map", "entropy"],
+      twoTrees: true,
+      webGl: true,
+      failed: [],
+      panels: ["tree", "entropy"],
+    },
+    {
+      view: "a view without WebGL",
+      listed: ["tree", "map", "entropy"],
+      sized: ["tree", "map", "entropy"],
+      twoTrees: false,
+      webGl: false,
+      failed: [],
+      panels: ["tree", "entropy"],
+    },
+    {
+      view: "a view whose tree failed",
+      listed: ["tree", "map", "entropy"],
+      sized: ["tree", "map", "entropy"],
+      twoTrees: false,
+      webGl: true,
+      failed: ["tree"],
+      panels: ["map", "entropy"],
+    },
+    {
+      view: "a dataset with panels that the view does not draw",
+      listed: ["tree", "frequencies", "measurements"],
+      sized: ["tree", "frequencies", "measurements"],
+      twoTrees: false,
+      webGl: true,
+      failed: [],
+      panels: ["tree"],
+    },
+  ] satisfies readonly ExportCase[])(
+    "$view exports the panels $panels",
+    ({ listed, sized, twoTrees, webGl, failed, panels }) => {
+      const sizes = panelSizes({
+        panelsWidth: 1000,
+        visibleHeight: 1000,
+        panelsToDisplay: sized,
+        panelLayout: "full",
+        twoTrees,
+        headerStacked: false,
+      });
+
+      expect(renderedPanels({ panelsToDisplay: listed, sizes, webGl, failed: new Set(failed) })).toStrictEqual(panels);
+    },
+  );
+});
+
+interface ExportCase {
+  view: string;
+  listed: readonly string[];
+  sized: readonly string[];
+  twoTrees: boolean;
+  webGl: boolean;
+  failed: readonly ViewPanel[];
+  panels: readonly string[];
+}

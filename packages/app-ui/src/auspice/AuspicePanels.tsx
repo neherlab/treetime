@@ -1,5 +1,4 @@
 import { useElementSize } from "@mantine/hooks";
-import { errorMessage } from "@neherlab/app-contracts";
 import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
 import Entropy from "auspice/src/components/entropy";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
@@ -7,6 +6,7 @@ import Tree from "auspice/src/components/tree";
 import {
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -16,16 +16,18 @@ import {
   type RefCallback,
   type RefObject,
 } from "react";
-import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
 import type { FigureRuns } from "./downloads";
 import {
   CARD_TITLE_HEIGHT,
   CARD_TITLE_HEIGHT_TWO_TREES,
   panelSizes,
+  renderedPanels,
   type DrawingSize,
   type PanelSizes,
+  type ViewPanel,
 } from "./layout";
+import { PanelBoundary, type PanelFailureHandler } from "./PanelBoundary";
 import type { AuspicePanelLayout, AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
@@ -73,17 +75,49 @@ export function AuspicePanels({
     [entropy, panelsToDisplay],
   );
 
+  const webGl = useMemo(() => canDrawMaps(), []);
+  const [failedPanels, setFailedPanels] = useState<ReadonlySet<ViewPanel>>(() => new Set());
+  const panelFailed = useCallback((panel: ViewPanel) => setFailedPanels((failed) => withPanel(failed, panel)), []);
+
   const panelRef = useRef<HTMLDivElement>(null);
   const zoomButtonsOffset = useZoomButtonsOffset(panelRef);
   const { ref: actionsRef, width: actionsWidth } = useElementSize<HTMLDivElement>();
 
-  const layout = { panelsWidth, visibleHeight, panelsToDisplay: shownPanels, panelLayout, twoTrees };
-  const overlaid = panelSizes({ ...layout, headerStacked: false });
+  const overlaid = useMemo(
+    () =>
+      panelSizes({
+        panelsWidth,
+        visibleHeight,
+        panelsToDisplay: shownPanels,
+        panelLayout,
+        twoTrees,
+        headerStacked: false,
+      }),
+    [panelLayout, panelsWidth, shownPanels, twoTrees, visibleHeight],
+  );
 
   const stacked =
     twoTrees || overlaid.tree.width - zoomButtonsOffset < actionsWidth + HEADER_ITEM_GAP + HEADER_MIN_SUMMARY_WIDTH;
 
-  const sizes = stacked ? panelSizes({ ...layout, headerStacked: true }) : overlaid;
+  const sizes = useMemo(
+    () =>
+      stacked
+        ? panelSizes({
+            panelsWidth,
+            visibleHeight,
+            panelsToDisplay: shownPanels,
+            panelLayout,
+            twoTrees,
+            headerStacked: true,
+          })
+        : overlaid,
+    [overlaid, panelLayout, panelsWidth, shownPanels, stacked, twoTrees, visibleHeight],
+  );
+
+  const exportedPanels = useMemo(
+    () => renderedPanels({ panelsToDisplay: shownPanels, sizes, webGl, failed: failedPanels }),
+    [failedPanels, shownPanels, sizes, webGl],
+  );
 
   if (panelsWidth <= 0 || visibleHeight <= 0) {
     return null;
@@ -99,11 +133,13 @@ export function AuspicePanels({
         twoTrees={twoTrees}
         stacked={stacked}
         headerRight={zoomButtonsOffset}
+        panels={exportedPanels}
         runs={runs}
         version={version}
+        onFailure={panelFailed}
       />
-      <MapCard sizes={sizes} />
-      <EntropyCard sizes={sizes} />
+      <MapCard sizes={sizes} webGl={webGl} onFailure={panelFailed} />
+      <EntropyCard sizes={sizes} onFailure={panelFailed} />
     </div>
   );
 }
@@ -116,8 +152,10 @@ function TreeCard({
   twoTrees,
   stacked,
   headerRight,
+  panels,
   runs,
   version,
+  onFailure,
 }: {
   store: AuspiceStore;
   panelRef: RefObject<HTMLDivElement | null>;
@@ -126,8 +164,10 @@ function TreeCard({
   twoTrees: boolean;
   stacked: boolean;
   headerRight: number;
+  panels: readonly string[];
   runs: FigureRuns;
   version: string | undefined;
+  onFailure: PanelFailureHandler;
 }) {
   const treeKey = useAuspiceSelector(store, selectSecondTreeName);
 
@@ -155,16 +195,19 @@ function TreeCard({
           <FiltersSummary />
         </div>
         <div ref={actionsRef} className="flex flex-none items-center gap-4 self-stretch">
-          <TreeDownloads store={store} runs={runs} version={version} />
+          <TreeDownloads store={store} panels={panels} runs={runs} version={version} />
         </div>
       </div>
-      {size.height > 0 && <Tree key={treeKey} width={size.width} height={size.height} />}
+      {size.height > 0 && (
+        <PanelBoundary panel="tree" onFailure={onFailure}>
+          <Tree key={treeKey} width={size.width} height={size.height} />
+        </PanelBoundary>
+      )}
     </div>
   );
 }
 
-function MapCard({ sizes }: { sizes: PanelSizes }) {
-  const webGl = useMemo(() => canDrawMaps(), []);
+function MapCard({ sizes, webGl, onFailure }: { sizes: PanelSizes; webGl: boolean; onFailure: PanelFailureHandler }) {
   const legend = useMemo(() => ({ swatches: !sizes.mapInGrid, demes: true }), [sizes.mapInGrid]);
 
   if (sizes.map === undefined || sizes.map.height <= 0) {
@@ -184,7 +227,7 @@ function MapCard({ sizes }: { sizes: PanelSizes }) {
 
   return (
     <div className={sizes.mapInGrid ? "auspice-card relative flex-none" : "auspice-card relative flex-none basis-full"}>
-      <ErrorBoundary FallbackComponent={MapFailure}>
+      <PanelBoundary panel="map" onFailure={onFailure}>
         <Suspense fallback={null}>
           <AuspiceMap
             width={sizes.map.width}
@@ -193,28 +236,21 @@ function MapCard({ sizes }: { sizes: PanelSizes }) {
             legend={legend}
           />
         </Suspense>
-      </ErrorBoundary>
+      </PanelBoundary>
     </div>
   );
 }
 
-function MapFailure({ error }: FallbackProps) {
-  return (
-    <Alert variant="destructive">
-      <AlertTitle>Auspice cannot draw the map</AlertTitle>
-      <AlertDescription>{errorMessage(error)}</AlertDescription>
-    </Alert>
-  );
-}
-
-function EntropyCard({ sizes }: { sizes: PanelSizes }) {
+function EntropyCard({ sizes, onFailure }: { sizes: PanelSizes; onFailure: PanelFailureHandler }) {
   if (sizes.entropy === undefined || sizes.entropy.height <= 0) {
     return null;
   }
 
   return (
     <div className="auspice-card relative flex-none basis-full select-none">
-      <Entropy width={sizes.entropy.width} height={sizes.entropy.height} />
+      <PanelBoundary panel="entropy" onFailure={onFailure}>
+        <Entropy width={sizes.entropy.width} height={sizes.entropy.height} />
+      </PanelBoundary>
     </div>
   );
 }
@@ -297,4 +333,8 @@ function selectSecondTreeName(state: AuspiceState): string {
 
 function selectTwoTrees(state: AuspiceState): boolean {
   return state.controls.showTreeToo !== false;
+}
+
+function withPanel(panels: ReadonlySet<ViewPanel>, panel: ViewPanel): ReadonlySet<ViewPanel> {
+  return panels.has(panel) ? panels : new Set([...panels, panel]);
 }
