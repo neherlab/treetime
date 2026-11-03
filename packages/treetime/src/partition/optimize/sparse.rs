@@ -1,9 +1,12 @@
 use crate::gtr::gtr::GTR;
+use crate::partition::storage::sparse::INLINE_STATES;
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
+use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::{Array1, aview1};
+use smallvec::SmallVec;
 use std::collections::BTreeMap;
 use std::iter::zip;
 use treetime_utils::cast::ToF64Exact;
@@ -54,7 +57,8 @@ pub(crate) fn get_coefficients(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let mut site_contributions = Vec::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
+  let mut site_contributions =
+    GroupedSiteContributions::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
     let parent = if let Some(parent) = msg_to_child.variable.get(pos) {
       parent.dis
@@ -67,20 +71,17 @@ pub(crate) fn get_coefficients(
     } else {
       msg_to_parent.fixed[child_state].dis.as_slice()
     };
-    site_contributions.push(SiteContribution {
-      multiplicity: 1.0,
-      coefficients: aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
-    });
+    site_contributions.add(1.0, aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()));
   }
   for parent_fixed in msg_to_child.fixed.iter() {
     let parent = &parent_fixed.dis;
     let child = &msg_to_parent.fixed[parent_fixed.state].dis;
-    site_contributions.push(SiteContribution {
-      multiplicity: parent_fixed.count.to_f64_exact(),
-      coefficients: aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
-    });
+    site_contributions.add(
+      parent_fixed.count.to_f64_exact(),
+      aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
+    );
   }
-  Ok(PartitionContribution::new(site_contributions, gtr.clone()))
+  Ok(PartitionContribution::new(site_contributions.into_vec(), gtr.clone()))
 }
 
 pub struct PartitionContribution {
@@ -102,4 +103,32 @@ impl PartitionContribution {
 pub struct SiteContribution {
   pub(crate) multiplicity: f64,
   pub(crate) coefficients: Array1<f64>,
+}
+
+struct GroupedSiteContributions {
+  sites: IndexMap<SmallVec<[u64; INLINE_STATES]>, SiteContribution>,
+}
+
+impl GroupedSiteContributions {
+  fn with_capacity(capacity: usize) -> Self {
+    Self {
+      sites: IndexMap::with_capacity(capacity),
+    }
+  }
+
+  fn add(&mut self, multiplicity: f64, coefficients: Array1<f64>) {
+    let bits = coefficients.iter().map(|value| value.to_bits()).collect();
+    self
+      .sites
+      .entry(bits)
+      .and_modify(|site| site.multiplicity += multiplicity)
+      .or_insert(SiteContribution {
+        multiplicity,
+        coefficients,
+      });
+  }
+
+  fn into_vec(self) -> Vec<SiteContribution> {
+    self.sites.into_values().collect()
+  }
 }

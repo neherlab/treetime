@@ -5,6 +5,7 @@ mod tests {
   use helpers::{LARGE_STAR, LONG_BRANCHES, Placement, PolytomyTree, SHORT_BRANCHES, Star};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[rustfmt::skip]
@@ -37,6 +38,32 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short_branches_at_root(    SHORT_BRANCHES, Placement::AtRoot)]
+  #[case::short_branches_below_root( SHORT_BRANCHES, Placement::BelowRoot)]
+  #[case::large_star_at_root(        LARGE_STAR,     Placement::AtRoot)]
+  #[trace]
+  fn test_root_polytomy_child_contributions_hold_each_distinct_site_once_and_count_every_site_with_data(
+    #[case] star: Star,
+    #[case] placement: Placement,
+  ) -> Result<(), Report> {
+    let tree = PolytomyTree::new(star, placement, Representation::Sparse)?;
+
+    let summaries = tree.child_contribution_summaries()?;
+    let expected = summaries
+      .iter()
+      .map(|(child, summary)| (child.clone(), (summary.distinct_coefficients, summary.sites_with_data)))
+      .collect::<BTreeMap<_, _>>();
+    let actual = summaries
+      .iter()
+      .map(|(child, summary)| (child.clone(), (summary.entries, summary.multiplicity)))
+      .collect::<BTreeMap<_, _>>();
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
   mod helpers {
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::make_report;
@@ -53,7 +80,7 @@ mod tests {
     use itertools::Itertools;
     use pretty_assertions::assert_eq;
     use rand::RngExt;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::iter::repeat_with;
     use treetime_graph::graph::Graph;
     use treetime_graph::key_map::EdgeMap;
@@ -61,6 +88,7 @@ mod tests {
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::{NwkParse, nwk_read};
     use treetime_primitives::AlignmentRecord;
+    use treetime_utils::cast::ToF64Exact;
     use treetime_utils::sync::random::get_random_number_generator;
 
     const NUCS: [u8; 4] = *b"ACGT";
@@ -133,6 +161,7 @@ mod tests {
       names: NodeNames,
       branch_lengths: EdgeMap<Option<f64>>,
       length: usize,
+      sites_with_data: BTreeMap<String, usize>,
       reconstruction: MarginalReconstruction,
       log_lh: f64,
     }
@@ -148,6 +177,14 @@ mod tests {
         let aln: Vec<AlignmentRecord> = fasta_read(star.fasta().as_bytes(), &*NUC_ALPHABET)?
           .into_iter()
           .map(AlignmentRecord::from)
+          .collect();
+        let unknown = NUC_ALPHABET.unknown();
+        let sites_with_data = aln
+          .iter()
+          .map(|record| {
+            let with_data = record.seq.iter().filter(|&&state| state != unknown).count();
+            (record.name.clone(), with_data)
+          })
           .collect();
         let gtr = jc69(JC69Params::default())?;
         let (log_lh, reconstruction) = match representation {
@@ -165,6 +202,7 @@ mod tests {
           names,
           branch_lengths,
           length: star.length,
+          sites_with_data,
           reconstruction,
           log_lh,
         })
@@ -219,6 +257,38 @@ mod tests {
               OptimizationContribution::Sparse(sparse) => Ok((child, sparse.site_contributions.len())),
               OptimizationContribution::Dense(_) => Err(make_report!("edge {child} has a dense contribution")),
             }
+          })
+          .collect()
+      }
+
+      pub(super) fn child_contribution_summaries(&self) -> Result<BTreeMap<String, ContributionSummary>, Report> {
+        self
+          .graph
+          .get_edges()
+          .map(|edge| -> Result<_, Report> {
+            let child = self.names[self.graph.edge_endpoints(edge.key())?.1].to_owned();
+            Ok((child, edge.key()))
+          })
+          .filter_ok(|(child, _)| child.starts_with('c'))
+          .map(|item| -> Result<_, Report> {
+            let (child, edge_key) = item?;
+            let OptimizationContribution::Sparse(sparse) =
+              self.reconstruction.view().create_edge_contribution(edge_key)?
+            else {
+              return Err(make_report!("edge {child} has a dense contribution"));
+            };
+            let sites = &sparse.site_contributions;
+            let distinct: BTreeSet<Vec<u64>> = sites
+              .iter()
+              .map(|site| site.coefficients.iter().map(|value| value.to_bits()).collect())
+              .collect();
+            let summary = ContributionSummary {
+              entries: sites.len(),
+              distinct_coefficients: distinct.len(),
+              multiplicity: sites.iter().map(|site| site.multiplicity).sum(),
+              sites_with_data: self.sites_with_data[&child].to_f64_exact(),
+            };
+            Ok((child, summary))
           })
           .collect()
       }
@@ -281,6 +351,13 @@ mod tests {
           .flatten_ok()
           .collect()
       }
+    }
+
+    pub(super) struct ContributionSummary {
+      pub(super) entries: usize,
+      pub(super) distinct_coefficients: usize,
+      pub(super) multiplicity: f64,
+      pub(super) sites_with_data: f64,
     }
   }
 }
