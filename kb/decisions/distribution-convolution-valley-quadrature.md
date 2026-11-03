@@ -4,7 +4,7 @@
 
 The time passes convolve two sampled time functions by FFT. An FFT result has an absolute round-off of about $10^{-16}$ of its peak, with either sign, so a sample far below the peak has no correct digits. v1 trusts the samples above the floor $10^{-13}$ of the peak (`CONV_TRUST_FRACTION`). When an operand has two modes, the result can fall below this floor between its modes and rise above it again: a **valley**. v1 computes every sample of the trusted range that lies at or below the floor by direct quadrature, the same trapezoid sum over the overlap of the operands that the FFT approximates ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)). The tails outside the trusted range are computed by exponential tilting ([distribution-convolution-tails-by-exponential-tilting.md](distribution-convolution-tails-by-exponential-tilting.md)).
 
-**v1 location**: `fn neg_log_with_quadrature_in_valleys()`, called from `fn reconstruct_neg_log_tails()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs); the quadrature of one output sample is `pub fn convolve_direct_at()` in [packages/treetime-ops/src/convolution.rs](../../packages/treetime-ops/src/convolution.rs).
+**v1 location**: `fn neg_log_with_quadrature_in_valleys()`, called from `fn reconstruct_neg_log_tails()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs); the quadrature of one output sample is `pub fn convolve_direct_at()`, and in log space `pub fn convolve_direct_neg_log_at()`, in [packages/treetime-ops/src/convolution.rs](../../packages/treetime-ops/src/convolution.rs).
 
 **v0 location**: `NodeInterpolator.convolve_fft()` [packages/legacy/treetime/treetime/node_interpolator.py#L226-L265](../../packages/legacy/treetime/treetime/node_interpolator.py#L226-L265). v0 keeps only the samples above `fft_res.max() * 1e-13`, wherever they lie, and builds the result on that cropped grid with linear interpolation of the neg-log values. Across a valley, v0 therefore draws a straight line between the two trusted samples at the valley edges, both at about the trust floor: the valley density is the floor density, often many orders of magnitude above the true density.
 
@@ -43,7 +43,7 @@ Three treatments were measured: clamp each valley sample to the floor (the v0 be
 
 ## Limits
 
-- A valley sample whose quadrature underflows (more than about 708 nats below the peak) is set to the smallest normal double; no measured case reaches this depth
+- A valley sample whose plain sum is too small to keep its relative accuracy (below the number of its pairs times the smallest normal double) is computed again by log-space quadrature from the neg-log operands. An exact zero then stays $+\infty$, so a gap in the support of an operand stays impossible in the result, and a valley deeper than about 745 nats, where the plain operand values underflow, keeps its depth (`test_convolution_valley_quadrature_keeps_exact_zeros_and_depths_below_the_smallest_double` in `packages/treetime-distribution/src/distribution_ops/__tests__/test_convolve_exact_tails.rs`). No measured case reaches this depth
 - The trusted range ends at the outermost samples above the floor. Below-floor samples outside it belong to the tails, which exponential tilting computes
 
 ## Related
