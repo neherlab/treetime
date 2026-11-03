@@ -1,13 +1,16 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::aa_node_data::{
-    cds_output_paths, translation_path, validate_aa_args, validate_aa_root_sequence_cdses,
+    cds_names, cds_output_paths, translation_path, validate_aa_args, validate_aa_root_sequence_cdses,
   };
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::{Value, json};
+  use std::fs;
   use std::path::{Path, PathBuf};
+  use tempfile::tempdir;
   use treetime_primitives::Seq;
   use treetime_utils::{assert_error, o, vec_of_owned};
 
@@ -147,5 +150,46 @@ mod tests {
 
     assert_eq!(btreemap! { o!("a/b") => PathBuf::from("out/aa.fasta") }, actual);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::listed_names_first(  json!({ "cds_selection": ["G", "F"], "annotation": "genes.gff" }), vec!["G", "F"])]
+  #[case::annotation_names(    json!({ "annotation": "genes.gff" }),                             vec!["F", "G"])]
+  #[case::empty_selection(     json!({ "cds_selection": [], "annotation": "genes.gff" }),        vec!["F", "G"])]
+  #[case::neither(             json!({}),                                                       vec![])]
+  #[trace]
+  fn test_cds_names_of_settings(#[case] settings: Value, #[case] expected: Vec<&str>) -> Result<(), Report> {
+    let dir = tempdir()?;
+    let gff = dir.path().join("genes.gff");
+    fs::write(
+      &gff,
+      "##gff-version 3\nref\t.\tCDS\t1\t9\t.\t+\t0\tName=G\nref\t.\tCDS\t10\t18\t.\t+\t0\tName=F\n",
+    )?;
+    let mut settings = settings;
+    if settings.get("annotation").is_some() {
+      settings["annotation"] = json!(gff);
+    }
+
+    let actual = cds_names(settings.as_object().unwrap())?;
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_cds_names_listed_cds_absent_from_annotation_fails() {
+    let dir = tempdir().unwrap();
+    let gff = dir.path().join("genes.gff");
+    fs::write(&gff, "##gff-version 3\nref\t.\tCDS\t1\t9\t.\t+\t0\tName=F\n").unwrap();
+    let settings = json!({ "cds_selection": ["S"], "annotation": gff });
+
+    assert_error!(
+      cds_names(settings.as_object().unwrap()),
+      format!(
+        "--annotation '{}' does not contain a CDS feature for CDS 'S'",
+        gff.display()
+      )
+    );
   }
 }

@@ -1,6 +1,6 @@
 use crate::runs::record::RunInput;
 use app_commands::command::AppCommand;
-use app_commands::commands::ancestral::aa_node_data::translation_input_paths;
+use app_commands::commands::ancestral::aa_node_data::{cds_names, translation_path};
 use app_commands::config::properties::{PathRole, setting_properties};
 use deser::adapters::As;
 use deser_serde::Serde;
@@ -121,13 +121,12 @@ pub fn template_input_paths(config: &Map<String, Value>, key: &str) -> Result<Ve
   let Some(Value::String(template)) = config.get(key) else {
     return Ok(vec![]);
   };
-  let cdses = config
-    .get("cds_selection")
-    .and_then(Value::as_array)
-    .map(|names| names.iter().filter_map(Value::as_str).map(str::to_owned).collect_vec())
-    .unwrap_or_default();
-  let annotation = config.get("annotation").and_then(Value::as_str).map(Path::new);
-  translation_input_paths(template, &cdses, annotation)
+  Ok(
+    cds_names(config)?
+      .iter()
+      .map(|cds| translation_path(template, cds))
+      .collect(),
+  )
 }
 
 fn sorted_keys(value: &Value) -> Value {

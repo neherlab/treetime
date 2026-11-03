@@ -1,7 +1,7 @@
 use crate::commands::shared::argument_error::argument_error;
 use app_output::output_plan::{OutputSelection, PathPlaceholder, expand_path_template};
-use deser_value::Value;
 use eyre::Report;
+use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -12,6 +12,26 @@ use treetime_io::gff::{GffCdsFeature, gff3_cds_read_file};
 use treetime_primitives::Seq;
 use treetime_utils::error::report_to_string;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
+
+const CDS_SELECTION_KEY: &str = "cds_selection";
+
+const ANNOTATION_KEY: &str = "annotation";
+
+pub fn cds_names(settings: &Map<String, Value>) -> Result<Vec<String>, Report> {
+  let listed = cds_selection_names(settings);
+  let annotation = settings.get(ANNOTATION_KEY).and_then(Value::as_str).map(Path::new);
+  let annotations = read_gff3_annotations(annotation, &listed)?;
+  Ok(selected_cdses(&listed, &annotations))
+}
+
+pub fn cds_selection_names(settings: &Map<String, Value>) -> Vec<String> {
+  settings
+    .get(CDS_SELECTION_KEY)
+    .and_then(Value::as_array)
+    .map_or_else(Vec::new, |names| {
+      names.iter().filter_map(Value::as_str).map(ToOwned::to_owned).collect()
+    })
+}
 
 pub(crate) fn validate_aa_args(
   translations: Option<&str>,
@@ -106,20 +126,6 @@ fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> 
   Ok(())
 }
 
-pub fn translation_input_paths(
-  template: &str,
-  cdses: &[String],
-  annotation: Option<&Path>,
-) -> Result<Vec<PathBuf>, Report> {
-  let annotations = read_gff3_annotations(annotation, cdses)?;
-  Ok(
-    selected_cdses(cdses, &annotations)
-      .iter()
-      .map(|cds| translation_path(template, cds))
-      .collect(),
-  )
-}
-
 pub(crate) fn selected_cdses(
   listed: &[String],
   annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
@@ -131,13 +137,13 @@ pub(crate) fn selected_cdses(
   }
 }
 
-pub(crate) fn cds_output_paths(template: &Path, cdses: &[String]) -> Result<BTreeMap<String, PathBuf>, Report> {
+pub fn cds_output_paths(template: &Path, cdses: &[String]) -> Result<BTreeMap<String, PathBuf>, Report> {
   let flag = OutputSelection::Translations.flag_name();
   let paths = expand_path_template(flag, template, PathPlaceholder::Cds, cdses)?;
   Ok(cdses.iter().cloned().zip(paths).collect())
 }
 
-pub(crate) fn translation_path(template: &str, cds: &str) -> PathBuf {
+pub fn translation_path(template: &str, cds: &str) -> PathBuf {
   PathBuf::from(PathPlaceholder::Cds.substitute(template, cds))
 }
 
@@ -230,7 +236,7 @@ fn select_cds_features(
 
 fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotationEntry {
   let mut other = BTreeMap::new();
-  other.insert("seqid".to_owned(), Value::from(feature.seqid.as_str()));
+  other.insert("seqid".to_owned(), feature.seqid.as_str().into());
 
   if feature.segments.len() == 1 {
     let seg = &feature.segments[0];
