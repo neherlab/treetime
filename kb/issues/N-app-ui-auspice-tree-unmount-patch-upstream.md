@@ -2,13 +2,13 @@
 
 ## Problem
 
-Auspice 3.1.0's tree component removes its drawing when it unmounts, but the tree objects keep their pending drawing steps: staged transitions of an update, and the timers that draw tip labels. When a result view closes during an update (for example, the user opens another run right after a change of the coloring), these steps run against a drawing that is no longer in the document.
+Auspice 3.2.0's tree component removes its drawing when it unmounts, but the tree objects keep their pending drawing steps: staged transitions of an update, and the timers that draw tip labels. When a result view closes during an update (for example, the user opens another run right after a change of the coloring), these steps run against a drawing that is no longer in the document.
 
-TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.1.0.patch`, registered in `patchedDependencies` of the root `package.json`: `componentWillUnmount()` calls a `dispose()` step on each tree object before the drawing is removed, which stops the staged transitions and the tip label timers.
+TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`, registered in `patchedDependencies` of the root `package.json`: `componentWillUnmount()` calls a `dispose()` step on each tree object before the drawing is removed, which stops the staged transitions and the tip label timers.
 
 ## Code
 
-- `TreeComponent.componentWillUnmount()`: removes the drawing ([tree/tree.tsx#L81-L86](https://github.com/nextstrain/auspice/blob/v3.1.0/src/components/tree/tree.tsx#L81-L86))
+- `TreeComponent.componentWillUnmount()`: removes the drawing ([tree/tree.tsx#L81-L86](https://github.com/nextstrain/auspice/blob/db211cc6b44296d92529844502a95a3e68710449/src/components/tree/tree.tsx#L81-L86))
 
 ## Fix
 

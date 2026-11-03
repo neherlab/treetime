@@ -2,13 +2,13 @@
 
 ## Problem
 
-The map of Auspice 3.1.0 rewrites every `http://` URL of its basemap style to `https://` before MapLibre requests it, so that tile URLs of providers such as Mapbox, whose TileJSON lists them over http, load on an https page. The TreeTime apps serve their own Natural Earth basemap from the page's origin (`mapTiles` extension in `packages/app-ui/src/auspice/extensions.ts`). On a page served over http, such as the dev server or `just serve` on localhost, the rewrite sends the requests to `https://localhost:<port>`, which no server answers, and the map shows no land, borders or labels.
+The map of Auspice 3.2.0 rewrites every `http://` URL of its basemap style to `https://` before MapLibre requests it, so that tile URLs of providers such as Mapbox, whose TileJSON lists them over http, load on an https page. The TreeTime apps serve their own Natural Earth basemap from the page's origin (`mapTiles` extension in `packages/app-ui/src/auspice/extensions.ts`). On a page served over http, such as the dev server or `just serve` on localhost, the rewrite sends the requests to `https://localhost:<port>`, which no server answers, and the map shows no land, borders or labels.
 
-TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.1.0.patch`: a URL of the page's own origin keeps its scheme, and other http URLs are still upgraded.
+TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`: a URL of the page's own origin keeps its scheme, and other http URLs are still upgraded.
 
 ## Code
 
-- Request transform: [map/map.js#L552-L560](https://github.com/nextstrain/auspice/blob/v3.1.0/src/components/map/map.js#L552-L560)
+- Request transform: [map/map.js#L551-L559](https://github.com/nextstrain/auspice/blob/db211cc6b44296d92529844502a95a3e68710449/src/components/map/map.js#L551-L559)
 
 ## Fix
 
