@@ -4,7 +4,7 @@
 
 O(n log n) convolution via the convolution theorem (<a id="cite-1"></a>[Cooley and Tukey 1965](https://doi.org/10.2307/2003354) [[1](#ref-1)]): `IFFT(FFT(f) * FFT(g))`. The discrete Fourier transform converts convolution (an O(n^2) operation in the time domain) into pointwise multiplication in the frequency domain, then transforms back.
 
-v1: `convolve_fft()` (`#convolve_fft`) in [`packages/treetime-ops/src/convolution.rs#L33-L37`](../../packages/treetime-ops/src/convolution.rs#L33-L37).
+v1: `FftConvolver::convolve()` (`#FftConvolver`) in [`packages/treetime-ops/src/convolution.rs#L74-L164`](../../packages/treetime-ops/src/convolution.rs#L74-L164), on `realfft` with the plans of `FftPlans` [`packages/treetime-ops/src/convolution.rs#L166-L186`](../../packages/treetime-ops/src/convolution.rs#L166-L186).
 
 ---
 
@@ -69,9 +69,9 @@ v1: `multiply_many_lazy_normalize()` (`#multiply_many_lazy_normalize`) in [`pack
 
 ## Distribution Convolution
 
-Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and calls the FFT wrapper `treetime_ops::convolve_fft()`, which integrates each overlap by the trapezoid rule ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). The direct and ndarray-conv implementations in `treetime-ops` apply the same rule; distribution code does not use them. Point distributions short-circuit to a shift. Formula convolution returns an error.
+Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and runs the first convolution and every tilt through one `treetime_ops::FftConvolver` on `realfft`, which integrates each overlap by the trapezoid rule ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). The direct and ndarray-conv implementations in `treetime-ops` apply the same rule; distribution code does not use them. Point distributions short-circuit to a shift. Formula convolution returns an error.
 
-v1: `distribution_convolution()` (`#distribution_convolution`) in [`packages/treetime-distribution/src/distribution_ops/convolve.rs#L13-L43`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L13-L43).
+v1: `distribution_convolution()` (`#distribution_convolution`) in [`packages/treetime-distribution/src/distribution_ops/convolve.rs#L40-L71`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L40-L71).
 
 ---
 
@@ -98,9 +98,9 @@ v1: `struct EdgeCell` (`#EdgeCell`) in [`packages/treetime-grid/src/edge_cell.rs
 
 ## Additional Algorithms
 
-- Direct Convolution: `DirectConvolve`, `convolve_direct()` (`#convolve_direct`) in [`packages/treetime-ops/src/convolution.rs#L17-L39`](../../packages/treetime-ops/src/convolution.rs#L17-L39) - Explicit $O(nm)$ summation of the overlap sums, used by `treetime-validation` as an independent check of the FFT.
-- Library Convolution: `NdarrayConvolve`, `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L41-L58`](../../packages/treetime-ops/src/convolution.rs#L41-L58) - Overlap sums from the ndarray-conv crate.
-- Trapezoid rule: `trapezoid_from_overlap_sums()` (`#trapezoid_from_overlap_sums`) in [`packages/treetime-ops/src/convolution.rs#L99-L118`](../../packages/treetime-ops/src/convolution.rs#L99-L118) - Turns the overlap sums of every algorithm (direct, ndarray-conv, FFT) into trapezoid sums over each overlap; the two extreme outputs hold a quarter of the end products. Operands with fewer than 2 samples are rejected.
+- Direct Convolution: `DirectConvolve`, `convolve_direct()` (`#convolve_direct`) in [`packages/treetime-ops/src/convolution.rs#L15-L36`](../../packages/treetime-ops/src/convolution.rs#L15-L36) - Explicit $O(nm)$ summation of the overlap sums, used by `treetime-validation` as an independent check of the FFT.
+- Library Convolution: `NdarrayConvolve`, `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L39-L55`](../../packages/treetime-ops/src/convolution.rs#L39-L55) - Overlap sums from the ndarray-conv crate.
+- Trapezoid rule: `trapezoid_from_overlap_sums()` (`#trapezoid_from_overlap_sums`) in [`packages/treetime-ops/src/convolution.rs#L233-L252`](../../packages/treetime-ops/src/convolution.rs#L233-L252) - Turns the overlap sums of every algorithm (direct, ndarray-conv, FFT) into trapezoid sums over each overlap; the two extreme outputs hold a quarter of the end products. Operands with fewer than 2 samples are rejected.
 - Distribution Division: `distribution_division()` (`#distribution_division`) in [`packages/treetime-distribution/src/distribution_ops/divide.rs#L16`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L16) - Cavity computation via pointwise division (subtraction in neg-log). Division reuses multiplication's support rule (`fn multiplication_support_intersection()`): per side the innermost hard bound when any operand is hard there, else the outermost soft bound. A soft divisor tail therefore extends the quotient -- sampled as bulk -- instead of truncating it, because the cavity dividend is a product containing the divisor as a factor so the quotient decays rather than spiking. Soft result sides are refit from the combined grid; a hard dividend edge bounds the quotient to zero (`Hard`), a divisor hard or `Error` edge yields `Error` beyond it. Exact endpoint contact is a Point distribution. [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines the tails. Plain division floors small denominators at $10^{-10}$, changing the quotient; Formula division is unsupported (returns an error). The scientific small-divisor policy is unresolved.
 - Distribution Negation: `distribution_negation()` (`#distribution_negation`) in [`packages/treetime-distribution/src/distribution_ops/negate.rs#L10-L18`](../../packages/treetime-distribution/src/distribution_ops/negate.rs#L10-L18) - Time reversal via `f(x) -> f(-x)`.
 
