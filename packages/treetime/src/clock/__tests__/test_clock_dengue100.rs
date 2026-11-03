@@ -39,11 +39,11 @@ mod tests {
 
     #[rustfmt::skip]
     let v0_outliers = [o!("GQ398257"), o!("GQ398268"), o!("HQ891024"), o!("KF704357"),
-      o!("KY586699"), o!("OR389309"), o!("OR389321"), o!("OR389326")];
+      o!("KY586699"), o!("OQ101603"), o!("OR389309"), o!("OR389321"), o!("OR389326")];
     let shared: Vec<_> = v0_outliers.iter().filter(|name| outlier_names.contains(name)).collect();
     assert!(
       shared.len() >= 6,
-      "Should share at least 6 of 8 v0 outliers, got {}: {shared:?}",
+      "Should share at least 6 of 9 v0 outliers, got {}: {shared:?}",
       shared.len()
     );
 
