@@ -29,6 +29,8 @@ use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::{AsciiChar, AsciiTable, LogLh, Seq};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::interval::range_difference::range_difference;
+use treetime_utils::interval::range_intersection::range_intersection_iter;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn process_forward_indexed(
@@ -171,6 +173,7 @@ impl SparseForwardPass<'_> {
     let mut msg_from_parent = if is_leaf {
       msg_from_parent
     } else {
+      node.globally_missing = Arc::clone(&parent.globally_missing);
       SparseSeqDistribution::default()
     };
     if !child_missing.is_empty() {
@@ -269,8 +272,20 @@ fn compute_msg_to_child(
       seq_dis.variable.insert(pos, child_state, &dis);
     }
   }
+  let globally_missing = parent.globally_missing.ranges();
+  for pos in
+    range_intersection_iter([&backward.child_no_data, globally_missing].into_iter()).flat_map(|(start, end)| start..end)
+  {
+    let parent_state = parent.sequence[pos];
+    if !sites.contains(pos) && alphabet.is_canonical(parent_state) {
+      removed[parent_state] += 1;
+    }
+  }
   let mut child_missing = VarPosMap::default();
-  for pos in backward.child_no_data.iter().flat_map(|&(start, end)| start..end) {
+  for pos in range_difference(&backward.child_no_data, globally_missing)
+    .iter()
+    .flat_map(|&(start, end)| start..end)
+  {
     if sites.contains(pos) {
       continue;
     }

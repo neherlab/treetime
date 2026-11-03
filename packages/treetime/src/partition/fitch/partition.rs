@@ -1,9 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::{
-  FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
-};
+use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState};
 use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
 use std::sync::Arc;
@@ -34,13 +32,7 @@ impl PartitionFitch {
     for (key, node_data) in self.nodes {
       let keep_sequence = key == root_key || graph.is_leaf(key);
       let sequence = if keep_sequence { node_data.seq.sequence } else { seq![] };
-      node_states.insert(
-        key,
-        SparseNodeState {
-          sequence: Arc::new(sequence),
-          profile: SparseSeqDistribution::default(),
-        },
-      );
+      node_states.insert(key, SparseNodeState::new(Arc::new(sequence)));
       obs_nodes.insert(
         key,
         SparseNodeObs {

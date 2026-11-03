@@ -84,10 +84,12 @@ fn edge_sequence_subs(
     .merge(child_overrides)
     .dedup()
     .filter_map(|pos| {
-      let reff = internal_state(parent, pos, alphabet);
       let qry = child.state_at(pos, alphabet);
-      let skipped = alphabet.is_gap(reff) || alphabet.is_gap(qry) || (skip_unknown && qry == alphabet.unknown());
-      (reff != qry && !skipped).then(|| Sub::new(reff, pos, qry))
+      if alphabet.is_gap(qry) || (skip_unknown && qry == alphabet.unknown()) {
+        return None;
+      }
+      let reff = internal_state(parent, pos, alphabet);
+      (reff != qry && !alphabet.is_gap(reff)).then(|| Sub::new(reff, pos, qry))
     })
     .collect()
 }
@@ -159,6 +161,9 @@ impl<'a> EdgeChild<'a> {
 fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
   let state = node.sequence[pos];
   if state == alphabet.gap() {
+    return state;
+  }
+  if let Some(state) = node.globally_missing.most_likely_state_at(pos) {
     return state;
   }
   node.profile.variable.get(pos).map_or(state, |var| {

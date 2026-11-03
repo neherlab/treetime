@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::shared::update::MarginalNodeState;
+use crate::partition::marginal::sparse::globally_missing::{GloballyMissing, SitePosterior};
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
@@ -65,21 +66,32 @@ impl SparseNodeObs {
 pub struct SparseNodeState {
   pub(crate) sequence: Arc<Seq>,
   pub(crate) profile: SparseSeqDistribution,
+  pub(crate) globally_missing: Arc<GloballyMissing>,
 }
 
 impl SparseNodeState {
-  pub(crate) fn empty() -> Self {
+  pub(crate) fn new(sequence: Arc<Seq>) -> Self {
     Self {
-      sequence: Arc::new(seq![]),
+      sequence,
       profile: SparseSeqDistribution::default(),
+      globally_missing: Arc::default(),
     }
   }
 
+  pub(crate) fn empty() -> Self {
+    Self::new(Arc::new(seq![]))
+  }
+
   pub fn leaf(seq: &Seq) -> Self {
-    Self {
-      sequence: Arc::new(seq.to_owned()),
-      profile: SparseSeqDistribution::default(),
-    }
+    Self::new(Arc::new(seq.to_owned()))
+  }
+
+  pub(crate) fn posteriors(&self) -> impl Iterator<Item = (usize, SitePosterior<'_>)> {
+    self.globally_missing.merge_into(self.profile.variable.iter())
+  }
+
+  pub(crate) fn has_posterior_at(&self, pos: usize) -> bool {
+    self.globally_missing.contains(pos) || self.profile.variable.contains_key(pos)
   }
 }
 

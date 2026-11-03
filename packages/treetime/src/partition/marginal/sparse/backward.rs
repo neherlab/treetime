@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
+use crate::partition::marginal::sparse::globally_missing::GloballyMissing;
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::sequences::fitch_node_sequences;
@@ -87,7 +87,7 @@ impl SparseBackwardPass<'_> {
       (msg, no_data)
     };
 
-    let (profile, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
+    let (profile, globally_missing, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
       (Some(&(_, edge_key)), Some(_)) => {
         let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
         let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
@@ -97,6 +97,7 @@ impl SparseBackwardPass<'_> {
         };
         (
           SparseSeqDistribution::default(),
+          Arc::default(),
           smallvec![SparseEdgeBackward {
             msg_to_parent,
             msg_from_child,
@@ -105,7 +106,8 @@ impl SparseBackwardPass<'_> {
         )
       },
       (None, None) => (
-        with_equilibrium_at(msg_to_parent, &no_data, gtr, &partition.alphabet),
+        msg_to_parent,
+        Arc::new(GloballyMissing::new(no_data, gtr.pi(), &partition.alphabet)),
         PerEdge::new(),
       ),
       _ => {
@@ -115,7 +117,14 @@ impl SparseBackwardPass<'_> {
       },
     };
 
-    let output = Arc::new((SparseNodeState { sequence, profile }, parent_message));
+    let output = Arc::new((
+      SparseNodeState {
+        sequence,
+        profile,
+        globally_missing,
+      },
+      parent_message,
+    ));
     Ok((Arc::clone(&output), output))
   }
 
@@ -226,22 +235,6 @@ pub(crate) fn own_state(
   } else {
     state
   }
-}
-
-fn with_equilibrium_at(
-  mut profile: SparseSeqDistribution,
-  no_data: &[(usize, usize)],
-  gtr: &GTR,
-  alphabet: &Alphabet,
-) -> SparseSeqDistribution {
-  let pi = gtr.pi();
-  let state = alphabet.char(most_likely_state(pi).unwrap_or(0));
-  let mut equilibrium = VarPosMap::default();
-  for pos in no_data.iter().flat_map(|&(start, end)| start..end) {
-    equilibrium.insert_with(pos, state, pi.len(), |row| aview_mut1(row).assign(pi));
-  }
-  profile.variable.merge(equilibrium);
-  profile
 }
 
 fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDistribution, Report> {

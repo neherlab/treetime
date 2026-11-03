@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::posterior_states::{AmbiguityThreshold, most_likely_state};
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
+use crate::partition::marginal::sparse::globally_missing::SitePosterior;
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::AmbiguousSites;
@@ -49,13 +50,20 @@ pub(crate) fn map_seq_overlay(node: &SparseNodeState, alphabet: &Alphabet) -> Se
 pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
   let mut seq = (*node.sequence).clone();
 
-  for (pos, state) in variable_states(node, alphabet, resolve) {
-    seq[pos] = state;
+  if matches!(resolve, Resolve::Argmax) {
+    node.globally_missing.write_most_likely(&mut seq, alphabet.gap());
+    for (pos, state) in explicit_states(node, alphabet, resolve) {
+      seq[pos] = state;
+    }
+  } else {
+    for (pos, state) in variable_states(node, alphabet, resolve) {
+      seq[pos] = state;
+    }
   }
 
   if matches!(resolve, Resolve::Sample(_)) {
     for pos in 0..seq.len() {
-      if node.profile.variable.contains_key(pos) {
+      if node.has_posterior_at(pos) {
         continue;
       }
       if let Some(fixed) = node.profile.fixed.get(seq[pos]) {
@@ -68,6 +76,23 @@ pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resol
 }
 
 fn variable_states<'a>(
+  node: &'a SparseNodeState,
+  alphabet: &'a Alphabet,
+  resolve: &'a mut Resolve<'_>,
+) -> impl Iterator<Item = (usize, AsciiChar)> + 'a {
+  node
+    .posteriors()
+    .filter(|&(pos, _)| !is_gap(node, pos, alphabet))
+    .map(move |(pos, posterior)| {
+      let state = match posterior {
+        SitePosterior::Explicit(var) => alphabet.char(resolve_profile(aview1(var.dis), resolve)),
+        SitePosterior::Equilibrium => node.globally_missing.resolve(alphabet, resolve),
+      };
+      (pos, state)
+    })
+}
+
+fn explicit_states<'a>(
   node: &'a SparseNodeState,
   alphabet: &'a Alphabet,
   resolve: &'a mut Resolve<'_>,
@@ -112,15 +137,16 @@ pub(crate) fn internal_ambiguity(
   alphabet: &Alphabet,
   threshold: AmbiguityThreshold,
 ) -> AmbiguousSites {
+  let equilibrium_code = threshold.ambiguity_char(&aview1(node.globally_missing.profile()), alphabet);
   let mut sites: AmbiguousSites = node
-    .profile
-    .variable
-    .iter()
-    .filter(|&(&pos, _)| !is_gap(node, pos, alphabet))
-    .filter_map(|(&pos, var)| {
-      threshold
-        .ambiguity_char(&aview1(var.dis), alphabet)
-        .map(|code| (pos, code))
+    .posteriors()
+    .filter(|&(pos, _)| !is_gap(node, pos, alphabet))
+    .filter_map(|(pos, posterior)| {
+      match posterior {
+        SitePosterior::Explicit(var) => threshold.ambiguity_char(&aview1(var.dis), alphabet),
+        SitePosterior::Equilibrium => equilibrium_code,
+      }
+      .map(|code| (pos, code))
     })
     .collect();
   let fixed_codes: BTreeMap<AsciiChar, AsciiChar> = node
@@ -138,7 +164,7 @@ pub(crate) fn internal_ambiguity(
       .sequence
       .iter()
       .enumerate()
-      .filter(|&(pos, _)| !node.profile.variable.contains_key(pos))
+      .filter(|&(pos, _)| !node.has_posterior_at(pos))
       .filter_map(|(pos, state)| fixed_codes.get(state).map(|&code| (pos, code)));
     sites.extend(fixed_sites);
   }
@@ -188,12 +214,17 @@ pub(crate) fn leaf_posterior(
   parent: &SparseNodeState,
   alphabet: &Alphabet,
 ) -> Option<Array1<f64>> {
-  let from_parent = down.variable.get(pos).map(|var| var.dis).or_else(|| {
-    down
-      .fixed
-      .get(map_state(parent, pos, alphabet))
-      .map(|fixed| fixed.dis.as_slice())
-  })?;
+  let from_parent = down
+    .variable
+    .get(pos)
+    .or_else(|| parent.globally_missing.get(pos))
+    .map(|var| var.dis)
+    .or_else(|| {
+      down
+        .fixed
+        .get(map_state(parent, pos, alphabet))
+        .map(|fixed| fixed.dis.as_slice())
+    })?;
   let Ok(mask) = alphabet.get_profile(observed) else {
     return None;
   };
@@ -210,6 +241,9 @@ fn is_gap(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> bool {
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
+  if let Some(state) = node.globally_missing.most_likely_state_at(pos) {
+    return state;
+  }
   match node.profile.variable.get(pos) {
     Some(var) => alphabet.char(most_likely_state(&aview1(var.dis)).unwrap_or(0)),
     None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),

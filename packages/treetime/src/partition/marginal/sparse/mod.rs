@@ -5,6 +5,7 @@ pub(crate) mod alignment_indels;
 pub(crate) mod backward;
 pub(crate) mod candidate_sites;
 pub(crate) mod forward;
+pub(crate) mod globally_missing;
 pub(crate) mod message;
 pub(crate) mod mutations;
 pub mod partition;

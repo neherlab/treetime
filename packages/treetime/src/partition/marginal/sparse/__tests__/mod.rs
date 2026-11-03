@@ -1,4 +1,5 @@
 mod test_candidate_sites;
+mod test_globally_missing;
 mod test_message;
 mod test_missing_data;
 mod test_mutations;
