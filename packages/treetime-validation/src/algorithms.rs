@@ -15,7 +15,7 @@ pub enum ConvolutionAlgorithm {
   All,
   Direct,
   NdarrayConv,
-  NdarrayConvFft,
+  Fft,
 }
 
 impl ConvolutionAlgorithm {
@@ -36,7 +36,7 @@ impl ConvolutionAlgorithm {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
       Self::Direct => Ok(Box::new(DirectConvolve)),
       Self::NdarrayConv => Ok(Box::new(NdarrayConvolve)),
-      Self::NdarrayConvFft => Ok(Box::new(FftConvolve)),
+      Self::Fft => Ok(Box::new(FftConvolve)),
     }
   }
 }

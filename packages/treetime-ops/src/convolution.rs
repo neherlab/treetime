@@ -1,9 +1,7 @@
 use crate::traits::ConvolveAlgo;
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, s};
-use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode, get_fft_processor};
-use std::any::Any;
-use std::cell::RefCell;
+use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use parking_lot::RwLock;
 use realfft::num_complex::Complex;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
@@ -12,13 +10,6 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, OnceLock};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_report};
-
-const FFT_PROCESSORS_PER_THREAD: usize = 8;
-const MAX_CACHED_FFT_LEN: usize = 1 << 14;
-
-thread_local! {
-  static FFT_PROCESSORS_BY_FFT_LEN: RefCell<Vec<(usize, Box<dyn Any>)>> = const { RefCell::new(Vec::new()) };
-}
 
 #[derive(Debug)]
 pub struct DirectConvolve;
@@ -68,7 +59,7 @@ pub struct FftConvolve;
 
 impl ConvolveAlgo for FftConvolve {
   fn name(&self) -> &'static str {
-    "ndarray-conv-fft"
+    "fft"
   }
 
   fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
@@ -77,18 +68,7 @@ impl ConvolveAlgo for FftConvolve {
 }
 
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  check_operand_lengths(f_values.len(), g_values.len())?;
-  let padded_len = f_values.len() + 2 * g_values.len().saturating_sub(1);
-  let fft_len = fft_len(padded_len.max(g_values.len()));
-  let overlap_sums = if fft_len > MAX_CACHED_FFT_LEN {
-    f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?
-  } else {
-    FFT_PROCESSORS_BY_FFT_LEN.with_borrow_mut(|processors| {
-      let processor = processor_for_fft_len(processors, fft_len, get_fft_processor::<f64, f64>)?;
-      Ok::<_, Report>(f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)?)
-    })?
-  };
-  Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+  FftConvolver::new(f_values.len(), g_values.len(), &FftPlans::new())?.convolve(dx, f_values, g_values)
 }
 
 pub struct FftConvolver {
@@ -270,7 +250,7 @@ pub(crate) fn trapezoid_from_overlap_sums(
 
 #[expect(
   clippy::integer_division,
-  reason = "the transform length of ndarray-conv steps down from a power of two by integer ratios"
+  reason = "reproduces the transform length of ndarray-conv, which steps down from a power of two by integer ratios, so outputs stay identical"
 )]
 fn fft_len(padded_len: usize) -> usize {
   let mut len = padded_len.next_power_of_two();
@@ -285,28 +265,6 @@ fn fft_len(padded_len: usize) -> usize {
     }
   }
   len
-}
-
-fn processor_for_fft_len<P: Any>(
-  processors: &mut Vec<(usize, Box<dyn Any>)>,
-  fft_len: usize,
-  new_processor: impl FnOnce() -> P,
-) -> Result<&mut P, Report> {
-  let entry = if let Some(index) = processors.iter().position(|(len, _)| *len == fft_len) {
-    processors.remove(index)
-  } else {
-    if processors.len() >= FFT_PROCESSORS_PER_THREAD {
-      processors.remove(0);
-    }
-    let processor: Box<dyn Any> = Box::new(new_processor());
-    (fft_len, processor)
-  };
-  processors.push(entry);
-  let index = processors.len() - 1;
-  processors[index]
-    .1
-    .downcast_mut::<P>()
-    .ok_or_else(|| make_internal_report!("FFT processor cache holds a processor of another type"))
 }
 
 fn contiguous<T>(array: &mut Array1<T>) -> Result<&mut [T], Report> {
