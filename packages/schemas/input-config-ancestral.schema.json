@@ -97,7 +97,7 @@
       "x-cli-flag": "--annotation"
     },
     "translations": {
-      "description": "Path template of the amino-acid alignments, one FASTA file per CDS\n\nThe template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS\nof `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
+      "description": "Path template of the amino-acid alignments, one FASTA file per CDS\n\nThe template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS\nof `--annotation` without `--cds-selection`. The placeholder is `{cds}` or `%GENE`.\nA path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
       "type": "string",
       "x-path": "input-template",
       "x-unset": true,

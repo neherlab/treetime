@@ -3459,7 +3459,7 @@
           ],
           "conflicts": [],
           "help": "Path template of the amino-acid alignments, one FASTA file per CDS",
-          "more": "The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file."
+          "more": "The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS of `--annotation` without `--cds-selection`. The placeholder is `{cds}` or `%GENE`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file."
         },
         {
           "key": "cds_selection",

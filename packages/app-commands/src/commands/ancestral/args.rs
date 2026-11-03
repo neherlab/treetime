@@ -396,7 +396,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// Path template of the amino-acid alignments, one FASTA file per CDS
   ///
   /// The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS
-  /// of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.
+  /// of `--annotation` without `--cds-selection`. The placeholder is `{cds}` or `%GENE`.
   /// A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]

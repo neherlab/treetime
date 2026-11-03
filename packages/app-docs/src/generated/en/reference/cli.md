@@ -490,7 +490,7 @@ treetime ancestral -t tree.nwk -a aln.fasta.xz --annotation genome.gff3 --transl
    Also supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--translations <FILE>` — Path template of the amino-acid alignments, one FASTA file per CDS
 
-   The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+   The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS of `--annotation` without `--cds-selection`. The placeholder is `{cds}` or `%GENE`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--cds-selection <CDS>` — Names of the CDSs to reconstruct from `--translations`
 
    Without this setting, the run reconstructs every CDS of `--annotation`.

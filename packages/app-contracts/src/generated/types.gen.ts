@@ -3760,7 +3760,7 @@ export type AncestralConfig = {
    * Path template of the amino-acid alignments, one FASTA file per CDS
    *
    * The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS
-   * of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.
+   * of `--annotation` without `--cds-selection`. The placeholder is `{cds}` or `%GENE`.
    * A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
    */
   translations?: string;
