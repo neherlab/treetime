@@ -56,4 +56,4 @@ The backward messages must resolve their own slope: the spacing of a message mus
 ## Related
 
 - [M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md): the discretization error of the time passes on a three-tip tree, which a chain multiplies
-- [N-timetree-backward-message-can-miss-the-date-of-its-child-by-half-a-cell.md](N-timetree-backward-message-can-miss-the-date-of-its-child-by-half-a-cell.md): a backward message whose resampled branch distribution moves its hard end at length 0 by up to half a cell
+- [N-timetree-resampled-time-distributions-with-two-hard-ends-move-one-end-by-up-to-half-a-cell.md](N-timetree-resampled-time-distributions-with-two-hard-ends-move-one-end-by-up-to-half-a-cell.md): a resampled operand with two hard ends, such as the date range of a tip dated to a year, moves one hard end by up to half a cell

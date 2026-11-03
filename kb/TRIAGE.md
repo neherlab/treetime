@@ -93,6 +93,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-timetree-convergence-metric-deficiencies.md](issues/N-timetree-convergence-metric-deficiencies.md)**: test `log_lh_time` for convergence, use it as a plateau guard, or keep it for reporting only
 - **[kb/issues/N-timetree-dense-golden-master-node-mismatch.md](issues/N-timetree-dense-golden-master-node-mismatch.md)**: recapture the `ebola_20` marginal fixture from v0 with `prune_short=False`, or compare only the nodes that both trees share
 - **[kb/issues/N-timetree-n-branches-posterior-unimplemented.md](issues/N-timetree-n-branches-posterior-unimplemented.md)**: decide whether to add the v0 point-time lineage counts as a choice with `--n-branches-posterior`
+- **[kb/issues/N-timetree-resampled-time-distributions-with-two-hard-ends-move-one-end-by-up-to-half-a-cell.md](issues/N-timetree-resampled-time-distributions-with-two-hard-ends-move-one-end-by-up-to-half-a-cell.md)**: keep both hard ends of a resampled operand exact with a common spacing of range/⌈range/dx⌉, or accept the half-cell error at its second hard end
 - **[kb/issues/N-timetree-round-refits-clock-when-nothing-changed.md](issues/N-timetree-round-refits-clock-when-nothing-changed.md)**: keep v0 parity, or skip the clock refit when a round changed nothing and record the divergence
 - **[kb/issues/N-topology-order-unknown-target-labels-ignored.md](issues/N-topology-order-unknown-target-labels-ignored.md)**: ignore target names that match no leaf or repeat, warn about them, or reject them
 - **[kb/issues/N-utils-mean-by-key-empty-and-integer-semantics.md](issues/N-utils-mean-by-key-empty-and-integer-semantics.md)**: return `Option<U>`, restrict the function to floating-point keys, or keep the current contract and document it
@@ -150,7 +151,6 @@ Each line names the issue and the measurement or analysis that must come first.
 - **[kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md](issues/N-timetree-gm-runner-dataset-cases-disabled.md)**: find out why the v0 capture does not reproduce the committed fixture, and why the dense `mpox_clade_ii_20` case is slow
 - **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the memory of the tab in the browsers with runs computing at the same time and after several large runs in one page session
 - **[kb/issues/N-distribution-convolution-valley-quadrature-turns-exact-zero-into-finite-density.md](issues/N-distribution-convolution-valley-quadrature-turns-exact-zero-into-finite-density.md)**: find whether a time message with an interior support gap, or a convolution operand with a valley deeper than 745 nats, is reachable from `timetree` inputs
-- **[kb/issues/N-timetree-backward-message-can-miss-the-date-of-its-child-by-half-a-cell.md](issues/N-timetree-backward-message-can-miss-the-date-of-its-child-by-half-a-cell.md)**: measure how often the hard end of a resampled branch distribution moves in the backward pass, and the change of the node dates when it stays on a grid point
 
 ## Fix now
 
