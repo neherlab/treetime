@@ -29,7 +29,7 @@ A `Linear` tail law with neg-log slope $k$ holds the mass $p_\text{edge} / |k|$ 
 
 - `fn mass_bounded_domain()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L310-L330](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L310-L330): the soft side of a mass window from the tail quantile
 - `fn SoftTailLaw::fit()` [packages/treetime-grid/src/soft_tail_law.rs#L13](../../packages/treetime-grid/src/soft_tail_law.rs#L13): clamps a rising slope to flat, with no lower bound on a decaying one
-- `fn reconstruct_neg_log_tails()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L362](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L362): the tail of an FFT result, computed by exponential tilting and continued by a secant at a soft end that no tilt reaches
+- `fn reconstruct_neg_log_tails()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L349](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L349): the tail of an FFT result, computed by exponential tilting and continued by a secant at a soft end that no tilt reaches
 
 ## Validation
 

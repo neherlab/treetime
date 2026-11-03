@@ -220,7 +220,7 @@ A mass window (`fn mass_bounded_domain()`) moves only a `Linear` side inward, to
 
 ## Exact point and range convolution
 
-A date range $[a, b]$ convolved with a function $f$ is computed exactly from the mass model of $f$ (`fn convolution_range_function()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L79-L137](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L79-L137)):
+A date range $[a, b]$ convolved with a function $f$ is computed exactly from the mass model of $f$ (`fn convolution_range_function()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142)):
 
 $$g(t) = A_r\,A_f \int_{t - b}^{t - a} f(s)\,ds$$
 
