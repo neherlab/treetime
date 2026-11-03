@@ -51,8 +51,10 @@ pub(crate) fn run_timetree(
     explain_grid_point_limit(
       report,
       inputs.names,
-      inputs.clock_model.clock_rate(),
-      inputs.clock_rate_fixed,
+      GridStage::TimeInference {
+        clock_rate: inputs.clock_model.clock_rate(),
+        clock_rate_fixed: inputs.clock_rate_fixed,
+      },
     )
   })
 }
@@ -165,12 +167,7 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub posterior_summaries: PosteriorSummaries,
 }
 
-pub(super) fn explain_grid_point_limit(
-  report: Report,
-  names: &NodeNames,
-  clock_rate: f64,
-  clock_rate_fixed: bool,
-) -> Report {
+pub(crate) fn explain_grid_point_limit(report: Report, names: &NodeNames, stage: GridStage) -> Report {
   let Some(exceeded) = report
     .chain()
     .find_map(|cause| cause.downcast_ref::<GridPointLimitExceeded>())
@@ -201,32 +198,60 @@ pub(super) fn explain_grid_point_limit(
     .and_then(|explanation| explanation.clock_rate_effect)
     .map_or_else(
       || "Raise --max-grid-points when enough memory is available.".to_owned(),
-      |effect| clock_rate_advice(effect, clock_rate, clock_rate_fixed),
+      |effect| clock_rate_advice(effect, stage),
     );
+  let subject = stage.subject();
   report.wrap_err(format!(
-    "Time inference needs {needs} the limit of {limit} (--max-grid-points){operation}.{attribution} {advice}"
+    "{subject} needs {needs} the limit of {limit} (--max-grid-points){operation}.{attribution} {advice}"
   ))
 }
 
-fn clock_rate_advice(effect: ClockRateEffect, clock_rate: f64, clock_rate_fixed: bool) -> String {
-  let rate = float_to_significant_digits(clock_rate, 3);
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum GridStage {
+  TimeInference { clock_rate: f64, clock_rate_fixed: bool },
+  ClockRateProbe { clock_rate: f64 },
+}
+
+impl GridStage {
+  fn subject(self) -> &'static str {
+    match self {
+      Self::TimeInference { .. } => "Time inference",
+      Self::ClockRateProbe { .. } => "Estimating the clock rate from the marginal likelihood of the node times",
+    }
+  }
+}
+
+fn clock_rate_advice(effect: ClockRateEffect, stage: GridStage) -> String {
   let (relation, width) = match effect {
     ClockRateEffect::Narrow => ("far above", "very narrow"),
     ClockRateEffect::Wide => ("far below", "very wide"),
     ClockRateEffect::Width => ("far from", "very narrow or very wide"),
   };
   let raise = "raise --max-grid-points when enough memory is available.";
-  if clock_rate_fixed {
-    format!(
-      "The fixed --clock-rate {rate} may be {relation} the rate the data supports, which makes branch-time \
-       distributions {width}. Check --clock-rate, or {raise}"
-    )
-  } else {
-    format!(
-      "The estimated clock rate {rate} may be {relation} the true rate, which makes branch-time distributions \
+  match stage {
+    GridStage::TimeInference {
+      clock_rate,
+      clock_rate_fixed: true,
+    } => format!(
+      "The fixed --clock-rate {} may be {relation} the rate the data supports, which makes branch-time \
+       distributions {width}. Check --clock-rate, or {raise}",
+      float_to_significant_digits(clock_rate, 3)
+    ),
+    GridStage::TimeInference {
+      clock_rate,
+      clock_rate_fixed: false,
+    } => format!(
+      "The estimated clock rate {} may be {relation} the true rate, which makes branch-time distributions \
        {width}; errors in the input dates and weak temporal signal cause such estimates. Check the input dates, \
-       set --clock-rate, or {raise}"
-    )
+       set --clock-rate, or {raise}",
+      float_to_significant_digits(clock_rate, 3)
+    ),
+    GridStage::ClockRateProbe { clock_rate } => format!(
+      "The probe of the marginal likelihood tried the clock rate {}, which may be {relation} the true rate and \
+       makes branch-time distributions {width}; errors in the input dates and weak temporal signal move the clock \
+       rate estimate toward such rates. Check the input dates, set --clock-rate, or {raise}",
+      float_to_significant_digits(clock_rate, 3)
+    ),
   }
 }
 

@@ -134,6 +134,38 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_marginal_clock_rate_probe_grid_point_limit_error_explains_the_probe() -> Result<(), Report> {
+    let setup = helpers::single_leaf(
+      helpers::gaussian(2000.0, 2016.0, 33)?,
+      helpers::gaussian(0.0, 0.25, 17)?,
+    )?;
+    let a = find_node_key_by_name(&setup.graph, &setup.names, "A").expect("leaf not found");
+    let inputs = MarginalRateInputs {
+      max_points: MaxGridPoints::new(1100)?,
+      ..setup.inputs_at(&setup.branches, 0.5, RateWindow::initial())
+    };
+
+    let result = step_marginal_clock_rate(&inputs);
+
+    let expected = format!(
+      "When computing the marginal likelihood of the node times at clock rate 0.625: Estimating the clock rate from \
+       the marginal likelihood of the node times needs a grid of 1281 points, more than the limit of 1100 \
+       (--max-grid-points) when sending the time message of node 'A' backward to its parent. The grid spans [2000, \
+       2016] at spacing 0.0125: the span is that of the time distribution of node 'A' given its subtree, which takes \
+       it from the date constraint of node 'A', and the spacing is that of the time distribution of the branch above \
+       node 'A'. The operands are the time distribution of node 'A' given its subtree over [2000, 2016] at spacing \
+       0.5, and the time distribution of the branch above node 'A' over [-0.2, 0] at spacing 0.0125. The probe of \
+       the marginal likelihood tried the clock rate 0.625, which may be far above the true rate and makes \
+       branch-time distributions very narrow; errors in the input dates and weak temporal signal move the clock \
+       rate estimate toward such rates. Check the input dates, set --clock-rate, or raise --max-grid-points when \
+       enough memory is available.: When sending the time message of node {a} backward to its parent: A grid over \
+       [2000, 2016] with spacing 0.0125 needs 1281 points, more than the limit of 1100"
+    );
+    assert_error!(result, expected);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use treetime_graph::key_map::EdgeMap;
@@ -152,7 +184,7 @@ mod tests {
       }
     }
 
-    pub(super) struct Cherry {
+    pub(super) struct Fixture {
       pub graph: Graph,
       pub constraints: DateConstraints,
       pub bad_branches: NodeMap<bool>,
@@ -161,7 +193,7 @@ mod tests {
       pub fft_plans: FftPlans,
     }
 
-    impl Cherry {
+    impl Fixture {
       pub(super) fn inputs(&self) -> MarginalRateInputs<'_> {
         self.inputs_at(&self.branches, 1.0, RateWindow::initial())
       }
@@ -174,6 +206,7 @@ mod tests {
       ) -> MarginalRateInputs<'a> {
         MarginalRateInputs {
           graph: &self.graph,
+          names: &self.names,
           date_constraints: &self.constraints,
           coalescent: None,
           bad_branches: &self.bad_branches,
@@ -186,11 +219,42 @@ mod tests {
       }
     }
 
-    pub(super) fn cherry() -> Result<Cherry, Report> {
+    pub(super) fn single_leaf(date: Distribution<NegLog>, branch: Distribution<NegLog>) -> Result<Fixture, Report> {
+      let parsed = nwk_read(b"(A:1)root;".as_slice())?;
+      let names = parsed.names.clone();
+      let graph = parsed.graph;
+      let leaf = find_node_key_by_name(&graph, &names, "A").expect("leaf not found");
+      let mut constraints = DateConstraints::default();
+      constraints.by_node.insert(leaf, Some(Arc::new(date)));
+      let mut branches = unknown_branches(&graph);
+      let branch = BranchLikelihood {
+        distribution: Some(Arc::new(branch)),
+        time_length: None,
+      };
+      branches.insert(parent_edge_key(&graph, leaf), branch);
+      let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
+      Ok(Fixture {
+        graph,
+        constraints,
+        bad_branches,
+        branches,
+        names,
+        fft_plans: FftPlans::new(),
+      })
+    }
+
+    pub(super) fn gaussian(start: f64, end: f64, n_points: usize) -> Result<Distribution<NegLog>, Report> {
+      let x = Array1::linspace(start, end, n_points);
+      let mid = f64::midpoint(start, end);
+      let y = x.mapv(|t| (t - mid).powi(2));
+      Distribution::function(x, y)
+    }
+
+    pub(super) fn cherry() -> Result<Fixture, Report> {
       cherry_on(BRANCH_GRID_DX)
     }
 
-    pub(super) fn cherry_on(branch_grid_dx: f64) -> Result<Cherry, Report> {
+    pub(super) fn cherry_on(branch_grid_dx: f64) -> Result<Fixture, Report> {
       let parsed = nwk_read(b"(A:8.0,B:5.0)root;".as_slice())?;
       let names = parsed.names.clone();
       let graph = parsed.graph;
@@ -211,7 +275,7 @@ mod tests {
         branches.insert(parent_edge_key(&graph, key), branch);
       }
       let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
-      Ok(Cherry {
+      Ok(Fixture {
         graph,
         constraints,
         bad_branches,

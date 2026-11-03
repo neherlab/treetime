@@ -426,6 +426,7 @@ mod tests {
     let rate_step = |prior: &CoalescentPrior| {
       step_marginal_clock_rate(&MarginalRateInputs {
         graph: &state.graph,
+        names: &state.names,
         date_constraints: &context.date_constraints,
         coalescent: Some(prior),
         bad_branches: &state.time_inference.bad_branches,

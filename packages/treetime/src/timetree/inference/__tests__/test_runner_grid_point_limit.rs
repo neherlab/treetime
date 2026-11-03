@@ -7,7 +7,7 @@ mod tests {
     GridOperand, GridOperation, GridOrigin, GridRequest, OperandRole, WrapGridRequest,
   };
   use crate::timetree::inference::result::{BranchLikelihood, NodeBackward};
-  use crate::timetree::inference::runner::explain_grid_point_limit;
+  use crate::timetree::inference::runner::{GridStage, explain_grid_point_limit};
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
@@ -130,7 +130,7 @@ mod tests {
         ];
         GridRequest::new(GridOperation::Posterior(a), operands)
       })
-      .map_err(|report| explain_grid_point_limit(report, &fixture.names, CLOCK_RATE, false));
+      .map_err(|report| explain_grid_point_limit(report, &fixture.names, helpers::inference(false)));
 
     let expected = format!(
       "Time inference needs a grid of 5001 points, more than the limit of 1000 (--max-grid-points) when multiplying \
@@ -153,7 +153,7 @@ mod tests {
 
     let result = MaxGridPoints::default()
       .point_count(f64::INFINITY, (0.0, 1.0), 1e-320)
-      .map_err(|report| explain_grid_point_limit(report, &fixture.names, CLOCK_RATE, false));
+      .map_err(|report| explain_grid_point_limit(report, &fixture.names, helpers::inference(false)));
 
     let expected = "Time inference needs a grid with more points than the limit of 1000000 (--max-grid-points). Raise \
       --max-grid-points when enough memory is available.: A grid over [0, 1] with spacing 1.0e-320 needs more \
@@ -168,7 +168,11 @@ mod tests {
     let other = make_report!("Clock rate is negative");
     assert_eq!(
       "Clock rate is negative",
-      report_to_string(&explain_grid_point_limit(other, &fixture.names, CLOCK_RATE, true))
+      report_to_string(&explain_grid_point_limit(
+        other,
+        &fixture.names,
+        helpers::inference(true)
+      ))
     );
     Ok(())
   }
@@ -222,7 +226,14 @@ mod tests {
           MaxGridPoints::new(1000)?,
           &FftPlans::new(),
         )
-        .map_err(|report| explain_grid_point_limit(report, &self.names, CLOCK_RATE, clock_rate_fixed))
+        .map_err(|report| explain_grid_point_limit(report, &self.names, inference(clock_rate_fixed)))
+      }
+    }
+
+    pub(super) fn inference(clock_rate_fixed: bool) -> GridStage {
+      GridStage::TimeInference {
+        clock_rate: CLOCK_RATE,
+        clock_rate_fixed,
       }
     }
 

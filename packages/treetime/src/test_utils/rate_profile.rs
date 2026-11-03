@@ -98,6 +98,7 @@ impl FrozenRateState {
     let prior = with_prior.then_some(&self.prior);
     let inputs = MarginalRateInputs {
       graph: &self.case.tree.graph,
+      names: &self.case.tree.names,
       date_constraints: &self.constraints,
       coalescent: prior,
       bad_branches: &self.bad_branches,

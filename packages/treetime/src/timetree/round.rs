@@ -327,6 +327,7 @@ fn marginal_clock_rate(
   let window = state.rate_window;
   let step = step_marginal_clock_rate(&MarginalRateInputs {
     graph: &state.graph,
+    names: &state.names,
     date_constraints: &inputs.context.date_constraints,
     coalescent: Some(prior),
     bad_branches: &state.time_inference.bad_branches,

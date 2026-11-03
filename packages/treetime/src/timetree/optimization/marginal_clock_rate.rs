@@ -3,10 +3,12 @@ use crate::coalescent::mean_field::CoalescentPrior;
 use crate::make_report;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::result::{BranchLikelihood, log_marginal_likelihood};
+use crate::timetree::inference::runner::{GridStage, explain_grid_point_limit};
 use eyre::{Report, WrapErr};
 use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::node_names::NodeNames;
 use treetime_grid::MaxGridPoints;
 use treetime_ops::FftPlans;
 
@@ -25,6 +27,7 @@ pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Resul
   let probe = |factor: f64| -> Result<f64, Report> {
     let rate = reference * factor;
     let log_lh = marginal_log_lh_at_rate(inputs, rate)
+      .map_err(|report| explain_grid_point_limit(report, inputs.names, GridStage::ClockRateProbe { clock_rate: rate }))
       .wrap_err_with(|| format!("When computing the marginal likelihood of the node times at clock rate {rate}"))?;
     Ok(log_lh.unwrap_or(f64::NEG_INFINITY))
   };
@@ -68,6 +71,7 @@ pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rat
 
 pub(crate) struct MarginalRateInputs<'a> {
   pub graph: &'a Graph,
+  pub names: &'a NodeNames,
   pub date_constraints: &'a DateConstraints,
   pub coalescent: Option<&'a CoalescentPrior>,
   pub bad_branches: &'a NodeMap<bool>,
