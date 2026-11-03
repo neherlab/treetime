@@ -27,7 +27,7 @@ import type { ComponentProps } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 
-import type { AuspiceState } from "./state";
+import { isDatedTree, type AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
 
@@ -123,7 +123,7 @@ export function ShowControlsTab(props: ComponentProps<"button">) {
 }
 
 function selectDated(state: AuspiceState): boolean {
-  return state.controls.branchLengthsToDisplay !== "divOnly";
+  return isDatedTree(state.controls);
 }
 
 function selectEntropyAvailable(state: AuspiceState): boolean {

@@ -23,6 +23,7 @@ export declare function SVG(
   panelsInDOM: readonly string[],
   panelLayout: string,
   publications: readonly AuspicePublication[],
+  temporalTree: boolean,
   caption?: readonly string[],
 ): Promise<void>;
 

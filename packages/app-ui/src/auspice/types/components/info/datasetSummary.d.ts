@@ -4,6 +4,6 @@ export declare function datasetSummary(options: {
   nodes: readonly AuspiceNode[];
   visibility: readonly number[];
   mainTreeNumTips: number;
-  branchLengthsToDisplay: string;
+  temporalTree: boolean;
   t: AuspiceTranslate;
 }): string;

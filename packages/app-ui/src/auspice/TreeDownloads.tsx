@@ -9,15 +9,14 @@ import {
 import { useToastManager } from "@neherlab/design/ui/toast";
 import { publications } from "auspice/src/components/download/downloadModal";
 import { auspiceJSON, entropyTSV, exportTree, strainTSV, SVG } from "auspice/src/components/download/helperFunctions";
-import { datasetSummary } from "auspice/src/components/info/datasetSummary";
 import { getMapTilesSettings } from "auspice/src/util/globals";
 import { useCallback, useMemo } from "react";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 
 import { figureCaption } from "./caption";
-import { downloadPrefix, type FigureRuns } from "./downloads";
+import { downloadPrefix, figureSummary, treeFilePrefix, type FigureRuns } from "./downloads";
 import { translateAuspice } from "./i18n";
-import type { AuspiceSharing, AuspiceState } from "./state";
+import { isDatedTree, type AuspiceSharing, type AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
 
@@ -40,7 +39,7 @@ const TREE_DOWNLOADS: readonly TreeDownload[] = [
       exportTree({
         isNewick: true,
         dispatch: store.dispatch,
-        filePrefix: prefix,
+        filePrefix: treeFilePrefix(prefix, state.controls),
         tree: state.tree,
         temporal: isTemporal(state),
       });
@@ -55,7 +54,7 @@ const TREE_DOWNLOADS: readonly TreeDownload[] = [
 
       exportTree({
         dispatch: store.dispatch,
-        filePrefix: prefix,
+        filePrefix: treeFilePrefix(prefix, state.controls),
         tree: state.tree,
         colorings: state.metadata.colorings,
         colorBy: state.controls.colorBy,
@@ -186,13 +185,7 @@ async function writeFigure({ store, prefix, runs, version, fail }: DownloadConte
     runs,
     version,
     updated: metadata.updated,
-    summary: datasetSummary({
-      nodes,
-      visibility,
-      mainTreeNumTips: metadata.mainTreeNumTips,
-      branchLengthsToDisplay: controls.branchLengthsToDisplay,
-      t: translateAuspice,
-    }),
+    summary: figureSummary({ metadata, tree, controls }),
     mapAttribution: controls.panelsToDisplay.includes("map") ? getMapTilesSettings().attribution : undefined,
     publications: RELEVANT_PUBLICATIONS,
   });
@@ -208,6 +201,7 @@ async function writeFigure({ store, prefix, runs, version, fail }: DownloadConte
       controls.panelsToDisplay,
       controls.panelLayout,
       RELEVANT_PUBLICATIONS,
+      isDatedTree(controls),
       caption,
     );
   } catch (error) {

@@ -1,6 +1,10 @@
 import type { AnyAction } from "redux";
 import type { ThunkAction } from "redux-thunk";
 
+export function isDatedTree(controls: Pick<AuspiceControlsState, "availableDistanceMeasures">): boolean {
+  return controls.availableDistanceMeasures.includes("num_date");
+}
+
 export interface AuspiceState {
   metadata: AuspiceMetadataState;
   tree: AuspiceTreeState;
@@ -62,7 +66,7 @@ export interface AuspiceNode {
 export interface AuspiceControlsState {
   colorBy: string;
   distanceMeasure: string;
-  branchLengthsToDisplay: string;
+  availableDistanceMeasures: readonly string[];
   panelLayout: AuspicePanelLayout;
   canTogglePanelLayout: boolean;
   sidebarOpen: boolean;
