@@ -5349,8 +5349,10 @@ dependencies = [
  "eyre",
  "ndarray",
  "ndarray-conv",
+ "parking_lot",
  "pretty_assertions",
  "rayon",
+ "realfft",
  "rstest",
  "treetime-utils",
 ]

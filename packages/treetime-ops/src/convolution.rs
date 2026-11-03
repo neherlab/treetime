@@ -4,7 +4,11 @@ use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode, get_fft_processor};
 use std::any::Any;
 use std::cell::RefCell;
+use parking_lot::RwLock;
+use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
+use std::sync::{Arc, OnceLock};
 use treetime_utils::{make_error, make_internal_report};
 
 const FFT_PROCESSORS_PER_THREAD: usize = 8;
@@ -83,6 +87,43 @@ pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> 
     })?
   };
   Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+}
+
+#[derive(Default)]
+pub struct FftPlans {
+  by_len: RwLock<BTreeMap<usize, Arc<OnceLock<FftPlanPair>>>>,
+}
+
+impl FftPlans {
+  pub fn new() -> Self {
+    Self::default()
+  }
+
+  pub(crate) fn get(&self, fft_len: usize) -> FftPlanPair {
+    self.slot(fft_len).get_or_init(|| FftPlanPair::plan(fft_len)).clone()
+  }
+
+  fn slot(&self, fft_len: usize) -> Arc<OnceLock<FftPlanPair>> {
+    if let Some(slot) = self.by_len.read().get(&fft_len) {
+      return Arc::clone(slot);
+    }
+    Arc::clone(self.by_len.write().entry(fft_len).or_default())
+  }
+}
+
+#[derive(Clone)]
+pub(crate) struct FftPlanPair {
+  pub(crate) forward: Arc<dyn RealToComplex<f64>>,
+  pub(crate) inverse: Arc<dyn ComplexToReal<f64>>,
+}
+
+impl FftPlanPair {
+  fn plan(fft_len: usize) -> Self {
+    let mut planner = RealFftPlanner::<f64>::new();
+    let forward = planner.plan_fft_forward(fft_len);
+    let inverse = planner.plan_fft_inverse(fft_len);
+    Self { forward, inverse }
+  }
 }
 
 pub fn convolve_direct_at(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>, n: usize) -> Result<f64, Report> {

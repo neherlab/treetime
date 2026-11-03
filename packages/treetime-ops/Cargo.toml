@@ -25,6 +25,8 @@ treetime-utils = { workspace = true }
 eyre = { workspace = true }
 ndarray = { workspace = true }
 ndarray-conv = { workspace = true }
+parking_lot = { workspace = true }
+realfft = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
