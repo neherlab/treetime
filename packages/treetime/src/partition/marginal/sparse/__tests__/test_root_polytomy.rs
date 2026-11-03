@@ -2,7 +2,7 @@
 mod tests {
   use crate::partition::create::Representation;
   use eyre::Report;
-  use helpers::{LARGE_STAR, LONG_BRANCHES, Placement, PolytomyTree, SHORT_BRANCHES, Star};
+  use helpers::{LARGE_STAR, LONG_BRANCHES, LONG_BRANCHES_WITH_DATA, Placement, PolytomyTree, SHORT_BRANCHES, Star};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -10,11 +10,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::long_branches_at_root(     LONG_BRANCHES,  Placement::AtRoot)]
-  #[ignore = "kb/issues/M-sparse-non-root-posterior-folds-sites-without-data-below-a-child.md: the forward pass folds these sites at 1 - 1e-4"]
-  #[case::long_branches_below_root(  LONG_BRANCHES,  Placement::BelowRoot)]
-  #[case::short_branches_at_root(    SHORT_BRANCHES, Placement::AtRoot)]
-  #[case::short_branches_below_root( SHORT_BRANCHES, Placement::BelowRoot)]
+  #[case::long_branches_at_root(              LONG_BRANCHES,           Placement::AtRoot)]
+  #[ignore = "kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md: the forward pass folds these sites at 1 - 1e-4"]
+  #[case::long_branches_below_root(           LONG_BRANCHES,           Placement::BelowRoot)]
+  #[case::long_branches_with_data_at_root(    LONG_BRANCHES_WITH_DATA, Placement::AtRoot)]
+  #[ignore = "kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md: the forward pass folds these sites at 1 - 1e-4"]
+  #[case::long_branches_with_data_below_root( LONG_BRANCHES_WITH_DATA, Placement::BelowRoot)]
+  #[case::short_branches_at_root(             SHORT_BRANCHES,          Placement::AtRoot)]
+  #[case::short_branches_below_root(          SHORT_BRANCHES,          Placement::BelowRoot)]
   #[trace]
   fn test_root_polytomy_sparse_matches_dense(#[case] star: Star, #[case] placement: Placement) -> Result<(), Report> {
     let dense = PolytomyTree::new(star, placement, Representation::Dense)?;
@@ -98,11 +101,13 @@ mod tests {
     const TRIAL_LENGTHS: [f64; 3] = [1e-3, 0.05, 0.5];
 
     #[rustfmt::skip]
-    pub(super) const LONG_BRANCHES:  Star = Star { children: 8,   length: 60,  branch_length: 0.8,  n_runs: 1, run_lengths: (4, 12), seed: 11 };
+    pub(super) const LONG_BRANCHES:           Star = Star { children: 8,   length: 60,  branch_length: 0.8,  n_runs: 1, run_lengths: (4, 12), seed: 11 };
     #[rustfmt::skip]
-    pub(super) const SHORT_BRANCHES: Star = Star { children: 12,  length: 60,  branch_length: 0.01, n_runs: 2, run_lengths: (4, 12), seed: 12 };
+    pub(super) const LONG_BRANCHES_WITH_DATA: Star = Star { children: 12,  length: 60,  branch_length: 0.8,  n_runs: 0, run_lengths: (4, 12), seed: 14 };
     #[rustfmt::skip]
-    pub(super) const LARGE_STAR:     Star = Star { children: 150, length: 120, branch_length: 1e-4, n_runs: 2, run_lengths: (4, 12), seed: 13 };
+    pub(super) const SHORT_BRANCHES:          Star = Star { children: 12,  length: 60,  branch_length: 0.01, n_runs: 2, run_lengths: (4, 12), seed: 12 };
+    #[rustfmt::skip]
+    pub(super) const LARGE_STAR:              Star = Star { children: 150, length: 120, branch_length: 1e-4, n_runs: 2, run_lengths: (4, 12), seed: 13 };
 
     #[derive(Clone, Copy, Debug)]
     pub(super) struct Star {
