@@ -2,12 +2,12 @@
 
 Sparse marginal inference stores a message as one profile per variable site (`variable`) and one profile per state with a count for every other site (`fixed`). A site where a child subtree has only gaps or `N` cannot use the `fixed` profile of its state, because the child contributes no factor there. The sparse passes therefore keep each such site as a single-site entry in every message above that subtree. Alignments with long `N` runs produce thousands of such entries per node, and sparse `optimize` becomes slower and needs more memory.
 
-This proposal stores these sites in shared profiles again, one per pattern of children without data, and records the measurements of both designs. It also records the cost of exact posteriors below the root ([kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](../issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)), which the same kind of sharing can remove.
+This proposal stores these sites in <a id="gloss-use-1"></a>shared profiles <sup>[1](#gloss-1)</sup> again, one per pattern of children without data, and records the measurements of both designs. It also records the cost of exact posteriors below the root ([kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](../issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)), which the same kind of sharing can remove.
 
 ## Current behavior
 
 - The backward pass adds every site in a child's no-data range that lies outside the node's own gaps and unknown sites as a candidate site of the node (`fn combine_child_messages()` [packages/treetime/src/partition/marginal/sparse/backward.rs#L146-L219](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L146-L219)). Each candidate site gets its own profile in `variable`
-- The forward pass walks the same sites one by one to remove them from the per-state counts of the outside message (`fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L285](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L285))
+- The forward pass walks the same sites one by one to remove them from the per-state counts of the <a id="gloss-use-2"></a>outside message <sup>[2](#gloss-2)</sup> (`fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L285](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L285))
 - The no-data range of each child travels with the backward edge message (`child_no_data` of `struct SparseEdgeBackward` [packages/treetime/src/partition/storage/sparse.rs#L142](../../packages/treetime/src/partition/storage/sparse.rs#L142))
 
 The cost grows with the number of sites without data below a child, summed over all nodes, so it grows with tree size and with the length of the `N` and gap runs.
@@ -123,6 +123,8 @@ On the mpox B.1 build, the class count bounds the profile computations at about 
 - **Class-keyed shared profiles**: exact, and expected to remove both the cost of sites without data below a child and the cost of exact posteriors below the root. In exchange, every reader of sparse messages handles classes over ranges, which brings back a grouping mechanism of the size of `107ec665b` or larger; the range-boundary count is not measured
 - **Single-site entries with a cheaper representation**: for example, store the no-data ranges once per node and evaluate their contribution in closed form per state and range length. This keeps one storage kind in the messages but needs its own derivation for the forward pass and the objective, and nobody has implemented or measured it
 
+**Accuracy of the approximate fold.** The threshold fold that stays on `rust` until the decision changes sparse results below the root by up to 0.043 <a id="gloss-use-3"></a>nats <sup>[3](#gloss-3)</sup> per edge objective in the test polytomy with long branches. On a production mpox B.1 build, the exact rule raises `log_lh_seq` by 26.6 nats, moves 1,147 of 6,396 node dates (16 of them by 1 to 3 days), and moves the root date 2.54 days, out of the 90% interval of the threshold fold. Section "Size of the differences" of [kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](../issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md) explains the scale of these numbers.
+
 > [!IMPORTANT]
 > **Decision required.** The options are:
 >
@@ -133,3 +135,9 @@ On the mpox B.1 build, the class count bounds the profile computations at about 
 > - Design a cheaper single-site representation
 >
 > The measurements above are the evidence; no option is approved. Until the decision, `rust` keeps the approximate fold below the root.
+
+## Glossary
+
+1. <a id="gloss-1"></a> **Shared profile.** A probability vector that sparse mode stores once, with a count, for many sites of a node instead of once per site. The `fixed` profiles hold one such vector per state for all sites that the node does not store explicitly, and assume that every child of the node agrees with that state. [↩](#gloss-use-1)
+2. <a id="gloss-2"></a> **Outside message.** The probability of the parent states of a node given all data outside the subtree of the node. Sparse mode computes it as the parent posterior divided by the node's backward message. [↩](#gloss-use-2)
+3. <a id="gloss-3"></a> **Nat.** The unit of a logarithm to base $e$. A log-likelihood difference of $d$ nats is a likelihood ratio of $e^d$; 1 nat is a ratio of 2.72, and $\ln 2 = 0.69$ nats is one bit. [↩](#gloss-use-3)
