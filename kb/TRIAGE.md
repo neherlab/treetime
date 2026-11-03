@@ -170,6 +170,7 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-sparse-marginal-zero-multiplicity-nan.md](issues/M-sparse-marginal-zero-multiplicity-nan.md)**: skip zero-weight terms before the multiplication that gives NaN
 - **[kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)**: derive the optimize mutations from the emitted sequences, as ancestral and timetree do
 - **[kb/issues/M-io-stdin-config-and-input-read-twice.md](issues/M-io-stdin-config-and-input-read-twice.md)**: reject `--config -` together with an input `-`
+- **[kb/issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)**: choose a slope estimate for the soft-end line of a convolution that the FFT round-off at the trust floor does not move
 
 ## Planned
 
