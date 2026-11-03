@@ -2,13 +2,13 @@
 
 Sparse marginal inference stores a message as one profile per variable site (`variable`) and one profile per state with a count for every other site (`fixed`). A site where a child subtree has only gaps or `N` cannot use the `fixed` profile of its state, because the child contributes no factor there. The sparse passes therefore keep each such site as a single-site entry in every message above that subtree. Alignments with long `N` runs produce thousands of such entries per node, and sparse `optimize` becomes slower and needs more memory.
 
-This proposal stores these sites in shared profiles again, one per pattern of children without data, and records the measurements of both designs.
+This proposal stores these sites in shared profiles again, one per pattern of children without data, and records the measurements of both designs. It also records the cost of exact posteriors below the root ([kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](../issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)), which the same kind of sharing can remove.
 
 ## Current behavior
 
-- The backward pass adds every site in a child's no-data range that lies outside the node's own gaps and unknown sites as a candidate site of the node (`fn combine_child_messages()` [packages/treetime/src/partition/marginal/sparse/backward.rs#L133-L206](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L133-L206)). Each candidate site gets its own profile in `variable`
-- The forward pass walks the same sites one by one to remove them from the per-state counts of the outside message (`fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L275](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L275))
-- The no-data range of each child travels with the backward edge message (`child_no_data` of `struct SparseEdgeBackward` [packages/treetime/src/partition/storage/sparse.rs#L130](../../packages/treetime/src/partition/storage/sparse.rs#L130))
+- The backward pass adds every site in a child's no-data range that lies outside the node's own gaps and unknown sites as a candidate site of the node (`fn combine_child_messages()` [packages/treetime/src/partition/marginal/sparse/backward.rs#L146-L219](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L146-L219)). Each candidate site gets its own profile in `variable`
+- The forward pass walks the same sites one by one to remove them from the per-state counts of the outside message (`fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L285](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L285))
+- The no-data range of each child travels with the backward edge message (`child_no_data` of `struct SparseEdgeBackward` [packages/treetime/src/partition/storage/sparse.rs#L142](../../packages/treetime/src/partition/storage/sparse.rs#L142))
 
 The cost grows with the number of sites without data below a child, summed over all nodes, so it grows with tree size and with the length of the `N` and gap runs.
 
@@ -78,11 +78,58 @@ Grouping sums the log-likelihood of n equal sites as one product times n instead
 
 The branch-length optimizer stops at its convergence tolerance, so a difference in the last digits of the objective moves the result within that tolerance. The sparse-against-dense tests of missing data pass at `1e-10` with both designs.
 
+## Exact posteriors below the root
+
+Below the root, the forward pass folds a site into the shared profile of its state when its posterior exceeds $1 - 10^{-4}$, also where the backward pass kept the site explicit because a child disagrees with the node: the child has no data there, or a substitution on the child edge gives it another state ([kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](../issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)). The exact rule keeps such a site explicit in the posterior unless it equals the shared profile bit for bit: the node's message to its parent enters the forward product under a fold rule that lets its explicit entries fold only on exact equality (commit `7b4e0ba78` on branch `worktree/fix/sparse-posterior-below-root`, not landed). With it, sparse matches dense within 2e-12 on the root-polytomy test cases.
+
+The exact rule keeps every one of these sites as a single-site entry in the posterior and in the outside message of every child. On a production mpox B.1 build (4,946 tips, 197,209 sites, a root polytomy of 657 children) it costs, in one forward pass:
+
+| Quantity | Approximate fold | Exact rule |
+|---|---:|---:|
+| `timetree` wall time, one thread | 270 s | 552 s |
+| Explicit posterior entries, summed over nodes | 15.3k | 5.02M |
+| Explicit outside-message entries, summed over edges | 5.05M | 33.0M |
+| Bit-distinct (state, profile) posterior entries, summed over nodes | | 62k |
+| Bit-distinct (state, profile) outside entries, summed over edges | | 636k |
+
+Almost all of the kept entries are bit-identical copies: sites with the same state and the same pattern of disagreeing children receive the same inputs in the same order. The difference to the shared profile is real but mostly tiny: about 4.4k entries differ from it by 1e-9 or more, and 3.06M by less than 1e-16. A sharing mechanism that represents equal inputs once removes the copies without a tolerance.
+
+## Related techniques
+
+- **Site repeats** (Kobert, Stamatakis, Flouri 2017, [doi:10.1093/sysbio/syw075](https://doi.org/10.1093/sysbio/syw075)): every directed partial likelihood vector carries a class number per site. At a node, the class of a site is a lookup of the pair of child classes, and each class is computed once. `corax_update_repeats()` in `.repos/coraxlib/src/corax/core/repeats.c` computes the lookup index `site_id_left[s] + site_id_right[s] * ids_left`, and `corax_default_enable_repeats()` turns repeats off for a node whose children have more than half as many classes as sites. RAxML-NG uses repeats by default (`opts.use_repeats = true` in `.repos/raxml-ng/src/CommandLineParser.cpp`) and turns them off for probabilistic alignments and for the tip-inner optimization. The method is exact, because equal inputs pass through the same operations. Its implementation in coraxlib handles two children per operation
+- **CMAPLE genome lists** (`.repos/cmaple`): regions of reference, nucleotide, `N`, or explicit vectors. An `N` region of one child passes the other child's region through (`merge_N_RACGT_TwoLowers()` in `alignment/seqregions.cpp`), which is exact. Three steps are approximate: two identical reference regions merge into one with a log-likelihood term linear in the branch lengths (`merge_identicalRACGT_TwoLowers()`), an explicit vector becomes a single state when only one state exceeds `threshold_prob` (`SeqRegions::simplifyO()`, default `1e-8` in `utils/tools.cpp`), and region comparisons use tolerances. CMAPLE is in the same family as the fold at $1 - 10^{-4}$ and does not meet the exact target
+- **Outside messages by division**: v1 divides the parent posterior by the child's message, and v0 does the same in log space (`node.marginal_outgroup_LH` in `packages/legacy/treetime/treetime/treeanc.py`). The messages from children are strictly positive for a branch length above the minimum of `fn fix_branch_length()`, and `fn divide_out_value()` guards underflow, so the division adds no cancellation. Prefix and suffix products avoid the division, but they keep the same set of explicit sites, because the outside message of a child depends on every sibling, and they compute the products of different children in different orders, so siblings no longer share bit-equal profiles. The division keeps the outside message of every agreeing child a function of the parent posterior and the child's message, which is the property that sharing needs
+
+## Class-keyed shared profiles
+
+A generalization of the groups of `107ec665b` covers the sites with substitutions too. A **class** is the state of a site together with the list of incoming messages whose value at the site differs from their shared profile, each with its own class. A message stores a table of classes with one profile per state and a list of position ranges that point to classes:
+
+- The `fixed` profiles are the class of the empty list, and an explicit single site is a class with one position
+- The groups of `107ec665b` are the classes whose list holds only children without data (labels `Fixed`, `Missing`, `Group(g)` of `fn segment_labels()` in `site_grouping.rs` of that commit)
+- `combine_messages()` and `compute_msg_to_child()` step over the segments of the merged range boundaries of their inputs and compute each new class once, with counts per state for the log-likelihood and the branch-length weights. The branch-length objective already groups equal coefficients with a multiplicity (`struct GroupedSiteContributions` in [packages/treetime/src/partition/optimize/sparse.rs](../../packages/treetime/src/partition/optimize/sparse.rs))
+- A site folds exactly when its class equals an existing class, so the fold needs no tolerance; per site, the profiles are those of the exact rule, and only the summation order of the log-likelihood changes
+- With per-site rates, the rate is part of the class, so every site is its own class: no gain, and results stay exact
+
+On the mpox B.1 build, the class count bounds the profile computations at about 62k per posterior pass and 636k for the outside messages, against 5.02M and 33.0M single-site entries.
+
+> [!IMPORTANT]
+> **Investigation required.** The cost of class-keyed profiles also grows with the number of range boundaries per node: the union of the `N`-run boundaries of all children, 657 at the root of mpox B.1. Nobody has counted these boundaries; count them on the mpox B.1 build before an implementation.
+
 ## Trade-offs
 
 - **Shared profiles**: time and memory stay close to the code before the fix. In exchange, every reader of sparse messages handles a third storage kind, and the grouping logic adds about 600 lines
 - **Single-site entries**: one storage kind and the smallest code. In exchange, time and memory grow with the number of sites without data below a child; on the largest example datasets, runs take seconds longer and need up to four times the memory
+- **Exact posteriors below the root with single-site entries** (`7b4e0ba78`): sparse matches dense, and a production mpox B.1 build takes twice as long
+- **Class-keyed shared profiles**: exact, and expected to remove both the cost of sites without data below a child and the cost of exact posteriors below the root. In exchange, every reader of sparse messages handles classes over ranges, which brings back a grouping mechanism of the size of `107ec665b` or larger; the range-boundary count is not measured
 - **Single-site entries with a cheaper representation**: for example, store the no-data ranges once per node and evaluate their contribution in closed form per state and range length. This keeps one storage kind in the messages but needs its own derivation for the forward pass and the objective, and nobody has implemented or measured it
 
 > [!IMPORTANT]
-> **Decision required.** Keep single-site entries, reintroduce the shared profiles of commit `107ec665b`, or design a cheaper single-site representation. The measurements above are the evidence; no option is approved.
+> **Decision required.** The options are:
+>
+> - Keep single-site entries and the approximate fold below the root, the state of `rust`
+> - Keep single-site entries and take the exact rule of `7b4e0ba78`
+> - Implement class-keyed shared profiles with the exact rule, after the range-boundary count above
+> - Reintroduce the shared profiles of commit `107ec665b` with the approximate fold below the root
+> - Design a cheaper single-site representation
+>
+> The measurements above are the evidence; no option is approved. Until the decision, `rust` keeps the approximate fold below the root.

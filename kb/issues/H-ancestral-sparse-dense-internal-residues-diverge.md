@@ -69,3 +69,4 @@ The sparse backend is the default of every run ([N-representation-infer-dense-st
 
 - [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md)
 - [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
+- [M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md): below the root, the forward pass folds sites where a child disagrees with the node; the exact rule of that issue leaves the internal residues of `ancestral --method-anc=marginal --representation=sparse` on `data/rsv/a/20` and `data/mpox/clade-ii/500` unchanged

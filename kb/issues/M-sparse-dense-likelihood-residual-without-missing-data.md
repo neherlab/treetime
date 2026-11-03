@@ -15,3 +15,7 @@ The differences move `optimize` tip lengths by up to 1.3% between the two repres
 
 > [!IMPORTANT]
 > **Investigation required.** Two causes fit the data: the folding approximation of [kb/decisions/ancestral-marginal-sparse-parsimony-chain.md](../decisions/ancestral-marginal-sparse-parsimony-chain.md) (posterior above 1 - 1e-4), and the handling of IUPAC codes in sparse messages. Compare sparse and dense per site on `rsv/a/20` after the column filter, once with the folding threshold disabled and once with the IUPAC codes replaced by `N`, to tell them apart.
+
+## Related issues
+
+- [M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md): below the root, the forward pass also folds substitution sites; on `data/rsv/a/20`, the exact rule of that issue moves the `optimize` branch lengths by at most 3.9e-7, while sparse and dense still differ by up to 2.0e-5, so that fold does not explain the residual there
