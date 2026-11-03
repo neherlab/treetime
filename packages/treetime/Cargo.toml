@@ -40,6 +40,7 @@ maplit = { workspace = true }
 ndarray = { workspace = true }
 ndarray-linalg = { workspace = true }
 ndarray-stats = { workspace = true }
+noisy_float = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
 ordered-float = { workspace = true }

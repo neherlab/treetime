@@ -5170,6 +5170,7 @@ dependencies = [
  "ndarray",
  "ndarray-linalg",
  "ndarray-stats",
+ "noisy_float",
  "num",
  "num-traits",
  "ordered-float",

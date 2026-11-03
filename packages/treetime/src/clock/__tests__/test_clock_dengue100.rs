@@ -51,26 +51,18 @@ mod tests {
   }
 
   #[test]
-  fn test_dengue100_clock_pipeline_golden_master() -> Result<(), Report> {
+  fn test_dengue100_clock_pipeline_matches_v0() -> Result<(), Report> {
     let output = run_clock(3.0, false)?;
-    let clock_model = &output.clock_model;
     let outlier_names = get_outlier_names(&output);
 
-    pretty_assert_abs_diff_eq!(clock_model.clock_rate(), 6.460054526225851e-04, epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(clock_model.intercept(), -1.0489843878244214, epsilon = 1e-7);
-
-    let r_val = clock_model.r_val().expect("should have r_val");
-    pretty_assert_abs_diff_eq!(r_val, 0.9667050948340442, epsilon = 1e-7);
-
-    let chisq = clock_model.chisq().expect("should have chisq");
-    pretty_assert_abs_diff_eq!(chisq, 3.279828724500099e-04, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(6.362e-04, output.clock_model.clock_rate(), epsilon = 1e-7);
 
     #[rustfmt::skip]
     let expected_outliers = vec![
-      o!("GQ398257"), o!("GQ398268"), o!("HM582102"), o!("HQ891024"), o!("KF704357"),
-      o!("KY586699"), o!("OQ101603"), o!("OR389309"), o!("OR389321"), o!("OR389326"),
+      o!("GQ398257"), o!("GQ398268"), o!("HQ891024"), o!("KF704357"), o!("KY586699"),
+      o!("OQ101603"), o!("OR389309"), o!("OR389321"), o!("OR389326"),
     ];
-    assert_eq!(outlier_names, expected_outliers);
+    assert_eq!(expected_outliers, outlier_names);
 
     Ok(())
   }

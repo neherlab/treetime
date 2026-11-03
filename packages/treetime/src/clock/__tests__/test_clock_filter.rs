@@ -7,12 +7,13 @@ mod tests {
   use crate::progress::NoopProgress;
   use eyre::Report;
   use helpers::{
-    IQD_TREE, OUTLIER_TREE, divergences_by_name, iqd_dates, outlier_dates, outlier_names, setup_graph,
+    IQD_TREE, OUTLIER_TREE, divergences_by_name, iqd_dates, outlier_dates, outlier_names, residual_dates, setup_graph,
     setup_low_cardinality_graph,
   };
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_graph::key_map::EdgeMap;
 
   use treetime_utils::assert_error;
@@ -36,14 +37,14 @@ mod tests {
   }
 
   #[test]
-  fn test_clock_filter_negative_rate_identifies_same_outliers() -> Result<(), Report> {
+  fn test_clock_filter_negative_rate_identifies_outliers() -> Result<(), Report> {
     let (graph, names, times, branch_lengths) = setup_graph(OUTLIER_TREE, &outlier_dates())?;
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
     let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
-    assert_eq!(vec![o!("G"), o!("H")], outlier_names(&names, &result.outliers));
+    assert_eq!(vec![o!("H")], outlier_names(&names, &result.outliers));
     pretty_assert_map_abs_diff_eq!(
       helpers::outlier_tree_divergences(),
       divergences_by_name(&names, &result.divergences),
@@ -92,6 +93,43 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::six_leaves(  "((A:0,B:0,C:0)X:0,(D:0,E:0,F:0)Y:0)root;",          residual_dates(&[-1.0, 0.0, 0.0, 0.0, 4.0, 8.0]),           2.0, 3.0, vec![o!("F")])]
+  #[case::eight_leaves("((A:0,B:0,C:0,D:0)X:0,(E:0,F:0,G:0,H:0)Y:0)root;", residual_dates(&[-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 8.0]), 3.0, 1.0, vec![o!("G"), o!("H")])]
+  #[trace]
+  fn test_clock_filter_interpolates_quartiles_linearly_between_ranks(
+    #[case] newick: &str,
+    #[case] dates: BTreeMap<String, f64>,
+    #[case] threshold: f64,
+    #[case] expected_iqd: f64,
+    #[case] expected_outliers: Vec<String>,
+  ) -> Result<(), Report> {
+    let (graph, names, times, branch_lengths) = setup_graph(newick, &dates)?;
+    let clock_model = ClockModel::for_testing(1.0, -2000.0);
+
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, threshold, &NoopProgress)?;
+
+    pretty_assert_abs_diff_eq!(expected_iqd, result.iqd, epsilon = 1e-15);
+    assert_eq!(expected_outliers, outlier_names(&names, &result.outliers));
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_filter_never_flags_a_child_of_the_root() -> Result<(), Report> {
+    let dates = residual_dates(&[20.0, -1.0, 0.0, 0.0, 1.0, -10.0]);
+    let (graph, names, times, branch_lengths) = setup_graph("(A:0,(B:0,C:0,D:0,E:0,F:0)X:0)root;", &dates)?;
+    let clock_model = ClockModel::for_testing(1.0, -2000.0);
+
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
+
+    pretty_assert_abs_diff_eq!(1.5, result.iqd, epsilon = 1e-15);
+    assert_eq!(vec![o!("F")], outlier_names(&names, &result.outliers));
+    Ok(())
+  }
+
   #[test]
   fn test_clock_filter_rejects_no_dated_leaves() -> Result<(), Report> {
     let (graph, times, branch_lengths) = setup_low_cardinality_graph(0)?;
@@ -123,15 +161,15 @@ mod tests {
 
   #[test]
   fn test_clock_filter_no_outliers_clean_data() -> Result<(), Report> {
-    let (graph, _, times, branch_lengths) = setup_graph(helpers::FOUR_LEAF_TREE, &helpers::four_leaf_dates(2010.0))?;
-    let clock_model = ClockModel::for_testing(0.01, -20.0);
+    let dates = residual_dates(&[-1.0, -0.5, 0.5, 1.0]);
+    let (graph, names, times, branch_lengths) = setup_graph("((A:0,B:0)AB:0,(C:0,D:0)CD:0)root;", &dates)?;
+    let clock_model = ClockModel::for_testing(1.0, -2000.0);
 
     let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
-    assert!(result.outliers.is_empty(), "No outliers expected for clean data");
-    assert!(result.iqd.is_finite(), "IQD should be a finite number");
-    assert!(result.iqd >= 0.0, "IQD should be non-negative");
+    pretty_assert_abs_diff_eq!(1.25, result.iqd, epsilon = 1e-15);
+    assert_eq!(Vec::<String>::new(), outlier_names(&names, &result.outliers));
     Ok(())
   }
 
@@ -175,7 +213,7 @@ mod tests {
   mod helpers {
     use crate::o;
     use eyre::Report;
-    use itertools::Itertools;
+    use itertools::{Itertools, izip};
     use maplit::btreemap;
     use std::collections::{BTreeMap, BTreeSet};
     use treetime_graph::key_map::{EdgeMap, NodeMap};
@@ -238,6 +276,12 @@ mod tests {
         o!("H") => 2012.0,
         o!("I") => 2016.5,
       }
+    }
+
+    pub(super) fn residual_dates(residuals: &[f64]) -> BTreeMap<String, f64> {
+      izip!(["A", "B", "C", "D", "E", "F", "G", "H"], residuals)
+        .map(|(name, residual)| (o!(name), 2000.0 + residual))
+        .collect()
     }
 
     pub(super) fn four_leaf_dates(date_a: f64) -> BTreeMap<String, f64> {

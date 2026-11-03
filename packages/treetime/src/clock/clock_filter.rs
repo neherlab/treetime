@@ -5,8 +5,11 @@ use crate::clock::divergence::root_to_node_divergences;
 use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_info;
-use eyre::Report;
-use itertools::Itertools;
+use eyre::{Report, WrapErr};
+use ndarray::Array1;
+use ndarray_stats::Quantile1dExt;
+use ndarray_stats::interpolate::Linear;
+use noisy_float::types::n64;
 use ordered_float::OrderedFloat;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeSet;
@@ -14,11 +17,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 
-#[expect(
-  clippy::integer_division,
-  clippy::integer_division_remainder_used,
-  reason = "the quartile indices are floor divisions of the leaf count"
-)]
 pub(crate) fn clock_filter(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -46,24 +44,23 @@ pub(crate) fn clock_filter(
       Some((key, clock_line.clock_deviation(time, divergences[&key])))
     })
     .collect();
-  let leaf_clock_deviations: Vec<f64> = deviations_by_leaf
+  let mut leaf_clock_deviations: Array1<OrderedFloat<f64>> = deviations_by_leaf
     .iter()
     .map(|(_, deviation)| OrderedFloat(*deviation))
-    .sorted()
-    .map(OrderedFloat::into_inner)
     .collect();
 
   let n = leaf_clock_deviations.len();
   if n == 0 {
     return Err(input_error("Clock filtering requires at least one dated leaf"));
   }
-  let iq75 = (3 * n) / 4;
-  let iq25 = n / 4;
-  let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
+  let q25 = quartile(&mut leaf_clock_deviations, 0.25)?;
+  let q75 = quartile(&mut leaf_clock_deviations, 0.75)?;
+  let iqd = q75 - q25;
 
+  let root_children = root_children(graph);
   let outliers: BTreeSet<GraphNodeKey> = deviations_by_leaf
     .iter()
-    .filter(|(_, deviation)| deviation.abs() > iqd * threshold)
+    .filter(|(key, deviation)| deviation.abs() > iqd * threshold && !root_children.contains(key))
     .map(|(key, _)| *key)
     .collect();
 
@@ -73,12 +70,9 @@ pub(crate) fn clock_filter(
     outliers.len()
   );
   log::debug!(
-    "Leaf clock deviations (n={}): min={:.6e}, Q1={:.6e}, Q3={:.6e}, max={:.6e}",
-    n,
-    leaf_clock_deviations.first().copied().unwrap_or(0.0),
-    leaf_clock_deviations[iq25],
-    leaf_clock_deviations[iq75],
-    leaf_clock_deviations.last().copied().unwrap_or(0.0)
+    "Leaf clock deviations (n={n}): min={:.6e}, Q1={q25:.6e}, Q3={q75:.6e}, max={:.6e}",
+    leaf_clock_deviations.iter().min().map_or(0.0, |min| min.into_inner()),
+    leaf_clock_deviations.iter().max().map_or(0.0, |max| max.into_inner()),
   );
 
   Ok(ClockFilterResult {
@@ -93,4 +87,18 @@ pub(crate) struct ClockFilterResult {
   pub(crate) outliers: BTreeSet<GraphNodeKey>,
   pub(crate) divergences: NodeMap<f64>,
   pub(crate) iqd: f64,
+}
+
+fn quartile(deviations: &mut Array1<OrderedFloat<f64>>, q: f64) -> Result<f64, Report> {
+  let quartile = deviations
+    .quantile_mut(n64(q), &Linear)
+    .wrap_err_with(|| format!("When computing the {q} quantile of the leaf clock deviations"))?;
+  Ok(quartile.into_inner())
+}
+
+fn root_children(graph: &Graph) -> BTreeSet<GraphNodeKey> {
+  graph
+    .get_roots()
+    .flat_map(|root| graph.children_keys_of(root).map(|(child, _)| child))
+    .collect()
 }

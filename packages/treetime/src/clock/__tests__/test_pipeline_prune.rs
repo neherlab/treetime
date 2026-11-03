@@ -81,11 +81,13 @@ mod tests {
   #[test]
   fn test_pipeline_prune_filtered_tips_rejects_removing_the_outgroup() -> Result<(), Report> {
     let input = helpers::input(None)?;
-    let outgroup_key = find_node_key_by_name(&input.graph, &input.names, "Y").expect("Y is a leaf");
+    let outgroup = ["X", "Y"]
+      .map(|name| find_node_key_by_name(&input.graph, &input.names, name).expect("outgroup tips are leaves"))
+      .to_vec();
     let params = ClockParams {
       clock_filter: CLOCK_FILTER_IQD,
       allow_negative_rate: false,
-      reroot_spec: Some(RerootSpec::Tips(vec![outgroup_key])),
+      reroot_spec: Some(RerootSpec::Tips(outgroup)),
       prune_tips: PruneTips {
         filtered: true,
         ..PruneTips::default()
@@ -94,7 +96,7 @@ mod tests {
 
     assert_error!(
       helpers::run(&params, input, &RecordingLog::default()),
-      "The clock filter flagged the outgroup tip Y, and --prune-filtered-tips would remove it. Name it in --keep-tips \
+      "The clock filter flagged the outgroup tip X, and --prune-filtered-tips would remove it. Name it in --keep-tips \
        to keep it in the tree"
     );
     Ok(())

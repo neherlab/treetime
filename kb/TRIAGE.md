@@ -164,7 +164,6 @@ These issues give wrong scientific results or crashes on default settings or exa
 
 These issues give wrong results or failures under specific settings, or block capabilities that users need soon.
 
-- **[kb/issues/M-clock-filter-residual-parity.md](issues/M-clock-filter-residual-parity.md)**: compute quartiles as v0 does and never flag children of the root
 - **[kb/issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md)**: leave undated tips out of the in-loop clock fit
 - **[kb/issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md](issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md)**: estimate the fallback substitution count of polytomy resolution from the clock-constrained branch length
 - **[kb/issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md](issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md)**: refine the branch grid alone in the exact-posterior test to find the source of the 2.5e-4 floor on long branches
