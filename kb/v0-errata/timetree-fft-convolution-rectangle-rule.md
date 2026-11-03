@@ -28,6 +28,17 @@ v0 samples the node and the branch distribution on grids with spacing $dt$, mult
 
 The node-time messages and the log marginal likelihood of node times carry a first-order error at hard ends. Its size grows with the spacing, so with slow clock rates, and it biases the likelihood of node times toward slow clocks wherever the clock rate is fitted to it.
 
+### Root date of a chain of zero-length branches
+
+A caterpillar of $n$ tips with one sampling date, no substitution on any branch, and no coalescent prior has a closed-form root age: the second-largest of $n$ independent exponential ages of rate $\lambda$, with the CDF $(1 - u)^{n-1}(1 + (n-1)u)$, $u = e^{-\lambda x}$, and the mean $\sum_{m=2}^{n} 1/(\lambda m)$ ([kb/issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](../issues/H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md)). Every branch has its likelihood maximum at length 0, so every convolution of the backward pass has a large integrand at an overlap end. v0 0.12.1 (Nextstrain image of the pipelandia round, `treetime --sequence-length 754 --clock-rate 0.0014 --keep-root --keep-polytomies --time-marginal always`, $\lambda = 1.0556$ per year, tips at 2023.0) on a copy of `convolve_fft()` with $dt$ divided by 2 and 4 (both the FWHM term and the floor `one_mutation * 0.005`, which sets $dt$ in half of the convolutions), and with the end samples of each overlap sum at half weight. Error of the posterior mean of the root date in years, positive when the root is too young:
+
+| $n$ | default $dt$ | $dt/2$ | $dt/4$ | half weight | half weight, $dt/2$ | half weight, $dt/4$ |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 50 | 0.1220 | 0.0618 | 0.0312 | 0.0042 | 0.00085 | 0.00020 |
+| 200 | 1.2865 | 1.2494 | 1.2263 | 1.1501 | 1.1886 | 1.1796 |
+
+At 50 tips the error halves with $dt$, and the half weight removes 97% of it and leaves an error that falls four to five times per halving: the rectangle sum is the cause. At 200 tips the rectangle sum causes 0.14 years of the 1.29 years, and the rest neither falls with $dt$ nor with the half weight, so a second v0 error dominates on long chains (see the issue above). The 90% max posterior region moves with the mean, and the standard deviation is within 0.006 years of the closed form in every run. Multiplying `fft_grid_size` by 4 without the floor gives 0.1123 at 50 tips, because the floor keeps $dt$ in half of the convolutions. v1 at its default grid has errors of 0.106 (50 tips) and 0.777 years (200 tips), and 0.0005 and 0.008 years at 16 times the points of the branch grid.
+
 ## v1 status
 
 v1 integrates each overlap by the trapezoid rule (`fn trapezoid_from_overlap_sums()` in [packages/treetime-ops/src/convolution.rs](../../packages/treetime-ops/src/convolution.rs)) and converges at second order against the same closed form ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). Operands resampled to a common spacing keep their denser end on a grid point, which removes the remaining first-order error at the zero-length end of short branches ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md#operands-resampled-to-a-common-spacing-keep-their-denser-end-on-a-grid-point)).
