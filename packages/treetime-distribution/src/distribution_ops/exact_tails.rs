@@ -1,16 +1,18 @@
-use crate::distribution_ops::convolve::{CONV_TRUST_FRACTION, ResolvedNegLog, SampleTrace};
+use crate::distribution_ops::convolve::{ResolvedNegLog, SampleTrace};
 use eyre::Report;
 use itertools::{Itertools, iproduct};
 use ndarray::{Array1, ArrayView1, Zip, s};
 use ordered_float::OrderedFloat;
 use std::collections::VecDeque;
 use std::ops::RangeInclusive;
-use treetime_ops::{FftConvolver, FftPlans, convolve_direct_neg_log_at, trapezoid_weight};
-use treetime_utils::array::ndarray::{max_or, min_or};
+use treetime_ops::{FftConvolver, FftPlans, UNIT_ROUND_OFF, convolve_direct_neg_log_at, trapezoid_weight};
+use treetime_utils::array::ndarray::min_or;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_internal_error, make_internal_report};
 
 const NEGLIGIBLE_PAIR_DEPTH: f64 = 50.0;
+
+const WINDOW_ROUND_OFF_NATS: f64 = 1e-6;
 
 #[derive(Clone, Copy)]
 pub(crate) struct ExactTailOperands<'a> {
@@ -312,9 +314,10 @@ impl<'a> ExactTails<'a> {
     let theta = (right - left) / ((samples.len() + 1).to_f64_exact() * dx);
     let tilted_a = TiltedWindow::new(a, gap.window_a, theta, dx);
     let tilted_b = TiltedWindow::new(b, gap.window_b, theta, dx);
-    let sums = FftConvolver::new(tilted_a.plain.len(), tilted_b.plain.len(), fft_plans)?
-      .overlap_sums(&tilted_a.plain, &tilted_b.plain)?;
-    let floor = max_or(&sums, 0.0) * CONV_TRUST_FRACTION;
+    let mut convolver = FftConvolver::new(tilted_a.plain.len(), tilted_b.plain.len(), fft_plans)?;
+    let sums = convolver.overlap_sums(&tilted_a.plain, &tilted_b.plain)?;
+    let round_off = convolver.overlap_sums_round_off(&tilted_a.plain, &tilted_b.plain);
+    let accepted_sum = round_off * (1.0 + UNIT_ROUND_OFF) / (-(-WINDOW_ROUND_OFF_NATS).exp_m1() - 8.0 * UNIT_ROUND_OFF);
     let offset = gap.window_a.first + gap.window_b.first;
     let mut resolved = 0;
     for k in samples.iter() {
@@ -331,12 +334,12 @@ impl<'a> ExactTails<'a> {
         })
         .sum();
       let sum = sum - excess;
-      if sum > floor {
+      if sum >= accepted_sum {
         self.set(
           k,
           -(sum * dx).ln() + tilted_a.min + tilted_b.min + theta * (k.to_f64_exact() * dx),
         );
-        trace.fft_sample(k, theta, gap.window_a, gap.window_b);
+        trace.windowed_fft_sample(k);
         resolved += 1;
       }
     }

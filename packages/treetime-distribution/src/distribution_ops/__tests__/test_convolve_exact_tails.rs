@@ -89,11 +89,10 @@ mod tests {
     use crate::distribution_core::function::DistributionFunction;
     use crate::distribution_ops::__tests__::test_edge_convolution::tests::helpers::ln_gauss_integral;
     use crate::distribution_ops::convolve::{SampleTrace, convolution_function_function_fine_traced};
-    use crate::distribution_ops::exact_tails::IndexWindow;
     use crate::policy::NegLog;
     use eyre::Report;
     use itertools::Itertools;
-    use ndarray::{Array1, Zip, s};
+    use ndarray::{Array1, Zip};
     use pretty_assertions::assert_eq;
     use std::collections::BTreeMap;
     use std::f64::consts::SQRT_2;
@@ -132,16 +131,12 @@ mod tests {
         .0
         .values()
         .filter_map(|source| match *source {
-          SampleSource::Quadrature => None,
-          SampleSource::Fft {
-            theta,
-            window_a,
-            window_b,
-          } => Some(((theta.to_bits(), window_a, window_b), (theta, window_a, window_b))),
+          SampleSource::Fft { theta } => Some((theta.to_bits(), theta)),
+          SampleSource::Quadrature | SampleSource::WindowedFft => None,
         })
         .collect::<BTreeMap<_, _>>()
         .into_iter()
-        .map(|(key, (theta, window_a, window_b))| (key, FftRoundOff::of(&a, &b, theta, (window_a, window_b), dx)))
+        .map(|(key, theta)| (key, FftRoundOff::of(&a, &b, theta, dx)))
         .collect();
       Ok(TracedConvolution {
         a,
@@ -163,7 +158,7 @@ mod tests {
       x_start: f64,
       result: DistributionFunction<f64, NegLog>,
       sources: BTreeMap<usize, SampleSource>,
-      round_offs: BTreeMap<(u64, IndexWindow, IndexWindow), FftRoundOff>,
+      round_offs: BTreeMap<u64, FftRoundOff>,
     }
 
     impl TracedConvolution {
@@ -203,13 +198,9 @@ mod tests {
       pub(super) fn round_off_tolerance(&self, k: usize, y: f64) -> f64 {
         let y = y - self.peaks;
         match self.sources.get(&k) {
-          Some(SampleSource::Quadrature) => 1e-6,
-          Some(&SampleSource::Fft {
-            theta,
-            window_a,
-            window_b,
-          }) => {
-            let fft = &self.round_offs[&(theta.to_bits(), window_a, window_b)];
+          Some(SampleSource::Quadrature | SampleSource::WindowedFft) => 1e-6,
+          Some(&SampleSource::Fft { theta }) => {
+            let fft = &self.round_offs[&theta.to_bits()];
             let tilt = theta * (k.to_f64_exact() * self.dx);
             let computed = (fft.min_a + fft.min_b + tilt - y).exp();
             if computed >= 1e-7 * fft.peak {
@@ -248,15 +239,12 @@ mod tests {
     struct SourceRecorder(BTreeMap<usize, SampleSource>);
 
     impl SampleTrace for SourceRecorder {
-      fn fft_sample(&mut self, sample: usize, theta: f64, window_a: IndexWindow, window_b: IndexWindow) {
-        self.0.insert(
-          sample,
-          SampleSource::Fft {
-            theta,
-            window_a,
-            window_b,
-          },
-        );
+      fn fft_sample(&mut self, sample: usize, theta: f64) {
+        self.0.insert(sample, SampleSource::Fft { theta });
+      }
+
+      fn windowed_fft_sample(&mut self, sample: usize) {
+        self.0.insert(sample, SampleSource::WindowedFft);
       }
 
       fn quadrature_sample(&mut self, sample: usize) {
@@ -267,11 +255,8 @@ mod tests {
     #[derive(Clone, Copy, Debug)]
     enum SampleSource {
       Quadrature,
-      Fft {
-        theta: f64,
-        window_a: IndexWindow,
-        window_b: IndexWindow,
-      },
+      WindowedFft,
+      Fft { theta: f64 },
     }
 
     struct FftRoundOff {
@@ -282,10 +267,9 @@ mod tests {
     }
 
     impl FftRoundOff {
-      fn of(a: &Array1<f64>, b: &Array1<f64>, theta: f64, windows: (IndexWindow, IndexWindow), dx: f64) -> Self {
-        let (window_a, window_b) = windows;
-        let (min_a, plain_a) = tilted_plain(a, window_a, theta, dx);
-        let (min_b, plain_b) = tilted_plain(b, window_b, theta, dx);
+      fn of(a: &Array1<f64>, b: &Array1<f64>, theta: f64, dx: f64) -> Self {
+        let (min_a, plain_a) = tilted_plain(a, theta, dx);
+        let (min_b, plain_b) = tilted_plain(b, theta, dx);
         let peak = dx * max_or(&direct_overlap_sums(&plain_a, &plain_b), 0.0);
         let norm_1 = |x: &Array1<f64>| x.sum();
         let norm_2 = |x: &Array1<f64>| x.dot(x).sqrt();
@@ -319,9 +303,8 @@ mod tests {
       }
     }
 
-    fn tilted_plain(neg_log: &Array1<f64>, window: IndexWindow, theta: f64, dx: f64) -> (f64, Array1<f64>) {
-      let tilted = Zip::indexed(neg_log.slice(s![window.first..=window.last]))
-        .map_collect(|i, &value| value - theta * ((window.first + i).to_f64_exact() * dx));
+    fn tilted_plain(neg_log: &Array1<f64>, theta: f64, dx: f64) -> (f64, Array1<f64>) {
+      let tilted = Zip::indexed(neg_log).map_collect(|i, &value| value - theta * (i.to_f64_exact() * dx));
       let min = min_or(&tilted, f64::INFINITY);
       (min, tilted.mapv(|value| (min - value).exp()))
     }

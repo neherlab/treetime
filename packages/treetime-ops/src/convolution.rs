@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use realfft::num_complex::Complex;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 use std::collections::BTreeMap;
+use std::f64::consts::SQRT_2;
 use std::iter::successors;
 use std::ops::RangeInclusive;
 use std::sync::{Arc, OnceLock};
@@ -15,6 +16,8 @@ use treetime_utils::{make_error, make_internal_report};
 const SINGLE_PAIR_WEIGHT: f64 = 0.25;
 
 const NEGLIGIBLE_TERM_DEPTH: f64 = 50.0;
+
+pub const UNIT_ROUND_OFF: f64 = f64::EPSILON / 2.0;
 
 #[derive(Debug)]
 pub struct DirectConvolve;
@@ -165,6 +168,18 @@ impl FftConvolver {
         .slice(s![..self.f_len + self.g_len - 1])
         .mapv(|sum| sum / fft_len),
     )
+  }
+
+  pub fn overlap_sums_round_off(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> f64 {
+    let gamma = |n: f64| n * UNIT_ROUND_OFF / (1.0 - n * UNIT_ROUND_OFF);
+    let stages = (2 * self.fft_len).to_f64_exact().log2().ceil();
+    let stage_error = UNIT_ROUND_OFF + gamma(4.0) * (SQRT_2 + UNIT_ROUND_OFF);
+    let transform_error = stages * stage_error / (1.0 - stages * stage_error);
+    let norm_1 = |x: &Array1<f64>| x.iter().map(|v| v.abs()).sum::<f64>();
+    let norm_2 = |x: &Array1<f64>| x.dot(x).sqrt();
+    let two_norms = norm_2(f_values) * norm_2(g_values);
+    let mixed_norms = (norm_1(f_values) * norm_2(g_values)).min(norm_2(f_values) * norm_1(g_values));
+    (2.0 * transform_error + SQRT_2 * gamma(2.0) + 3.0 * UNIT_ROUND_OFF) * two_norms + transform_error * mixed_norms
   }
 }
 

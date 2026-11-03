@@ -72,7 +72,9 @@ pub(crate) fn distribution_convolution(
 }
 
 pub(crate) trait SampleTrace {
-  fn fft_sample(&mut self, _sample: usize, _theta: f64, _window_a: IndexWindow, _window_b: IndexWindow) {}
+  fn fft_sample(&mut self, _sample: usize, _theta: f64) {}
+
+  fn windowed_fft_sample(&mut self, _sample: usize) {}
 
   fn quadrature_sample(&mut self, _sample: usize) {}
 }
@@ -481,7 +483,7 @@ fn neg_log_with_quadrature_in_valleys(
   (first..=last)
     .map(|i| {
       if conv[i] > floor {
-        trace.fft_sample(i, 0.0, full_a, full_b);
+        trace.fft_sample(i, 0.0);
         return Ok(-conv[i].ln());
       }
       trace.quadrature_sample(i);
@@ -505,8 +507,6 @@ fn neg_log_at_ends_by_tilting(
   tilting: &mut Tilting<'_>,
   trace: &mut impl SampleTrace,
 ) -> Result<ResolvedNegLog, Report> {
-  let full_a = IndexWindow::of_len(tilting.operands.a.plain.len());
-  let full_b = IndexWindow::of_len(tilting.operands.b.plain.len());
   let mut values: VecDeque<f64> = trusted_y.into_iter().collect();
   let mut start = first;
 
@@ -521,7 +521,7 @@ fn neg_log_at_ends_by_tilting(
     if added.is_empty() {
       break;
     }
-    (next..next + added.len()).for_each(|i| trace.fft_sample(i, slope, full_a, full_b));
+    (next..next + added.len()).for_each(|i| trace.fft_sample(i, slope));
     values.extend(added);
   }
 
@@ -538,7 +538,7 @@ fn neg_log_at_ends_by_tilting(
     if added.is_empty() {
       break;
     }
-    (start - added.len()..start).for_each(|i| trace.fft_sample(i, slope, full_a, full_b));
+    (start - added.len()..start).for_each(|i| trace.fft_sample(i, slope));
     start -= added.len();
     added.into_iter().for_each(|value| values.push_front(value));
   }
