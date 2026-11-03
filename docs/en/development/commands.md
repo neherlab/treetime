@@ -6,7 +6,7 @@ description: The just recipes for routine work, and how their names are formed.
 | Task                                             | Command                              |
 | ------------------------------------------------ | ------------------------------------ |
 | List the recipes                                 | `just`                               |
-| Fast checks (format, clippy, TypeScript)         | `just check`                         |
+| Fast checks (format, lint, TypeScript, fixtures) | `just check`                         |
 | Every check; must pass before merging            | `just check-all`                     |
 | Fast lint fixes and format (stage changes first) | `just fix`                           |
 | Every lint fix, dylint included, and format      | `just fix-all`                       |

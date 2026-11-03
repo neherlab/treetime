@@ -127,7 +127,7 @@ checks_tests := "test-rs test-wasm"
 checks_generated := "generated-check"
 checks_typescript := "typecheck lint-ts knip test-ts"
 checks_hawk := "hawk"
-check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-wasm lint-wasm-mt lint-ts typecheck"
+check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-wasm lint-wasm-mt lint-ts typecheck fixtures-check"
 check_full := checks_format + " " + checks_clippy + " " + checks_dylint + " " + checks_tests + " " + checks_generated + " " + checks_typescript + " " + checks_hawk
 lint_fast := "lint-rs lint-wasm lint-wasm-mt lint-ts"
 lint_full := "lint-rs lint-wasm lint-wasm-mt lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
@@ -148,7 +148,7 @@ alias lf := lint-fix
 alias f := fmt
 alias fc := fmt-check
 
-# Fast checks: formatting, clippy, TypeScript types and lints, in parallel
+# Fast checks: formatting, clippy, TypeScript types and lints, fixture registry, in parallel
 [group("check")]
 check: _js
     JS_READY=1 dev/run-checks {{ check_fast }}

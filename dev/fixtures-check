@@ -5,7 +5,12 @@
 # Check the reference and golden-master fixtures against their registry,
 # dev/registry/reference-files.toml: every owning test and listed file must
 # exist, and every tracked file under a registered root must be claimed by an
-# entry. Exits 1 on any finding.
+# entry or by the proptest rule. Exits 1 on any finding.
+#
+# Proptest rule: the proptest harness writes the failing seeds of a property
+# test to packages/<crate>/proptest-regressions/<path>.txt, where the owning
+# test is packages/<crate>/src/<path>.rs. The rule claims every tracked seed
+# file and reports each one whose owning test does not exist.
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -30,6 +35,20 @@ while IFS= read -r file; do
     rc=1
   fi
 done <<<"${covered}"
+
+proptest_seed_re='^packages/([^/]+)/proptest-regressions/(.+)\.txt$'
+seeds=()
+while IFS= read -r file; do
+  [[ "${file}" =~ ${proptest_seed_re} ]] || continue
+  seeds+=("${file}")
+  if [[ ! -f "packages/${BASH_REMATCH[1]}/src/${BASH_REMATCH[2]}.rs" ]]; then
+    printf 'proptest seed file without its owning test: %s\n' "${file}" >&2
+    rc=1
+  fi
+done < <(git ls-files -- 'packages/*/proptest-regressions/**')
+if ((${#seeds[@]} > 0)); then
+  covered="$(printf '%s\n' "${covered}" "${seeds[@]}")"
+fi
 
 mapfile -t roots < <(jq -r '.roots[]' <<<"${json}")
 unclaimed="$(comm -23 <(git ls-files -- "${roots[@]}" | grep -v '_capture$' | LC_ALL=C sort -u) <(LC_ALL=C sort -u <<<"${covered}"))"
