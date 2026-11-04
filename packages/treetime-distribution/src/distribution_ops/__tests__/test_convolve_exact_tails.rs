@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{hard_operand, mixture_closed_form, traced_convolution};
+  use self::helpers::{SampleSource, hard_operand, mixture_closed_form, traced_convolution};
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -94,6 +94,7 @@ mod tests {
   fn test_convolution_window_of_a_gap_keeps_a_pair_of_narrow_components_that_its_ends_and_middle_do_not_reach()
   -> Result<(), Report> {
     let (len_a, len_b) = (1163, 4321);
+    let (dip_a, dip_b) = (1085, 4200);
     let dip = |index: usize, center: usize| 190.0 * (1.0 - index.abs_diff(center).to_f64_exact() / 3.0).max(0.0);
     let a = hard_operand(0.0, 0.026, len_a, |i, _| {
       let d = i.to_f64_exact() / len_a.to_f64_exact() - 0.264;
@@ -102,7 +103,7 @@ mod tests {
       } else {
         1050.0 * d * d + 8000.0 * (d - 0.5).max(0.0).powi(2)
       };
-      smooth - dip(i, 1085)
+      smooth - dip(i, dip_a)
     })?;
     let b = hard_operand(0.0, 0.026, len_b, |j, _| {
       let v = j.to_f64_exact() / len_b.to_f64_exact() - 0.2815;
@@ -111,12 +112,16 @@ mod tests {
       } else {
         -139.0 * (-(v / 0.27).powi(2)).exp_m1()
       };
-      smooth - dip(j, 4200)
+      smooth - dip(j, dip_b)
     })?;
     let traced = traced_convolution(&a, &b)?;
     traced.assert_covers_the_whole_support();
     assert_eq!(Vec::<usize>::new(), traced.infinite_samples());
-    assert_ne!(0, traced.windowed_fft_samples());
+    let narrow_pair = traced.samples_dominated_by_pairs(dip_a - 2..=dip_a + 2, dip_b - 2..=dip_b + 2);
+    assert_ne!(Vec::<usize>::new(), narrow_pair);
+    let windowed = narrow_pair.iter().map(|&k| (k, SampleSource::WindowedFft)).collect_vec();
+    assert_eq!(windowed, traced.sources_of(&narrow_pair));
+    traced.assert_matches_the_quadrature_oracle_at(&narrow_pair);
     traced.assert_matches_the_quadrature_oracle();
     Ok(())
   }
@@ -187,6 +192,8 @@ mod tests {
     use ndarray::{Array1, Zip};
     use pretty_assertions::assert_eq;
     use std::collections::BTreeMap;
+    use std::f64::consts::LN_2;
+    use std::ops::RangeInclusive;
     use treetime_grid::{BoundaryBehavior, MaxGridPoints};
     use treetime_ops::{FftConvolver, FftPlans, UNIT_ROUND_OFF, rounding_gamma};
     use treetime_utils::array::ndarray::{max_or, min_or};
@@ -286,8 +293,17 @@ mod tests {
       }
 
       pub(super) fn assert_matches_the_quadrature_oracle(&self) {
+        self.assert_matches_the_quadrature_oracle_where(|_| true);
+      }
+
+      pub(super) fn assert_matches_the_quadrature_oracle_at(&self, samples: &[usize]) {
+        self.assert_matches_the_quadrature_oracle_where(|k| samples.contains(&k));
+      }
+
+      fn assert_matches_the_quadrature_oracle_where(&self, checked: impl Fn(usize) -> bool) {
         let failures = self
           .samples()
+          .filter(|&(k, _)| checked(k))
           .filter_map(|(k, y)| self.oracle_mismatch(k, y))
           .collect_vec();
         assert_eq!(Vec::<(usize, f64, f64, f64)>::new(), failures);
@@ -313,10 +329,32 @@ mod tests {
         (!(same_infinity || (y - oracle).abs() <= 1e-6)).then_some((k, y, oracle, 1e-6))
       }
 
+      pub(super) fn samples_dominated_by_pairs(
+        &self,
+        indices_a: RangeInclusive<usize>,
+        indices_b: RangeInclusive<usize>,
+      ) -> Vec<usize> {
+        (0..self.result_len())
+          .filter(|&k| {
+            let without_pairs = self.oracle_over_pairs(k, |i| !(indices_a.contains(&i) && indices_b.contains(&(k - i))));
+            without_pairs - self.oracle(k) > LN_2
+          })
+          .collect()
+      }
+
+      pub(super) fn sources_of(&self, samples: &[usize]) -> Vec<(usize, SampleSource)> {
+        samples.iter().map(|&k| (k, self.sources[&k])).collect()
+      }
+
       pub(super) fn oracle(&self, k: usize) -> f64 {
+        self.oracle_over_pairs(k, |_| true)
+      }
+
+      fn oracle_over_pairs(&self, k: usize, included: impl Fn(usize) -> bool) -> f64 {
         let (last_a, last_b) = (self.a.len() - 1, self.b.len() - 1);
         let (lo, hi) = (k.saturating_sub(last_b), k.min(last_a));
         let costs = (lo..=hi)
+          .filter(|&i| included(i))
           .map(|i| {
             let weight: f64 = match i {
               _ if lo == hi => 0.25,
@@ -356,8 +394,8 @@ mod tests {
       }
     }
 
-    #[derive(Clone, Copy, Debug)]
-    enum SampleSource {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub(super) enum SampleSource {
       Quadrature,
       WindowedFft,
       Fft { theta: f64 },
