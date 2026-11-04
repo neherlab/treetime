@@ -76,7 +76,7 @@ pub(crate) trait SampleTrace {
 
   fn windowed_fft_sample(&mut self, _sample: usize) {}
 
-  fn quadrature_sample(&mut self, _sample: usize) {}
+  fn quadrature_sample(&mut self, _sample: usize, _terms: usize) {}
 }
 
 struct NoTrace;
@@ -486,9 +486,9 @@ fn neg_log_with_quadrature_in_valleys(
         trace.fft_sample(i, 0.0);
         return Ok(-conv[i].ln());
       }
-      trace.quadrature_sample(i);
-      let plain = convolve_direct_at(dx, &a.plain, &b.plain, i)?;
       let pairs = i.min(full_a.last) + 1 - i.saturating_sub(full_b.last);
+      trace.quadrature_sample(i, pairs);
+      let plain = convolve_direct_at(dx, &a.plain, &b.plain, i)?;
       if plain >= pairs.to_f64_exact() * f64::MIN_POSITIVE * dx.max(1.0) {
         Ok(-plain.ln())
       } else {

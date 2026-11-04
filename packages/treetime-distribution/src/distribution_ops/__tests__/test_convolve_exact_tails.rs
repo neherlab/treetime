@@ -89,6 +89,38 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_convolution_with_wide_overlaps_at_a_hard_end_computes_its_tail_with_fewer_quadrature_terms_than_one_fft()
+  -> Result<(), Report> {
+    let (len_a, len_b) = (2642, 1476);
+    let a = hard_operand(0.0, 0.01, len_a, |i, _| {
+      let x = i.to_f64_exact() / (len_a - 1).to_f64_exact();
+      match x {
+        x if x <= 0.35 => 3700.0 * (x - 0.09).powi(2),
+        x if x <= 0.55 => 250.12 + 140.0 * (x - 0.35),
+        x if x <= 0.85 => 278.12 + 300.0 * (x - 0.55) + 4300.0 * (x - 0.55).powi(2),
+        x if x <= 0.925 => 755.12 + 380.0 * (x - 0.85),
+        x => 783.62 + 380.0 * (x - 0.925) + 8e5 * (x - 0.925).powi(3),
+      }
+    })?;
+    let b = hard_operand(0.0, 0.01, len_b, |j, _| {
+      let y = j.to_f64_exact() / (len_b - 1).to_f64_exact();
+      if y <= 0.6295 {
+        1150.0 * (y - 0.3165).powi(2)
+      } else {
+        112.66 + 48.0 * (y - 0.6295)
+      }
+    })?;
+    let traced = traced_convolution(&a, &b)?;
+    traced.assert_covers_the_whole_support();
+    assert_eq!(Vec::<usize>::new(), traced.infinite_samples());
+    traced.assert_matches_the_quadrature_oracle();
+    let points = (len_a + len_b).to_f64_exact();
+    let one_fft_of_the_operands = points * points.log2();
+    assert!(traced.quadrature_terms().to_f64_exact() <= one_fft_of_the_operands);
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::support_gap(  f64::INFINITY, (61..=159).collect_vec())]
@@ -155,7 +187,7 @@ mod tests {
       let (peak_a, peak_b) = (min_or(a.y(), f64::INFINITY), min_or(b.y(), f64::INFINITY));
       let (a, b, dx) = (a.y().mapv(|y| y - peak_a), b.y().mapv(|y| y - peak_b), a.dx());
       let round_offs = sources
-        .0
+        .sources
         .values()
         .filter_map(|source| match *source {
           SampleSource::Fft { theta } => Some((theta.to_bits(), theta)),
@@ -172,7 +204,8 @@ mod tests {
         dx,
         x_start: result_x_start,
         result,
-        sources: sources.0,
+        sources: sources.sources,
+        quadrature_terms: sources.quadrature_terms,
         round_offs,
       })
     }
@@ -185,6 +218,7 @@ mod tests {
       x_start: f64,
       result: DistributionFunction<f64, NegLog>,
       sources: BTreeMap<usize, SampleSource>,
+      quadrature_terms: usize,
       round_offs: BTreeMap<u64, FftRoundOff>,
     }
 
@@ -201,6 +235,10 @@ mod tests {
       pub(super) fn assert_covers_the_whole_support(&self) {
         let covered = self.samples().map(|(k, _)| k).collect_vec();
         assert_eq!((0..self.result_len()).collect_vec(), covered);
+      }
+
+      pub(super) fn quadrature_terms(&self) -> usize {
+        self.quadrature_terms
       }
 
       pub(super) fn infinite_samples(&self) -> Vec<usize> {
@@ -263,19 +301,23 @@ mod tests {
     }
 
     #[derive(Default)]
-    struct SourceRecorder(BTreeMap<usize, SampleSource>);
+    struct SourceRecorder {
+      sources: BTreeMap<usize, SampleSource>,
+      quadrature_terms: usize,
+    }
 
     impl SampleTrace for SourceRecorder {
       fn fft_sample(&mut self, sample: usize, theta: f64) {
-        self.0.insert(sample, SampleSource::Fft { theta });
+        self.sources.insert(sample, SampleSource::Fft { theta });
       }
 
       fn windowed_fft_sample(&mut self, sample: usize) {
-        self.0.insert(sample, SampleSource::WindowedFft);
+        self.sources.insert(sample, SampleSource::WindowedFft);
       }
 
-      fn quadrature_sample(&mut self, sample: usize) {
-        self.0.insert(sample, SampleSource::Quadrature);
+      fn quadrature_sample(&mut self, sample: usize, terms: usize) {
+        self.sources.insert(sample, SampleSource::Quadrature);
+        self.quadrature_terms += terms;
       }
     }
 

@@ -1,6 +1,6 @@
 use crate::distribution_ops::convolve::{ResolvedNegLog, SampleTrace};
 use eyre::Report;
-use itertools::{Itertools, iproduct};
+use itertools::{Itertools, iproduct, izip};
 use ndarray::{Array1, ArrayView1, Zip, s};
 use ordered_float::OrderedFloat;
 use std::collections::VecDeque;
@@ -127,7 +127,7 @@ impl<'a> ExactTails<'a> {
     for k in target.iter() {
       if self.value(k).is_none() && !in_support(k) {
         self.set(k, f64::INFINITY);
-        trace.quadrature_sample(k);
+        trace.quadrature_sample(k, 0);
       }
     }
     let full = Gap {
@@ -171,7 +171,8 @@ impl<'a> ExactTails<'a> {
       bound,
       ..gap
     };
-    if self.quadrature_is_cheaper(&gap) {
+    let sections = gap.sections();
+    if self.quadrature_is_cheaper(&gap, &sections) {
       return gap
         .samples
         .iter()
@@ -180,7 +181,7 @@ impl<'a> ExactTails<'a> {
     let median_index = bounds.len().div_ceil(2) - 1;
     let median = *bounds.select_nth_unstable_by_key(median_index, |&b| OrderedFloat(b)).1;
     let resolved = if bound - median <= NEGLIGIBLE_PAIR_DEPTH {
-      self.resolve_by_windowed_tilt(&gap, trace)?
+      self.resolve_by_windowed_tilt(&gap, &sections, trace)?
     } else {
       0
     };
@@ -267,9 +268,11 @@ impl<'a> ExactTails<'a> {
     Some((window_a, window_b))
   }
 
-  fn quadrature_is_cheaper(&self, gap: &Gap) -> bool {
-    let (len_a, len_b) = (gap.window_a.len(), gap.window_b.len());
-    if len_a < 2 || len_b < 2 {
+  fn quadrature_is_cheaper(&self, gap: &Gap, sections: &[Section]) -> bool {
+    if sections
+      .iter()
+      .any(|section| section.a.len() < 2 || section.b.len() < 2)
+    {
       return true;
     }
     let terms: usize = gap
@@ -278,8 +281,14 @@ impl<'a> ExactTails<'a> {
       .filter_map(|k| self.pairs_in_windows(k, gap))
       .map(IndexWindow::len)
       .sum();
-    let points = (len_a + len_b).to_f64_exact();
-    terms.to_f64_exact() <= points * points.log2()
+    let fft_cost: f64 = sections
+      .iter()
+      .map(|section| {
+        let points = (section.a.len() + section.b.len()).to_f64_exact();
+        points * points.log2()
+      })
+      .sum();
+    terms.to_f64_exact() <= fft_cost
   }
 
   fn resolve_by_quadrature(&mut self, k: usize, gap: &Gap, trace: &mut impl SampleTrace) -> Result<(), Report> {
@@ -294,11 +303,16 @@ impl<'a> ExactTails<'a> {
       pairs.first..=pairs.last,
     )?;
     self.set(k, value);
-    trace.quadrature_sample(k);
+    trace.quadrature_sample(k, pairs.len());
     Ok(())
   }
 
-  fn resolve_by_windowed_tilt(&mut self, gap: &Gap, trace: &mut impl SampleTrace) -> Result<usize, Report> {
+  fn resolve_by_windowed_tilt(
+    &mut self,
+    gap: &Gap,
+    sections: &[Section],
+    trace: &mut impl SampleTrace,
+  ) -> Result<usize, Report> {
     let ExactTailOperands { a, b, dx, fft_plans } = self.operands;
     let samples = gap.samples;
     let (Some(left), Some(right)) = (self.value(samples.first - 1), self.value(samples.last + 1)) else {
@@ -312,33 +326,68 @@ impl<'a> ExactTails<'a> {
       return Ok(0);
     }
     let theta = (right - left) / ((samples.len() + 1).to_f64_exact() * dx);
-    let tilted_a = TiltedWindow::new(a, gap.window_a, theta, dx);
-    let tilted_b = TiltedWindow::new(b, gap.window_b, theta, dx);
-    let mut convolver = FftConvolver::new(tilted_a.plain.len(), tilted_b.plain.len(), fft_plans)?;
-    let sums = convolver.overlap_sums(&tilted_a.plain, &tilted_b.plain)?;
-    let round_off = convolver.overlap_sums_round_off(&tilted_a.plain, &tilted_b.plain);
-    let accepted_sum = round_off * (1.0 + UNIT_ROUND_OFF) / (-(-WINDOW_ROUND_OFF_NATS).exp_m1() - 8.0 * UNIT_ROUND_OFF);
-    let offset = gap.window_a.first + gap.window_b.first;
-    let mut resolved = 0;
-    for k in samples.iter() {
-      let Some(&sum) = k.checked_sub(offset).and_then(|q| sums.get(q)) else {
-        continue;
+    let tilted = sections
+      .iter()
+      .map(|section| {
+        (
+          TiltedWindow::new(a, section.a, theta, dx),
+          TiltedWindow::new(b, section.b, theta, dx),
+        )
+      })
+      .collect_vec();
+    let reference = tilted
+      .iter()
+      .map(|(tilted_a, tilted_b)| tilted_a.min + tilted_b.min)
+      .fold(f64::INFINITY, f64::min);
+    let mut sums = Array1::<f64>::zeros(samples.len());
+    let mut round_off = Array1::<f64>::zeros(samples.len());
+    for (tilted_a, tilted_b) in &tilted {
+      let offset = tilted_a.window.first + tilted_b.window.first;
+      let outputs = IndexWindow {
+        first: offset.max(samples.first),
+        last: (tilted_a.window.last + tilted_b.window.last).min(samples.last),
       };
+      if outputs.first > outputs.last || !(tilted_a.min + tilted_b.min).is_finite() {
+        continue;
+      }
+      let gap_outputs = s![outputs.first - samples.first..=outputs.last - samples.first];
+      let scale = (reference - (tilted_a.min + tilted_b.min)).exp();
+      if scale < f64::MIN_POSITIVE {
+        let largest_sum = tilted_a.plain.len().min(tilted_b.plain.len()).to_f64_exact();
+        round_off
+          .slice_mut(gap_outputs)
+          .mapv_inplace(|bound| bound + f64::MIN_POSITIVE * largest_sum);
+        continue;
+      }
+      let mut convolver = FftConvolver::new(tilted_a.plain.len(), tilted_b.plain.len(), fft_plans)?;
+      let section_sums = convolver.overlap_sums(&tilted_a.plain, &tilted_b.plain)?;
+      let section_round_off = scale * convolver.overlap_sums_round_off(&tilted_a.plain, &tilted_b.plain);
+      Zip::from(sums.slice_mut(gap_outputs))
+        .and(round_off.slice_mut(gap_outputs))
+        .and(section_sums.slice(s![outputs.first - offset..=outputs.last - offset]))
+        .for_each(|sum, bound, &section_sum| {
+          *sum += scale * section_sum;
+          *bound += section_round_off;
+        });
+    }
+    let summation_error = gamma(sections.len() + 3);
+    let accepted_share = -(-WINDOW_ROUND_OFF_NATS).exp_m1() - 8.0 * UNIT_ROUND_OFF - summation_error;
+    let tilted_at = |neg_log: &Array1<f64>, i: usize| neg_log[i] - theta * (i.to_f64_exact() * dx);
+    let mut resolved = 0;
+    for (k, &sum, &bound) in izip!(samples.iter(), &sums, &round_off) {
       let full = self.full_pairs(k);
       let excess: f64 = [full.first, full.last]
         .into_iter()
         .dedup()
-        .filter_map(|i| {
-          let product = tilted_a.at(i)? * tilted_b.at(k - i)?;
-          Some((1.0 - trapezoid_weight(a.len(), b.len(), k, i)) * product)
+        .filter(|&i| gap.window_a.contains(i) && gap.window_b.contains(k - i))
+        .map(|i| {
+          let product = (reference - (tilted_at(a, i) + tilted_at(b, k - i))).exp();
+          (1.0 - trapezoid_weight(a.len(), b.len(), k, i)) * product
         })
         .sum();
       let sum = sum - excess;
-      if sum >= accepted_sum {
-        self.set(
-          k,
-          -(sum * dx).ln() + tilted_a.min + tilted_b.min + theta * (k.to_f64_exact() * dx),
-        );
+      if sum > 0.0 && sum * accepted_share >= bound * (1.0 + UNIT_ROUND_OFF) * (1.0 + summation_error) {
+        self.set(k, -(sum * dx).ln() + reference + theta * (k.to_f64_exact() * dx));
         trace.windowed_fft_sample(k);
         resolved += 1;
       }
@@ -371,6 +420,45 @@ struct Gap {
   window_a: IndexWindow,
   window_b: IndexWindow,
   bound: f64,
+}
+
+impl Gap {
+  #[expect(
+    clippy::integer_division,
+    reason = "integer division splits the window into near-equal parts"
+  )]
+  fn sections(&self) -> Vec<Section> {
+    let split_a = self.window_a.len() >= self.window_b.len();
+    let (long, short) = if split_a {
+      (self.window_a, self.window_b)
+    } else {
+      (self.window_b, self.window_a)
+    };
+    let parts = (long.len() / self.samples.len().max(2)).max(1);
+    (0..parts)
+      .filter_map(|p| {
+        let part = IndexWindow {
+          first: long.first + p * long.len() / parts,
+          last: long.first + (p + 1) * long.len() / parts - 1,
+        };
+        let partners = IndexWindow {
+          first: short.first.max(self.samples.first.saturating_sub(part.last)),
+          last: short.last.min(self.samples.last.checked_sub(part.first)?),
+        };
+        (partners.first <= partners.last).then_some(if split_a {
+          Section { a: part, b: partners }
+        } else {
+          Section { a: partners, b: part }
+        })
+      })
+      .collect()
+  }
+}
+
+#[derive(Clone, Copy)]
+struct Section {
+  a: IndexWindow,
+  b: IndexWindow,
 }
 
 fn result_support(a: &Array1<f64>, b: &Array1<f64>) -> Vec<IndexWindow> {
@@ -466,6 +554,11 @@ impl<'a> SlidingMinimum<'a> {
   }
 }
 
+fn gamma(n: usize) -> f64 {
+  let nu = n.to_f64_exact() * UNIT_ROUND_OFF;
+  nu / (1.0 - nu)
+}
+
 struct TiltedWindow {
   window: IndexWindow,
   min: f64,
@@ -479,9 +572,5 @@ impl TiltedWindow {
     let min = min_or(&tilted, f64::INFINITY);
     let plain = tilted.mapv(|value| (min - value).exp());
     Self { window, min, plain }
-  }
-
-  fn at(&self, i: usize) -> Option<f64> {
-    self.window.contains(i).then(|| self.plain[i - self.window.first])
   }
 }
