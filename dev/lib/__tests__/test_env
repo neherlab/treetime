@@ -25,7 +25,7 @@ test_env_run_quiet_prints_context_and_all_output_when_the_command_fails() {
 
 test_env_run_quiet_ends_output_without_a_final_newline_with_one() {
   run_quiet "Build" bash -c 'printf partial; exit 1' 2>stderr || true
-  assert_eq "Build (exit 1):"$'\n'"partial"$'\n'"x" "$(cat stderr; printf x)"
+  assert_eq "Build (exit 1):"$'\n'"partial"$'\n'"x" "$(cat stderr && printf x)"
 }
 
 # Ctrl-C in a terminal sends SIGINT to the whole foreground process group. The
@@ -64,7 +64,7 @@ test_env_docker_build_quiet_prints_the_plain_log_when_the_build_fails() {
 test_env_docker_build_quiet_streams_the_build_with_buildkit_progress() {
   fake_docker 0
   local status=0
-  BUILDKIT_PROGRESS=tty docker_build_quiet "Build" --tag=x . >stdout 2>stderr || status=$?
+  BUILDKIT_PROGRESS=plain docker_build_quiet "Build" --tag=x . >stdout 2>stderr || status=$?
   assert_eq "0||docker buildx build --tag=x ." "${status}|$(<stdout)|$(<stderr)"
 }
 
@@ -88,5 +88,8 @@ wait_for_file() {
   fail "${1} did not appear within 10 s"
 }
 
+# shellcheck source=../env.sh
+source "${root}/dev/lib/env.sh"
+# shellcheck source=harness.sh
 source "${root}/dev/lib/__tests__/harness.sh"
-run_tests test_env_ "${root}/dev/lib/env.sh"
+run_tests test_env_

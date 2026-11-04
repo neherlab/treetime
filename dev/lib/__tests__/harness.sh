@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
 # Test runner of the shell libraries in dev/lib, sourced by the test scripts in
-# this directory. A test is a function whose name starts with the prefix that
-# the script passes to run_tests. Each test runs in its own subshell and
-# temporary directory, with the library under test sourced.
+# this directory after the library under test. A test is a function whose name
+# starts with the prefix that the script passes to run_tests. Each test runs in
+# its own subshell and temporary directory.
 
-# Run every test function whose name starts with a prefix, with a library
-# sourced, and print one line per test. Return 1 when a test fails.
+# Run every test function whose name starts with a prefix and print one line
+# per test. Return 1 when a test fails.
 run_tests() {
-  local prefix="${1:?prefix}" library="${2:?library}" name status=0
+  local prefix="${1:?prefix}" name status=0
   for name in $(compgen -A function "${prefix}"); do
-    if run_test "${name}" "${library}"; then
+    if run_test "${name}"; then
       printf 'ok    %s\n' "${name}"
     else
       printf 'FAIL  %s\n' "${name}"
@@ -21,12 +21,10 @@ run_tests() {
 }
 
 run_test() {
-  local name="${1}" library="${2}" work_dir status=0
+  local name="${1}" work_dir status=0
   work_dir="$(mktemp -d)"
   (
     cd "${work_dir}"
-    # shellcheck source=/dev/null
-    source "${library}"
     "${name}"
   ) || status=$?
   rm -rf "${work_dir}"

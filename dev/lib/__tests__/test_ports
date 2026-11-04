@@ -132,5 +132,8 @@ start_listener() {
   fail "the listener did not listen within 10 s"
 }
 
+# shellcheck source=../ports.sh
+source "${root}/dev/lib/ports.sh"
+# shellcheck source=harness.sh
 source "${root}/dev/lib/__tests__/harness.sh"
-run_tests test_ports_ "${root}/dev/lib/ports.sh"
+run_tests test_ports_
