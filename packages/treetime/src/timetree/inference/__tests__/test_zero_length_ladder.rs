@@ -17,6 +17,7 @@ mod tests {
   use ndarray::Array1;
   use rstest::rstest;
   use std::collections::BTreeSet;
+  use std::ops::RangeInclusive;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, DistributionFunction, MassProfile, NegLog, TailMass, rewindow_to_mass};
   use treetime_graph::graph::Graph;
@@ -37,7 +38,7 @@ mod tests {
   const ROOT_TOLERANCE: f64 = 1e-13;
   const ROOT_MAX_ITERS: u64 = 200;
   const REGION_BRACKET_MASS: f64 = 1e-6;
-  const MIN_REDUCTION_PER_QUARTERING: f64 = 9.0;
+  const FINEST_PAIR_ORDERS: RangeInclusive<f64> = 1.9..=2.1;
   const CI_LOWER_QUANTILE: f64 = 0.5 * (1.0 - CI_FRACTION);
   const CI_UPPER_QUANTILE: f64 = 1.0 - CI_LOWER_QUANTILE;
 
@@ -73,12 +74,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tips_20(  20)]
-  #[case::tips_50(  50)]
-  #[case::tips_200(200)]
+  #[case::tips_20(  20, 1e-4, 1.9)]
+  #[case::tips_50(  50, 1e-3, 1.9)]
+  #[case::tips_200(200, 1e-2, 1.3)]
   #[trace]
   fn test_zero_length_ladder_root_date_posterior_converges_to_the_hypoexponential_root_age(
     #[case] n_tips: usize,
+    #[case] max_finest_error: f64,
+    #[case] min_coarsest_pair_order: f64,
   ) -> Result<(), Report> {
     let expected = helpers::RootAge::new(n_tips).date_summary()?;
 
@@ -94,10 +97,14 @@ mod tests {
       .try_collect()?;
 
     let errors = actual.iter().map(|summary| summary.max_difference(&expected)).collect_vec();
-    let reductions = errors.iter().tuple_windows().map(|(coarse, fine)| coarse / fine).collect_vec();
+    let orders = errors
+      .iter()
+      .tuple_windows()
+      .map(|(coarse, fine)| (coarse / fine).log(4.0))
+      .collect_vec();
     assert!(
-      reductions[0] > 1.0 && reductions[1] >= MIN_REDUCTION_PER_QUARTERING,
-      "root date errors {errors:?} in years fall by {reductions:?} per quartering of the branch grid spacing: expected {expected:#?}, actual {actual:#?}"
+      errors[2] <= max_finest_error && orders[0] >= min_coarsest_pair_order && FINEST_PAIR_ORDERS.contains(&orders[1]),
+      "root date errors {errors:?} in years converge at orders {orders:?} per quartering of the branch grid spacing: expected {expected:#?}, actual {actual:#?}"
     );
     Ok(())
   }
