@@ -53,9 +53,13 @@ v1: `fn optimize_exact()` [packages/treetime/src/reroot/edge_search.rs#L93](../.
 
 Identifies clock outliers using Tukey's fences (<a id="cite-5"></a>[Tukey 1977](https://doi.org/10.1007/978-1-4419-7976-6) [[5](#ref-5)]) applied to clock deviation residuals. The interquartile distance IQD = Q3 - Q1 measures the spread of the middle 50% of clock deviations. A leaf with `|clock_deviation| > threshold * IQD` is flagged as an outlier, where the threshold is controlled by `--clock-filter` (default 4.0, as in v0).
 
-IQD-based detection is nonparametric and does not assume normally distributed residuals, making it appropriate for phylogenetic data where residual distributions can be skewed. For comparison, under a normal distribution IQD = 1.35 _ sigma, so `threshold _ IQD = 3 _ 1.35 _ sigma = 4.05 \* sigma` - roughly the 99.995% interval.
+Both quartiles follow the default linear rule of `np.percentile`, as in v0: for the residuals of the n dated leaves in ascending order $r_0 \le \dots \le r_{n-1}$, the quantile $q$ lies at the fractional index $h = q (n - 1)$ and interpolates linearly between $r_{\lfloor h \rfloor}$ and $r_{\lceil h \rceil}$. For example, n = 5 gives Q1 = $r_1$ and Q3 = $r_3$, and n = 8 gives Q1 = $r_1 + 0.75 (r_2 - r_1)$ and Q3 = $r_5 + 0.25 (r_6 - r_5)$. All dated leaves enter the quartiles, also the children of the root.
 
-v1: [`packages/treetime/src/clock/clock_filter.rs#L22-L89`](../../packages/treetime/src/clock/clock_filter.rs#L22-L89).
+A leaf whose parent is a root is never flagged, as in v0 (`node.up.up is not None`), whatever its residual.
+
+IQD-based detection is nonparametric and does not assume normally distributed residuals, making it appropriate for phylogenetic data where residual distributions can be skewed. For comparison, under a normal distribution IQD = 1.35σ, so the default fence 4 × IQD = 5.4σ.
+
+v1: [`packages/treetime/src/clock/clock_filter.rs#L20-L104`](../../packages/treetime/src/clock/clock_filter.rs#L20-L104).
 v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40).
 
 ### References

@@ -44,8 +44,9 @@
 
 - [x] Outlier prefilter when `--clock-filter > 0`
 - [x] Divergence assignment (root-to-tip accumulation)
-- [x] IQD calculation (Q3-Q1)
+- [x] IQD calculation (Q3-Q1), quartiles by the linear rule of `np.percentile` (fractional index q (n - 1))
 - [x] Outlier marking (threshold \* IQD)
+- [x] Leaves whose parent is a root are never marked (v0 `node.up.up is not None`)
 - [ ] Local clock filter method (`--clock-filter-method=local` in v0)
 - [x] `--prune-filtered-tips` removes the flagged tips before the final clock fit, except the tips of `--keep-tips` and `--keep-tips-file` (v0 `clock --prune-outliers`, which the CLI reads as `--prune-filtered-tips`)
 - [x] `--prune-undated-tips` removes the tips without a usable date before the final clock fit, except the tips of `--keep-tips` and `--keep-tips-file` (v1 only)

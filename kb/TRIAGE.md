@@ -8,7 +8,6 @@ The work on these issues waits on a maintainer decision or a measurement.
 
 Each line names the issue and the options that a maintainer must choose from.
 
-- **[kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)**: keep the approximate fold below the root, fold exactly with one entry per site, or fold exactly with the class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](proposals/sparse-shared-profiles-for-sites-without-data.md); the bitwise fold at the root keeps these sites explicit on moderate root polytomies (12 children: 114 child contribution entries against 67 below the root)
 - **[kb/issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md](issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md)**: honor each of the two flags that the amino-acid path ignores, reject the combination, or document the flag as nucleotide-only
 - **[kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](issues/M-app-runs-folder-grows-without-retention-or-quota.md)**: choose a quota, an age-based retention, or both, their defaults for the deploy, and whether the UI warns before it removes a run
 - **[kb/issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md](issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md)**: take the slack and the coupling of the relaxed clock as two flags, as one comma-separated value, or keep the two space-separated values of TreeTime 0.x
@@ -152,7 +151,7 @@ Each line names the issue and the measurement or analysis that must come first.
 - **[kb/issues/N-timetree-forward-fine-fallback-can-build-large-grids.md](issues/N-timetree-forward-fine-fallback-can-build-large-grids.md)**: find which forward stage builds the 43 513-point grid of `mpox/clade-ii/1000` at 5e-4 and why its window is so wide
 - **[kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md](issues/N-timetree-gm-runner-dataset-cases-disabled.md)**: find out why the v0 capture does not reproduce the committed fixture, and why the dense `mpox_clade_ii_20` case is slow
 - **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the memory of the tab in the browsers with runs computing at the same time and after several large runs in one page session
-- **[kb/issues/H-timetree-deep-node-dates-differ-from-v0-by-decades.md](issues/H-timetree-deep-node-dates-differ-from-v0-by-decades.md)**: decide which engine dates the deepest nodes of lassa l, rubella E1, and norovirus all/genome correctly, and locate the 53 years of lassa l that remain without the coalescent prior; on strict-clock data the engines agree, so a simulation must reproduce the clock conflict at the root of lassa l
+- **[kb/issues/H-timetree-deep-node-dates-differ-from-v0-by-decades.md](issues/H-timetree-deep-node-dates-differ-from-v0-by-decades.md)**: decide which engine dates the deepest nodes of lassa l, rubella E1, and norovirus all/genome correctly, and locate the 53 years of lassa l that remain without the coalescent prior; in one strict-clock replicate (seed 1) the engines agree, so a simulation must reproduce the clock conflict at the root of lassa l
 
 ## Fix now
 
@@ -174,6 +173,7 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)**: derive the optimize mutations from the emitted sequences, as ancestral and timetree do
 - **[kb/issues/M-io-stdin-config-and-input-read-twice.md](issues/M-io-stdin-config-and-input-read-twice.md)**: reject `--config -` together with an input `-`
 - **[kb/issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)**: choose a slope estimate for the soft-end line of a convolution that the FFT round-off at the trust floor does not move
+- **[kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)**: implement the class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](proposals/sparse-shared-profiles-for-sites-without-data.md), so that sparse posteriors below the root match dense without the copies of the exact single-site rule
 
 ## Planned
 

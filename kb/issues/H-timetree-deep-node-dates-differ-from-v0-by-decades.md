@@ -1,10 +1,10 @@
 # Deep-node dates differ from v0 by decades on three production builds
 
-On three Nextstrain production builds, v0 and v1 date the oldest nodes 16 to 90 years apart, with v1 older in every case. The measurements below exclude two of the suspected causes. The discretization error of v1 is not a cause, because the v1 dates are converged in the time grid. The error along chains of zero-length branches is not a cause, because it moves dates younger and by at most about one year. The coalescent prior causes about 40% of the difference on two builds and none on the third. Which engine dates these nodes correctly is open.
+On three Nextstrain production builds, v0 and v1 date the oldest nodes 16 to 90 years apart, with v1 older in every case. The measurements below exclude two of the suspected causes. The discretization error of v1 is not a cause of the root differences, because the v1 root dates of all three builds move by at most 0.4 years between grids of 300 and 1200 points. Below the root of norovirus, the dates of some deep clades are not converged: they move by up to 13.4 years at 4800 points (see "Grid convergence of v1"). The error along chains of zero-length branches is not a cause, because it moves dates younger and by at most about one year. The coalescent prior causes about 40% of the difference on two builds and none on the third. Which engine dates these nodes correctly is open.
 
 ## Cases
 
-The v1 runs use the `timetree` arguments of the pipelandia round (`--max-iter 2 --clock-filter 0 --confidence --branch-length-mode auto --divergence-units mutations-per-site --seed 1`, the fixed clock rate of each workflow, one thread). v0 is `augur refine` 34.3.0 with TreeTime 0.12.1 in the Nextstrain image of the round, with the command line of the workflow:
+The v1 runs use these `timetree` arguments (`--max-iter 2 --clock-filter 0 --confidence --branch-length-mode auto --divergence-units mutations-per-site --seed 1`, the fixed clock rate of each workflow, one thread). v0 is `augur refine` 34.3.0 with TreeTime 0.12.1 in the Nextstrain image of the round, with the command line of the workflow:
 
 - **lassa l**: 752 tips, clock rate 0.00078, `--coalescent opt`; v1 `--keep-root` on the midpoint-rooted tree that augur writes, v0 `--root mid_point`
 - **rubella E1**: 3,046 tips in v1 and 3,023 in v0 (the v0 clock filter `--clock-filter-iqd 4` removes 23), clock rate 0.0006, `--coalescent opt`; v1 `--keep-root --clock-filter 4.0 --prune-filtered-tips`, v0 `--root mid_point --stochastic-resolve`
@@ -58,7 +58,7 @@ One replicate of lassa l with a known truth under a strict clock does not reprod
 - **Runs**: the arguments of the round on the true rooted tree with the true clock rate and without the prior: v1 `--keep-root` without `--coalescent`, v0 `augur refine --keep-root --coalescent 0`. The longest input branch is 0.259 substitutions per site, so both engines use input-mode branch likelihoods, as on the real tree (longest branch 0.241)
 - **Result, seed 1**: v1 1544.10 [1537.79, 1550.40], v0 1544.34 [1537.87, 1550.50]; both 90% regions contain the true date
 
-The real input tree breaks the strict clock at the root: the mean root-to-tip divergence is 0.514 substitutions per site on the side of 535 tips and 0.339 on the side of 217 tips, a difference of about 224 years at the fixed rate, while the median tip dates of the two sides differ by 3.4 years (2013.7 and 2017.1). The simulated tree has 0.361 and 0.370. So the 52.6 years arise only on data that conflict with the strict clock, and a strict-clock simulation cannot show which engine dates lassa l correctly. The replicates of the simulation contract (100 unselected replicates and the coverage of the 90% root region) were not run, because the regime check failed.
+The real input tree breaks the strict clock at the root: the mean root-to-tip divergence is 0.514 substitutions per site on the side of 535 tips and 0.339 on the side of 217 tips, a difference of about 224 years at the fixed rate, while the median tip dates of the two sides differ by 3.4 years (2013.7 and 2017.1). The simulated tree has 0.361 and 0.370. So in the one replicate the 52.6 years do not arise on strict-clock data, and a strict-clock simulation cannot show which engine dates lassa l correctly. The replicates of the simulation contract (100 unselected replicates and the coverage of the 90% root region) were not run, because the regime check failed.
 
 ### Chains of zero-length branches
 
@@ -66,21 +66,27 @@ On a caterpillar with a closed-form root age, both engines move the root younger
 
 ## Attribution
 
-- **lassa l**: the coalescent prior causes 37 of 90 years. The other 53 years arise in the time inference with the same topology and the same branch lengths. They need the conflict of the two root sides with the strict clock: on strict-clock data with the same topology and tip dates, the engines agree within 0.24 years. Their mechanism is not located
+- **lassa l**: the coalescent prior causes 37 of 90 years. The other 53 years arise in the time inference with the same topology and the same branch lengths. In one replicate (seed 1) of a strict-clock simulation with the same topology and tip dates, the engines agree within 0.24 years, so the difference may need the conflict of the two root sides with the strict clock; the 100 replicates of the simulation contract were not run. The mechanism of the 53 years is not located
 - **rubella E1**: the coalescent prior causes 7 of 16 years. The remaining 10 years lie at the MRCA, whose split differs between the engines, while the large clades below it agree within 2 years without the prior
 - **norovirus all/genome**: the coalescent prior causes none of the 51 years, and the engines choose different roots
 
 > [!IMPORTANT]
 > **Investigation required.** The measurements do not show which engine dates the deep nodes correctly, and the 53 years of lassa l without the prior have no located cause. The evidence to collect:
 >
-> - **lassa l, clock conflict at the root**: how each engine weighs the two root sides, whose divergence differs by about 224 years at the fixed rate. A simulation with a known truth must reproduce this conflict (for example a rate that differs between the two sides, or a relaxed clock) before its replicates can show which engine is correct; on strict-clock data the engines agree
+> - **lassa l, clock conflict at the root**: how each engine weighs the two root sides, whose divergence differs by about 224 years at the fixed rate. A simulation with a known truth must reproduce this conflict (for example a rate that differs between the two sides, or a relaxed clock) before its replicates can show which engine is correct; in one strict-clock replicate (seed 1) the engines agree
 > - **lassa l, branch-length likelihood**: whether both engines use input-mode branch likelihoods on this tree (the root-to-tip divergence is about 0.47 substitutions per site, so many branches are longer than 0.05, where v0 uses its Gaussian cost), and the root date of v1 with the branch likelihoods of v0 evaluated on the v0 grid ([M-timetree-input-branch-likelihood-grid-diverges-from-v0.md](M-timetree-input-branch-likelihood-grid-diverges-from-v0.md))
 > - **norovirus all/genome and rubella E1, rooting**: the root dates of both engines on the same rooted tree (v1 with `--keep-root` on the v0 output topology)
 > - **soft-end lines**: whether the deep posteriors lie on the straight lines at soft ends of convolutions, whose slope carries FFT round-off and moves deep dates by tenths of a year ([M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)); this error is too small to cause decades, but it bounds the precision of every comparison above
 
 ## Reproduction
 
-The production cases of the round, with their input trees, alignments, and metadata, are in the pipelandia data packages; the v1 arguments are those of the cases above. For the grid runs, change `GRID_POINTS` and remove the compile-time check that it stays below `MaxGridPoints::MIN`. For v0 without the prior, rerun the `augur refine` command line of the build with `--coalescent 0`.
+The inputs are the outputs of Nextstrain workflow runs, with their input trees, alignments, and metadata:
+
+- **lassa l**: the `phylogenetic-build-output` artifact 12836482720 of a scheduled GitHub Actions build of `nextstrain/lassa` at commit `8bd66e384a7c458332e6d3ca07c4619efa349aa0`
+- **rubella E1**: the `phylogenetic-build-output` artifact 11115633017 of `nextstrain/rubella` at commit `5d94165bbbb69a7fefd89d29bc7eb1df9ac2e5d5`
+- **norovirus all/genome**: the example data and `phylogenetic/build-configs/ci/config.yaml` of `nextstrain/norovirus` as of 2026-10-28, run with the Nextstrain image of the round
+
+GitHub deletes Actions artifacts after their retention period, so the two artifacts can expire. The v1 arguments are those of the cases above. For the grid runs, change `GRID_POINTS` and remove the compile-time check that it stays below `MaxGridPoints::MIN`. For v0 without the prior, rerun the `augur refine` command line of the build with `--coalescent 0`.
 
 ## Related
 

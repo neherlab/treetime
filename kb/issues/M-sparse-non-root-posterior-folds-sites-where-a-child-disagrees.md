@@ -134,8 +134,9 @@ The exact rule: the node's message to its parent enters the forward product unde
 
 The exact rule doubles the run time of the production mpox B.1 build: 552 s against 270 s, one thread, both runs under the same concurrent load; on a quiet build host (load 0.5 at the start, 7.9 at the end), the approximate fold of commit `204b81185` takes 260.6 s, against 230.6 s for commit `2d813264e`. In one forward pass, the explicit posterior entries grow from 15.3k to 5.02M and the outside-message entries from 5.05M to 33.0M, although only 62k and 636k of them are bit-distinct. [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](../proposals/sparse-shared-profiles-for-sites-without-data.md) describes a sharing mechanism that removes these copies without a tolerance.
 
-> [!IMPORTANT]
-> **Decision required.** `rust` keeps the threshold fold below the root until the decision on the proposal. Options: take the exact rule with single-site entries (sparse matches dense, the production build takes twice as long), take it together with the class-keyed shared profiles of the proposal (exact, not implemented), or keep the fold.
+### Decision
+
+`rust` keeps the threshold fold below the root. The exact rule with single-site entries stays unlanded on branch `fix/sparse-posterior-below-root` as the reference for the fix, because it doubles the run time of the production build. The fix is the class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](../proposals/sparse-shared-profiles-for-sites-without-data.md), which make sparse exact without the copies of the exact rule; the ignored below-root cases of `test_root_polytomy.rs` validate it.
 
 ## Related issues
 
