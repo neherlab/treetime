@@ -29,22 +29,25 @@ CHECKSUMS_ASSET="SHA256SUMS"
 DOCKER_IMAGE="neherlab/treetime"
 
 # Resolve the source commit of the most recent published nightly, used as the
-# lower bound of the changelog. Always succeeds: on any lookup or resolution
-# failure it prints nothing so the caller falls back to notes without a
-# changelog rather than aborting the publication.
+# lower bound of the changelog. Always succeeds: on a failed lookup or
+# resolution it prints the error to stderr and nothing to stdout, so the caller
+# falls back to notes without a changelog rather than aborting the publication.
 find_last_nightly_sha() {
   local repo="${1}"
 
   local last_tag
-  last_tag=$(gh release list --repo "${repo}" --exclude-drafts --limit 100 --json tagName \
-    --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""' 2>/dev/null) || return 0
+  if ! last_tag=$(gh release list --repo "${repo}" --exclude-drafts --limit 100 --json tagName \
+    --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""'); then
+    printf "Listing the releases of %s failed; the release notes have no changelog\n" "${repo}" >&2
+    return 0
+  fi
   [[ -n "${last_tag}" ]] || return 0
 
   local abbreviated_sha="${last_tag##*+}"
   [[ "${abbreviated_sha}" != "${last_tag}" ]] || return 0
 
   local resolved
-  resolved=$(git rev-parse --verify --quiet "${abbreviated_sha}^{commit}" 2>/dev/null) || {
+  resolved=$(git rev-parse --verify --quiet "${abbreviated_sha}^{commit}") || {
     printf "Unable to resolve previous nightly source: %s\n" "${abbreviated_sha}" >&2
     return 0
   }
@@ -205,8 +208,8 @@ EOF
 # Emit the changelog: compare link, merged pull requests, and commits landed
 # outside any pull request. Emitted only when the previous nightly source is
 # known and its history is available. Every changelog query degrades to an
-# empty section on failure so notes generation never gates publication of built
-# artifacts.
+# empty section on failure, with its error on stderr, so notes generation never
+# gates publication of built artifacts.
 generate_changelog() {
   local repo="${1}"
   local git_sha="${2}"
@@ -219,12 +222,18 @@ generate_changelog() {
     "${last_sha:0:7}" "${short_sha}" "${repo}" "${last_sha}" "${git_sha}"
 
   local last_commit_date
-  last_commit_date=$(git show -s --format='%aI' "${last_sha}" 2>/dev/null) || return 0
+  if ! last_commit_date=$(git show -s --format='%aI' "${last_sha}"); then
+    printf "Reading the date of the previous nightly source %s failed; the changelog lists no pull requests or commits\n" "${last_sha}" >&2
+    return 0
+  fi
 
   local pr_json
-  pr_json=$(gh pr list --repo "${repo}" --state merged --base rust --limit 100 \
+  if ! pr_json=$(gh pr list --repo "${repo}" --state merged --base rust --limit 100 \
     --json number,title,mergeCommit,mergedAt \
-    --jq "[.[] | select(.mergedAt > \"${last_commit_date}\")]" 2>/dev/null) || pr_json="[]"
+    --jq "[.[] | select(.mergedAt > \"${last_commit_date}\")]"); then
+    printf "Listing the merged pull requests of %s failed; the changelog lists none\n" "${repo}" >&2
+    pr_json="[]"
+  fi
 
   local pr_count
   pr_count=$(jq 'length' <<<"${pr_json}")
@@ -238,7 +247,10 @@ generate_changelog() {
   local pr_shas
   pr_shas=$(jq -r '.[].mergeCommit.oid // empty' <<<"${pr_json}")
   local all_commits
-  all_commits=$(git log --format='%H %s' "${last_sha}..${git_sha}" 2>/dev/null) || return 0
+  if ! all_commits=$(git log --format='%H %s' "${last_sha}..${git_sha}"); then
+    printf "Listing the commits from %s to %s failed; the changelog lists none\n" "${last_sha:0:7}" "${short_sha}" >&2
+    return 0
+  fi
 
   local orphan_table=""
   local listed=0 omitted=0 first_omitted=""
@@ -381,7 +393,6 @@ main() {
   local last_sha
   last_sha=$(find_last_nightly_sha "${release_repo}")
 
-  printf "Creating nightly release: %s\n" "${version}"
   generate_release_notes "${source_repo}" "${release_repo}" "${version}" "${git_sha}" "${last_sha}" "${artifacts[@]}" |
     gh release create "${version}" \
       --repo "${release_repo}" \
