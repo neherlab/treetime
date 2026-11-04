@@ -51,11 +51,12 @@ mod tests {
     let failures = traced
       .samples()
       .filter(|&(k, _)| k != 0 && k != last)
-      .filter_map(|(k, y)| {
+      .filter_map(|(k, _)| {
         let t = -12.0 + k.to_f64_exact() * dx;
         let exact = mixture_closed_form(t, dx);
-        let tolerance = exact.discretization_bound + traced.round_off_tolerance(k, y);
-        ((y - exact.neg_log).abs() > tolerance).then_some((k, y, exact.neg_log, tolerance))
+        let oracle = traced.oracle(k);
+        let tolerance = exact.discretization_bound + 1e-6;
+        ((oracle - exact.neg_log).abs() > tolerance).then_some((k, oracle, exact.neg_log, tolerance))
       })
       .collect_vec();
     assert_eq!(Vec::<(usize, f64, f64, f64)>::new(), failures);
@@ -287,37 +288,32 @@ mod tests {
       pub(super) fn assert_matches_the_quadrature_oracle(&self) {
         let failures = self
           .samples()
-          .filter_map(|(k, y)| {
-            let oracle = self.oracle(k);
-            let tolerance = self.round_off_tolerance(k, y);
-            let same_infinity =
-              y.is_infinite() && oracle.is_infinite() && y.is_sign_positive() == oracle.is_sign_positive();
-            let matches = same_infinity || (y - oracle).abs() <= tolerance;
-            (!matches).then_some((k, y, oracle, tolerance))
-          })
+          .filter_map(|(k, y)| self.oracle_mismatch(k, y))
           .collect_vec();
         assert_eq!(Vec::<(usize, f64, f64, f64)>::new(), failures);
       }
 
-      pub(super) fn round_off_tolerance(&self, k: usize, y: f64) -> f64 {
-        let y = y - self.peaks;
-        match self.sources.get(&k) {
-          Some(SampleSource::Quadrature | SampleSource::WindowedFft) => 1e-6,
-          Some(&SampleSource::Fft { theta }) => {
-            let fft = &self.round_offs[&theta.to_bits()];
-            let tilt = theta * (k.to_f64_exact() * self.dx);
-            let computed = (fft.min_a + fft.min_b + tilt - y).exp();
-            if computed >= 1e-7 * fft.peak {
-              1e-6
-            } else {
-              fft.bound_in_nats(computed, [y, tilt, fft.min_a, fft.min_b])
-            }
-          },
-          None => panic!("convolution sample {k} has no recorded source"),
+      fn oracle_mismatch(&self, k: usize, y: f64) -> Option<(usize, f64, f64, f64)> {
+        let Some(&source) = self.sources.get(&k) else {
+          panic!("convolution sample {k} has no recorded source");
+        };
+        if let SampleSource::Fft { theta } = source {
+          let fft = &self.round_offs[&theta.to_bits()];
+          let tilt = theta * (k.to_f64_exact() * self.dx);
+          let computed = (fft.min_a + fft.min_b + tilt - (y - self.peaks)).exp();
+          if computed < 1e-7 * fft.peak {
+            let expected = fft.trapezoid_sum(k);
+            let tolerance = fft.absolute_bound(k, computed, [y, self.peaks, tilt]);
+            return ((computed - expected).abs() > tolerance).then_some((k, computed, expected, tolerance));
+          }
         }
+        let oracle = self.oracle(k);
+        let same_infinity =
+          y.is_infinite() && oracle.is_infinite() && y.is_sign_positive() == oracle.is_sign_positive();
+        (!(same_infinity || (y - oracle).abs() <= 1e-6)).then_some((k, y, oracle, 1e-6))
       }
 
-      fn oracle(&self, k: usize) -> f64 {
+      pub(super) fn oracle(&self, k: usize) -> f64 {
         let (last_a, last_b) = (self.a.len() - 1, self.b.len() - 1);
         let (lo, hi) = (k.saturating_sub(last_b), k.min(last_a));
         let costs = (lo..=hi)
@@ -370,8 +366,11 @@ mod tests {
     struct FftRoundOff {
       min_a: f64,
       min_b: f64,
+      plain_a: Array1<f64>,
+      plain_b: Array1<f64>,
+      dx: f64,
       peak: f64,
-      absolute_bound: f64,
+      overlap_sums_bound: f64,
     }
 
     impl FftRoundOff {
@@ -379,24 +378,41 @@ mod tests {
         let (min_a, plain_a) = tilted_plain(a, theta, dx);
         let (min_b, plain_b) = tilted_plain(b, theta, dx);
         let peak = dx * max_or(&direct_overlap_sums(&plain_a, &plain_b), 0.0);
-        let overlap_sums =
+        let overlap_sums_bound =
           FftConvolver::new(plain_a.len(), plain_b.len(), &FftPlans::new())?.overlap_sums_round_off(&plain_a, &plain_b);
-        let absolute_bound = dx * overlap_sums * (1.0 + UNIT_ROUND_OFF) + rounding_gamma(5) * peak;
         Ok(Self {
           min_a,
           min_b,
+          plain_a,
+          plain_b,
+          dx,
           peak,
-          absolute_bound,
+          overlap_sums_bound,
         })
       }
 
-      fn bound_in_nats(&self, computed: f64, assembled_terms: [f64; 4]) -> f64 {
-        let assembly = 8.0 * UNIT_ROUND_OFF * assembled_terms.iter().map(|v| v.abs()).sum::<f64>();
-        if self.absolute_bound >= computed {
-          f64::INFINITY
+      fn trapezoid_sum(&self, k: usize) -> f64 {
+        let (lo, hi) = (k.saturating_sub(self.plain_b.len() - 1), k.min(self.plain_a.len() - 1));
+        let products = (lo..=hi).map(|i| self.plain_a[i] * self.plain_b[k - i]);
+        let sum: f64 = if lo == hi {
+          0.25 * self.plain_a[lo] * self.plain_b[k - lo]
         } else {
-          -(-self.absolute_bound / computed).ln_1p() + assembly
-        }
+          products.sum::<f64>()
+            - f64::midpoint(
+              self.plain_a[lo] * self.plain_b[k - lo],
+              self.plain_a[hi] * self.plain_b[k - hi],
+            )
+        };
+        sum * self.dx
+      }
+
+      fn absolute_bound(&self, k: usize, computed: f64, assembled_terms: [f64; 3]) -> f64 {
+        let pairs = k.min(self.plain_a.len() - 1) + 1 - k.saturating_sub(self.plain_b.len() - 1);
+        let exponents = [self.min_a, self.min_b].into_iter().chain(assembled_terms);
+        let assembly = 8.0 * UNIT_ROUND_OFF * exponents.map(f64::abs).sum::<f64>();
+        let fft = self.dx * self.overlap_sums_bound * (1.0 + UNIT_ROUND_OFF) + rounding_gamma(5) * self.peak;
+        let underflow = pairs.to_f64_exact() * f64::MIN_POSITIVE * self.dx;
+        fft + computed * assembly.exp_m1() + rounding_gamma(pairs + 4) * self.trapezoid_sum(k) + underflow
       }
     }
 
