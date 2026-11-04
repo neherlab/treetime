@@ -6,7 +6,8 @@
 # matching system and fail when it exits before the time limit (default 30
 # seconds) or logs an error of the Electron main process (`[TreeTime] ...`, for
 # example when the back end cannot load the Node addon). The app is stopped
-# after the time limit.
+# after the time limit. Prints nothing on success; a failure prints the reason
+# and the whole log of the app.
 #
 #   Linux     runs the AppImage; without DISPLAY, on a virtual display (Xvfb)
 #   Windows   extracts the zip archive and runs the app (Git Bash)
@@ -21,6 +22,8 @@ shopt -s inherit_errexit
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
+# shellcheck source=../lib/env.sh
+source "${root}/dev/lib/env.sh"
 
 target="${1:?target}"
 seconds="${2:-30}"
@@ -88,15 +91,11 @@ for ((second = 0; second < seconds; second++)); do
   sleep 1
 done
 
-printf 'Log of %s:\n' "${app}"
-cat "${log}"
-
 if [[ -n "${status}" ]]; then
-  printf 'The app exited after %s seconds with status %s\n' "${second}" "${status}" >&2
+  print_failed_log "The app ${app} exited after ${second} seconds with status ${status}. Its log" "${log}"
   exit 1
 fi
 if grep -qF '[TreeTime]' "${log}"; then
-  printf 'The app logged an error (lines starting with [TreeTime] above)\n' >&2
+  print_failed_log "The app ${app} logged an error (lines starting with [TreeTime]). Its log" "${log}"
   exit 1
 fi
-printf 'The app ran for %s seconds without errors: %s\n' "${seconds}" "${target}" >&2
