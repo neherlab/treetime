@@ -344,6 +344,7 @@ test-dev-ts: _js
 # Tests of the shell libraries in dev/lib
 [group("test")]
 test-dev-sh:
+    dev/lib/__tests__/test_env
     dev/lib/__tests__/test_ports
 
 # Smoke-test the fast cases (datasets of at most 100 sequences) against the rust branch (host only, needs Docker): just smoke [--only REGEX] [--against REF]

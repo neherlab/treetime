@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Tests of the quiet command runners of dev/lib/env.sh. A fake `docker`
+# function stands in for the Docker CLI. Prints one line per test and exits 1
+# when a test fails.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
+
+test_env_run_quiet_prints_nothing_when_the_command_succeeds() {
+  local status=0
+  run_quiet "Build" bash -c 'echo out; echo err >&2' >stdout 2>stderr || status=$?
+  assert_eq "0||" "${status}|$(<stdout)|$(<stderr)"
+}
+
+test_env_run_quiet_prints_context_and_all_output_when_the_command_fails() {
+  local status=0
+  run_quiet "Build" bash -c 'echo out; echo err >&2; echo last; exit 3' >stdout 2>stderr || status=$?
+  assert_eq "3||Build (exit 3):"$'\n'"out"$'\n'"err"$'\n'"last" "${status}|$(<stdout)|$(<stderr)"
+}
+
+test_env_run_quiet_ends_output_without_a_final_newline_with_one() {
+  run_quiet "Build" bash -c 'printf partial; exit 1' 2>stderr || true
+  assert_eq "Build (exit 1):"$'\n'"partial"$'\n'"x" "$(cat stderr; printf x)"
+}
+
+# Ctrl-C in a terminal sends SIGINT to the whole foreground process group. The
+# script of this test leads its own group (setsid), so its process ID names the
+# group.
+test_env_run_quiet_prints_output_so_far_when_interrupted() {
+  printf '%s\n' \
+    "source '${root}/dev/lib/env.sh'" \
+    'printf "%s\n" "$$" >group' \
+    "run_quiet Build bash -c 'echo partial; : >started; exec sleep 30'" \
+    "echo after" >script
+  (
+    wait_for_file started
+    kill -INT -- "-$(<group)"
+  ) &
+  local interrupter="$!" status=0
+  setsid -w bash -euo pipefail script >stdout 2>stderr || status=$?
+  wait "${interrupter}"
+  assert_eq "130||Build (stopped by SIGINT):"$'\n'"partial" "${status}|$(<stdout)|$(<stderr)"
+}
+
+test_env_docker_build_quiet_prints_nothing_when_the_build_succeeds() {
+  fake_docker 0
+  local status=0
+  docker_build_quiet "Build" --tag=x . >stdout 2>stderr || status=$?
+  assert_eq "0||" "${status}|$(<stdout)|$(<stderr)"
+}
+
+test_env_docker_build_quiet_prints_the_plain_log_when_the_build_fails() {
+  fake_docker 1
+  local status=0
+  docker_build_quiet "Build" --tag=x . >stdout 2>stderr || status=$?
+  assert_eq "1||Build (exit 1):"$'\n'"docker buildx build --progress=plain --tag=x ." "${status}|$(<stdout)|$(<stderr)"
+}
+
+test_env_docker_build_quiet_streams_the_build_with_buildkit_progress() {
+  fake_docker 0
+  local status=0
+  BUILDKIT_PROGRESS=tty docker_build_quiet "Build" --tag=x . >stdout 2>stderr || status=$?
+  assert_eq "0||docker buildx build --tag=x ." "${status}|$(<stdout)|$(<stderr)"
+}
+
+# Replace the Docker CLI with a function that prints its arguments and exits
+# with the given status.
+fake_docker() {
+  fake_docker_status="${1}"
+  # shellcheck disable=SC2329 # docker_build_quiet calls it
+  docker() {
+    printf 'docker %s\n' "$*"
+    return "${fake_docker_status}"
+  }
+}
+
+wait_for_file() {
+  local tries
+  for ((tries = 0; tries < 100; tries++)); do
+    [[ ! -e "${1}" ]] || return 0
+    sleep 0.1
+  done
+  fail "${1} did not appear within 10 s"
+}
+
+source "${root}/dev/lib/__tests__/harness.sh"
+run_tests test_env_ "${root}/dev/lib/env.sh"

@@ -72,3 +72,56 @@ docker_cpu_budget() {
 docker_cpu_share() {
   awk -v b="${1:?}" -v n="${2:?}" 'BEGIN { c = b / n; if (c < 0.01) c = 0.01; printf "%.2f\n", c }'
 }
+
+# Build a Docker image with `docker buildx build` and the given arguments. Print
+# nothing when the build succeeds; when it fails, print the context and the
+# whole build log to stderr (run_quiet). With BUILDKIT_PROGRESS set, stream the
+# build to stderr in that progress mode instead, to watch a long build.
+docker_build_quiet() {
+  local context="${1:?context}"
+  shift
+  if [[ -n "${BUILDKIT_PROGRESS:-}" ]]; then
+    docker buildx build "$@" >&2
+  else
+    run_quiet "${context}" docker buildx build --progress=plain "$@"
+  fi
+}
+
+# Run a command with its output held back, and print nothing when it succeeds.
+# When it fails, or a signal stops it, print the context and the whole output
+# of the command to stderr. Return the exit status of the command, or 128 plus
+# the signal number. The command reads no standard input.
+run_quiet() (
+  local context="${1:?context}" log pid status=0
+  shift
+  log="$(mktemp)"
+  trap 'rm -f "${log}"' EXIT
+  trap 'stop_quiet "${!:-}" "${context}" "${log}" INT; exit 130' INT
+  trap 'stop_quiet "${!:-}" "${context}" "${log}" TERM; exit 143' TERM
+  "$@" </dev/null >"${log}" 2>&1 &
+  pid="$!"
+  wait "${pid}" || status=$?
+  if ((status != 0)); then
+    print_failed_log "${context} (exit ${status})" "${log}"
+  fi
+  exit "${status}"
+)
+
+# Stop the command of run_quiet after a signal, then print its output so far.
+stop_quiet() {
+  local pid="${1}" context="${2}" log="${3}" signal="${4}"
+  if [[ -n "${pid}" ]]; then
+    kill "${pid}" 2>/dev/null || true # the command may have ended already
+    wait "${pid}" || true             # the status is that of the signal
+  fi
+  print_failed_log "${context} (stopped by SIG${signal})" "${log}"
+}
+
+# Print a context line and then a log file to stderr, ending with a newline.
+print_failed_log() {
+  printf '%s:\n' "${1}" >&2
+  cat "${2}" >&2
+  if [[ -n "$(tail -c 1 "${2}")" ]]; then
+    printf '\n' >&2
+  fi
+}
