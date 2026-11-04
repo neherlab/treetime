@@ -119,7 +119,10 @@ mod tests {
     assert_eq!(Vec::<usize>::new(), traced.infinite_samples());
     let narrow_pair = traced.samples_dominated_by_pairs(dip_a - 2..=dip_a + 2, dip_b - 2..=dip_b + 2);
     assert_ne!(Vec::<usize>::new(), narrow_pair);
-    let windowed = narrow_pair.iter().map(|&k| (k, SampleSource::WindowedFft)).collect_vec();
+    let windowed = narrow_pair
+      .iter()
+      .map(|&k| (k, SampleSource::WindowedFft))
+      .collect_vec();
     assert_eq!(windowed, traced.sources_of(&narrow_pair));
     traced.assert_matches_the_quadrature_oracle_at(&narrow_pair);
     traced.assert_matches_the_quadrature_oracle();
@@ -336,7 +339,8 @@ mod tests {
       ) -> Vec<usize> {
         (0..self.result_len())
           .filter(|&k| {
-            let without_pairs = self.oracle_over_pairs(k, |i| !(indices_a.contains(&i) && indices_b.contains(&(k - i))));
+            let without_pairs =
+              self.oracle_over_pairs(k, |i| !(indices_a.contains(&i) && indices_b.contains(&(k - i))));
             without_pairs - self.oracle(k) > LN_2
           })
           .collect()
