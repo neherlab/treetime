@@ -1,6 +1,6 @@
-# Deep-node dates differ from v0 by decades on three production builds
+# Deep-node dates differ from v0 by decades in both directions
 
-On three Nextstrain production builds, v0 and v1 date the oldest nodes 16 to 90 years apart, with v1 older in every case. The measurements below exclude two of the suspected causes. The discretization error of v1 is not a cause of the root differences, because the v1 root dates of all three builds move by at most 0.4 years between grids of 300 and 1200 points. Below the root of norovirus, the dates of some deep clades are not converged: they move by up to 13.4 years at 4800 points (see "Grid convergence of v1"). The error along chains of zero-length branches is not a cause, because it moves dates younger and by at most about one year. The coalescent prior causes about 40% of the difference on two builds and none on the third. Which engine dates these nodes correctly is open.
+On the time trees of the Nextstrain workflows, v0 and v1 date the oldest nodes up to 175 years apart, in both directions: with a fixed clock rate and the same root split, v1 is older by 6 to 90 years on 14 trees and younger by 5 to 108 years on 7 others (see "Root dates across the Nextstrain workflows"). The measurements below on three builds (lassa l, rubella E1, norovirus all/genome) exclude two of the suspected causes. The discretization error of v1 is not a cause of the root differences, because the v1 root dates of all three builds move by at most 0.4 years between grids of 300 and 1200 points. Below the root of norovirus, the dates of some deep clades are not converged: they move by up to 13.4 years at 4800 points (see "Grid convergence of v1"). The error along chains of zero-length branches is not a cause, because it moves dates younger and by at most about one year. The coalescent prior causes about 40% of the difference on two builds and none on the third. Which engine dates these nodes correctly is open.
 
 ## Cases
 
@@ -60,6 +60,21 @@ One replicate of lassa l with a known truth under a strict clock does not reprod
 
 The real input tree breaks the strict clock at the root: the mean root-to-tip divergence is 0.514 substitutions per site on the side of 535 tips and 0.339 on the side of 217 tips, a difference of about 224 years at the fixed rate, while the median tip dates of the two sides differ by 3.4 years (2013.7 and 2017.1). The simulated tree has 0.361 and 0.370. So in the one replicate the 52.6 years do not arise on strict-clock data, and a strict-clock simulation cannot show which engine dates lassa l correctly. The replicates of the simulation contract (100 unselected replicates and the coverage of the 90% root region) were not run, because the regime check failed.
 
+### Root dates across the Nextstrain workflows
+
+The comparison of TreeTime v0 and v1 in the Nextstrain workflows (pipelandia, round 3) ran v1 at `0e522d97e` and v0 (`augur refine` 34.3.0 with TreeTime 0.12.1) with the same commands on the same inputs in the same image, on the published builds and on the example data of each workflow. The table lists the trees whose root dates differ by more than 5 years; "v1 minus v0" is negative where v1 is older. Where one engine removes tips that the other keeps, the dates are those of the common ancestor of the shared tips.
+
+| Class | Trees, v1 minus v0 in years |
+| --- | --- |
+| Fixed rate, same root split, v1 older | lassa l -90.2, gpc -69.6, s -60.9; yellow-fever genome -70.0; hmpv all/genome -42.0; norovirus GII.4/genome -29.4; WNV all-lineages -15.5, lineage-2 -6.3; example data: yellow-fever genome -40.9, nipah all -17.4, WNV all-lineages -13.6, dengue all/E -11.7, lassa l -9.2, lassa s -7.9 |
+| Fixed rate, same root split, v1 younger | norovirus all/p22 +108.1, all/VP1 +48.0; seasonal-cov hku1 +39.5, nl63 +7.7; oropouche L +5.2; example data: seasonal-cov hku1 +38.8, norovirus all/VP1 +18.3 |
+| Fixed rate, different root split | mpox clade I +174.7; norovirus all/genome +158.7, all/RdRp +60.6, GII.17/genome -8.2; dengue all/genome -18.7; rubella E1 -17.0, genome -5.3; example data: norovirus all/genome -51.0 |
+| Estimated rate | measles genome/global +86.4 (v1 rate 1.76 times v0), N450/global -38.6 (0.75); mumps global +14.7 (1.20); rsv b/F/6y -10.0 (0.68), b/genome/all-time -6.1 (0.79); example data: measles N450/global -28.8 (0.83), mumps global +8.8 (1.17), avian-flu h5n1/ha/all-time +5.5 (1.10) |
+
+- **v1 younger**: the four norovirus builds of all genotypes set `--root best`. With an older v1 root on the same split, they would follow the pattern of lassa l; instead v1 is 48 to 159 years younger. On all/p22 the v1 root moved from 1699.8 at the v1 commit of round 1 to 1660.9
+- **seasonal-cov hku1**: the engines keep different tips, because v1 removes 18 tips that the v0 filter of `augur refine` keeps ([M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md](M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md))
+- **Estimated rate**: the root difference follows the rate ratio: v1 is older where its rate is lower, and younger where it is higher
+
 ### Chains of zero-length branches
 
 On a caterpillar with a closed-form root age, both engines move the root younger, v0 by up to 1.29 years at 200 tips and v1 by 0.78 years at its default grid ([H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md)). This error has the same sign as the production differences (v0 younger than v1), but it is two orders of magnitude smaller, and the pre-loop collapse removes most such chains from the production trees.
@@ -71,11 +86,17 @@ On a caterpillar with a closed-form root age, both engines move the root younger
 - **norovirus all/genome**: the coalescent prior causes none of the 51 years, and the engines choose different roots
 
 > [!IMPORTANT]
-> **Investigation required.** The measurements do not show which engine dates the deep nodes correctly, and the 53 years of lassa l without the prior have no located cause. The evidence to collect:
+> **Investigation required.** The measurements do not show which engine dates the deep nodes correctly, and the 53 years of lassa l without the prior have no located cause. v0 is no ground truth, so each comparison answers one of three questions with its own evidence: do both engines solve the same problem, does each engine compute the answer of its model, and is the answer close to the true dates. The evidence to collect, the first item before the others:
 >
+> - **Equal inputs**: for each compared build, the tips, root, branch lengths, coalescent prior, branch-length mode, and polytomy resolution that each engine uses, traced from the source of augur and of the v1 call. A date difference between runs with different inputs or models does not show an error of the time inference; known input differences are the clock filter of `augur refine` and the rooting of `--root best`
+> - **Independent numerical oracle**: the posterior of the root date on small trees by direct numerical integration of the model, in code that neither engine shares, because the model defines the correct answer
+> - **Simulation with a known truth**: a regime check first, which shows that the simulated data have the conflicts of the real data (rates that differ between the two root sides, a relaxed clock), then 100 seeded replicates per case, with the bias, the spread, and the coverage of the 90% root region of both engines
+> - **Tip-date cross-validation**: on the real data, hide the dates of dated tips, infer them, and compare the inferred dates with the hidden dates, which measures the accuracy of each engine without a model truth
+> - **v1 younger on the norovirus builds of all genotypes and mpox clade I**: whether far tails of the v0 convolutions, which v0 crops and bridges with straight lines, cause these differences; this explanation is an expectation, not a measurement
 > - **lassa l, clock conflict at the root**: how each engine weighs the two root sides, whose divergence differs by about 224 years at the fixed rate. A simulation with a known truth must reproduce this conflict (for example a rate that differs between the two sides, or a relaxed clock) before its replicates can show which engine is correct; in one strict-clock replicate (seed 1) the engines agree
 > - **lassa l, branch-length likelihood**: whether both engines use input-mode branch likelihoods on this tree (the root-to-tip divergence is about 0.47 substitutions per site, so many branches are longer than 0.05, where v0 uses its Gaussian cost), and the root date of v1 with the branch likelihoods of v0 evaluated on the v0 grid ([M-timetree-input-branch-likelihood-grid-diverges-from-v0.md](M-timetree-input-branch-likelihood-grid-diverges-from-v0.md))
 > - **norovirus all/genome and rubella E1, rooting**: the root dates of both engines on the same rooted tree (v1 with `--keep-root` on the v0 output topology)
+> - **Stability of v1**: root dates of v1 that move by years between v1 commits ([M-timetree-root-dates-move-years-between-v1-commits-without-a-traced-cause.md](M-timetree-root-dates-move-years-between-v1-commits-without-a-traced-cause.md)) limit every comparison of these builds
 > - **soft-end lines**: whether the deep posteriors lie on the straight lines at soft ends of convolutions, whose slope carries FFT round-off and moves deep dates by tenths of a year ([M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)); this error is too small to cause decades, but it bounds the precision of every comparison above
 
 ## Reproduction
@@ -92,3 +113,5 @@ GitHub deletes Actions artifacts after their retention period, so the two artifa
 
 - [kb/decisions/distribution-convolution-tails-by-exponential-tilting.md](../decisions/distribution-convolution-tails-by-exponential-tilting.md): the exact tails at hard ends, which changed the v1 dates of these builds
 - [kb/v0-errata/timetree-fft-convolution-rectangle-rule.md](../v0-errata/timetree-fft-convolution-rectangle-rule.md): the first-order error of v0 convolutions at hard ends
+- [M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md](M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md): the tips that `augur refine` keeps differ from the tips of the v1 filter
+- [M-timetree-root-dates-move-years-between-v1-commits-without-a-traced-cause.md](M-timetree-root-dates-move-years-between-v1-commits-without-a-traced-cause.md): v1 root dates that move between v1 commits
