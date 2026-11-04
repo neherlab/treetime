@@ -15,7 +15,9 @@
 # - run the commands of a pipeline (optimize, ancestral, timetree)
 #
 # On x86_64, also run the binary on a CPU below the baseline, where it must stop
-# with its CPU message. Runs in the cross image of the target:
+# with its CPU message. Prints nothing on success; each failed case prints a
+# FAIL line with the whole output of the binary. Runs in the cross image of the
+# target:
 #
 #   CROSS_COMPILE=x86_64-unknown-linux-gnu dev/docker/run dev/cross/check-cpus treetime
 #
@@ -24,6 +26,8 @@ shopt -s inherit_errexit
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
+# shellcheck source=../lib/env.sh
+source "${root}/dev/lib/env.sh"
 
 bin="${1:?binary name}"
 target="${2:-${CROSS_COMPILE:?target}}"
@@ -58,7 +62,7 @@ zstd -q -c "${work}/in/aln.fasta" >"${work}/in/aln.fasta.zst"
 
 failed=0
 
-# Run the binary on a CPU model, print a line for the case, and record a
+# Run the binary on a CPU model; on failure, print its output and record the
 # failure.
 run_on() {
   local cpu="${1}" name="${2}"
@@ -66,12 +70,10 @@ run_on() {
   local status=0
   QEMU_CPU="${cpu}" dev/cross/run "${bin}" "${target}" "$@" >"${work}/${name}.out" 2>&1 || status=$?
   if ((status != 0)); then
-    printf 'FAIL %s on %s: exit %s\n' "${name}" "${cpu}" "${status}" >&2
-    tail -n 5 "${work}/${name}.out" >&2
+    print_failed_log "FAIL ${name} on ${cpu}: exit ${status}" "${work}/${name}.out"
     failed=1
     return 1
   fi
-  printf 'ok   %s on %s\n' "${name}" "${cpu}"
 }
 
 decompress() {
@@ -124,8 +126,6 @@ if [[ -n "${below}" ]]; then
   if ((status != 1)) || [[ "${output}" != *"TreeTime needs a 64-bit"* ]]; then
     printf 'FAIL on %s below the baseline: exit %s instead of 1 with the CPU message:\n%s\n' "${below}" "${status}" "${output}" >&2
     failed=1
-  else
-    printf 'ok   CPU message on %s\n' "${below}"
   fi
 fi
 
