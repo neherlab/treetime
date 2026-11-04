@@ -88,21 +88,31 @@ function ast_function_names() {
 # the windows.h of the precompiled header, in each configuration into
 # <work dir>/<configuration>/<header>.names. Leave a header that does not
 # compile as C in either configuration out, and name it in <work dir>/skipped/.
+# clang exits 1 when the code does not compile; any other failure, such as a
+# crash of clang, prints the errors of clang and fails.
 function windows_header_functions() {
   local work_dir="${1}"
   local header="${2}"
   local config
   local defines=()
-  local ast
+  local ast status
+  local errors="${work_dir}/errors/${header}"
   for config in windows7 newest; do
     read -ra defines <"${work_dir}/${config}.defines"
+    status=0
     # shellcheck disable=SC2086 # CC is a command with arguments
-    if ! ast="$(printf '#include <%s>\n' "${header}" |
+    ast="$(printf '#include <%s>\n' "${header}" |
       ${CC} "${defines[@]}" -include-pch "${work_dir}/${config}.pch" -x c -fsyntax-only \
-        -fno-color-diagnostics -Xclang -ast-dump - 2>/dev/null)"; then
+        -fno-color-diagnostics -Xclang -ast-dump - 2>"${errors}")" || status=$?
+    if ((status == 1)); then
       rm -f "${work_dir}/windows7/${header}.names" "${work_dir}/newest/${header}.names"
       : >"${work_dir}/skipped/${header}"
       return 0
+    fi
+    if ((status != 0)); then
+      printf 'Compiling %s in the %s configuration failed with exit %s:\n' "${header}" "${config}" "${status}" >&2
+      cat "${errors}" >&2
+      return 1
     fi
     ast_function_names <<<"${ast}" >"${work_dir}/${config}/${header}.names"
   done
@@ -135,7 +145,7 @@ main() {
     return 1
   fi
 
-  mkdir -p "${work_dir}/windows7" "${work_dir}/newest" "${work_dir}/skipped"
+  mkdir -p "${work_dir}/windows7" "${work_dir}/newest" "${work_dir}/skipped" "${work_dir}/errors"
   printf -- '-U_WIN32_WINNT -D_WIN32_WINNT=0x0601 -DNTDDI_VERSION=0x06010000\n' >"${work_dir}/windows7.defines"
   printf -- '-U_WIN32_WINNT -D_WIN32_WINNT=0x0A00 -DNTDDI_VERSION=0x%08X\n' "${newest}" >"${work_dir}/newest.defines"
   printf '#include <windows.h>\n' >"${work_dir}/pch-windows.h"
