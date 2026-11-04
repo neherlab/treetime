@@ -132,40 +132,5 @@ start_listener() {
   fail "the listener did not listen within 10 s"
 }
 
-assert_eq() {
-  [[ "${1}" == "${2}" ]] || fail "expected '${1}', got '${2}'"
-}
-
-fail() {
-  printf '  %s\n' "${1}" >&2
-  exit 1
-}
-
-run_test() {
-  local work_dir
-  work_dir="$(mktemp -d)"
-  (
-    cd "${work_dir}"
-    # shellcheck source=../ports.sh
-    source "${root}/dev/lib/ports.sh"
-    "${1}"
-  )
-  local status=$?
-  rm -rf "${work_dir}"
-  return "${status}"
-}
-
-main() {
-  local name status=0
-  for name in $(compgen -A function test_ports_); do
-    if run_test "${name}"; then
-      printf 'ok    %s\n' "${name}"
-    else
-      printf 'FAIL  %s\n' "${name}"
-      status=1
-    fi
-  done
-  return "${status}"
-}
-
-main "$@"
+source "${root}/dev/lib/__tests__/harness.sh"
+run_tests test_ports_ "${root}/dev/lib/ports.sh"
