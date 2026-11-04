@@ -3,9 +3,9 @@
 # Usage: $0 <bin> [target]
 #        $0 --lib <package> [target]
 #
-# Check a cross-compiled binary in .out/: print its format and linkage, and fail
-# when it needs a library that is not part of the operating system, or when a
-# binary that must be static is not (musl targets).
+# Check a cross-compiled binary in .out/: fail when it needs a library that is
+# not part of the operating system, or when a binary that must be static is not
+# (musl targets). Prints nothing when the checks pass.
 #
 # With --lib, check the shared library .out/<package>-<target>.node built by
 # `dev/cross/build --lib` the same way.
@@ -155,14 +155,16 @@ glibc_too_new() {
 
 if [[ -n "${lib}" ]]; then
   file=".out/${name}-${target}.node"
-  file -h "${file}"
-  printf 'Needs:\n'
-  dependencies "${file}" | sed 's/^/  * /'
 else
   ext=""
   [[ "${target}" == *windows* ]] && ext=".exe"
   file=".out/${name}-${target}${ext}"
-  file -h "${file}"
+fi
+if [[ ! -f "${file}" ]]; then
+  printf 'No file to check: %s\n' "${file}" >&2
+  exit 1
+fi
+if [[ -z "${lib}" && "${target}" == *-linux-* ]]; then
   dev/is-static-binary "${file}" "${target}"
 fi
 
