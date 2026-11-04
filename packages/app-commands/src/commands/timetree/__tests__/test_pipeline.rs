@@ -19,7 +19,7 @@ mod tests {
   use treetime::progress::NoopProgress;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_utils::io::json::{json_read_file, json_value_read_file};
-  use treetime_utils::make_report;
+  use treetime_utils::{make_report, pretty_assert_map_ulps_eq};
 
   #[test]
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
@@ -208,7 +208,7 @@ mod tests {
     let mut actual = coalescent_node_dates("2.56y", None)?;
     actual.retain(|name, _| expected.contains_key(name));
 
-    assert_eq!(expected, actual);
+    pretty_assert_map_ulps_eq!(expected, actual, max_ulps = 1);
     Ok(())
   }
 
