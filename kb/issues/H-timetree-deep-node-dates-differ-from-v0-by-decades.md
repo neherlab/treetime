@@ -30,7 +30,10 @@ v1 with `GRID_POINTS` (`packages/treetime/src/timetree/inference/runner.rs`) at 
 
 - **lassa l**: the root and the 10 oldest internal nodes move by at most 0.4 years (root 1505.6 and 1505.8)
 - **rubella E1**: at most 0.2 years (MRCA 1903.4 and 1903.6)
-- **norovirus all/genome**: the root does not move (1885.2), but the two nodes below it move by 2.4 years (234 tips, 1907.0 to 1904.6) and 1.0 year (233 tips, 1936.4 to 1935.4), and the other 8 of the 10 oldest nodes by at most 0.8 years
+- **norovirus all/genome**: the root moves by at most 0.2 years (1885.2, 1885.2, and 1885.4 at 300, 1200, and 4800 points; the run at 4800 points needs `--max-grid-points 8000000` and takes 2.5 hours). The two nodes below it move by 2.4 and 2.0 years (234 tips, 1907.0, 1904.6, 1902.6) and by 1.0 and 0.8 years (233 tips, 1936.4, 1935.4, 1934.6), so their error falls by only 1.2 times per quartering of the spacing, and no order of convergence and no Richardson estimate follow. The other clades of the larger root side among the 10 oldest nodes move by at most 1.3 years over the three grids. On the side of 34 tips, three clades agree within 0.4 years between 300 and 1200 points but move younger by 13.4 (34 tips, 1952.5 to 1965.6), 7.6 (32 tips), and 5.0 years (28 tips) at 4800 points, with 90% regions that narrow from about 2 years to 0.1 to 0.6 years
+
+> [!IMPORTANT]
+> **Investigation required.** The jump of the clades of the 34-tip root side at 4800 points is not a convergence pattern: the two coarser grids agree within 0.4 years, and the regions narrow from 1.3 to 2.2 years to 0.1 to 0.6 years. It is not shown whether the jump comes from the finer grid or from the raised `--max-grid-points`, which the coarser runs leave at its default. Evidence to collect: the run at 4800 points with the default limit raised only as far as it needs, the run at 1200 points with `--max-grid-points 8000000`, and the posteriors of the 34-tip clade in the three runs
 
 ### Coalescent prior
 
