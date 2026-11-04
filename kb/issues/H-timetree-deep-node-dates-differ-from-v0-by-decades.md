@@ -49,20 +49,31 @@ The coalescent prior with the actual child count is an approved v1 difference th
 - **rubella E1**: v1 keeps the root of its input tree, whose root branch leads to one tip that the v0 clock filter removes; below it, the MRCA of the 3,023 shared tips splits them into 2,990 and 33. The v0 midpoint root splits them into 1,674 and 1,349. The deepest dates compare different splits
 - **norovirus all/genome**: the root splits the tips into 234 and 34 in v1 and into 236 and 32 in v0, with root branches of 0.032 and 0.264 substitutions per site in v1 and 0.059 and 0.008 in v0. The two engines choose different roots (see [M-timetree-reroot-schedule-diverges-from-v0.md](M-timetree-reroot-schedule-diverges-from-v0.md)). Shared clades among the 10 oldest nodes differ by up to 20 years (19 tips, 1951.1 in v1 against 1971.0 in v0)
 
+### Simulation with a known truth on lassa l
+
+One replicate of lassa l with a known truth under a strict clock does not reproduce the difference: the two engines date the root 0.24 years apart, against 52.6 years on the real data without the prior.
+
+- **Truth**: the topology and node dates of the v1 run without the prior (root 1539.83, root split 217 and 535), because v1 keeps the shared rooted tree as it is, while v0 resolves its polytomies
+- **Data**: on each branch of time $\Delta t$, the number of substitution events is Poisson with mean $L \mu \Delta t$ ($L = 7279$ sites, $\mu = 0.00078$); each event moves a uniform site to one of the three other bases (Jukes-Cantor). The root sequence follows the base composition of the real alignment. The input tree is the true topology with branch lengths $k / L$, the event count per site that the input-mode branch likelihoods of both engines model. The metadata keeps the real date strings, so the same tips have ambiguous or missing dates
+- **Runs**: the arguments of the round on the true rooted tree with the true clock rate and without the prior: v1 `--keep-root` without `--coalescent`, v0 `augur refine --keep-root --coalescent 0`. The longest input branch is 0.259 substitutions per site, so both engines use input-mode branch likelihoods, as on the real tree (longest branch 0.241)
+- **Result, seed 1**: v1 1544.10 [1537.79, 1550.40], v0 1544.34 [1537.87, 1550.50]; both 90% regions contain the true date
+
+The real input tree breaks the strict clock at the root: the mean root-to-tip divergence is 0.514 substitutions per site on the side of 535 tips and 0.339 on the side of 217 tips, a difference of about 224 years at the fixed rate, while the median tip dates of the two sides differ by 3.4 years (2013.7 and 2017.1). The simulated tree has 0.361 and 0.370. So the 52.6 years arise only on data that conflict with the strict clock, and a strict-clock simulation cannot show which engine dates lassa l correctly. The replicates of the simulation contract (100 unselected replicates and the coverage of the 90% root region) were not run, because the regime check failed.
+
 ### Chains of zero-length branches
 
 On a caterpillar with a closed-form root age, both engines move the root younger, v0 by up to 1.29 years at 200 tips and v1 by 0.78 years at its default grid ([H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md)). This error has the same sign as the production differences (v0 younger than v1), but it is two orders of magnitude smaller, and the pre-loop collapse removes most such chains from the production trees.
 
 ## Attribution
 
-- **lassa l**: the coalescent prior causes 37 of 90 years. The other 53 years arise in the time inference with the same topology and the same branch lengths. Their cause is not located
+- **lassa l**: the coalescent prior causes 37 of 90 years. The other 53 years arise in the time inference with the same topology and the same branch lengths. They need the conflict of the two root sides with the strict clock: on strict-clock data with the same topology and tip dates, the engines agree within 0.24 years. Their mechanism is not located
 - **rubella E1**: the coalescent prior causes 7 of 16 years. The remaining 10 years lie at the MRCA, whose split differs between the engines, while the large clades below it agree within 2 years without the prior
 - **norovirus all/genome**: the coalescent prior causes none of the 51 years, and the engines choose different roots
 
 > [!IMPORTANT]
 > **Investigation required.** The measurements do not show which engine dates the deep nodes correctly, and the 53 years of lassa l without the prior have no located cause. The evidence to collect:
 >
-> - **Simulation with a known truth**: 100 unselected replicates with recorded seeds, with the true topology and clock rate given to both engines, and the exact Clopper-Pearson 95% interval of the coverage of the 90% root date interval of each engine
+> - **lassa l, clock conflict at the root**: how each engine weighs the two root sides, whose divergence differs by about 224 years at the fixed rate. A simulation with a known truth must reproduce this conflict (for example a rate that differs between the two sides, or a relaxed clock) before its replicates can show which engine is correct; on strict-clock data the engines agree
 > - **lassa l, branch-length likelihood**: whether both engines use input-mode branch likelihoods on this tree (the root-to-tip divergence is about 0.47 substitutions per site, so many branches are longer than 0.05, where v0 uses its Gaussian cost), and the root date of v1 with the branch likelihoods of v0 evaluated on the v0 grid ([M-timetree-input-branch-likelihood-grid-diverges-from-v0.md](M-timetree-input-branch-likelihood-grid-diverges-from-v0.md))
 > - **norovirus all/genome and rubella E1, rooting**: the root dates of both engines on the same rooted tree (v1 with `--keep-root` on the v0 output topology)
 > - **soft-end lines**: whether the deep posteriors lie on the straight lines at soft ends of convolutions, whose slope carries FFT round-off and moves deep dates by tenths of a year ([M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)); this error is too small to cause decades, but it bounds the precision of every comparison above
