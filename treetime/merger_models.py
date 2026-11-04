@@ -122,7 +122,13 @@ class Coalescent(object):
 
                 if cdf_function is not None:
                     x_vals = np.concatenate([[-ttconf.BIG_NUMBER], cdf_function(y_points), [ttconf.BIG_NUMBER]])
-                    y_vals = np.concatenate([[(len(n.clades) - 1), (len(n.clades) - 1)], (1 - y_points[1:-1]), [0, 0]])
+                    y_vals = np.concatenate(
+                        [
+                            [(len(n.clades) - 1), (len(n.clades) - 1)],
+                            (len(n.clades) - 1) * (1 - y_points[1:-1]),
+                            [0, 0],
+                        ]
+                    )
                     tree_smooth_events += [interp1d(x_vals, y_vals, kind='linear')]
                 else:
                     tree_delta = [(n.time_before_present, len(n.clades) - 1)]
