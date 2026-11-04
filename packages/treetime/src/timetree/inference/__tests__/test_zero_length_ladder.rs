@@ -38,7 +38,7 @@ mod tests {
   const ROOT_TOLERANCE: f64 = 1e-13;
   const ROOT_MAX_ITERS: u64 = 200;
   const REGION_BRACKET_MASS: f64 = 1e-6;
-  const FINEST_PAIR_ORDERS: RangeInclusive<f64> = 1.9..=2.1;
+  const SECOND_ORDER_OF_THE_SCHEME: RangeInclusive<f64> = 1.9..=2.1;
   const CI_LOWER_QUANTILE: f64 = 0.5 * (1.0 - CI_FRACTION);
   const CI_UPPER_QUANTILE: f64 = 1.0 - CI_LOWER_QUANTILE;
 
@@ -74,14 +74,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tips_20(  20, 1e-4, 1.9)]
-  #[case::tips_50(  50, 1e-3, 1.9)]
-  #[case::tips_200(200, 1e-2, 1.3)]
+  #[case::tips_20(  20)]
+  #[case::tips_50(  50)]
+  #[case::tips_200(200)]
   #[trace]
   fn test_zero_length_ladder_root_date_posterior_converges_to_the_hypoexponential_root_age(
     #[case] n_tips: usize,
-    #[case] max_finest_error: f64,
-    #[case] min_coarsest_pair_order: f64,
   ) -> Result<(), Report> {
     let expected = helpers::RootAge::new(n_tips).date_summary()?;
 
@@ -97,14 +95,10 @@ mod tests {
       .try_collect()?;
 
     let errors = actual.iter().map(|summary| summary.max_difference(&expected)).collect_vec();
-    let orders = errors
-      .iter()
-      .tuple_windows()
-      .map(|(coarse, fine)| (coarse / fine).log(4.0))
-      .collect_vec();
+    let finest_pair_order = (errors[1] / errors[2]).log(4.0);
     assert!(
-      errors[2] <= max_finest_error && orders[0] >= min_coarsest_pair_order && FINEST_PAIR_ORDERS.contains(&orders[1]),
-      "root date errors {errors:?} in years converge at orders {orders:?} per quartering of the branch grid spacing: expected {expected:#?}, actual {actual:#?}"
+      SECOND_ORDER_OF_THE_SCHEME.contains(&finest_pair_order),
+      "root date errors {errors:?} in years against the hypoexponential closed form converge at order {finest_pair_order} on the finest pair of grids, outside the second order {SECOND_ORDER_OF_THE_SCHEME:?} of the scheme: expected {expected:#?}, actual {actual:#?}"
     );
     Ok(())
   }

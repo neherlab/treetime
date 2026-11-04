@@ -61,7 +61,7 @@ The backward messages must resolve their own slope: the spacing of a message mus
 `packages/treetime/src/timetree/inference/__tests__/test_zero_length_ladder.rs` builds the caterpillar with exact zero-substitution branch likelihoods and runs the production backward and forward passes:
 
 - `test_zero_length_ladder_log_marginal_likelihood_converges_at_second_order_to_the_exact_value`: the error of $\log Z$ against the closed form falls by at least 3 times per halving of the branch grid spacing
-- `test_zero_length_ladder_root_date_posterior_converges_to_the_hypoexponential_root_age`: the largest error of the mean, standard deviation, 5% and 95% quantiles, and 90% max posterior region of the root date against the closed form falls with each quartering of the spacing, by at least 9 times on the last
+- `test_zero_length_ladder_root_date_posterior_converges_to_the_hypoexponential_root_age`: the largest error of the mean, standard deviation, 5% and 95% quantiles, and 90% max posterior region of the root date against the hypoexponential closed form converges at an order between 1.9 and 2.1, the second order of the scheme, between the two finest of three grids that each quarter the spacing
 - `test_zero_length_ladder_of_400_tips_dates_every_node_within_the_default_grid_point_limit`
 
 ## Validation
