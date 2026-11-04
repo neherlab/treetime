@@ -6,56 +6,18 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
-  #[test]
-  fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {
-    let output = run_clock(3.0, false)?;
-    let clock_model = &output.clock_model;
-    let outlier_names = get_outlier_names(&output);
-
-    assert!(
-      clock_model.clock_rate() > 0.0,
-      "Final clock rate should be positive, got {:.6e}",
-      clock_model.clock_rate()
-    );
-
-    assert!(
-      clock_model.clock_rate() > 1e-5 && clock_model.clock_rate() < 1e-2,
-      "Clock rate {:.6e} outside plausible dengue range [1e-5, 1e-2]",
-      clock_model.clock_rate()
-    );
-
-    let r_val = clock_model.r_val().expect("should have r_val");
-    assert!(
-      r_val > 0.5,
-      "R value should indicate meaningful temporal signal, got {r_val:.4}"
-    );
-
-    assert!(!outlier_names.is_empty(), "Should detect at least one outlier");
-    assert!(
-      outlier_names.len() < 50,
-      "Should not flag more than half the leaves as outliers, got {}",
-      outlier_names.len()
-    );
-
-    #[rustfmt::skip]
-    let v0_outliers = [o!("GQ398257"), o!("GQ398268"), o!("HQ891024"), o!("KF704357"),
-      o!("KY586699"), o!("OQ101603"), o!("OR389309"), o!("OR389321"), o!("OR389326")];
-    let shared: Vec<_> = v0_outliers.iter().filter(|name| outlier_names.contains(name)).collect();
-    assert!(
-      shared.len() >= 6,
-      "Should share at least 6 of 9 v0 outliers, got {}: {shared:?}",
-      shared.len()
-    );
-
-    Ok(())
-  }
+  const V0_CLOCK_RATE_AT_CLOCK_FILTER_3: f64 = 6.361743529953548e-04;
 
   #[test]
   fn test_dengue100_clock_pipeline_matches_v0() -> Result<(), Report> {
     let output = run_clock(3.0, false)?;
     let outlier_names = get_outlier_names(&output);
 
-    pretty_assert_abs_diff_eq!(6.362e-04, output.clock_model.clock_rate(), epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(
+      V0_CLOCK_RATE_AT_CLOCK_FILTER_3,
+      output.clock_model.clock_rate(),
+      epsilon = 1e-15
+    );
 
     #[rustfmt::skip]
     let expected_outliers = vec![
