@@ -23,6 +23,10 @@
 #                           registry (CI on the base branch only), with zstd
 #                           layers, which compress and unpack faster than gzip;
 #                           pulling them needs Docker 23 or later
+#   BUILDKIT_PROGRESS       Progress mode in which an image build streams its
+#                           log to stderr, such as `plain`; when unset, a build
+#                           prints nothing, and a failed build prints the error
+#                           of the pull before it and its whole plain log
 #   TREETIME_DOCKER_CPUS    CPUs that one container may use (default 8, at most
 #                           the CPUs of the Docker daemon); scripts that start
 #                           containers in parallel divide it between them
@@ -116,8 +120,9 @@ esac
 image_hash="$(cd "${root}" && hash_files "${build_inputs[@]}" "${build_args[@]+"${build_args[@]}"}" "${platform}")"
 image="${registry}:${kind}-${image_hash}"
 
+# Build the image; the argument is the context that a failed build prints.
 build_image() {
-  local flags=()
+  local context="${1}" flags=()
   if [[ "${TREETIME_DOCKER_PUSH:-}" == 1 ]]; then
     local builder="treetime-${kind}"
     docker buildx inspect "${builder}" >/dev/null 2>&1 || docker buildx create --name="${builder}" --driver=docker-container >/dev/null
@@ -130,20 +135,20 @@ build_image() {
   else
     flags=(--load)
   fi
-  docker buildx build \
+  docker_build_quiet "${context}" \
     --platform="${platform}" \
     --file="${root}/${dockerfile}" \
     --tag="${image}" \
     "${build_args[@]+"${build_args[@]}"}" \
     "${flags[@]}" \
-    --progress=plain \
-    "${root}" >&2
+    "${root}"
 }
 
+# An image that the registry lacks is built here. A failed pull is the expected
+# case for new build inputs, so its error shows only when the build fails too.
 if ! docker image inspect "${image}" >/dev/null 2>&1; then
-  if ! docker pull --quiet --platform="${platform}" "${image}" >/dev/null 2>&1; then
-    printf 'Building image %s\n' "${image}" >&2
-    build_image
+  if ! pull_error="$(docker pull --quiet --platform="${platform}" "${image}" 2>&1 >/dev/null)"; then
+    build_image "Pulling image ${image} failed: ${pull_error}"$'\n'"Building it from ${dockerfile} failed"
     if [[ "${TREETIME_DOCKER_PUSH:-}" == 1 ]]; then
       docker pull --quiet --platform="${platform}" "${image}" >/dev/null
     fi

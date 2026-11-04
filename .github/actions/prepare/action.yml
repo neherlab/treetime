@@ -45,9 +45,12 @@ runs:
         key: kache-${{ inputs.cache }}-${{ inputs.image }}-${{ hashFiles('.config/mise.lock') }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
         restore-keys: kache-${{ inputs.cache }}-${{ inputs.image }}-${{ hashFiles('.config/mise.lock') }}-
 
+    # The build prints its log only when it fails. A re-run with debug logging
+    # streams it, to find a build that hangs until the job times out.
     - name: "Pull or build the image"
       shell: bash
       env:
         CROSS_COMPILE: ${{ inputs.image }}
         TREETIME_DOCKER_PUSH: ${{ inputs.dockerhub-token != '' && '1' || '' }}
+        BUILDKIT_PROGRESS: ${{ runner.debug == '1' && 'plain' || '' }}
       run: dev/docker/run true

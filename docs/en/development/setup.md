@@ -16,7 +16,7 @@ cd treetime
 ./dev/docker/run just check
 ```
 
-`./dev/docker/run <command>` runs a command in the container, and without a command it opens a shell. The first run builds the image, which takes a while; later runs reuse it until one of its build inputs changes. Notes:
+`./dev/docker/run <command>` runs a command in the container, and without a command it opens a shell. The first run builds the image, which takes a while; later runs reuse it until one of its build inputs changes. The build prints nothing unless it fails, and a failed build prints its whole log; to watch a long build, set `BUILDKIT_PROGRESS=plain`. Notes:
 
 - The checkout is mounted at its host path, and the git metadata is mounted read-only. Commit on the host
 - Build output goes to `.build/container/`, the cargo home and caches to `.cache/`
