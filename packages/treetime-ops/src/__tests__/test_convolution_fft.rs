@@ -176,7 +176,7 @@ mod tests {
 
   #[test]
   fn test_convolution_fft_convolver_rejects_a_transform_length_beyond_usize() {
-    let f_len = usize::MAX / 2 + 2;
+    let f_len = (1_usize << (usize::BITS - 1)) + 1;
     assert_error!(
       FftConvolver::new(f_len, 2, &FftPlans::new()),
       format!("FFT convolution of operands of {f_len} and 2 samples needs a transform length beyond usize")
