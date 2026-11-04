@@ -7,7 +7,7 @@ The fits before the loop read the leaf dates through `fn given_times()` [package
 ## Evidence
 
 - **v0**: `ClockTree.setup_TreeRegression` regresses on `tip_value = np.mean(x.raw_date_constraint)` only for terminal nodes with `bad_branch is False` ([packages/legacy/treetime/treetime/clock_tree.py#L275](../../packages/legacy/treetime/treetime/clock_tree.py#L275)). Undated tips are `bad_branch` and never enter the regression
-- **v1 decision text**: [kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md) states that the regression must see the date as given, because regressing on a date the tree inferred feeds the tree's own inference back into the clock it is fitted with. That rule holds for dated tips only; the fallback in `likely_times` bypasses it for undated ones
+- **v1 design**: [kb/algo/timetree.md](../algo/timetree.md) states that the regression must see the date as given, because regressing on a date the tree inferred feeds the tree's own inference back into the clock it is fitted with. That rule holds for dated tips only; the fallback in `likely_times` bypasses it for undated ones
 - **Runtime**: the timetree clock regression table (`--output-rtt`) lists the points of the final fit. On `data/zika/20` with the date of one sample removed, the final table after refinement rounds gives that sample a date marked `inferred`, and the sample is not a clock-filter outlier, so it contributes to the fitted rate; with `--max-iter 0` the same sample has no date (test `test_timetree_clock_csv_marks_the_date_of_an_undated_tip` [packages/app-commands/src/commands/timetree/__tests__/test_clock_csv.rs#L99-L104](../../packages/app-commands/src/commands/timetree/__tests__/test_clock_csv.rs#L99-L104), which expects `ClockDateSource::Inferred` after two rounds)
 
 ## Impact
@@ -17,4 +17,4 @@ The fits before the loop read the leaf dates through `fn given_times()` [package
 
 ## Fix direction
 
-[kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md) requires the clock regression to see each leaf date as given. An undated tip has no given date, so under this decision it contributes nothing to the fit, before the loop and inside it. Build the in-loop regression inputs of leaves from the given dates, as the pre-loop fits do, and change the `refined` case of the test above to expect no date for the undated tip.
+[kb/algo/timetree.md](../algo/timetree.md) requires the clock regression to see each leaf date as given. An undated tip has no given date, so under this rule it contributes nothing to the fit, before the loop and inside it. Build the in-loop regression inputs of leaves from the given dates, as the pre-loop fits do, and change the `refined` case of the test above to expect no date for the undated tip.
