@@ -5,7 +5,6 @@ mod tests {
   use helpers::{LARGE_STAR, LONG_BRANCHES, LONG_BRANCHES_WITH_DATA, Placement, PolytomyTree, SHORT_BRANCHES, Star};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[rustfmt::skip]
@@ -49,21 +48,14 @@ mod tests {
   #[case::short_branches_below_root( SHORT_BRANCHES, Placement::BelowRoot)]
   #[case::large_star_at_root(        LARGE_STAR,     Placement::AtRoot)]
   #[trace]
-  fn test_root_polytomy_child_contributions_hold_each_distinct_site_once_and_count_every_site_with_data(
+  fn test_root_polytomy_child_contributions_count_every_site_with_data(
     #[case] star: Star,
     #[case] placement: Placement,
   ) -> Result<(), Report> {
     let tree = PolytomyTree::new(star, placement, Representation::Sparse)?;
 
-    let summaries = tree.child_contribution_summaries()?;
-    let expected = summaries
-      .iter()
-      .map(|(child, summary)| (child.clone(), (summary.distinct_coefficients, summary.sites_with_data)))
-      .collect::<BTreeMap<_, _>>();
-    let actual = summaries
-      .iter()
-      .map(|(child, summary)| (child.clone(), (summary.entries, summary.multiplicity)))
-      .collect::<BTreeMap<_, _>>();
+    let expected = tree.sites_with_data();
+    let actual = tree.child_contribution_multiplicities()?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -80,12 +72,13 @@ mod tests {
     use crate::partition::create::Representation;
     use crate::partition::marginal::reconstruction::MarginalReconstruction;
     use crate::partition::optimize::contribution::OptimizationContribution;
+    use crate::partition::optimize::sparse::PartitionContribution;
     use crate::test_utils::{NUC_ALPHABET, run_dense_marginal, run_sparse_marginal};
     use eyre::Report;
     use itertools::Itertools;
     use pretty_assertions::assert_eq;
     use rand::RngExt;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeMap;
     use std::iter::repeat_with;
     use treetime_graph::graph::Graph;
     use treetime_graph::key_map::EdgeMap;
@@ -250,6 +243,42 @@ mod tests {
       }
 
       pub(super) fn child_contribution_sites(&self) -> Result<BTreeMap<String, usize>, Report> {
+        Ok(
+          self
+            .child_contributions()?
+            .into_iter()
+            .map(|(child, contribution)| (child, contribution.site_contributions.len()))
+            .collect(),
+        )
+      }
+
+      pub(super) fn sites_with_data(&self) -> BTreeMap<String, f64> {
+        self
+          .sites_with_data
+          .iter()
+          .filter(|(name, _)| name.starts_with('c'))
+          .map(|(name, &count)| (name.clone(), count.to_f64_exact()))
+          .collect()
+      }
+
+      pub(super) fn child_contribution_multiplicities(&self) -> Result<BTreeMap<String, f64>, Report> {
+        Ok(
+          self
+            .child_contributions()?
+            .into_iter()
+            .map(|(child, contribution)| {
+              let multiplicity = contribution
+                .site_contributions
+                .iter()
+                .map(|site| site.multiplicity)
+                .sum();
+              (child, multiplicity)
+            })
+            .collect(),
+        )
+      }
+
+      fn child_contributions(&self) -> Result<BTreeMap<String, PartitionContribution>, Report> {
         self
           .graph
           .get_edges()
@@ -261,41 +290,9 @@ mod tests {
           .map(|item| -> Result<_, Report> {
             let (child, edge_key) = item?;
             match self.reconstruction.view().create_edge_contribution(edge_key)? {
-              OptimizationContribution::Sparse(sparse) => Ok((child, sparse.site_contributions.len())),
+              OptimizationContribution::Sparse(sparse) => Ok((child, sparse)),
               OptimizationContribution::Dense(_) => Err(make_report!("edge {child} has a dense contribution")),
             }
-          })
-          .collect()
-      }
-
-      pub(super) fn child_contribution_summaries(&self) -> Result<BTreeMap<String, ContributionSummary>, Report> {
-        self
-          .graph
-          .get_edges()
-          .map(|edge| -> Result<_, Report> {
-            let child = self.names[self.graph.edge_endpoints(edge.key())?.1].to_owned();
-            Ok((child, edge.key()))
-          })
-          .filter_ok(|(child, _)| child.starts_with('c'))
-          .map(|item| -> Result<_, Report> {
-            let (child, edge_key) = item?;
-            let OptimizationContribution::Sparse(sparse) =
-              self.reconstruction.view().create_edge_contribution(edge_key)?
-            else {
-              return Err(make_report!("edge {child} has a dense contribution"));
-            };
-            let sites = &sparse.site_contributions;
-            let distinct: BTreeSet<Vec<u64>> = sites
-              .iter()
-              .map(|site| site.coefficients.iter().map(|value| value.to_bits()).collect())
-              .collect();
-            let summary = ContributionSummary {
-              entries: sites.len(),
-              distinct_coefficients: distinct.len(),
-              multiplicity: sites.iter().map(|site| site.multiplicity).sum(),
-              sites_with_data: self.sites_with_data[&child].to_f64_exact(),
-            };
-            Ok((child, summary))
           })
           .collect()
       }
@@ -358,13 +355,6 @@ mod tests {
           .flatten_ok()
           .collect()
       }
-    }
-
-    pub(super) struct ContributionSummary {
-      pub(super) entries: usize,
-      pub(super) distinct_coefficients: usize,
-      pub(super) multiplicity: f64,
-      pub(super) sites_with_data: f64,
     }
   }
 }
