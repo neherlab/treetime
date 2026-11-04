@@ -62,14 +62,20 @@ profile_perf() {
   perf record -F "${SAMPLE_RATE}" --call-graph dwarf -o "${output}" -- "${binary}" "$@"
 
   printf "\n===== Self-time (top 30) =====\n"
-  perf report -i "${output}" --stdio --no-children -g none 2>/dev/null |
-    grep -vE '^\s*#' | c++filt -s rust -i | awk 'NR <= 30'
+  perf report -i "${output}" --stdio --no-children -g none |
+    without_comments | c++filt -s rust -i | awk 'NR <= 30'
 
   printf "\n===== Call graph (callers, >=1%%) =====\n"
-  perf report -i "${output}" --stdio -g graph,1,caller "${INLINE_FLAG}" 2>/dev/null |
-    grep -vE '^\s*#' | c++filt -s rust -i | awk 'NR <= 60'
+  perf report -i "${output}" --stdio -g graph,1,caller "${INLINE_FLAG}" |
+    without_comments | c++filt -s rust -i | awk 'NR <= 60'
 
   printf "\nRecording saved: %s\n" "${output}" >&2
+}
+
+# Drop the comment lines of a perf report. A report with no other lines is
+# empty, not a failure: grep exits 1 when it selects no line.
+without_comments() {
+  grep -vE '^\s*#' || (($? == 1))
 }
 
 profile_samply() {
