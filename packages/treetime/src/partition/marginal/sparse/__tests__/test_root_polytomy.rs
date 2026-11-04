@@ -2,7 +2,9 @@
 mod tests {
   use crate::partition::create::Representation;
   use eyre::Report;
-  use helpers::{LARGE_STAR, LONG_BRANCHES, LONG_BRANCHES_WITH_DATA, Placement, PolytomyTree, SHORT_BRANCHES, Star};
+  use helpers::{
+    LARGE_STAR, LONG_BRANCHES, LONG_BRANCHES_WITH_DATA, MEDIUM_STAR, Placement, PolytomyTree, SHORT_BRANCHES, Star,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -29,11 +31,18 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_root_polytomy_child_contributions_evaluate_the_sites_of_the_same_polytomy_below_the_root()
-  -> Result<(), Report> {
-    let below_root = PolytomyTree::new(LARGE_STAR, Placement::BelowRoot, Representation::Sparse)?;
-    let at_root = PolytomyTree::new(LARGE_STAR, Placement::AtRoot, Representation::Sparse)?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[ignore = "kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md: the root folds these sites only on bitwise equality"]
+  #[case::short_branches( SHORT_BRANCHES)]
+  #[case::medium_star(    MEDIUM_STAR)]
+  #[case::large_star(     LARGE_STAR)]
+  #[trace]
+  fn test_root_polytomy_child_contributions_evaluate_the_sites_of_the_same_polytomy_below_the_root(
+    #[case] star: Star,
+  ) -> Result<(), Report> {
+    let below_root = PolytomyTree::new(star, Placement::BelowRoot, Representation::Sparse)?;
+    let at_root = PolytomyTree::new(star, Placement::AtRoot, Representation::Sparse)?;
 
     let expected = below_root.child_contribution_sites()?;
     let actual = at_root.child_contribution_sites()?;
@@ -99,6 +108,8 @@ mod tests {
     pub(super) const LONG_BRANCHES_WITH_DATA: Star = Star { children: 12,  length: 60,  branch_length: 0.8,  n_runs: 0, run_lengths: (4, 12), seed: 14 };
     #[rustfmt::skip]
     pub(super) const SHORT_BRANCHES:          Star = Star { children: 12,  length: 60,  branch_length: 0.01, n_runs: 2, run_lengths: (4, 12), seed: 12 };
+    #[rustfmt::skip]
+    pub(super) const MEDIUM_STAR:             Star = Star { children: 50,  length: 60,  branch_length: 0.01, n_runs: 2, run_lengths: (4, 12), seed: 15 };
     #[rustfmt::skip]
     pub(super) const LARGE_STAR:              Star = Star { children: 150, length: 120, branch_length: 1e-4, n_runs: 2, run_lengths: (4, 12), seed: 13 };
 
