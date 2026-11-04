@@ -6,12 +6,11 @@ use parking_lot::RwLock;
 use realfft::num_complex::Complex;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 use std::collections::BTreeMap;
-use std::f64::consts::SQRT_2;
-use std::iter::successors;
+use std::f64::consts::{SQRT_2, TAU};
 use std::ops::RangeInclusive;
 use std::sync::{Arc, OnceLock};
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::{make_error, make_internal_report};
+use treetime_utils::{make_error, make_internal_report, make_report};
 
 const SINGLE_PAIR_WEIGHT: f64 = 0.25;
 
@@ -94,7 +93,7 @@ pub struct FftConvolver {
 impl FftConvolver {
   pub fn new(f_len: usize, g_len: usize, plans: &FftPlans) -> Result<Self, Report> {
     check_operand_lengths(f_len, g_len)?;
-    let fft_len = smooth_even_len(f_len + g_len - 1);
+    let fft_len = power_of_two_len(f_len, g_len)?;
     let plans = plans.get(fft_len);
     let spectrum_len = plans.forward.complex_len();
     let scratch_len = plans.forward.get_scratch_len().max(plans.inverse.get_scratch_len());
@@ -171,15 +170,26 @@ impl FftConvolver {
   }
 
   pub fn overlap_sums_round_off(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> f64 {
-    let gamma = |n: f64| n * UNIT_ROUND_OFF / (1.0 - n * UNIT_ROUND_OFF);
-    let stages = (2 * self.fft_len).to_f64_exact().log2().ceil();
-    let stage_error = UNIT_ROUND_OFF + gamma(4.0) * (SQRT_2 + UNIT_ROUND_OFF);
-    let transform_error = stages * stage_error / (1.0 - stages * stage_error);
+    let fft_len = self.fft_len.to_f64_exact();
+    let twiddle = TAU * rounding_gamma(2) + SQRT_2 * UNIT_ROUND_OFF;
+    let level = twiddle + rounding_gamma(4) * (SQRT_2 + twiddle);
+    let levels = fft_len.log2() - 1.0;
+    let complex_transform = levels * level / (1.0 - levels * level);
+    let packing = 10_f64.sqrt() * (rounding_gamma(4) + (1.0 + rounding_gamma(4)) * twiddle);
+    let real_transform = complex_transform + packing + complex_transform * packing;
+    let product = SQRT_2 * rounding_gamma(2);
     let norm_1 = |x: &Array1<f64>| x.iter().map(|v| v.abs()).sum::<f64>();
     let norm_2 = |x: &Array1<f64>| x.dot(x).sqrt();
-    let two_norms = norm_2(f_values) * norm_2(g_values);
-    let mixed_norms = (norm_1(f_values) * norm_2(g_values)).min(norm_2(f_values) * norm_1(g_values));
-    (2.0 * transform_error + SQRT_2 * gamma(2.0) + 3.0 * UNIT_ROUND_OFF) * two_norms + transform_error * mixed_norms
+    let (f_1, f_2, g_1, g_2) = (norm_1(f_values), norm_2(f_values), norm_1(g_values), norm_2(g_values));
+    let spectrum_error = |norm_2: f64| real_transform * fft_len.sqrt() * norm_2;
+    let forward_and_product =
+      (2.0 * real_transform + real_transform * real_transform + product * (1.0 + real_transform).powi(2)) * f_2 * g_2;
+    let inverse = real_transform
+      * (1.0 + real_transform)
+      * (1.0 + product)
+      * (f_2 * (g_1 + spectrum_error(g_2))).min((f_1 + spectrum_error(f_2)) * g_2);
+    let underflow = fft_len * fft_len * f64::MIN_POSITIVE * (1.0 + f_2) * (1.0 + g_2);
+    (forward_and_product + inverse + underflow) / (1.0 - rounding_gamma(2 * self.fft_len + 8))
   }
 }
 
@@ -322,16 +332,18 @@ pub(crate) fn trapezoid_from_overlap_sums(
   overlap_sums
 }
 
-pub(crate) fn smooth_even_len(min_len: usize) -> usize {
-  let min_len = min_len.max(1);
-  let powers_up_to_min = |base: usize| {
-    successors(Some(1_usize), move |&power| power.checked_mul(base)).take_while(move |&power| power <= min_len)
-  };
-  powers_up_to_min(3)
-    .flat_map(|power_of_3| powers_up_to_min(5).filter_map(move |power_of_5| power_of_3.checked_mul(power_of_5)))
-    .filter(|&odd| odd <= min_len)
-    .map(|odd| 2 * odd * min_len.div_ceil(2 * odd).next_power_of_two())
-    .fold(usize::MAX, usize::min)
+pub(crate) fn power_of_two_len(f_len: usize, g_len: usize) -> Result<usize, Report> {
+  f_len
+    .checked_add(g_len - 1)
+    .and_then(usize::checked_next_power_of_two)
+    .ok_or_else(|| {
+      make_report!("FFT convolution of operands of {f_len} and {g_len} samples needs a transform length beyond usize")
+    })
+}
+
+pub fn rounding_gamma(n: usize) -> f64 {
+  let nu = n.to_f64_exact() * UNIT_ROUND_OFF;
+  nu / (1.0 - nu)
 }
 
 fn contiguous<T>(array: &mut Array1<T>) -> Result<&mut [T], Report> {

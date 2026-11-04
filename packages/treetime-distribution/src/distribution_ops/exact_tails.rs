@@ -5,7 +5,7 @@ use ndarray::{Array1, ArrayView1, Zip, s};
 use ordered_float::OrderedFloat;
 use std::collections::VecDeque;
 use std::ops::RangeInclusive;
-use treetime_ops::{FftConvolver, FftPlans, UNIT_ROUND_OFF, convolve_direct_neg_log_at, trapezoid_weight};
+use treetime_ops::{FftConvolver, FftPlans, convolve_direct_neg_log_at, rounding_gamma, trapezoid_weight};
 use treetime_utils::array::ndarray::min_or;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_internal_error, make_internal_report};
@@ -376,11 +376,12 @@ impl<'a> ExactTails<'a> {
           *bound += section_round_off;
         });
     }
-    let summation_error = gamma(sections.len() + 3);
-    let accepted_share = -(-WINDOW_ROUND_OFF_NATS).exp_m1() - 8.0 * UNIT_ROUND_OFF - summation_error;
+    let summation = rounding_gamma(sections.len() + 3);
+    let evaluation = 1.0 + rounding_gamma(sections.len() + 8);
+    let accepted_share = -(-WINDOW_ROUND_OFF_NATS).exp_m1();
     let tilted_at = |neg_log: &Array1<f64>, i: usize| neg_log[i] - theta * (i.to_f64_exact() * dx);
     let mut resolved = 0;
-    for (k, &sum, &bound) in izip!(samples.iter(), &sums, &round_off) {
+    for (k, &gross, &bound) in izip!(samples.iter(), &sums, &round_off) {
       let full = self.full_pairs(k);
       let excess: f64 = [full.first, full.last]
         .into_iter()
@@ -391,8 +392,9 @@ impl<'a> ExactTails<'a> {
           (1.0 - trapezoid_weight(a.len(), b.len(), k, i)) * product
         })
         .sum();
-      let sum = sum - excess;
-      if sum > 0.0 && sum * accepted_share >= bound * (1.0 + UNIT_ROUND_OFF) * (1.0 + summation_error) {
+      let sum = gross - excess;
+      let error = (1.0 + 3.0 * summation) * bound + summation * (gross + excess);
+      if sum > 0.0 && error * evaluation <= sum * accepted_share {
         self.set(k, -(sum * dx).ln() + reference + theta * (k.to_f64_exact() * dx));
         trace.windowed_fft_sample(k);
         resolved += 1;
@@ -558,11 +560,6 @@ impl<'a> SlidingMinimum<'a> {
     }
     self.candidates.front().map_or(f64::INFINITY, |&j| self.values[j])
   }
-}
-
-fn gamma(n: usize) -> f64 {
-  let nu = n.to_f64_exact() * UNIT_ROUND_OFF;
-  nu / (1.0 - nu)
 }
 
 struct TiltedWindow {

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::convolution::{FftConvolver, FftPlans, convolve_fft, smooth_even_len};
+  use crate::convolution::{FftConvolver, FftPlans, convolve_fft, power_of_two_len};
   use helpers::Shape;
   use itertools::Itertools;
   use ndarray::array;
@@ -9,7 +9,7 @@ mod tests {
   use rstest::rstest;
   use std::iter::repeat_with;
   use std::sync::Arc;
-  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -162,19 +162,50 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::below_four(            3,    4)]
-  #[case::below_eight(           7,    8)]
-  #[case::below_twelve(         11,   12)]
-  #[case::skips_odd_smooth(     13,   16)]
-  #[case::factors_two_and_three(1639, 1728)]
-  #[case::power_of_two(       2048, 2048)]
-  #[case::factors_of_all_three(2049, 2160)]
+  #[case::smallest(    (   2,    2),    4)]
+  #[case::below_eight( (   3,    4),    8)]
+  #[case::power_of_two((1025, 1024), 2048)]
+  #[case::above_power( (1025, 1025), 4096)]
   #[trace]
-  fn test_convolution_fft_transform_length_is_the_smallest_even_five_smooth_number_not_below_the_span(
-    #[case] span: usize,
+  fn test_convolution_fft_transform_length_is_the_smallest_power_of_two_that_holds_the_full_convolution(
+    #[case] (f_len, g_len): (usize, usize),
     #[case] expected: usize,
   ) {
-    assert_eq!(expected, smooth_even_len(span));
+    assert_eq!(expected, power_of_two_len(f_len, g_len).unwrap());
+  }
+
+  #[test]
+  fn test_convolution_fft_convolver_rejects_a_transform_length_beyond_usize() {
+    let f_len = usize::MAX / 2 + 2;
+    assert_error!(
+      FftConvolver::new(f_len, 2, &FftPlans::new()),
+      format!("FFT convolution of operands of {f_len} and 2 samples needs a transform length beyond usize")
+    );
+  }
+
+  #[test]
+  fn test_convolution_fft_round_off_bound_of_a_transform_of_eight_samples_follows_the_error_analysis() {
+    let (f, g) = (array![2.0, 1.0, 3.0], array![5.0, 1.0, 1.0, 7.0]);
+    let bound_in_50_digit_decimal_arithmetic = 1.264_807_100_091_142_5e-12;
+    let convolver = FftConvolver::new(3, 4, &FftPlans::new()).unwrap();
+    let actual = convolver.overlap_sums_round_off(&f, &g);
+    pretty_assert_ulps_eq!(bound_in_50_digit_decimal_arithmetic, actual, max_ulps = 64);
+  }
+
+  #[test]
+  fn test_convolution_fft_overlap_sums_stay_within_their_round_off_bound() {
+    let plans = FftPlans::new();
+    let failures = helpers::operands_of(&helpers::interleaved_lengths().into_iter().unique().collect_vec())
+      .into_iter()
+      .filter_map(|(f, g)| {
+        let mut convolver = FftConvolver::new(f.len(), g.len(), &plans).unwrap();
+        let bound = convolver.overlap_sums_round_off(&f, &g);
+        let actual = convolver.overlap_sums(&f, &g).unwrap();
+        let error = helpers::max_abs_difference(&helpers::direct_overlap_sums(&f, &g), &actual);
+        (error > bound).then_some((f.len(), g.len(), error, bound))
+      })
+      .collect_vec();
+    assert_eq!(Vec::<(usize, usize, f64, f64)>::new(), failures);
   }
 
   mod helpers {
@@ -227,6 +258,19 @@ mod tests {
         .map(|(d, a)| over_peak_of(d, a))
         .collect_vec();
       pretty_assert_abs_diff_eq!(expected[..], actual[..], epsilon = 1e-14);
+    }
+
+    pub(super) fn direct_overlap_sums(f: &Array1<f64>, g: &Array1<f64>) -> Array1<f64> {
+      (0..f.len() + g.len() - 1)
+        .map(|n| {
+          let (first, last) = (n.saturating_sub(g.len() - 1), n.min(f.len() - 1));
+          (first..=last).map(|i| f[i] * g[n - i]).sum()
+        })
+        .collect()
+    }
+
+    pub(super) fn max_abs_difference(expected: &Array1<f64>, actual: &Array1<f64>) -> f64 {
+      izip!(expected, actual).map(|(e, a)| (e - a).abs()).fold(0.0, f64::max)
     }
 
     pub(super) fn interleaved_lengths() -> Vec<(usize, usize)> {

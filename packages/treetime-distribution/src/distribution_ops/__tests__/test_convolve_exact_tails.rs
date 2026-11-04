@@ -154,9 +154,8 @@ mod tests {
     use ndarray::{Array1, Zip};
     use pretty_assertions::assert_eq;
     use std::collections::BTreeMap;
-    use std::f64::consts::SQRT_2;
     use treetime_grid::{BoundaryBehavior, MaxGridPoints};
-    use treetime_ops::FftPlans;
+    use treetime_ops::{FftConvolver, FftPlans, UNIT_ROUND_OFF, rounding_gamma};
     use treetime_utils::array::ndarray::{max_or, min_or};
     use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
     use treetime_utils::make_error;
@@ -195,8 +194,8 @@ mod tests {
         })
         .collect::<BTreeMap<_, _>>()
         .into_iter()
-        .map(|(key, theta)| (key, FftRoundOff::of(&a, &b, theta, dx)))
-        .collect();
+        .map(|(key, theta)| Ok((key, FftRoundOff::of(&a, &b, theta, dx)?)))
+        .collect::<Result<_, Report>>()?;
       Ok(TracedConvolution {
         a,
         b,
@@ -336,34 +335,23 @@ mod tests {
     }
 
     impl FftRoundOff {
-      fn of(a: &Array1<f64>, b: &Array1<f64>, theta: f64, dx: f64) -> Self {
+      fn of(a: &Array1<f64>, b: &Array1<f64>, theta: f64, dx: f64) -> Result<Self, Report> {
         let (min_a, plain_a) = tilted_plain(a, theta, dx);
         let (min_b, plain_b) = tilted_plain(b, theta, dx);
         let peak = dx * max_or(&direct_overlap_sums(&plain_a, &plain_b), 0.0);
-        let norm_1 = |x: &Array1<f64>| x.sum();
-        let norm_2 = |x: &Array1<f64>| x.dot(x).sqrt();
-        let unit_round_off = 2_f64.powi(-53);
-        let gamma = |n: f64| n * unit_round_off / (1.0 - n * unit_round_off);
-        let stages = (2.0 * (plain_a.len() + plain_b.len() - 1).to_f64_exact()).log2().ceil();
-        let eta = unit_round_off + gamma(4.0) * (SQRT_2 + unit_round_off);
-        let transform = stages * eta / (1.0 - stages * eta);
-        let two_norms = norm_2(&plain_a) * norm_2(&plain_b);
-        let mixed_norms = (norm_1(&plain_a) * norm_2(&plain_b)).min(norm_2(&plain_a) * norm_1(&plain_b));
-        let absolute_bound = dx
-          * ((2.0 * transform + SQRT_2 * gamma(2.0) + 2.0 * unit_round_off) * two_norms
-            + transform * mixed_norms
-            + unit_round_off * peak / dx);
-        Self {
+        let overlap_sums =
+          FftConvolver::new(plain_a.len(), plain_b.len(), &FftPlans::new())?.overlap_sums_round_off(&plain_a, &plain_b);
+        let absolute_bound = dx * overlap_sums * (1.0 + UNIT_ROUND_OFF) + rounding_gamma(5) * peak;
+        Ok(Self {
           min_a,
           min_b,
           peak,
           absolute_bound,
-        }
+        })
       }
 
       fn bound_in_nats(&self, computed: f64, assembled_terms: [f64; 4]) -> f64 {
-        let unit_round_off = 2_f64.powi(-53);
-        let assembly = 8.0 * unit_round_off * assembled_terms.iter().map(|v| v.abs()).sum::<f64>();
+        let assembly = 8.0 * UNIT_ROUND_OFF * assembled_terms.iter().map(|v| v.abs()).sum::<f64>();
         if self.absolute_bound >= computed {
           f64::INFINITY
         } else {
