@@ -8,11 +8,10 @@ set -euo pipefail
 # Current directory will be mounted into the container as `/workdir` and this will be the working dir where
 # the container starts. This way the executables and data are accessible starting from `./`
 #
+# Prints nothing on success; a failed run prints its whole output.
+#
 # Dependencies:
 #   sudo apt-get install -y bash parallel
-
-printf "Docker version:\n"
-docker version
 
 # shellcheck source=lib/env.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/env.sh"
@@ -106,15 +105,14 @@ function run_one_distro() {
   local distro="${1}"
   local -a command_args=()
   read -r -a command_args <<<"${args}"
-  printf "Running %s\n" "'${args}' on '${distro}'"
   # Many distribution images exist for x86_64 only. On a host of another
-  # architecture (the arm64 compat jobs), report them by name and skip them;
-  # the x86_64 jobs run them.
+  # architecture (the arm64 compat jobs), report them by name on stderr and skip
+  # them; the x86_64 jobs run them.
   local host_arch pull_output image_arch
   host_arch="$(docker version --format '{{.Server.Arch}}')"
   if ! pull_output="$(docker pull -q "${distro}" 2>&1)"; then
     if [[ "${host_arch}" != "amd64" && "${pull_output}" == *"no matching manifest"* ]]; then
-      printf "Skipped '%s': no image for %s\n" "${distro}" "${host_arch}"
+      printf "Skipped '%s': no image for %s\n" "${distro}" "${host_arch}" >&2
       return 0
     fi
     printf "Failed pulling '%s': %s\n" "${distro}" "${pull_output}" >&2
@@ -122,17 +120,14 @@ function run_one_distro() {
   fi
   image_arch="$(docker image inspect --format '{{.Architecture}}' "${distro}")"
   if [[ "${image_arch}" != "${host_arch}" ]]; then
-    printf "Skipped '%s': no image for %s (only %s)\n" "${distro}" "${host_arch}" "${image_arch}"
+    printf "Skipped '%s': no image for %s (only %s)\n" "${distro}" "${host_arch}" "${image_arch}" >&2
     return 0
   fi
-  if ! docker run -i --rm \
+  run_quiet "Running '${args}' on '${distro}' failed" docker run --rm \
     --name="treetime-distro-$(printf '%s' "${distro}" | tr '/:@' '---')-$(date +%Y%m%d-%H%M%S)-$$" --cpus="${cpus}" \
-    -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" >/dev/null; then
-    printf "Failed running '%s' on '%s'\n" "${args}" "${distro}" >&2
-    exit 1
-  fi
+    -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" || exit 1
 }
-export -f run_one_distro
+export -f run_one_distro run_quiet stop_quiet print_failed_log
 
 # The containers divide the CPU budget of dev/docker/run (TREETIME_DOCKER_CPUS)
 # between them.
