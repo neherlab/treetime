@@ -68,6 +68,24 @@ The exact rule moves 1,147 node dates by more than 1e-9 years (99th percentile 0
 
 In one forward pass, the fold removes about 5.0M explicit posterior entries, summed over the nodes. The exact rule keeps them; about 4.4k of them differ from the shared profile by 1e-9 or more (2 by more than 0.1, about 2.4k by more than 1e-6), about 1.0M by 1e-12 to 1e-9, 0.95M by 1e-16 to 1e-12, and 3.06M by less than 1e-16.
 
+## Cost of the bitwise fold at a root polytomy
+
+At the root, `fn is_shared_profile()` folds a site where a child disagrees only when its profile equals the shared profile of its state bit for bit. The site lacks the term of a child without data there, or carries the term of another state, so its subleading probabilities differ from those of the shared profile until both underflow to a one-hot profile. Below the root, the forward pass folds the same sites at $1 - 10^{-4}$. The branch-length contribution of an edge groups its sites by the bit pattern of their coefficients (`struct GroupedSiteContributions` in [packages/treetime/src/partition/optimize/sparse.rs](../../packages/treetime/src/partition/optimize/sparse.rs)), so an explicit site costs an extra entry only when its subleading probabilities reach the last bits of the coefficients.
+
+`test_root_polytomy_child_contributions_evaluate_the_sites_of_the_same_polytomy_below_the_root` in [packages/treetime/src/partition/marginal/sparse/__tests__/test_root_polytomy.rs](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_root_polytomy.rs) compares the contribution entries of the child edges of a star at the root and one level below it. Each tip except `c0` has 2 `N` runs:
+
+| Case | Children, branch length, sites | Explicit root sites, star at the root | Explicit sites of `P`, star below the root | Child contribution entries, at the root | Child contribution entries, below the root |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `short_branches` | 12, 0.01, 60 | 58 | 1 | 114 | 67 |
+| `medium_star` | 50, 0.01, 60 | 60 | 0 | 240 | 240 |
+| `large_star` | 150, 1e-4, 120 | 0 | 0 | 732 | 732 |
+
+- **12 children**: the subleading probabilities of the root sites are 1e-25 to 1e-15 and change the coefficients, so the contributions at the root hold 1.7 times the entries below the root. The case is ignored
+- **50 children**: the root keeps every site explicit, but the subleading probabilities are 1e-112 to 1e-70, the coefficients are bit-identical, and the grouping merges them
+- **150 children**: the profiles underflow to one-hot profiles and fold at both placements, as on the mpox B.1 build with its 657 root children
+
+The class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](../proposals/sparse-shared-profiles-for-sites-without-data.md) remove both effects: sites with the same state and the same pattern of disagreeing children share one exact profile, so the root needs no bitwise equality and the forward pass needs no threshold.
+
 ## Size of the differences
 
 TreeTime log-likelihoods use the natural logarithm, so their unit is the nat. A difference of $d$ nats between two log-likelihoods means that one likelihood is $e^d$ times the other. Log-likelihoods add up over sites and branches, so small differences per site give a large total.
@@ -112,9 +130,9 @@ On a public dataset, run `optimize` with a fixed topology in both representation
 
 ## Fix direction
 
-The exact rule: the node's message to its parent enters the forward product under a fold rule that lets its explicit entries fold only when they equal the shared profile bit for bit, while the message from the parent keeps the threshold fold. The backward pass already applied the fold rule at the node with the references of all children, so the posterior of a node below the root then keeps the positions that the root keeps. Commit `7b4e0ba78` on branch `worktree/fix/sparse-posterior-below-root` implements it (not landed) and enables the ignored cases.
+The exact rule: the node's message to its parent enters the forward product under a fold rule that lets its explicit entries fold only when they equal the shared profile bit for bit, while the message from the parent keeps the threshold fold. The backward pass already applied the fold rule at the node with the references of all children, so the posterior of a node below the root then keeps the positions that the root keeps. Commit `7b4e0ba78` on branch `fix/sparse-posterior-below-root` implements it (not landed) and enables the ignored cases.
 
-The exact rule doubles the run time of the production mpox B.1 build: 552 s against 270 s, one thread, both runs under the same load. In one forward pass, the explicit posterior entries grow from 15.3k to 5.02M and the outside-message entries from 5.05M to 33.0M, although only 62k and 636k of them are bit-distinct. [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](../proposals/sparse-shared-profiles-for-sites-without-data.md) describes a sharing mechanism that removes these copies without a tolerance.
+The exact rule doubles the run time of the production mpox B.1 build: 552 s against 270 s, one thread, both runs under the same concurrent load; on a quiet build host (load 0.5 at the start, 7.9 at the end), the approximate fold of commit `204b81185` takes 260.6 s, against 230.6 s for commit `2d813264e`. In one forward pass, the explicit posterior entries grow from 15.3k to 5.02M and the outside-message entries from 5.05M to 33.0M, although only 62k and 636k of them are bit-distinct. [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](../proposals/sparse-shared-profiles-for-sites-without-data.md) describes a sharing mechanism that removes these copies without a tolerance.
 
 > [!IMPORTANT]
 > **Decision required.** `rust` keeps the threshold fold below the root until the decision on the proposal. Options: take the exact rule with single-site entries (sparse matches dense, the production build takes twice as long), take it together with the class-keyed shared profiles of the proposal (exact, not implemented), or keep the fold.
