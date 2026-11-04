@@ -90,6 +90,37 @@ mod tests {
   }
 
   #[test]
+  fn test_convolution_window_of_a_gap_keeps_a_pair_of_narrow_components_that_its_ends_and_middle_do_not_reach()
+  -> Result<(), Report> {
+    let (len_a, len_b) = (1163, 4321);
+    let dip = |index: usize, center: usize| 190.0 * (1.0 - index.abs_diff(center).to_f64_exact() / 3.0).max(0.0);
+    let a = hard_operand(0.0, 0.026, len_a, |i, _| {
+      let d = i.to_f64_exact() / len_a.to_f64_exact() - 0.264;
+      let smooth = if d < 0.0 {
+        700.0 * d * d
+      } else {
+        1050.0 * d * d + 8000.0 * (d - 0.5).max(0.0).powi(2)
+      };
+      smooth - dip(i, 1085)
+    })?;
+    let b = hard_operand(0.0, 0.026, len_b, |j, _| {
+      let v = j.to_f64_exact() / len_b.to_f64_exact() - 0.2815;
+      let smooth = if v < 0.0 {
+        115.0 * (v / 0.2815).powi(2)
+      } else {
+        -139.0 * (-(v / 0.27).powi(2)).exp_m1()
+      };
+      smooth - dip(j, 4200)
+    })?;
+    let traced = traced_convolution(&a, &b)?;
+    traced.assert_covers_the_whole_support();
+    assert_eq!(Vec::<usize>::new(), traced.infinite_samples());
+    assert_ne!(0, traced.windowed_fft_samples());
+    traced.assert_matches_the_quadrature_oracle();
+    Ok(())
+  }
+
+  #[test]
   fn test_convolution_with_wide_overlaps_at_a_hard_end_computes_its_tail_with_fewer_quadrature_terms_than_one_fft()
   -> Result<(), Report> {
     let (len_a, len_b) = (2642, 1476);
@@ -114,6 +145,7 @@ mod tests {
     let traced = traced_convolution(&a, &b)?;
     traced.assert_covers_the_whole_support();
     assert_eq!(Vec::<usize>::new(), traced.infinite_samples());
+    assert_ne!(0, traced.windowed_fft_samples());
     traced.assert_matches_the_quadrature_oracle();
     let points = (len_a + len_b).to_f64_exact();
     let one_fft_of_the_operands = points * points.log2();
@@ -238,6 +270,14 @@ mod tests {
 
       pub(super) fn quadrature_terms(&self) -> usize {
         self.quadrature_terms
+      }
+
+      pub(super) fn windowed_fft_samples(&self) -> usize {
+        self
+          .sources
+          .values()
+          .filter(|source| matches!(source, SampleSource::WindowedFft))
+          .count()
       }
 
       pub(super) fn infinite_samples(&self) -> Vec<usize> {
