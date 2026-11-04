@@ -63,7 +63,7 @@ pub enum RunWarningKind {
   DuplicatePartitionNames,
   /// The branch-length optimizer did not converge on some edges: it reached its iteration limit, or it stopped at the upper end of its search interval while the likelihood still increased; their lengths may not maximize the likelihood.
   BranchLengthsNotConverged,
-  /// Some final dates lie outside the input dates: a tip outside its own input date range, or an internal node after the latest input date. The clock alone dates these nodes, as it does for the tips that the clock filter flagged.
+  /// Some final dates lie outside the input dates: a tip outside its own input date range, a tip without an input date outside the sampling period (the range from the earliest to the latest input date), or an internal node after the latest input date. The clock alone dates these nodes, as it does for the tips that the clock filter flagged.
   DatesOutsideInputDates,
   /// The run removed the tips that the clock filter flagged from the tree (`--prune-filtered-tips`); the outputs leave them out.
   FilteredTipsRemoved,

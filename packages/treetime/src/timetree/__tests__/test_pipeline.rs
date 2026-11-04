@@ -164,12 +164,13 @@ mod tests {
       .map_err(OperationError::into_report)?;
 
     let outlier = find_node_key_by_name(&output.graph, &output.names, &outlier_name).expect("outlier leaf must exist");
-    let excess = output.node_dates[&outlier].expect("the outlier is dated") - FORCED_OUTLIER_DATE;
+    let outlier_date = output.node_dates[&outlier].expect("the outlier is dated");
+    let excess = outlier_date - FORCED_OUTLIER_DATE;
     let expected = vec![RunWarning {
       kind: RunWarningKind::DatesOutsideInputDates,
       message: format!(
         "Some final dates lie outside the input dates: 1 tip dated outside the input date range of the tip, by up to \
-         {excess:.2} years ({outlier_name}). The clock alone dates these nodes, as it does for the tips that the clock \
+         {excess:.2} years ({outlier_name} at {outlier_date:.2}). The clock alone dates these nodes, as it does for the tips that the clock \
          filter flagged and for their ancestors"
       ),
       names: vec![outlier_name],
