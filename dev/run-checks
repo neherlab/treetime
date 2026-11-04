@@ -5,13 +5,14 @@
 # Run just recipes as checks, in parallel by default, and keep going past
 # failures. A check is a recipe name, followed by its arguments separated by
 # colons: `build-web:prod` runs `just build-web prod`. Each check writes its
-# output to tmp/checks/<check>.log. A result
-# line is printed as each check finishes; the output of every failed check is
-# printed at the end. Exits 1 when any check failed.
+# output to tmp/checks/<check>.log. Prints nothing when every check passes. A
+# FAIL line is printed as each check fails, and the output of every failed
+# check and the list of failed checks at the end. Exits 1 when any check failed.
 #
 # Options:
 #   -h, --help   Show this help
-#   --serial     Run the checks one after another, with output streamed
+#   --serial     Run the checks one after another, with the output of each
+#                streamed under a line that names it
 #
 # Examples:
 #   $0 fmt-check lint typecheck
@@ -43,9 +44,7 @@ run_serial() {
   for recipe in "$@"; do
     printf '\n==> %s\n' "${recipe}" >&2
     start="$(date +%s)"
-    if run_check "${recipe}" 2>&1 | tee "${log_dir}/${recipe}.log"; then
-      printf 'PASS %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
-    else
+    if ! run_check "${recipe}" 2>&1 | tee "${log_dir}/${recipe}.log"; then
       printf 'FAIL %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
       failed+=("${recipe}")
     fi
@@ -58,16 +57,13 @@ run_parallel() {
   start="$(date +%s)"
   for recipe in "$@"; do
     (
-      if run_check "${recipe}" >"${log_dir}/${recipe}.log" 2>&1; then
-        printf 'PASS %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
-      else
+      if ! run_check "${recipe}" >"${log_dir}/${recipe}.log" 2>&1; then
         printf 'FAIL %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
         exit 1
       fi
     ) &
     pids+=("$!")
   done
-  printf 'Running %s checks in parallel; logs in %s\n' "$#" "${log_dir#"${root}/"}" >&2
 
   local i failed=()
   for i in "${!pids[@]}"; do
@@ -84,7 +80,6 @@ run_parallel() {
 
 report() {
   if (($# == 0)); then
-    printf '\nAll checks passed\n' >&2
     return 0
   fi
   printf '\nFailed checks:\n' >&2

@@ -34,7 +34,7 @@ While working on one toolchain, run its leaves (`just fmt-rs`, `just l`, `just t
 
 The lint libraries and oxlint plugins in `dev/lints` have their own recipes, which `check` and `check-all` leave out: `just check-dev` runs `lint-dev-rs` and `test-dev-rs` for the dylint libraries, each in its own workspace with its pinned nightly, `lint-dev-ts` and `test-dev-ts` for the oxlint plugins, and `test-dev-sh` for the shell libraries in `dev/lib` (the port slots of `dev/lib/ports.sh`). Run them after a change in `dev/lints` or `dev/lib`.
 
-`check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and list the failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check. The full gate consists of groups, one CI job each; `just check-group <group>` runs one group serially, as its CI job does.
+`check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and print nothing when every check passes. A failed check prints a `FAIL` line as it ends, and its whole output and the list of failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check. The full gate consists of groups, one CI job each; `just check-group <group>` runs one group serially, as its CI job does.
 
 ## Examples
 
