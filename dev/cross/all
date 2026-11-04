@@ -5,7 +5,8 @@
 #
 # Cross-compile shipped (dist profile) binaries for every target in
 # dev/cross/targets, each in its cross image, in parallel. Output goes to
-# .out/<bin>-<target>, one log per target to tmp/cross/<target>.log.
+# .out/<bin>-<target>, one log per target to tmp/cross/<target>.log. The
+# script prints nothing on success; a failed target prints its whole log.
 # Parallel builds divide the CPU budget of dev/docker/run (TREETIME_DOCKER_CPUS)
 # between the targets, so all targets together use at most that many CPUs.
 #
@@ -128,12 +129,9 @@ main() {
     build_one "${target}" >"tmp/cross/${target}.log" 2>&1 &
     pids+=("$!")
   done
-  printf 'Building %s targets in parallel with %s CPUs each; logs in tmp/cross/\n' "${#targets[@]}" "${TREETIME_DOCKER_CPUS}" >&2
   for i in "${!pids[@]}"; do
-    if wait "${pids[${i}]}"; then
-      printf 'PASS %s\n' "${targets[${i}]}" >&2
-    else
-      printf 'FAIL %s (tmp/cross/%s.log)\n' "${targets[${i}]}" "${targets[${i}]}" >&2
+    if ! wait "${pids[${i}]}"; then
+      print_failed_log "FAIL ${targets[${i}]}, log tmp/cross/${targets[${i}]}.log" "tmp/cross/${targets[${i}]}.log"
       failed+=("${targets[${i}]}")
     fi
   done

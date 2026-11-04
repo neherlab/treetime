@@ -14,9 +14,11 @@
 # only.
 #
 # Each image is built for every platform whose binary is in .out/, so a missing
-# binary removes only its platform from the images that need it. A missing
-# binary, a failed build, and a failed test are reported at the end and make the
-# script exit with status 1, after every other image is pushed and tested.
+# binary removes only its platform from the images that need it. The script
+# prints nothing on success. A missing binary, a failed build, and a failed test
+# each print a FAIL line, with the whole log of a failed build or the output of
+# a failed test, and make the script exit with status 1 at the end, after every
+# other image is pushed and tested.
 #
 # The version of the images is the workspace version of Cargo.toml and the
 # suffix, as in the binaries (TREETIME_VERSION_SUFFIX). A Docker tag cannot
@@ -29,8 +31,9 @@
 #
 # Every build uses one docker-container builder, treetime-prod, so the test
 # builds after a push reuse the layers of the pushed builds. The binaries are
-# staged with mode 0755 under .out/docker/<amd64|arm64>/<gnu|musl>/. The log of
-# each build and the outputs of each image test go to tmp/docker-prod/.
+# staged with mode 0755 under .out/docker/<amd64|arm64>/<gnu|musl>/. Each build
+# writes its log to tmp/docker-prod/<image>-<platforms>.log, and the image
+# tests write their outputs to tmp/docker-prod/run/.
 #
 # Runs on the host and needs Docker with buildx, QEMU user emulation for the
 # platform that the host does not run (binfmt_misc), yq, jq, and the binaries
@@ -54,6 +57,8 @@ set -euo pipefail
 trap "exit" INT
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+# shellcheck source=../lib/env.sh
+source "${root}/dev/lib/env.sh"
 
 IMAGE="neherlab/treetime"
 PLATFORMS=(linux/amd64 linux/arm64)
@@ -105,7 +110,7 @@ build_one() {
 
 # Build every image in parallel, for one platform or, without a platform, for
 # every platform with a binary. Images without a binary for the platform are
-# left out; each failed build counts as a problem.
+# left out; each failed build prints its log and counts as a problem.
 build_all() {
   local output="${1}" platform="${2:-}"
   local pids=() logs=() built=() distro platforms label
@@ -124,14 +129,11 @@ build_all() {
     build_one "${output}" "${platforms}" "${distro}" >"${logs[${#logs[@]} - 1]}" 2>&1 &
     pids+=("$!")
   done
-  printf 'Building %s images (%s); logs in %s/\n' "${#pids[@]}" "${output}" "${LOG_DIR}" >&2
 
   local i
   for i in "${!pids[@]}"; do
-    if wait "${pids[${i}]}"; then
-      printf 'Built %s\n' "${built[${i}]}" >&2
-    else
-      printf 'FAIL build of %s (%s)\n' "${built[${i}]}" "${logs[${i}]}" >&2
+    if ! wait "${pids[${i}]}"; then
+      print_failed_log "FAIL build of ${built[${i}]} (${output}), log ${logs[${i}]}" "${logs[${i}]}"
       problems=$((problems + 1))
     fi
   done
@@ -157,8 +159,6 @@ run_all() {
     elif ! output="$(run_analysis "${platform}" "${name}" "${label}" 2>&1)"; then
       printf 'FAIL %s (%s): ancestral reconstruction of %s:\n%s\n' "${name}" "${platform}" "${TEST_DATASET}" "${output}" >&2
       problems=$((problems + 1))
-    else
-      printf 'PASS %s (%s)\n' "${name}" "${platform}" >&2
     fi
   done
 }
