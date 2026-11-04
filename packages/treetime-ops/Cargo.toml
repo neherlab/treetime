@@ -23,6 +23,7 @@ treetime-utils = { workspace = true }
 
 # [external]
 eyre = { workspace = true }
+itertools = { workspace = true }
 ndarray = { workspace = true }
 ndarray-conv = { workspace = true }
 parking_lot = { workspace = true }
@@ -31,7 +32,6 @@ realfft = { workspace = true, features = ["wasm_simd"] }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
-itertools = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }

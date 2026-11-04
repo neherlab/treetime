@@ -87,6 +87,15 @@ mod tests {
   }
 
   #[test]
+  fn test_convolve_direct_neg_log_at_rejects_a_nan_operand_value_in_its_pairs() {
+    let (f_neg_log, g_neg_log) = (array![1.0, f64::NAN, 2.0], array![1.0, 3.0]);
+    assert_error!(
+      convolve_direct_neg_log_at(0.5, &f_neg_log, &g_neg_log, 2, 0..=2),
+      "Convolution sample 2 has a NaN operand value in its pair (1, 1)"
+    );
+  }
+
+  #[test]
   fn test_convolve_direct_neg_log_at_keeps_depths_below_the_smallest_double_and_exact_zeros() {
     let f = array![1000.0, 1000.0, f64::INFINITY];
     let g = array![2000.0, 2000.0, f64::INFINITY];

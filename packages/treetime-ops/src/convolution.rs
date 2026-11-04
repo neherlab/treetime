@@ -1,5 +1,6 @@
 use crate::traits::ConvolveAlgo;
 use eyre::{Report, WrapErr};
+use itertools::{Itertools, izip};
 use ndarray::{Array1, Zip, s};
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use parking_lot::RwLock;
@@ -266,6 +267,13 @@ pub fn convolve_direct_neg_log_at(
   };
   let f_pairs = f_neg_log.slice(s![first_i..=last_i]);
   let g_pairs = g_neg_log.slice(s![n - last_i..=n - first_i;-1]);
+  if let Some((q, _)) = izip!(&f_pairs, &g_pairs).find_position(|(f, g)| f.is_nan() || g.is_nan()) {
+    let i = first_i + q;
+    return make_error!(
+      "Convolution sample {n} has a NaN operand value in its pair ({i}, {})",
+      n - i
+    );
+  }
   let pairs = || Zip::indexed(&f_pairs).and(&g_pairs);
   let min_cost = pairs().fold(f64::INFINITY, |min, q, f, g| min.min(f + g + penalty(q)));
   if !min_cost.is_finite() {
