@@ -8,10 +8,12 @@ fi
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 root="$(cd "${dir}/../../.." && pwd -P)"
+# shellcheck source=../../../dev/lib/env.sh
+source "${root}/dev/lib/env.sh"
 image="treetime-logo:$(cat "${dir}/Dockerfile" "${dir}/Dockerfile.dockerignore" "${dir}/package.json" "${dir}/package-lock.json" | sha256sum | cut -c1-16)"
 
 if ! docker image inspect "${image}" >/dev/null 2>&1; then
-  docker build --quiet --file="${dir}/Dockerfile" --tag="${image}" "${dir}" >/dev/null
+  docker_build_quiet "Building image ${image} from ${dir}/Dockerfile failed" --load --file="${dir}/Dockerfile" --tag="${image}" "${dir}"
 fi
 
 workdir="$(pwd -P)"
