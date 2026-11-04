@@ -185,15 +185,21 @@ impl<'a> ExactTails<'a> {
     } else {
       0
     };
-    if resolved > 0 {
-      pending.extend(
-        self
-          .gaps_within(gap.samples)
-          .into_iter()
-          .map(|samples| Gap { samples, ..gap }),
-      );
-      return Ok(());
+    if resolved == 0 {
+      return self.split_at_middle(gap, pending, trace);
     }
+    for samples in self.gaps_within(gap.samples) {
+      let rest = Gap { samples, ..gap };
+      if 2 * samples.len() > gap.samples.len() {
+        self.split_at_middle(rest, pending, trace)?;
+      } else {
+        pending.push(rest);
+      }
+    }
+    Ok(())
+  }
+
+  fn split_at_middle(&mut self, gap: Gap, pending: &mut Vec<Gap>, trace: &mut impl SampleTrace) -> Result<(), Report> {
     let middle = gap.samples.middle();
     self.resolve_by_quadrature(middle, &gap, trace)?;
     let halves = [
