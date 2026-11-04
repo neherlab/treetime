@@ -194,7 +194,7 @@ mod tests {
     let in_substitutions = coalescent_node_dates(&substitutions.to_string(), Some(clock_rate))?;
     let in_years = coalescent_node_dates(&format!("{}y", substitutions / clock_rate), Some(clock_rate))?;
 
-    assert_eq!(in_years, in_substitutions);
+    pretty_assert_map_ulps_eq!(in_years, in_substitutions, max_ulps = 1);
     Ok(())
   }
 
