@@ -75,6 +75,30 @@ def eval_ancestral(out, set_dir):
     return m
 
 
+def mrca_scores(tree, sets, parent, nodes, numdate, true_tree, dates):
+    """Score every true internal node by the inferred common ancestor of its tips, whatever the inferred topology.
+
+    Unlike the matched-node scores, this counts the same nodes for any inferred tree: a collapsed clade is scored at
+    its polytomy, and a clade broken up by wrong splits at the deeper node that joins its tips.
+    """
+    tip = {c.name: c for c in tree.get_terminals()}
+    err, ci = [], []
+    for c, s in tip_sets(true_tree).items():
+        if c.is_terminal() or c == true_tree.root:  # the root date is scored on its own
+            continue
+        a = tip[next(iter(s))]
+        while not s <= sets[a]:
+            a = parent[a]
+        err.append(numdate[a] - dates.loc[c.name, 'date'])
+        ci.append((nodes[a.name].get('num_date_confidence'), dates.loc[c.name, 'date']))
+    err = np.array(err)
+    m = {'mrca_bias': float(err.mean()), 'mrca_rmse': float(np.sqrt(np.mean(err**2))), 'mrca_mae': float(np.abs(err).mean())}
+    if all(x is not None for x, _ in ci):
+        m['mrca_ci90_coverage'] = float(np.mean([lo <= t <= hi for (lo, hi), t in ci]))
+        m['mrca_ci90_mean_width'] = float(np.mean([hi - lo for (lo, hi), _ in ci]))
+    return m
+
+
 def eval_timetree(out, set_dir, coal):
     rep_dir = set_dir.parent
     mu = json.loads((set_dir / 'gtr.json').read_text())['mu']
@@ -113,6 +137,8 @@ def eval_timetree(out, set_dir, coal):
     if all(x is not None for x, _ in ci):
         m['ci90_coverage'] = float(np.mean([lo <= t <= hi for (lo, hi), t in ci]))
         m['ci90_mean_width'] = float(np.mean([hi - lo for (lo, hi), _ in ci]))
+
+    m |= mrca_scores(tree, sets, parent, nodes, numdate, true_tree, dates)
 
     coal_tsv = out / 'coalescent.tsv'
     if coal_tsv.exists():
@@ -223,7 +249,7 @@ SUMMARY = {
                  'nonzero_recall', 'dispersion_vs_expected', 'root_sum_rel_error', 'root_sum_rel_error_expected',
                  'frac_branches_matched'],
     'timetree': ['clock_rate_rel_error', 'root_date_error', 'date_bias', 'date_rmse', 'n_negative_branches',
-                 'root_recovered', 'frac_nodes_matched', 'tc_log_bias', 'tc_log_mae', 'ci90_coverage',
+                 'root_recovered', 'frac_nodes_matched', 'mrca_rmse', 'mrca_ci90_coverage', 'tc_log_bias', 'tc_log_mae', 'ci90_coverage',
                  'tip_date_rmse_missing', 'tip_date_rmse_month'],
 }  # fmt: skip
 

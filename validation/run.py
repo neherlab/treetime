@@ -58,6 +58,14 @@ TIMETREE_EXTRA = {  # estimated clock rate
     'keep-tc10-est': ('realized', ['--keep-root', '--coalescent', '10y']),
     'keep-skyline-est-ci': ('realized', ['--keep-root', '--coalescent', 'skyline', '--confidence']),
 }
+NO_COLLAPSE = ['--no-collapse-short-branches']
+TIMETREE_RECON = {  # reconstructed topology (FastTree), with and without the collapse of short branches
+    f'ft-{c}{ci}-{arm}': ('fasttree', ['--reroot', 'least-squares'] + cflags + ciflags + aflags)
+    for c, cflags in COALESCENT.items()
+    for ci, ciflags in [('', []), ('-ci', ['--confidence'])]
+    if c == 'skyline' or not ci
+    for arm, aflags in [('collapse', []), ('keep', NO_COLLAPSE)]
+}
 EXTRA_SETS = r'/rep0[0-2]/L1000_mu0\.00[31]$'
 SMOKE_SETS = r'/rep00/L1000_'
 
@@ -106,7 +114,7 @@ def run_job(job):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--suite', choices=['ancestral', 'timetree', 'optimize'], required=True)
-    p.add_argument('--set', choices=['smoke', 'core', 'extra'], default='smoke')
+    p.add_argument('--set', choices=['smoke', 'core', 'extra', 'recon'], default='smoke')
     p.add_argument('--filter', default='', help='regex on the job output path')
     p.add_argument('--binary', default=str(HERE.parent / '.out' / 'treetime'))
     p.add_argument('--data', type=Path, default=HERE / 'data')
@@ -117,10 +125,10 @@ def main():
     shard, n_shards = map(int, args.shard.split('/'))
 
     variants = {'ancestral': ANCESTRAL, 'optimize': OPTIMIZE}.get(args.suite) or (
-        TIMETREE_EXTRA if args.set == 'extra' else TIMETREE_CORE
+        {'extra': TIMETREE_EXTRA, 'recon': TIMETREE_RECON}.get(args.set, TIMETREE_CORE)
     )
     sets = sorted(d for d in args.data.glob('*/rep*/L*') if (d / 'gtr.json').exists())
-    sets = [d for d in sets if re.search({'smoke': SMOKE_SETS, 'core': '', 'extra': EXTRA_SETS}[args.set], str(d))]
+    sets = [d for d in sets if re.search({'smoke': SMOKE_SETS, 'core': '', 'extra': EXTRA_SETS, 'recon': ''}[args.set], str(d))]
     sets = sets[shard::n_shards]  # whole sets per shard: jobs of one set share its input trees
 
     plan = []

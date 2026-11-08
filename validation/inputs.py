@@ -4,11 +4,17 @@ exact      branch length mu * t
 realized   true parent-child substitutions / L (gaps do not count)
 rate       realized * lognormal(0, 0.25) per branch
 perturbed  exact * lognormal(0, 0.3) per branch: starting point for branch length optimization
+fasttree   FastTree -nt -gtr on the tip alignment TreeTime sees: a reconstructed, unrooted topology whose unresolved
+           polytomies are split arbitrarily, as in real use. FASTTREE names the binary (default ../.out/FastTree)
 """
 
 import json
 import lzma
+import os
+import subprocess
+import tempfile
 import zlib
+from pathlib import Path
 
 import numpy as np
 from Bio import Phylo, SeqIO
@@ -27,6 +33,8 @@ def divergence_tree(set_dir, kind):
     path = set_dir / 'inputs' / f'{kind}.nwk'
     if path.exists():
         return path
+    if kind == 'fasttree':
+        return fasttree(set_dir, path)
     rng = np.random.default_rng(zlib.crc32(f'{"/".join(set_dir.parts[-3:])}:{kind}'.encode()))
     tree = Phylo.read(set_dir.parent / 'tree.nwk', 'newick')
     gtr = json.loads((set_dir / 'gtr.json').read_text())
@@ -49,5 +57,22 @@ def divergence_tree(set_dir, kind):
     path.parent.mkdir(exist_ok=True)
     tmp = path.with_suffix('.tmp')
     Phylo.write(tree, tmp, 'newick', format_branch_length='%1.10g')
+    tmp.rename(path)
+    return path
+
+
+def fasttree(set_dir, path):
+    observed = set_dir / 'tips_observed.fasta.xz'  # messy data (degrade.py)
+    aln = observed if observed.exists() else set_dir / 'tips.fasta.xz'
+    binary = os.environ.get('FASTTREE', str(Path(__file__).parent.parent / '.out' / 'FastTree'))
+    path.parent.mkdir(exist_ok=True)
+    with tempfile.NamedTemporaryFile('w', suffix='.fasta', dir=path.parent) as fh:
+        with lzma.open(aln, 'rt') as src:
+            fh.write(src.read())
+        fh.flush()
+        nwk = subprocess.run([binary, '-nt', '-gtr', '-nosupport', '-quiet', fh.name],
+                             check=True, capture_output=True, text=True).stdout
+    tmp = path.with_suffix('.tmp')
+    tmp.write_text(nwk)
     tmp.rename(path)
     return path
