@@ -23,6 +23,11 @@ mod tests {
       "optimize has no dates and offers only min-dev",
     ),
     (
+      "--no-collapse-short-branches",
+      &[Property::LongHelp],
+      "optimize also contracts zero-length edges in its loop, timetree keeps the edges above dated internal nodes",
+    ),
+    (
       "--ambiguity-threshold",
       &[Property::LongHelp],
       "the help names the outputs of each command that carry the ambiguity report",
