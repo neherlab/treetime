@@ -961,6 +961,26 @@
           "more": "Polytomy resolution and coalescent models of the time inference need at least 2 iterations."
         },
         {
+          "key": "no_collapse_short_branches",
+          "label": "No collapse short branches",
+          "flag": "--no-collapse-short-branches",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [],
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "NO_COLLAPSE_SHORT_BRANCHES"
+          ],
+          "conflicts": [],
+          "help": "Disable collapsing of short internal branches.",
+          "more": "By default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all alignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x. The substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy. Edges above internal nodes with a date are kept. When set, such edges are kept."
+        },
+        {
           "key": "no_indels",
           "label": "No indels",
           "flag": "--no-indels",

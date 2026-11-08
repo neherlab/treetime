@@ -123,6 +123,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       confidence,
       max_grid_points,
       keep_polytomies,
+      no_collapse_short_branches,
       relax,
       max_iter,
       coalescent,
@@ -193,7 +194,14 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       marginal_only_settings,
       clock: timetree_clock(clock_rate, clock_std_dev, confidence, clock_filter, relax)?,
       reroot: RerootTarget::unless_keep_root(keep_root, reroot.map(Into::into), outgroup),
-      dating: timetree_dating(max_iter, keep_polytomies, confidence, max_grid_points, coalescent),
+      dating: timetree_dating(
+        max_iter,
+        keep_polytomies,
+        no_collapse_short_branches,
+        confidence,
+        max_grid_points,
+        coalescent,
+      ),
       outputs: timetree_outputs(output, output_selection, alignment_count, output_settings, file_paths),
       sequences,
       positions: PositionBase::from_zero_based(zero_based),
@@ -374,6 +382,7 @@ pub(crate) struct TimetreeClock {
 fn timetree_dating(
   max_iter: usize,
   keep_polytomies: bool,
+  no_collapse_short_branches: bool,
   confidence: bool,
   max_grid_points: Option<MaxGridPoints>,
   coalescent: CoalescentSettings,
@@ -381,6 +390,7 @@ fn timetree_dating(
   TimetreeDating {
     max_iter,
     keep_polytomies,
+    collapse_short_branches: !no_collapse_short_branches,
     confidence,
     max_grid_points: max_grid_points.unwrap_or_default(),
     coalescent,
@@ -391,6 +401,7 @@ fn timetree_dating(
 pub(crate) struct TimetreeDating {
   pub(crate) max_iter: usize,
   pub(crate) keep_polytomies: bool,
+  pub(crate) collapse_short_branches: bool,
   pub(crate) confidence: bool,
   pub(crate) max_grid_points: MaxGridPoints,
   pub(crate) coalescent: CoalescentSettings,
@@ -781,6 +792,18 @@ pub struct TreetimeTimetreeArgsRaw {
   /// stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
   pub keep_polytomies: bool,
+
+  /// Disable collapsing of short internal branches.
+  ///
+  /// By default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all
+  /// alignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x.
+  /// The substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy.
+  /// Edges above internal nodes with a date are kept. When set, such edges are kept.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Branch lengths")
+  )]
+  pub no_collapse_short_branches: bool,
 
   /// Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01)
   /// or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one

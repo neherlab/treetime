@@ -236,6 +236,9 @@ treetime timetree --config timetree.yaml -O results
 * `--keep-polytomies` — Keep the polytomies of the input tree
 
    Without this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
+* `--no-collapse-short-branches` — Disable collapsing of short internal branches.
+
+   By default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all alignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x. The substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy. Edges above internal nodes with a date are kept. When set, such edges are kept.
 * `--coalescent <TC|opt|skyline>` — Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01) or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one
 
    A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node times have no coalescent prior.
