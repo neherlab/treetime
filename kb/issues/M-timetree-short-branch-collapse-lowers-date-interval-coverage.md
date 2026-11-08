@@ -5,13 +5,20 @@
 
 ## Problem
 
-Before the timetree loop, `timetree` collapses each non-root internal edge shorter than $0.1/L$ whose states equal the states of its parent, as v0 does (`fn collapse_short_internal_edges()` in [packages/treetime/src/optimize/topology/collapse.rs](../../packages/treetime/src/optimize/topology/collapse.rs), called from [packages/treetime/src/timetree/pre_loop.rs](../../packages/treetime/src/timetree/pre_loop.rs)). The collapse is on in every CLI run, and no flag turns it off.
+Before the timetree loop, `timetree` collapses each non-root internal edge shorter than $0.1/L$ whose states equal the states of its parent, as v0 does (`fn collapse_short_internal_edges()` in [packages/treetime/src/optimize/topology/collapse.rs](../../packages/treetime/src/optimize/topology/collapse.rs), called from [packages/treetime/src/timetree/pre_loop.rs](../../packages/treetime/src/timetree/pre_loop.rs)). The collapse is on by default; `--no-collapse-short-branches` turns it off.
 
 On simulated data the collapse makes the 90% date intervals of the internal nodes too narrow. The test `test_sim_timetree_date_intervals_cover_the_true_dates` ([packages/treetime/src/timetree/__tests__/test_sim_timetree_recovery.rs](../../packages/treetime/src/timetree/__tests__/test_sim_timetree_recovery.rs)) runs the standard simulated cell at the true $T_c$ and clock rate, and requires the fraction of true internal node dates inside their interval to be $0.9 \pm 0.03$:
 
 - With the collapse, paired by clade over the internal nodes that survive it: coverage 0.834; error mean -0.065527, standard deviation 0.114811, n 20446, interval of the mean [-0.068008, -0.063045]. The test fails
 - Without the collapse: the test passes
 - In the standard cell the collapse removes 8 of the 19 internal nodes
+
+The validation suite shows the same loss ([kb/reports/2026-11-08-timetree-short-branch-collapse-on-true-and-reconstructed-topologies.md](../reports/2026-11-08-timetree-short-branch-collapse-on-true-and-reconstructed-topologies.md)). Skyline prior with `--confidence`, estimated clock rate, 400 tips, collapse / no collapse:
+
+- True topology, every surviving internal node: 0.745 / 0.900 at $L\mu=1$, 0.793 / 0.903 at $L\mu=3$. The intervals with the collapse are wider on average (0.50 / 0.35 y at $L\mu=1$), so the dates of the polytomies are biased, not only too narrow
+- FastTree topology, inferred nodes that are true clades: 0.73 / 0.80 at $L\mu=1$, 0.76 / 0.87 at 3, 0.81 / 0.87 at 10
+
+On the FastTree topology the collapse still gives the more accurate dates at $L\mu \le 3$, so turning it off is no fix.
 
 The simulation tests therefore date the true topology: the simulated cell sets `TimetreeParams::collapse_short_branches` to `false` (`fn timetree_cell_params()` in [packages/treetime/src/test_utils/simulation.rs](../../packages/treetime/src/test_utils/simulation.rs)), so they do not cover the calibration of a collapsed tree.
 
