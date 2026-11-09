@@ -8,13 +8,15 @@ The pre-loop short-branch collapse ([kb/features/timetree.md](../features/timetr
 
 - Code: `claude-work` at `2a46c49a1`, which adds `--no-collapse-short-branches` to `timetree` (the setting `TimetreeParams::collapse_short_branches` existed; the CLI set it to `true`)
 - Baseline: `f7565a6df`, before the pre-loop collapse
-- Data: the validation sets, 400 tips (`data`, `data_messy`) and 1200 tips (`data_n30`, `data_n30_messy`); `const`, `exp` and `piecewise` coalescents, $L \in \{10^3, 10^4\}$, $\mu$ from $3\cdot10^{-4}$ to $10^{-2}$. Signal is given as $L\mu$, the expected substitutions per sequence per year
+- Data: the validation sets, 400 tips (`data`, `data_messy`), 1200 tips (`data_n30`, `data_n30_messy`) and 4000 tips (`data_n100`, `data_n100_messy`); `const`, `exp` and `piecewise` coalescents, $L \in \{10^3, 10^4\}$, $\mu$ from $3\cdot10^{-4}$ to $10^{-2}$. Signal is given as $L\mu$, the expected substitutions per sequence per year
 - True topology: the `realized` input (true substitutions per edge over $L$), which every timetree run of `run.py --set core|extra` uses
 - Reconstructed topology: `run.py --set recon`, the `fasttree` input of [validation/inputs.py](../../validation/inputs.py) (`FastTree -nt -gtr` on the tip alignment that TreeTime reads), rerooted by least squares, with an estimated clock rate, each prior run with and without the collapse
 - Scores, from [validation/evaluate.py](../../validation/evaluate.py):
   - matched: inferred internal nodes whose tip set is a true clade (`date_rmse`, `ci90_coverage`, `frac_nodes_matched`). It scores a different node set in each arm, and on a collapsed tree only the clades that survive
   - common ancestor: every true internal node scored at the inferred common ancestor of its tips (`mrca_rmse`, `mrca_ci90_coverage`). Both arms are scored on the same nodes; a collapsed clade is scored at its polytomy, and a clade broken by wrong splits at the deeper node that joins its tips
 - Values are medians over sets; "paired" is the fraction of sets where the collapse gives the lower `mrca_rmse`
+- Only runs with a tree prior (`--coalescent opt` or `skyline`) count as evidence. Without a prior the dates are not well determined, so a smaller error there means little
+- $T_c$ error is `tc_log_mae`, the mean absolute log ratio to the true $T_c$ over the coalescent segments. For `opt`, which fits one constant $T_c$, it is reported on the `const` sets only: a constant has no true value when the true $T_c$ changes in time (`exp`, `piecewise`)
 
 ## True topology
 
@@ -22,21 +24,28 @@ The collapse removes true edges without substitutions, the edges of $0/L$ length
 
 400 tips, clean data, collapse / no collapse:
 
-| prior | $L\mu$ | matched rmse (y) | $T_c$ abs. error | ci90 coverage |
+| prior | $L\mu$ | matched rmse (y) | $T_c$ log MAE | ci90 coverage |
 | --- | --- | --- | --- | --- |
-| opt | 0.3 | 0.92 / 0.34 | 2.00 / 0.22 | |
-| opt | 1 | 0.36 / 0.19 | 0.98 / 0.14 | |
-| opt | 3 | 0.19 / 0.14 | 0.29 / 0.10 | |
+| opt | 0.3 | 0.92 / 0.34 | 1.92 / 0.14 (`const`) | |
+| opt | 1 | 0.36 / 0.19 | 0.84 / 0.06 (`const`) | |
+| opt | 3 | 0.19 / 0.14 | 0.16 / 0.06 (`const`) | |
 | skyline | 0.3 | 1.04 / 0.24 | 2.26 / 0.38 | |
 | skyline | 1 | 0.39 / 0.18 | 0.98 / 0.32 | |
 | skyline, `--confidence`, $\mu=10^{-3}$ | 1 | | | 0.745 / 0.900 |
 | skyline, `--confidence`, $\mu=3\cdot10^{-3}$ | 3 | | | 0.793 / 0.903 |
 
-- From $L\mu=10$ up the arms agree
-- Without a prior the collapse gives a smaller root error (6.3 against 15.9 y at $L\mu=0.3$) and a smaller matched rmse, but the matched rmse covers only the 13% of nodes that survive
+- At 400 tips the arms agree from $L\mu=10$ up
+- Without a prior the collapse gives a smaller root error (6.3 against 15.9 y at $L\mu=0.3$), which does not count as evidence (see Setup)
 - With the collapse the intervals are wider on average (0.50 against 0.35 y at $\mu=10^{-3}$) and still cover less: the dates of the polytomies are biased, not only too narrow
-- Messy data and 1200 tips show the same pattern. At 1200 tips, messy, ci90 coverage is 0.75 against 0.885 at $\mu=10^{-3}$, and the opt $T_c$ error 1.47 against 0.08 at $L\mu=1$
-- Ancestral and optimize results are identical between the code and the baseline at both tree sizes
+- Messy data shows the same pattern. Larger trees show a larger cost that reaches higher signal, because they have more true edges without a substitution: at 4000 tips 4% of the inferred internal nodes are true clades at $L\mu=0.3$, 34% at 3, 72% at 10
+
+| tips | ci90 coverage, $\mu=10^{-3}$ | opt $T_c$ log MAE (`const`), $L\mu$ = 1 / 3 / 10 |
+| --- | --- | --- |
+| 400 | 0.745 / 0.900 | 0.84 / 0.06, 0.16 / 0.06, 0.05 / 0.05 |
+| 1200 | 0.69 / 0.90 | 1.48 / 0.09, 0.49 / 0.05, 0.04 / 0.04 |
+| 4000 | 0.62 / 0.88 | 2.41 / 0.10, 1.07 / 0.03, 0.14 / 0.02 |
+
+- Ancestral and optimize results are identical between the code and the baseline at every tree size
 
 ## Reconstructed topology
 
@@ -46,21 +55,21 @@ FastTree resolves every polytomy, mostly by edges of near-zero length. On `const
 
 | prior | $L\mu$ | common-ancestor rmse (y) | paired | abs. root error (y) | $T_c$ log MAE |
 | --- | --- | --- | --- | --- | --- |
-| none | 0.3 | 5.9 / 6.9 | 0.77 | 6.2 / 14.7 | |
-| none | 1 | 1.32 / 2.13 | 1.00 | 2.7 / 5.4 | |
-| none | 3 | 0.41 / 0.64 | 0.98 | 1.5 / 2.0 | |
-| opt | 0.3 | 1.78 / 3.66 | 0.90 | 6.5 / 13.6 | 1.88 / 2.77 |
-| opt | 1 | 0.76 / 1.04 | 1.00 | 3.8 / 5.9 | 0.89 / 1.17 |
-| opt | 3 | 0.25 / 0.36 | 0.98 | 1.0 / 2.1 | 0.22 / 0.38 |
+| opt | 0.3 | 1.78 / 3.66 | 0.90 | 6.5 / 13.6 | 1.82 / 1.77 (`const`) |
+| opt | 1 | 0.76 / 1.04 | 1.00 | 3.8 / 5.9 | 0.83 / 0.99 (`const`) |
+| opt | 3 | 0.25 / 0.36 | 0.98 | 1.0 / 2.1 | 0.14 / 0.34 (`const`) |
+| skyline | 0.3 | 1.87 / 2.01 | 0.73 | 3.8 / 4.1 | 2.28 / 2.00 |
 | skyline | 1 | 0.78 / 0.88 | 0.93 | 1.4 / 1.8 | 0.97 / 0.81 |
 | skyline | 3 | 0.26 / 0.32 | 0.97 | 1.1 / 1.1 | 0.42 / 0.45 |
-| opt | 30 | 0.053 / 0.052 | 0.13 | 0.23 / 0.20 | 0.17 / 0.16 |
+| opt | 30 | 0.053 / 0.052 | 0.13 | 0.23 / 0.20 | 0.05 / 0.05 (`const`) |
 | skyline | 30 | 0.054 / 0.053 | 0.13 | 0.28 / 0.20 | 0.32 / 0.32 |
 
-- At $L\mu \le 3$ the collapse wins in 77–100% of the sets. Without it the dates of the clades are biased old (opt, $L\mu=1$: bias −0.65 against −0.40 y): the wrong splits get dates, and the common ancestor of a broken clade lies deeper
+- At $L\mu \le 3$ the collapse wins in 73–100% of the sets. Without it the dates of the clades are biased old (opt, $L\mu=1$: bias −0.65 against −0.40 y): the wrong splits get dates, and the common ancestor of a broken clade lies deeper
 - At $L\mu=10$ the arms are about equal
 - At $L\mu \ge 30$ the collapse loses most paired comparisons, by about 0.001 y in rmse, and the skyline root error grows from 0.20 to 0.28 y. Here most short FastTree edges are true, and $0.1/L$ removes some of them
-- Messy data shows larger gains: without a prior at $L\mu=0.3$, rmse 5.5 against 10.9 y and root error 6.9 against 21.9 y; with the opt prior the collapse wins every set at $L\mu$ from 0.3 to 3
+- The skyline $T_c$ is slightly worse with the collapse at $L\mu \le 1$, and at $L\mu=0.3$ both arms miss $T_c$ by a factor of about 6 to 10
+- Messy data shows larger gains: with the opt prior the collapse wins every set at $L\mu$ from 0.3 to 3 (rmse 1.94 against 3.27 y at $L\mu=0.3$, 0.70 against 1.12 at 1)
+- Without a prior the collapse also gives smaller errors, which do not count as evidence (see Setup)
 - 2 of 3840 runs fail, the same set (`piecewise/rep09`, $L=10^3$, $\mu=3\cdot10^{-4}$, messy, no prior) in both arms, at the grid point limit
 
 ## Date intervals
