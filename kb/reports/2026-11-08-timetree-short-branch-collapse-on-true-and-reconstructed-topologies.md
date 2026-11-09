@@ -72,6 +72,38 @@ FastTree resolves every polytomy, mostly by edges of near-zero length. On `const
 - Without a prior the collapse also gives smaller errors, which do not count as evidence (see Setup)
 - 2 of 3840 runs fail, the same set (`piecewise/rep09`, $L=10^3$, $\mu=3\cdot10^{-4}$, messy, no prior) in both arms, at the grid point limit
 
+### Larger trees
+
+The same runs on 1200 and 4000 tips, prior variants only (`run.py --set recon --filter '^(?!.*/ft-none-)'`). Opt prior, collapse / no collapse:
+
+| tips | data | $L\mu$ | common-ancestor rmse (y) | paired | abs. root error (y) | $T_c$ log MAE (`const`) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1200 | clean | 1 | 0.98 / 1.47 | 1.00 | 4.5 / 8.3 | 1.35 / 1.51 |
+| 1200 | clean | 3 | 0.27 / 0.38 | 1.00 | 2.2 / 3.5 | 0.49 / 0.72 |
+| 1200 | clean | 10 | 0.078 / 0.101 | 0.98 | 0.40 / 0.86 | 0.09 / 0.16 |
+| 1200 | clean | 30 | 0.041 / 0.040 | 0.33 | 0.42 / 0.26 | 0.05 / 0.03 |
+| 4000 | clean | 1 | 0.91 / 1.39 | 1.00 | 2.6 / 6.3 | 2.45 / 2.53 |
+| 4000 | clean | 3 | 0.32 / 0.40 | 1.00 | 2.9 / 3.9 | 1.04 / 1.27 |
+| 4000 | clean | 10 | 0.070 / 0.107 | 1.00 | 0.53 / 1.6 | 0.08 / 0.28 |
+| 4000 | clean | 30 | 0.030 / 0.031 | 0.80 | 0.15 / 0.31 | 0.06 / 0.04 |
+| 4000 | clean | 100 | 0.0156 / 0.0153 | 0.23 | 0.21 / 0.17 | 0.07 / 0.07 |
+| 4000 | messy | 10 | 0.073 / 0.112 | 1.00 | 0.47 / 1.4 | 0.06 / 0.30 |
+
+Skyline prior, collapse / no collapse, paired in parentheses:
+
+| tips | data | $L\mu=0.3$ | $L\mu=1$ | $L\mu=3$ | $L\mu=10$ | $L\mu=30$ |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1200 | clean | 2.20 / 2.39 (0.63) | 1.09 / 1.10 (0.47) | 0.28 / 0.35 (1.00) | 0.080 / 0.097 (0.97) | 0.042 / 0.040 (0.20) |
+| 1200 | messy | 2.64 / 3.91 (0.80) | 1.23 / 1.29 (0.77) | 0.28 / 0.40 (1.00) | 0.081 / 0.098 (0.95) | 0.043 / 0.041 (0.23) |
+| 4000 | clean | 2.15 / 2.74 (0.83) | 1.19 / 1.20 (0.43) | 0.34 / 0.39 (0.97) | 0.072 / 0.101 (1.00) | 0.030 / 0.032 (0.70) |
+| 4000 | messy | 2.62 / 6.21 (1.00) | 1.28 / 1.34 (0.63) | 0.35 / 0.45 (0.98) | 0.074 / 0.108 (1.00) | 0.031 / 0.032 (0.57) |
+
+- The range of signal where the collapse helps grows with the tree: up to $L\mu=3$ at 400 tips, up to 10 at 1200, and at 4000 tips it still wins most sets at 30. A larger tree has more short FastTree edges at a given $L\mu$, and more of them are wrong
+- Where the collapse loses ($L\mu \ge 30$ at 1200 tips, 100 at 4000) the rmse differs by 0.002 y or less
+- The collapse keeps more true clades among the inferred nodes: 0.71 against 0.54 at 4000 tips, $L\mu=10$, clean
+- With the skyline prior at $L\mu=1$ the arms are about equal (43–77% paired), and the skyline $T_c$ is slightly worse with the collapse at $L\mu \le 1$, as at 400 tips
+- 1 of 5760 runs fails: `const/rep02`, $L=10^3$, $\mu=10^{-3}$, messy, 1200 tips, skyline with `--confidence` and the collapse
+
 ## Date intervals
 
 Skyline prior with `--confidence`, FastTree input, clean data, collapse / no collapse:
@@ -86,10 +118,11 @@ Skyline prior with `--confidence`, FastTree input, clean data, collapse / no col
 
 - On the matched nodes the collapse lowers the coverage, as on the true topology: [kb/issues/M-timetree-short-branch-collapse-lowers-date-interval-coverage.md](../issues/M-timetree-short-branch-collapse-lowers-date-interval-coverage.md)
 - At the common ancestors the coverage is far below 0.9 in both arms at low signal. The intervals condition on one topology, and at $L\mu \le 3$ the topology error is larger than the dating error: [kb/issues/M-timetree-date-intervals-ignore-topology-uncertainty.md](../issues/M-timetree-date-intervals-ignore-topology-uncertainty.md)
+- The coverage at the common ancestors falls with the size of the tree, in both arms: at $L\mu=10$, 0.76 at 400 tips, 0.69 at 1200, 0.59 at 4000 (collapse, clean). On the matched nodes at $L\mu=10$ the collapse gives 0.78 / 0.88 at 1200 tips and 0.75 / 0.87 at 4000
 
 ## Conclusions
 
-- The collapse removes the arbitrary resolutions of a tree builder, and its benefit on reconstructed trees outweighs its cost on true ones. The default stays on
+- The collapse removes the arbitrary resolutions of a tree builder, and its benefit on reconstructed trees outweighs its cost on true ones. The benefit grows with the size of the tree and reaches $L\mu=30$ at 4000 tips. The default stays on
 - The validation core and extra sets date the true topology, so they show only the cost. A result on them that depends on the collapse needs the `recon` set as well
 - Open: the calibration of the dates of collapsed polytomies, and a threshold that keeps more true short edges at high signal
 
@@ -101,5 +134,7 @@ From `validation/`, with the FastTree binary at `../.out/FastTree` (or named by 
 python run.py --suite timetree --set recon --data data --results results_recon
 python evaluate.py --suite timetree --data data --results results_recon
 ```
+
+The larger trees used `--data data_n30|data_n100` (and `_messy`) with `--filter '^(?!.*/ft-none-)'`, which skips the runs without a prior.
 
 The true-topology runs without the collapse used a wrapper that adds `--no-collapse-short-branches` to every `timetree` call, with `run.py --suite timetree --set core|extra --binary <wrapper>`.

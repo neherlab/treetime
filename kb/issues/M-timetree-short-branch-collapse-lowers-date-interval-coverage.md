@@ -16,9 +16,9 @@ On simulated data the collapse makes the 90% date intervals of the internal node
 The validation suite shows the same loss ([kb/reports/2026-11-08-timetree-short-branch-collapse-on-true-and-reconstructed-topologies.md](../reports/2026-11-08-timetree-short-branch-collapse-on-true-and-reconstructed-topologies.md)). Skyline prior with `--confidence`, estimated clock rate, 400 tips, collapse / no collapse:
 
 - True topology, every surviving internal node: 0.745 / 0.900 at $L\mu=1$, 0.793 / 0.903 at $L\mu=3$. The intervals with the collapse are wider on average (0.50 / 0.35 y at $L\mu=1$), so the dates of the polytomies are biased, not only too narrow
-- FastTree topology, inferred nodes that are true clades: 0.73 / 0.80 at $L\mu=1$, 0.76 / 0.87 at 3, 0.81 / 0.87 at 10
+- FastTree topology, inferred nodes that are true clades: 0.73 / 0.80 at $L\mu=1$, 0.76 / 0.87 at 3, 0.81 / 0.87 at 10. At $L\mu=10$: 0.78 / 0.88 at 1200 tips, 0.75 / 0.87 at 4000 tips
 
-On the FastTree topology the collapse still gives the more accurate dates at $L\mu \le 3$, so turning it off is no fix.
+On the FastTree topology the collapse still gives the more accurate dates at $L\mu \le 3$ (400 tips) and up to $L\mu=30$ (4000 tips), so turning it off is no fix. A candidate is to widen the interval of a polytomy, see the heuristic in [kb/issues/M-timetree-date-intervals-ignore-topology-uncertainty.md](M-timetree-date-intervals-ignore-topology-uncertainty.md#fix-direction).
 
 The simulation tests therefore date the true topology: the simulated cell sets `TimetreeParams::collapse_short_branches` to `false` (`fn timetree_cell_params()` in [packages/treetime/src/test_utils/simulation.rs](../../packages/treetime/src/test_utils/simulation.rs)), so they do not cover the calibration of a collapsed tree.
 
