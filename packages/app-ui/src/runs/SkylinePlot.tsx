@@ -7,7 +7,7 @@ import {
   bottomAxisLabel,
   CHART,
   leftAxisLabel,
-  niceAxis,
+  niceStartAxis,
   PLOT_MARGIN,
   THINNED_TICKS,
   TICK_STYLE,
@@ -34,7 +34,7 @@ export function SkylinePlot({ segments, until }: { segments: readonly SkylineSeg
     [segments, until],
   );
 
-  const xAxis = useMemo(() => niceAxis(data.map((point) => point.t)), [data]);
+  const xAxis = useMemo(() => niceStartAxis(data.map((point) => point.t)), [data]);
 
   return (
     <ChartContainer className="aspect-auto h-[220px] w-full">

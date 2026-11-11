@@ -42,6 +42,13 @@ export function niceAxis(values: readonly number[], tickCount: number = TICK_COU
   return { domain: [low, high], ticks: scale.ticks(tickCount) };
 }
 
+export function niceStartAxis(values: readonly number[], tickCount: number = TICK_COUNT): AxisFrame {
+  const nice = niceAxis(values, tickCount);
+  const last = Math.max(...values);
+
+  return { domain: [nice.domain[0], last], ticks: nice.ticks.filter((tick) => tick <= last) };
+}
+
 export interface AxisFrame {
   domain: [number, number];
   ticks: number[];
