@@ -11,7 +11,7 @@ mod tests {
   #[case::wrong_enum(       AppCommand::Ancestral, "tree: t.nwk\nmethod_anc: margnal\n")]
   #[case::wrong_type(       AppCommand::Timetree,  "clock_rate: fast\n")]
   #[case::duplicate_key(    AppCommand::Prune,     "tree: a.nwk\ntree: b.nwk\n")]
-  #[case::missing_required( AppCommand::Mugration, "tree: t.nwk\n")]
+  #[case::missing_required( AppCommand::Clock,     "tree: t.nwk\n")]
   #[case::missing_tree(     AppCommand::Optimize,  "seed: 3\n")]
   #[trace]
   fn test_check_config_matches_cli_error(#[case] command: AppCommand, #[case] text: &str) {
