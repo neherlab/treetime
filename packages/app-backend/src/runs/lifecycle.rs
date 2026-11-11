@@ -16,7 +16,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use log::{error, info};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -99,7 +99,7 @@ impl StartedRun {
       let prepared = command.prepare_run(&config, &out_dir)?;
       let hashed = hash_inputs(command, &prepared.config)?;
       let requested = requested_outputs(&config);
-      let resolved = config_from_settings(command, &Value::Object(with_outputs(&prepared.config, requested)))?;
+      let resolved = config_from_settings(command, &Value::Object(prepared.config.clone()))?;
       let inputs = job_inputs(&hashed.inputs);
       manager.modify(&id, |record| {
         record.config = resolved;
@@ -323,19 +323,8 @@ fn relative_outputs(outcome: &CommandOutcome, out_dir: &Path) -> Vec<OutputFile>
 
 const OUTPUT_SELECTION_KEY: &str = "output_selection";
 
-/// The output selection that the run's configuration names; absent when it leaves the outputs to the defaults.
 fn requested_outputs(config: &Value) -> Option<&Value> {
   config
     .get(OUTPUT_SELECTION_KEY)
     .filter(|selection| !selection.is_null() && selection.as_array().is_none_or(|list| !list.is_empty()))
-}
-
-/// The settings that the run record keeps: those the run computes with, without the output selection when the
-/// configuration leaves the outputs to the defaults, so a rerun with other settings gets the outputs of those settings.
-fn with_outputs(settings: &Map<String, Value>, requested: Option<&Value>) -> Map<String, Value> {
-  let mut settings = settings.clone();
-  if requested.is_none() {
-    settings.remove(OUTPUT_SELECTION_KEY);
-  }
-  settings
 }

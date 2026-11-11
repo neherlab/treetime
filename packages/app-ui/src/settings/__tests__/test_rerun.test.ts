@@ -1,6 +1,10 @@
 import type { RunRecord } from "@neherlab/app-contracts";
 
+import { commandSettings } from "../catalog";
+import { defaultConfig } from "../config";
 import { rerunDraft } from "../rerun";
+
+const DEFAULT_CLOCK_CONFIG = defaultConfig(commandSettings("clock").settings);
 
 const RECORD: RunRecord = {
   id: "r1",
@@ -28,7 +32,7 @@ const RECORD: RunRecord = {
 };
 
 describe("edit and run again", () => {
-  test("keeps the settings and inputs of the run and drops its output paths", () => {
+  test("keeps the changed settings and inputs of the run, drops its output paths and leaves its default outputs to the new settings", () => {
     const draft = rerunDraft(RECORD);
 
     expect({
@@ -41,9 +45,21 @@ describe("edit and run again", () => {
       tree: "/runs/r0/inputs/tree.nwk",
       keepRoot: true,
       outputAll: undefined,
-      selection: ["nwk", "auspice"],
+      selection: [],
       labels: { tree: "tree.nwk", metadata: "metadata.tsv" },
     });
+  });
+
+  test("keeps an output selection that the run chose", () => {
+    const draft = rerunDraft({ ...RECORD, changed_settings: ["keep_root", "output_selection"] });
+
+    expect(draft.config["output_selection"]).toStrictEqual(["nwk", "auspice"]);
+  });
+
+  test("leaves a setting that the run left at its default to the default of the new draft", () => {
+    const draft = rerunDraft({ ...RECORD, config: { ...RECORD.config, allow_negative_rate: true } });
+
+    expect(draft.config["allow_negative_rate"]).toStrictEqual(DEFAULT_CLOCK_CONFIG["allow_negative_rate"]);
   });
 
   test("the original record is not changed", () => {
