@@ -85,13 +85,13 @@ impl AppCommandExt for AppCommand {
 
   fn description(self) -> &'static str {
     match self {
-      Self::Timetree => "Date the ancestors and estimate the clock rate from sampling dates.",
-      Self::Clock => "Root-to-tip regression: clock rate, temporal signal and outliers.",
-      Self::Ancestral => "Infer ancestral sequences and the mutations on each branch.",
+      Self::Timetree => "Infer a time tree and estimate the clock rate from sampling dates.",
+      Self::Clock => "Infer the clock rate, assess the temporal signal and flag outliers using root-to-tip regression.",
+      Self::Ancestral => "Infer ancestral sequences and mutations on each branch.",
       Self::Homoplasy => "Mutations that arise on several branches, compared with a Poisson expectation.",
       Self::Mugration => "Ancestral states of a metadata column, such as country or host.",
-      Self::Optimize => "Maximum-likelihood branch lengths on a fixed topology.",
-      Self::Prune => "Collapse short or empty branches and remove listed samples.",
+      Self::Optimize => "Optimize branch lengths and local topology improvements.",
+      Self::Prune => "Collapse short branches and remove listed samples.",
     }
   }
 
