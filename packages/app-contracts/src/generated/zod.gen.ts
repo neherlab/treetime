@@ -548,7 +548,9 @@ export const zSequenceModelSummary = z.object({
   sites: z.int().gte(0),
   model: z.string(),
   mu: z.number(),
-  states: z.array(z.string())
+  states: z.array(z.string()),
+  pi: z.array(z.number()),
+  rates: z.array(z.array(z.number()))
 });
 
 /**
@@ -558,7 +560,9 @@ export const zTraitModelSummary = z.object({
   attribute: z.string(),
   model: z.string(),
   mu: z.number(),
-  states: z.array(z.string())
+  states: z.array(z.string()),
+  pi: z.array(z.number()),
+  rates: z.array(z.array(z.number()))
 });
 
 /**

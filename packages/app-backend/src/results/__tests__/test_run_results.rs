@@ -294,6 +294,8 @@ mod tests {
         "model": "Infer",
         "mu": mu,
         "states": ["A", "T"],
+        "pi": [0.5, 0.5],
+        "rates": [[0.0, mu], [mu, 0.0]],
       })
     };
     assert_eq!(

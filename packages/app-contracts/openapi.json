@@ -2973,6 +2973,25 @@
             "items": {
               "type": "string"
             }
+          },
+          "pi": {
+            "description": "Equilibrium frequencies of the states, in the order of `states`.",
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "rates": {
+            "description": "Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to\nstate `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              }
+            }
           }
         },
         "required": [
@@ -2981,7 +3000,9 @@
           "sites",
           "model",
           "mu",
-          "states"
+          "states",
+          "pi",
+          "rates"
         ]
       },
       "TraitModelSummary": {
@@ -3007,13 +3028,34 @@
             "items": {
               "type": "string"
             }
+          },
+          "pi": {
+            "description": "Equilibrium frequencies of the states, in the order of `states`.",
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "rates": {
+            "description": "Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to\nstate `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              }
+            }
           }
         },
         "required": [
           "attribute",
           "model",
           "mu",
-          "states"
+          "states",
+          "pi",
+          "rates"
         ]
       },
       "CommandResults": {

@@ -124,7 +124,7 @@ function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; 
   );
 }
 
-function useSaveRunOutput() {
+export function useSaveRunOutput() {
   const { client } = useApiContext();
   const host = useHost();
   const browserBackend = useBrowserBackend();

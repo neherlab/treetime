@@ -1,7 +1,7 @@
 use deser::Serialize;
 use schemars::JsonSchema;
 use std::path::PathBuf;
-use treetime::gtr::get_gtr::{AlignmentModel, ModelEntry, ModelOutput, SequenceModel, TraitModel};
+use treetime::gtr::get_gtr::{AlignmentModel, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel};
 use treetime_schema::skip_serializing_optionals;
 
 pub fn run_models(gtr: Option<&ModelOutput>) -> RunModels {
@@ -91,6 +91,11 @@ pub struct SequenceModelSummary {
   pub mu: f64,
   /// Characters of the states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
   pub states: Vec<String>,
+  /// Equilibrium frequencies of the states, in the order of `states`.
+  pub pi: Vec<f64>,
+  /// Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to
+  /// state `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.
+  pub rates: Vec<Vec<f64>>,
 }
 
 impl SequenceModelSummary {
@@ -107,6 +112,8 @@ impl SequenceModelSummary {
       model: model.model.model_name().to_string(),
       mu: model.model.mu(),
       states: model.states.clone(),
+      pi: model.model.pi().to_vec(),
+      rates: substitution_rates(&model.model),
     }
   }
 }
@@ -122,6 +129,11 @@ pub struct TraitModelSummary {
   pub mu: f64,
   /// Trait states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
   pub states: Vec<String>,
+  /// Equilibrium frequencies of the states, in the order of `states`.
+  pub pi: Vec<f64>,
+  /// Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to
+  /// state `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.
+  pub rates: Vec<Vec<f64>>,
 }
 
 impl TraitModelSummary {
@@ -131,6 +143,26 @@ impl TraitModelSummary {
       model: model.model.model_name().to_string(),
       mu: model.model.mu(),
       states: model.states.clone(),
+      pi: model.model.pi().to_vec(),
+      rates: substitution_rates(&model.model),
     }
   }
+}
+
+fn substitution_rates(model: &GtrOutput) -> Vec<Vec<f64>> {
+  let pi = model.pi();
+  let w = model.w();
+  (0..pi.len())
+    .map(|from| {
+      (0..pi.len())
+        .map(|to| {
+          if from == to {
+            0.0
+          } else {
+            model.mu() * pi[to] * w[[from, to]]
+          }
+        })
+        .collect()
+    })
+    .collect()
 }

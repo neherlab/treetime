@@ -992,6 +992,15 @@ export type SequenceModelSummary = {
    * Characters of the states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
    */
   states: Array<string>;
+  /**
+   * Equilibrium frequencies of the states, in the order of `states`.
+   */
+  pi: Array<number>;
+  /**
+   * Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to
+   * state `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.
+   */
+  rates: Array<Array<number>>;
 };
 
 /**
@@ -1014,6 +1023,15 @@ export type TraitModelSummary = {
    * Trait states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
    */
   states: Array<string>;
+  /**
+   * Equilibrium frequencies of the states, in the order of `states`.
+   */
+  pi: Array<number>;
+  /**
+   * Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to
+   * state `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.
+   */
+  rates: Array<Array<number>>;
 };
 
 /**

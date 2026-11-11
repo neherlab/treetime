@@ -153,6 +153,14 @@ impl GtrOutput {
   pub fn mu(&self) -> f64 {
     self.mu
   }
+
+  pub fn pi(&self) -> &Array1<f64> {
+    &self.pi
+  }
+
+  pub fn w(&self) -> &Array2<f64> {
+    &self.w
+  }
 }
 
 /// Origin of the parameters of a GTR model.
