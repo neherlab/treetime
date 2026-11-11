@@ -22,9 +22,9 @@ describe("inputs", () => {
   });
 
   test("the input check sends the command and its configuration", () => {
-    const config = withSetting(defaultConfig(commandSettings("mugration").settings), "tree", "t.nwk");
+    const config = withSetting(defaultConfig(commandSettings("clock").settings), "tree", "t.nwk");
 
-    expect(inputFactsRequest("mugration", config)).toStrictEqual({ command: "mugration", config });
+    expect(inputFactsRequest("clock", config)).toStrictEqual({ command: "clock", config });
   });
 
   test("a path setting lists its non-empty paths", () => {

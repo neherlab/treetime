@@ -36,7 +36,7 @@ describe("command palette items", () => {
 
   test("the indexed datasets with inputs of the current command are listed with the inputs they fill", () => {
     expect(
-      datasetPaletteItems(DATASETS, "mugration", NOOP).map((item) => [item.id, item.title, item.description]),
+      datasetPaletteItems(DATASETS, "clock", NOOP).map((item) => [item.id, item.title, item.description]),
     ).toStrictEqual([["dataset-zika/20", "zika/20", "tree, metadata"]]);
   });
 

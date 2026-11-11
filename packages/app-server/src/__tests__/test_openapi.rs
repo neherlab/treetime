@@ -7,6 +7,7 @@ mod tests {
   use helpers::{
     discriminated, keyword_locations, response_components, schemas_after, tagged_unions_without_discriminator,
   };
+  use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use treetime_utils::assert_error;
@@ -456,7 +457,7 @@ mod tests {
   }
 
   #[test]
-  fn test_openapi_setting_catalog_is_a_component_and_lists_every_command_in_display_order() {
+  fn test_openapi_setting_catalog_is_a_component_and_lists_every_offered_command_in_display_order() {
     let doc = api_doc().unwrap();
     let catalog = setting_catalog().unwrap();
     assert_eq!(
@@ -466,8 +467,6 @@ mod tests {
           AppCommand::Timetree,
           AppCommand::Clock,
           AppCommand::Ancestral,
-          AppCommand::Homoplasy,
-          AppCommand::Mugration,
           AppCommand::Optimize,
           AppCommand::Prune
         ],
@@ -479,6 +478,40 @@ mod tests {
           .iter()
           .map(|command| command.command)
           .collect::<Vec<_>>(),
+      )
+    );
+  }
+
+  #[test]
+  fn test_openapi_has_only_the_commands_that_the_apps_offer() {
+    let doc = api_doc().unwrap();
+    let schemas = &doc["components"]["schemas"];
+    let offered = json!(["timetree", "clock", "ancestral", "optimize", "prune"]);
+    let mapped = |union: &str| {
+      schemas[union]["discriminator"]["mapping"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .sorted()
+        .collect::<Vec<_>>()
+    };
+    let sorted = json!(["ancestral", "clock", "optimize", "prune", "timetree"]);
+    let cli_only = schemas
+      .as_object()
+      .unwrap()
+      .keys()
+      .filter(|name| name.contains("Homoplasy") || name.contains("Mugration"))
+      .cloned()
+      .collect::<Vec<_>>();
+    assert_eq!(
+      (offered, sorted.clone(), sorted, Vec::<String>::new(), json!("string")),
+      (
+        schemas["AppCommand"]["enum"].clone(),
+        json!(mapped("RunRecord")),
+        json!(mapped("CommandResults")),
+        cli_only,
+        schemas["IndexedConfig"]["properties"]["command"]["type"].clone(),
       )
     );
   }

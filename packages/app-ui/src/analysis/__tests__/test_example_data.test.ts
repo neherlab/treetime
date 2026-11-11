@@ -1,12 +1,16 @@
-import type { IndexedConfig, IndexedDataset, IndexedFile } from "@neherlab/app-contracts";
+import type { DataIndex, IndexedConfig, IndexedDataset, IndexedFile } from "@neherlab/app-contracts";
 
 import {
+  type AppConfig,
+  appConfigs,
   configInputs,
   exampleDataUrl,
   indexedDatasetInputs,
+  localExampleIndex,
   localInputAssignment,
   matchingExampleFiles,
   uploadedConfigInputs,
+  webExampleIndex,
 } from "../exampleData";
 
 const ZIKA_20: IndexedDataset = {
@@ -18,20 +22,28 @@ const ZIKA_20: IndexedDataset = {
   ],
 };
 
+const CLOCK: AppConfig = {
+  path: "zika/20/clock.yaml",
+  command: "clock",
+  title: "Clock of the zika dataset",
+  folder: "zika/20",
+  content: "tree: tree.nwk\n",
+  inputs: {
+    metadata: ["zika/20/metadata.tsv"],
+    tree: ["zika/20/tree.nwk"],
+  },
+};
+
 const MUGRATION: IndexedConfig = {
   path: "zika/20/mugration.yaml",
   command: "mugration",
   title: "Mugration of the zika dataset",
   folder: "zika/20",
   content: "tree: tree.nwk\n",
-  inputs: {
-    metadata: ["zika/20/metadata.tsv"],
-    tree: ["zika/20/tree.nwk"],
-    weights: ["zika/country_weights.csv"],
-  },
+  inputs: { metadata: ["zika/20/metadata.tsv"], tree: ["zika/20/tree.nwk"] },
 };
 
-const TIMETREE: IndexedConfig = {
+const TIMETREE: AppConfig = {
   path: "flu/h3n2/20/timetree.yaml",
   command: "timetree",
   title: "Timetree of the flu dataset",
@@ -67,7 +79,7 @@ describe("example data", () => {
   });
 
   test("a dataset uploads only the files of inputs the command has", () => {
-    expect(indexedDatasetInputs(ZIKA_20, "mugration").map((input) => input.path)).toStrictEqual([
+    expect(indexedDatasetInputs(ZIKA_20, "clock").map((input) => input.path)).toStrictEqual([
       "zika/20/tree.nwk",
       "zika/20/metadata.tsv",
     ]);
@@ -101,7 +113,7 @@ describe("example data", () => {
   });
 
   test("a config replaces each input it reads with the uploads, lists as lists", () => {
-    const uploaded = [...configInputs(MUGRATION), ...configInputs(TIMETREE)].map((input, index) => ({
+    const uploaded = [...configInputs(CLOCK), ...configInputs(TIMETREE)].map((input, index) => ({
       input,
       stored: input.paths.map((path) => ({
         name: path.slice(path.lastIndexOf("/") + 1),
@@ -114,16 +126,29 @@ describe("example data", () => {
       replace_inputs: {
         metadata: "/up/0",
         tree: "/up/1",
-        weights: "/up/2",
-        alignment: ["/up/3"],
+        alignment: ["/up/2"],
       },
       sources: {
         metadata: { label: "metadata.tsv", size: 7, origin: "upload", run_id: "r1" },
         tree: { label: "tree.nwk", size: 7, origin: "upload", run_id: "r1" },
-        weights: { label: "country_weights.csv", size: 7, origin: "upload", run_id: "r1" },
         alignment: { label: "aln.fasta.xz", size: 7, origin: "upload", run_id: "r1" },
       },
     });
+  });
+
+  test("the example configs leave out the commands that only the command-line tool runs", () => {
+    const index: DataIndex = {
+      configs: [MUGRATION, CLOCK, TIMETREE],
+      datasets: [ZIKA_20],
+      files: FILES,
+      pipelines: [],
+    };
+
+    expect([
+      appConfigs(webExampleIndex(index)).map((config) => config.path),
+      appConfigs(localExampleIndex({ folder: "/examples", index })).map((config) => config.path),
+      appConfigs(localExampleIndex({ folder: "/examples" })),
+    ]).toStrictEqual([[CLOCK.path, TIMETREE.path], [CLOCK.path, TIMETREE.path], []]);
   });
 
   test.each([

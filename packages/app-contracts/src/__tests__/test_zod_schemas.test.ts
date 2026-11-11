@@ -12,7 +12,6 @@ import {
   zExamplesDownload,
   zLogEvent,
   zLogLevel,
-  zMugrationConfig,
   zOptimizeConfig,
   zPruneConfig,
   zRunConfigResponse,
@@ -35,7 +34,6 @@ const CONFIG_CASES: SchemaCase[] = [
   { name: "PruneConfig", schema: zPruneConfig },
   { name: "AncestralConfig", schema: zAncestralConfig },
   { name: "ClockConfig", schema: zClockConfig },
-  { name: "MugrationConfig", schema: zMugrationConfig },
 ];
 
 describe("zod_schemas command configs", () => {
@@ -103,10 +101,6 @@ describe("zod_schemas command configs", () => {
 
   test("ancestral config rejects an unknown method", () => {
     expect(zAncestralConfig.safeParse({ method_anc: "bogus" }).success).toBe(false);
-  });
-
-  test("mugration config accepts a fractional pseudocount", () => {
-    expect(zMugrationConfig.safeParse({ attribute: "country", pc: 0.01 }).success).toBe(true);
   });
 
   test("optimize config rejects a negative iteration count", () => {

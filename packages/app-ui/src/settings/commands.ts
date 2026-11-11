@@ -11,8 +11,6 @@ export const COMMAND_VERBS: Record<AppCommand, string> = {
   timetree: "Run time tree",
   clock: "Run clock check",
   ancestral: "Reconstruct sequences",
-  homoplasy: "Find homoplasies",
-  mugration: "Reconstruct traits",
   optimize: "Optimize branch lengths",
   prune: "Prune tree",
 };

@@ -2,8 +2,6 @@ import { toNestErrors } from "@hookform/resolvers";
 import {
   zAncestralConfig,
   zClockConfig,
-  zHomoplasyConfig,
-  zMugrationConfig,
   zOptimizeConfig,
   zPruneConfig,
   zTimetreeConfig,
@@ -20,9 +18,7 @@ const CONFIG_SCHEMAS = {
   optimize: zOptimizeConfig,
   prune: zPruneConfig,
   ancestral: zAncestralConfig,
-  homoplasy: zHomoplasyConfig,
   clock: zClockConfig,
-  mugration: zMugrationConfig,
 } as const;
 
 export function configResolver(command: AppCommand): Resolver<FormConfig> {

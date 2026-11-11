@@ -59,6 +59,10 @@ impl AppCommandExt for AppCommand {
     }
   }
 
+  fn in_apps(self) -> bool {
+    !matches!(self, Self::Homoplasy | Self::Mugration)
+  }
+
   fn uses_dates(self) -> bool {
     matches!(self, Self::Timetree | Self::Clock)
   }
@@ -74,7 +78,7 @@ impl AppCommandExt for AppCommand {
       Self::Ancestral => "Ancestral sequences",
       Self::Homoplasy => "Homoplasy",
       Self::Mugration => "Discrete traits",
-      Self::Optimize => "Branch lengths",
+      Self::Optimize => "Optimize tree",
       Self::Prune => "Prune tree",
     }
   }
@@ -175,7 +179,23 @@ impl AppCommandExt for AppCommand {
   }
 }
 
+/// The commands that the apps offer, in catalog order.
+pub fn offered_commands() -> impl Iterator<Item = AppCommand> {
+  AppCommand::iter().filter(|command| command.in_apps())
+}
+
+pub fn ensure_in_apps(command: AppCommand) -> Result<(), Report> {
+  if command.in_apps() {
+    Ok(())
+  } else {
+    Err(invalid(format!(
+      "the command `{command}` is available in the command-line tool only"
+    )))
+  }
+}
+
 pub fn config_from_request(command: AppCommand, config: &SparseConfig) -> Result<CommandConfig, Report> {
+  ensure_in_apps(command)?;
   let value = Value::Object(config.0.clone());
   let source = ConfigSource::new(REQUEST_SOURCE, serde_json::to_string_pretty(&value)?);
   check_command_config(&source, &value, &command.config_schema())
@@ -205,6 +225,9 @@ pub fn run_command(
 
 pub trait AppCommandExt {
   fn inputs(self) -> &'static [CommandInput];
+
+  /// Whether the apps offer the command; the others run only in the command-line tool.
+  fn in_apps(self) -> bool;
 
   fn uses_dates(self) -> bool;
 

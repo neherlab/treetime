@@ -2,6 +2,7 @@
 mod tests {
   use crate::__tests__::test_check_config::tests::helpers::fresh_draft;
   use crate::check_config::CheckConfigResponse;
+  use crate::command::offered_commands;
   use crate::config::catalog::command_settings;
   use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOption, ChoiceOptionName, SettingChoice};
   use crate::run_checks::SettingPatch;
@@ -14,12 +15,11 @@ mod tests {
   use rstest::rstest;
   use serde_json::{Value, json};
   use std::collections::BTreeSet;
-  use strum::IntoEnumIterator;
   use treetime_utils::{o, vec_of_owned};
 
   #[test]
   fn test_choices_name_only_settings_of_their_command() {
-    let unknown = AppCommand::iter()
+    let unknown = offered_commands()
       .flat_map(|command| {
         let settings = command_settings(command).unwrap();
         let keys: BTreeSet<String> = setting_properties(command.config_schema().as_value())
@@ -57,7 +57,7 @@ mod tests {
 
   #[test]
   fn test_choices_of_each_command() {
-    let choices = AppCommand::iter()
+    let choices = offered_commands()
       .map(|command| {
         let names = command_settings(command)
           .unwrap()
@@ -73,8 +73,6 @@ mod tests {
         (AppCommand::Timetree, vec![ChoiceName::ClockRate, ChoiceName::Root]),
         (AppCommand::Clock, vec![ChoiceName::Root]),
         (AppCommand::Ancestral, vec![]),
-        (AppCommand::Homoplasy, vec![]),
-        (AppCommand::Mugration, vec![]),
         (AppCommand::Optimize, vec![ChoiceName::Root]),
         (AppCommand::Prune, vec![]),
       ],
@@ -169,7 +167,7 @@ mod tests {
 
   #[test]
   fn test_choices_picking_an_option_makes_the_check_report_it() {
-    let mismatches = AppCommand::iter()
+    let mismatches = offered_commands()
       .flat_map(|command| {
         command_settings(command)
           .unwrap()

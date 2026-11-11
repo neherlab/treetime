@@ -12,7 +12,7 @@ import {
 } from "@neherlab/app-contracts";
 
 import { fuzzyFilter } from "../fuzzy";
-import { commandSettings } from "../settings/catalog";
+import { commandSettings, isAppCommand } from "../settings/catalog";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import { type StoredFile, storedSource, storedValue } from "./fileSelection";
 
@@ -49,6 +49,10 @@ export function localExampleIndex({ folder, index }: ExamplesFolder): ExampleInd
   return { origin: "local", folder, index };
 }
 
+export function appConfigs(examples: ExampleIndex | undefined): AppConfig[] {
+  return (examples?.index?.configs ?? []).filter((config): config is AppConfig => isAppCommand(config.command));
+}
+
 export function indexedDatasetInputs(dataset: IndexedDataset, command: AppCommand): ExampleInput[] {
   return commandSettings(command).inputs.flatMap((slot) => {
     const input = dataset.inputs.find((candidate) => candidate.kind === slot.kind);
@@ -70,7 +74,7 @@ export function localExamplePath(folder: string, path: string): string {
   return [trimmed, ...path.split("/").filter((part) => part !== "")].join(separator);
 }
 
-export function configInputs(config: IndexedConfig): ConfigInput[] {
+export function configInputs(config: AppConfig): ConfigInput[] {
   const specs = commandSettings(config.command).settings;
 
   return Object.entries(config.inputs).map(([key, paths]) => ({
@@ -100,6 +104,8 @@ export function uploadedConfigInputs(
 export function matchingExampleFiles(files: readonly IndexedFile[], query: string): IndexedFile[] {
   return fuzzyFilter(files, query, (file) => file.path);
 }
+
+export type AppConfig = IndexedConfig & { command: AppCommand };
 
 export type ExampleIndex =
   | { origin: "web"; index: DataIndex }

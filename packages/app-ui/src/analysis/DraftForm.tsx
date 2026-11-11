@@ -128,7 +128,6 @@ export function DraftForm({ command }: { command: AppCommand }) {
               <SettingsPanel
                 command={command}
                 config={config}
-                facts={facts}
                 checks={checks}
                 reported={check?.choices}
                 checked={checked}

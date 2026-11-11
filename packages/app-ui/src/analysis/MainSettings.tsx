@@ -3,7 +3,6 @@ import type {
   AppCommand,
   ChoiceName,
   ChoiceOptionName,
-  InputFacts,
   JsonValue,
   RunCheck,
   SettingChoice,
@@ -14,7 +13,6 @@ import type {
 import { Badge } from "@neherlab/design/ui/badge";
 import { Input } from "@neherlab/design/ui/input";
 import { Label } from "@neherlab/design/ui/label";
-import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
 import { Slider } from "@neherlab/design/ui/slider";
 import { Switch } from "@neherlab/design/ui/switch";
 import { cn } from "cn";
@@ -27,7 +25,7 @@ import { choiceRow } from "../settings/choices";
 import type { SettingKey } from "../settings/commands";
 import { documentedDefault, isChanged, resetValue, settingValue } from "../settings/config";
 import { SettingHelp } from "../settings/help";
-import { isNumber, isString, sameJson } from "../settings/json";
+import { isNumber, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
@@ -53,8 +51,6 @@ const COALESCENT_KEYS = ["coalescent", "n_skyline", "skyline_stiffness"] as cons
 const POLYTOMY_KEYS = ["keep_polytomies"] as const satisfies readonly TimetreeKey[];
 
 const MODEL_KEYS = ["model", "model_params"] as const satisfies readonly TimetreeKey[];
-
-const ATTRIBUTE_KEYS = ["attribute"] as const satisfies readonly SettingKey<"mugration">[];
 
 const CHOICE_TEXT: Record<ChoiceName, ChoiceText> = {
   "clock-rate": {
@@ -87,8 +83,6 @@ const CHOICE_TEXT: Record<ChoiceName, ChoiceText> = {
   },
 };
 
-const NO_COLUMNS: readonly string[] = [];
-
 interface RowContext {
   command: AppCommand;
   config: SparseConfig;
@@ -107,14 +101,12 @@ interface RowContext {
 export function MainSettings({
   command,
   config,
-  facts,
   checks,
   reported,
   checked,
 }: {
   command: AppCommand;
   config: SparseConfig;
-  facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
   reported: readonly ActiveChoice[] | undefined;
   checked: SparseConfig | undefined;
@@ -185,11 +177,7 @@ export function MainSettings({
           ) : null;
         }
 
-        return key === "attribute" ? (
-          <AttributeRow key={key} context={context} columns={facts?.metadata?.columns ?? NO_COLUMNS} />
-        ) : (
-          <SimpleRow key={key} context={context} settingKey={key} />
-        );
+        return <SimpleRow key={key} context={context} settingKey={key} />;
       })}
     </div>
   );
@@ -387,36 +375,6 @@ function ModelRow({ context }: { context: RowContext }) {
           className="h-8 w-72 max-w-full font-mono"
         />
       </Labeled>
-    </MainRow>
-  );
-}
-
-function AttributeRow({ context, columns }: { context: RowContext; columns: readonly string[] }) {
-  const { get, set } = context;
-  const value = get("attribute");
-
-  const onColumn = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) =>
-      set("attribute", event.target.value === "" ? undefined : event.target.value),
-    [set],
-  );
-
-  return (
-    <MainRow context={context} label="Trait" sub="Metadata column to reconstruct" keys={ATTRIBUTE_KEYS}>
-      {columns.length > 0 ? (
-        <Labeled text="Column">
-          <NativeSelect size="sm" aria-label="Trait column" value={isString(value) ? value : ""} onChange={onColumn}>
-            <NativeSelectOption value="">Choose a column</NativeSelectOption>
-            {columns.map((column) => (
-              <NativeSelectOption key={column} value={column}>
-                {column}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Labeled>
-      ) : (
-        <Control context={context} settingKey="attribute" />
-      )}
     </MainRow>
   );
 }

@@ -38,9 +38,9 @@ const ORIGIN = "http://treetime.test";
 
 const BASE = "/treetime/";
 
-const WEIGHTS: string[] = [];
+const KEEP_TIPS: string[] = [];
 
-const MUGRATION_CONFIG = "Mugration of the zika dataset";
+const CLOCK_CONFIG = "Clock of the zika dataset";
 
 const ANCESTRAL_CONFIG = "Ancestral sequences of the zika dataset";
 
@@ -49,9 +49,9 @@ const INDEX: DataIndex = {
     { path: "zika/20/ancestral.yaml", size: 32 },
     { path: "zika/20/aln.fasta.xz", size: 4 },
     { path: "zika/20/metadata.tsv", size: 8 },
-    { path: "zika/20/mugration.yaml", size: 16 },
+    { path: "zika/20/clock.yaml", size: 16 },
     { path: "zika/20/tree.nwk", size: 11 },
-    { path: "zika/country_weights.csv", size: 12 },
+    { path: "zika/keep_tips.txt", size: 12 },
   ],
   datasets: [
     {
@@ -65,15 +65,15 @@ const INDEX: DataIndex = {
   ],
   configs: [
     {
-      path: "zika/20/mugration.yaml",
-      command: "mugration",
-      title: "Mugration of the zika dataset",
+      path: "zika/20/clock.yaml",
+      command: "clock",
+      title: "Clock of the zika dataset",
       folder: "zika/20",
-      content: "tree: tree.nwk\nmetadata: metadata.tsv\nweights: ../country_weights.csv\nattribute: country\n",
+      content: "tree: tree.nwk\nmetadata: metadata.tsv\nkeep_tips_file: ../keep_tips.txt\n",
       inputs: {
         metadata: ["zika/20/metadata.tsv"],
         tree: ["zika/20/tree.nwk"],
-        weights: ["zika/country_weights.csv"],
+        keep_tips_file: ["zika/keep_tips.txt"],
       },
     },
     {
@@ -95,7 +95,7 @@ const FILES = new Map([
   ["zika/20/aln.fasta.xz", "xz!!"],
   ["zika/20/metadata.tsv", "strain\tx\n"],
   ["zika/20/tree.nwk", "(A:1,B:1);\n"],
-  ["zika/country_weights.csv", "country,w\nA,1\n"],
+  ["zika/keep_tips.txt", "country,w\nA,1\n"],
 ]);
 
 const UPLOAD_RUN: RunRecord = {
@@ -215,12 +215,12 @@ describe("example data of the web apps", () => {
       {
         metadata: "/runs/r1/inputs/metadata.tsv",
         tree: "/runs/r1/inputs/tree.nwk",
-        weights: "/runs/r1/inputs/country_weights.csv",
+        keep_tips_file: "/runs/r1/inputs/keep_tips.txt",
       },
       {
         tree: { label: "tree.nwk", size: 11, origin: "upload", run_id: "r1" },
         metadata: { label: "metadata.tsv", size: 9, origin: "upload", run_id: "r1" },
-        weights: { label: "country_weights.csv", size: 14, origin: "upload", run_id: "r1" },
+        keep_tips_file: { label: "keep_tips.txt", size: 14, origin: "upload", run_id: "r1" },
       },
     ]);
   });
@@ -264,42 +264,42 @@ describe("example data of the web apps", () => {
   });
 
   test("an upload of an input a dataset does not set is kept when it completes after the dataset load", async () => {
-    const weights = Promise.withResolvers<void>();
-    const server = fakeServer({ heldUploads: new Map([["mine.csv", weights.promise]]) });
-    await render(server, "mugration");
+    const keepTips = Promise.withResolvers<void>();
+    const server = fakeServer({ heldUploads: new Map([["mine.csv", keepTips.promise]]) });
+    await render(server, "clock");
 
     await userEvent
       .setup({ document })
-      .upload(page().getByLabelText("Weights file to upload"), new File(["country,w\nA,1\n"], "mine.csv"));
+      .upload(page().getByLabelText("Keep tips file to upload"), new File(["country,w\nA,1\n"], "mine.csv"));
     await pWaitFor(() => server.started.includes("mine.csv"));
     await chooseExampleDataset();
     await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 2);
-    weights.resolve();
-    await pWaitFor(() => useDraftStore.getState().draft.sources["weights"] !== undefined);
+    keepTips.resolve();
+    await pWaitFor(() => useDraftStore.getState().draft.sources["keep_tips_file"] !== undefined);
 
     expect([
-      settingText("Weights setting"),
+      settingText("Keep tips setting"),
       settingText("Tree setting"),
       Object.keys(useDraftStore.getState().draft.sources).toSorted(),
       server.released,
     ]).toStrictEqual([
       JSON.stringify("/runs/r1/inputs/mine.csv"),
       JSON.stringify("/runs/r1/inputs/tree.nwk"),
-      ["metadata", "tree", "weights"],
+      ["keep_tips_file", "metadata", "tree"],
       [],
     ]);
   });
 
   test("a dataset chosen while an example config is fetched replaces the config and releases its uploads", async () => {
-    const weights = Promise.withResolvers<void>();
-    const server = fakeServer({ held: new Map([["zika/country_weights.csv", weights.promise]]) });
+    const keepTips = Promise.withResolvers<void>();
+    const server = fakeServer({ held: new Map([["zika/keep_tips.txt", keepTips.promise]]) });
     await render(server, "timetree");
-    await chooseExampleConfig(MUGRATION_CONFIG);
-    await pWaitFor(() => server.static.includes("/treetime/data/zika/country_weights.csv"));
+    await chooseExampleConfig(CLOCK_CONFIG);
+    await pWaitFor(() => server.static.includes("/treetime/data/zika/keep_tips.txt"));
 
     await chooseExampleDataset();
     await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
-    weights.resolve();
+    keepTips.resolve();
     await pWaitFor(() => server.released.length === 2);
 
     expect([
@@ -322,7 +322,7 @@ describe("example data of the web apps", () => {
     await pWaitFor(() => server.released.length === 3);
 
     expect(server.released.toSorted()).toStrictEqual([
-      "/runs/r1/inputs/country_weights.csv",
+      "/runs/r1/inputs/keep_tips.txt",
       "/runs/r1/inputs/metadata.tsv",
       "/runs/r1/inputs/tree.nwk",
     ]);
@@ -337,7 +337,7 @@ describe("example data of the web apps", () => {
 
     expect(server.replaces.slice(3).map((paths) => paths.toSorted())).toStrictEqual(
       Array.from({ length: 2 }, () => [
-        "/runs/r1/inputs/country_weights.csv",
+        "/runs/r1/inputs/keep_tips.txt",
         "/runs/r1/inputs/metadata.tsv",
         "/runs/r1/inputs/tree.nwk",
       ]),
@@ -350,17 +350,17 @@ describe("example data of the web apps", () => {
     const user = userEvent.setup({ document });
 
     await user.click(page().getByRole("button", { name: "Example configs" }));
-    await user.click(await loadButton(MUGRATION_CONFIG));
+    await user.click(await loadButton(CLOCK_CONFIG));
     await pWaitFor(() => server.released.length === 3);
 
     expect([server.released.toSorted(), useDraftStore.getState().draft]).toStrictEqual([
-      ["/runs/r1/inputs/country_weights.csv", "/runs/r1/inputs/metadata.tsv", "/runs/r1/inputs/tree.nwk"],
+      ["/runs/r1/inputs/keep_tips.txt", "/runs/r1/inputs/metadata.tsv", "/runs/r1/inputs/tree.nwk"],
       expect.objectContaining({ command: "timetree", sources: {} }),
     ]);
   });
 });
 
-async function loadExampleConfig(title = MUGRATION_CONFIG, command: AppCommand = "mugration") {
+async function loadExampleConfig(title = CLOCK_CONFIG, command: AppCommand = "clock") {
   await chooseExampleConfig(title);
   await pWaitFor(() => useDraftStore.getState().draft.command === command);
 }
@@ -474,10 +474,10 @@ function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected:
     return {
       status: "invalid",
       command,
-      message: "the weights do not parse",
+      message: "the keep tips file does not parse",
       causes: [],
       problems: [],
-      messages: ["the weights do not parse"],
+      messages: ["the keep tips file does not parse"],
       checks: [],
       choices: [],
     };
@@ -486,7 +486,7 @@ function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected:
   return {
     status: "valid",
     command,
-    config: command === "mugration" ? { ...replaceInputs, attribute: "country" } : replaceInputs,
+    config: replaceInputs,
     code: CODE,
     checks: [],
     choices: [],
@@ -578,15 +578,15 @@ function DraftForm({ command }: { command: AppCommand }) {
       <InputsSection command={command} facts={undefined} />
       <PathPicker
         command={command}
-        settingKey="weights"
-        title="Weights"
-        extensions={WEIGHTS}
+        settingKey="keep_tips_file"
+        title="Keep tips"
+        extensions={KEEP_TIPS}
         list={false}
         filled={false}
       />
       <SettingValue name="tree" label="Tree setting" />
       <SettingValue name="alignment" label="Alignment setting" />
-      <SettingValue name="weights" label="Weights setting" />
+      <SettingValue name="keep_tips_file" label="Keep tips setting" />
     </FormProvider>
   );
 }

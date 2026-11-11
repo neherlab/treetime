@@ -1,5 +1,5 @@
 use crate::check_inputs::InputSlot;
-use crate::command::AppCommandExt;
+use crate::command::{AppCommandExt, ensure_in_apps, offered_commands};
 use crate::config::choices::{SettingChoice, setting_choices};
 use crate::config::labels::setting_label;
 use app_commands::command::AppCommand;
@@ -13,18 +13,18 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
-use strum::IntoEnumIterator;
 use treetime_schema::UNSET_KEY;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::{make_error, make_report};
 
 pub fn setting_catalog() -> Result<SettingCatalog, Report> {
   Ok(SettingCatalog {
-    commands: AppCommand::iter().map(command_settings).try_collect()?,
+    commands: offered_commands().map(command_settings).try_collect()?,
   })
 }
 
 pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> {
+  ensure_in_apps(command)?;
   let schema = command.config_schema().to_value();
   let cli = command.cli_command();
   let defaults = command.default_config()?;

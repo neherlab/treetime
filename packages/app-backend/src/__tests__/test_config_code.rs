@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::AppCommandExt;
+  use crate::command::{AppCommandExt, offered_commands};
   use crate::config::catalog::{SettingRole, command_settings};
   use crate::config::code::{CodeLineKind, config_code};
   use app_commands::command::AppCommand;
@@ -9,11 +9,10 @@ mod tests {
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use serde_json::{Map, Value, json};
-  use strum::IntoEnumIterator;
 
   #[test]
   fn test_config_code_command_line_of_each_setting_parses_back_to_the_same_config() {
-    for command in AppCommand::iter() {
+    for command in offered_commands() {
       let defaults = command.default_config().unwrap();
       for spec in command_settings(command).unwrap().settings {
         if spec.role == SettingRole::Output {
@@ -189,7 +188,7 @@ mod tests {
 
   #[test]
   fn test_config_code_yaml_of_each_setting_loads_back_to_the_same_config() {
-    for command in AppCommand::iter() {
+    for command in offered_commands() {
       let defaults = command.default_config().unwrap();
       for spec in command_settings(command).unwrap().settings {
         if spec.role == SettingRole::Output {

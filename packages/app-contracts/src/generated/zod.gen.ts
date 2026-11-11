@@ -44,8 +44,6 @@ export const zAppCommand = z.enum([
   'timetree',
   'clock',
   'ancestral',
-  'homoplasy',
-  'mugration',
   'optimize',
   'prune'
 ]);
@@ -695,152 +693,6 @@ export const zAncestralResults = z.object({
 });
 
 /**
- * Number of sites hit by the same number of substitutions.
- */
-export const zSiteHitsRow = z.object({
-  hits: z.int().gte(0),
-  sites: z.int().gte(0),
-  expected: z.number()
-});
-
-/**
- * Number of distinct mutations that occur on the same number of branches.
- */
-export const zMultiplicityRow = z.object({
-  branches: z.int().gte(0),
-  mutations: z.int().gte(0)
-});
-
-/**
- * Drug resistance annotation of a substitution.
- */
-export const zDrmAnnotation = z.object({
-  gene: z.string(),
-  drug: z.string(),
-  substitution: z.string().optional()
-});
-
-/**
- * A mutation that occurs on two or more branches.
- */
-export const zRecurrentMutation = z.object({
-  mutation: z.string(),
-  position: z.int().gte(0),
-  display_position: z.int().gte(0),
-  branches: z.int().gte(0),
-  terminal_branches: z.int().gte(0),
-  branch_names: z.array(z.string()),
-  drm: zDrmAnnotation.optional()
-});
-
-/**
- * A substitution at a site hit more than once.
- */
-export const zSiteSubstitution = z.object({
-  mutation: z.string(),
-  branches: z.int().gte(0),
-  branch_names: z.array(z.string()),
-  drm: zDrmAnnotation.optional()
-});
-
-/**
- * A site with substitutions on two or more branches.
- */
-export const zHomoplasySite = z.object({
-  position: z.int().gte(0),
-  display_position: z.int().gte(0),
-  branches: z.int().gte(0),
-  substitutions: z.array(zSiteSubstitution)
-});
-
-/**
- * Recurrent and ambiguous changes on the terminal branch of one sample.
- */
-export const zTaxonResult = z.object({
-  name: z.string(),
-  homoplasic_mutations: z.array(z.string()),
-  drm_mutations: z.int().gte(0).optional(),
-  ambiguous_changes: z.int().gte(0),
-  recurrent_indels: z.int().gte(0)
-});
-
-/**
- * A site with changes involving ambiguous characters.
- */
-export const zAmbiguousSite = z.object({
-  position: z.int().gte(0),
-  display_position: z.int().gte(0),
-  branches: z.int().gte(0)
-});
-
-/**
- * Statistics of a `homoplasy` run: mutations that occur on more than one branch of the tree.
- */
-export const zHomoplasyStatistics = z.object({
-  drm_annotated: z.boolean(),
-  zero_based: z.boolean(),
-  genome_length: z.int().gte(0),
-  total_branch_length: z.number(),
-  substitutions: z.int().gte(0),
-  distinct_substitutions: z.int().gte(0),
-  recurrent_substitutions: z.int().gte(0),
-  sites_hit_more_than_once: z.int().gte(0),
-  expected_sites_hit_more_than_once: z.number(),
-  log_likelihood_difference: z.number(),
-  samples_with_homoplasies: z.int().gte(0),
-  recurrent_drm_substitutions: z.int().gte(0).optional(),
-  ambiguous_changes: z.int().gte(0),
-  indels: z.int().gte(0),
-  site_hits: z.array(zSiteHitsRow),
-  multiplicities: z.array(zMultiplicityRow),
-  recurrent: z.array(zRecurrentMutation),
-  sites: z.array(zHomoplasySite),
-  recurrent_indels: z.array(zRecurrentMutation),
-  taxa: z.array(zTaxonResult),
-  ambiguous_sites: z.array(zAmbiguousSite),
-  ambiguous_site_count: z.int().gte(0)
-});
-
-/**
- * Results of a `homoplasy` run.
- */
-export const zHomoplasyResults = z.object({
-  statistics: zHomoplasyStatistics.optional()
-});
-
-/**
- * A change of state along branches.
- */
-export const zStateChange = z.object({
-  from: z.string(),
-  to: z.string(),
-  branches: z.int().gte(0)
-});
-
-/**
- * Most probable state of an ancestor.
- */
-export const zAncestorState = z.object({
-  name: z.string(),
-  tips: z.int().gte(0),
-  state: z.string(),
-  probability: z.number()
-});
-
-/**
- * Results of a `mugration` run.
- */
-export const zMugrationResults = z.object({
-  attribute: z.string(),
-  states: z.int().gte(0),
-  state_changes: z.array(zStateChange),
-  changed_branches: z.int().gte(0),
-  uncertain_below: z.number(),
-  uncertain_ancestors: z.array(zAncestorState),
-  root: zAncestorState.optional()
-});
-
-/**
  * Summary of a tree an `optimize` or `prune` run wrote.
  */
 export const zTreeSummary = z.object({
@@ -1133,7 +985,7 @@ export const zIndexedDataset = z.strictObject({
  */
 export const zIndexedConfig = z.strictObject({
   path: z.string(),
-  command: zAppCommand,
+  command: z.string(),
   title: z.string(),
   folder: z.string(),
   content: z.string(),
@@ -1145,7 +997,7 @@ export const zIndexedConfig = z.strictObject({
  */
 export const zIndexedStep = z.strictObject({
   name: z.string(),
-  command: zAppCommand
+  command: z.string()
 });
 
 /**
@@ -1717,149 +1569,6 @@ export const zAncestralConfig = z.strictObject({
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
-export const zHomoplasyOutputSelection = z.enum([
-  'all',
-  'nwk',
-  'nexus',
-  'auspice',
-  'mat-pb',
-  'mat-json',
-  'graph-json',
-  'dot',
-  'homoplasy-stats',
-  'homoplasy-report'
-]);
-
-/**
- * Reconstruct ancestral sequences and count homoplasies, mutations that occur more than once in a tree
- */
-export const zHomoplasyConfig = z.strictObject({
-  alignment: z.array(z.string()).optional(),
-  tree: z.string().optional(),
-  newick_dialect: z.enum([
-    'classic,plain',
-    'classic,beast',
-    'classic,nhx',
-    'classic,mrbayes',
-    'enewick,plain',
-    'enewick,beast',
-    'enewick,nhx',
-    'enewick,mrbayes',
-    'rich,plain',
-    'rich,beast',
-    'rich,nhx',
-    'rich,mrbayes'
-  ]).optional(),
-  allow_missing_sequences: z.boolean().optional(),
-  alphabet: zAlphabetName.optional(),
-  zero_based: z.boolean().optional(),
-  model: zGtrModelName.optional(),
-  model_params: z.array(z.string()).optional(),
-  method_anc: zMethodAncestral.optional(),
-  representation: zRepresentation.optional(),
-  sample_from_profile: zSampleMode.optional(),
-  gap_fill: zGapFill.optional(),
-  impute_missing_data: z.boolean().optional(),
-  constant_sites: z.int().gte(0).optional(),
-  rescale: z.number().optional(),
-  detailed: z.boolean().optional(),
-  drms: z.string().optional(),
-  num_mut: z.int().gte(0).optional(),
-  output_all: z.string().optional(),
-  newick_annotations: zNewickAnnotationsArg.optional(),
-  output_tree_nwk: z.string().optional(),
-  output_tree_nexus: z.string().optional(),
-  output_tree_auspice: z.string().optional(),
-  output_tree_mat_pb: z.string().optional(),
-  output_tree_mat_json: z.string().optional(),
-  output_tree_graph_json: z.string().optional(),
-  output_tree_dot: z.string().optional(),
-  output_selection: z.array(zHomoplasyOutputSelection).optional(),
-  output_homoplasy_stats: z.string().optional(),
-  output_homoplasy_report: z.string().optional(),
-  topology_order: zTopologyOrderArg.optional(),
-  topology_order_tree: z.string().optional(),
-  topology_order_list: z.string().optional(),
-  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
-});
-
-export const zMugrationOutputSelection = z.enum([
-  'all',
-  'nwk',
-  'nexus',
-  'auspice',
-  'mat-pb',
-  'mat-json',
-  'graph-json',
-  'dot',
-  'node-data',
-  'model',
-  'trait-probabilities',
-  'traits'
-]);
-
-export const zMugrationAmbiguityOutput = z.union([
-  z.literal('traits'),
-  z.literal('node-data'),
-  z.literal('auspice')
-]);
-
-/**
- * Reconstruct the ancestral states of a discrete trait, such as location or host, and fit a model of its changes
- */
-export const zMugrationConfig = z.strictObject({
-  tree: z.string().optional(),
-  newick_dialect: z.enum([
-    'classic,plain',
-    'classic,beast',
-    'classic,nhx',
-    'classic,mrbayes',
-    'enewick,plain',
-    'enewick,beast',
-    'enewick,nhx',
-    'enewick,mrbayes',
-    'rich,plain',
-    'rich,beast',
-    'rich,nhx',
-    'rich,mrbayes'
-  ]).optional(),
-  metadata: z.string().optional(),
-  metadata_id_columns: z.array(z.string()).optional(),
-  metadata_delimiters: z.array(z.string().length(1)).optional(),
-  attribute: z.string().optional(),
-  weights: z.string().optional(),
-  lat_longs: z.string().optional(),
-  missing_data: z.string().optional(),
-  pc: z.number().optional(),
-  missing_weights_threshold: z.number().optional(),
-  model_iterations: z.int().gte(0).optional(),
-  sampling_bias_correction: z.number().optional(),
-  smooth_initial_pi: z.boolean().optional(),
-  filter_uninformative_root: z.boolean().optional(),
-  output_all: z.string().optional(),
-  newick_annotations: zNewickAnnotationsArg.optional(),
-  output_tree_nwk: z.string().optional(),
-  output_tree_nexus: z.string().optional(),
-  output_tree_auspice: z.string().optional(),
-  output_tree_mat_pb: z.string().optional(),
-  output_tree_mat_json: z.string().optional(),
-  output_tree_graph_json: z.string().optional(),
-  output_tree_dot: z.string().optional(),
-  output_selection: z.array(zMugrationOutputSelection).optional(),
-  confidence: z.boolean().optional(),
-  output_node_data: z.string().optional(),
-  output_model: z.string().optional(),
-  output_traits: z.string().optional(),
-  output_trait_probabilities: z.string().optional(),
-  ambiguity_threshold: z.number().gte(0).lte(1).optional(),
-  ambiguity_outputs: z.array(zMugrationAmbiguityOutput).optional(),
-  topology_order: zTopologyOrderArg.optional(),
-  topology_order_tree: z.string().optional(),
-  topology_order_list: z.string().optional(),
-  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
-});
-
 /**
  * Reroot methods available in the optimize command.
  *
@@ -2170,27 +1879,6 @@ export const zRunRecordAncestral = z.object({
   command: z.literal('ancestral')
 });
 
-export const zRunRecordHomoplasy = z.object({
-  id: zJobId,
-  title: z.string(),
-  status: zRunStatus,
-  pinned: z.boolean(),
-  created_at: z.string(),
-  started_at: z.string().optional(),
-  finished_at: z.string().optional(),
-  duration_seconds: z.number().optional(),
-  treetime_version: z.string(),
-  inputs: z.array(zRunInput),
-  config_hash: z.string().optional(),
-  changed_settings: z.array(z.string()),
-  headline: zRunHeadline,
-  output_files: z.array(zOutputFile),
-  warnings: z.array(zRunWarning),
-  error: zRunError.optional(),
-  config: zHomoplasyConfig,
-  command: z.literal('homoplasy')
-});
-
 export const zRunRecordClock = z.object({
   id: zJobId,
   title: z.string(),
@@ -2212,27 +1900,6 @@ export const zRunRecordClock = z.object({
   command: z.literal('clock')
 });
 
-export const zRunRecordMugration = z.object({
-  id: zJobId,
-  title: z.string(),
-  status: zRunStatus,
-  pinned: z.boolean(),
-  created_at: z.string(),
-  started_at: z.string().optional(),
-  finished_at: z.string().optional(),
-  duration_seconds: z.number().optional(),
-  treetime_version: z.string(),
-  inputs: z.array(zRunInput),
-  config_hash: z.string().optional(),
-  changed_settings: z.array(z.string()),
-  headline: zRunHeadline,
-  output_files: z.array(zOutputFile),
-  warnings: z.array(zRunWarning),
-  error: zRunError.optional(),
-  config: zMugrationConfig,
-  command: z.literal('mugration')
-});
-
 /**
  * Durable record of one command run, stored as `run.json` in the run's folder.
  */
@@ -2241,9 +1908,7 @@ export const zRunRecord = z.discriminatedUnion('command', [
   zRunRecordOptimize,
   zRunRecordPrune,
   zRunRecordAncestral,
-  zRunRecordHomoplasy,
-  zRunRecordClock,
-  zRunRecordMugration
+  zRunRecordClock
 ]);
 
 /**
@@ -2280,16 +1945,6 @@ export const zCommandResultsClock = z.object({
 export const zCommandResultsAncestral = z.object({
   command: z.literal('ancestral'),
   data: zAncestralResults
-});
-
-export const zCommandResultsHomoplasy = z.object({
-  command: z.literal('homoplasy'),
-  data: zHomoplasyResults
-});
-
-export const zCommandResultsMugration = z.object({
-  command: z.literal('mugration'),
-  data: zMugrationResults
 });
 
 export const zCommandResultsOptimize = z.object({
@@ -2399,8 +2054,6 @@ export const zCommandResults = z.discriminatedUnion('command', [
   zCommandResultsTimetree,
   zCommandResultsClock,
   zCommandResultsAncestral,
-  zCommandResultsHomoplasy,
-  zCommandResultsMugration,
   zCommandResultsOptimize,
   zCommandResultsPrune
 ]);

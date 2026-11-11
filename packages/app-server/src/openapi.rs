@@ -1,4 +1,5 @@
 use aide::openapi::{Components, OpenApi, SchemaObject};
+use app_backend::command::AppCommandExt;
 use app_backend::config::catalog::SettingCatalog;
 use app_backend::datasets::DataIndex;
 use app_commands::command::AppCommand;
@@ -55,6 +56,63 @@ pub(crate) fn add_components(api: &mut OpenApi, settings: &SchemaSettings) -> Re
     }
   }
   Ok(())
+}
+
+/// Removes the commands that only the command-line tool runs: from the `AppCommand` enum, the variants that they tag
+/// in unions, and the schemas that only those variants reach.
+pub(crate) fn remove_cli_only_commands(api: &mut OpenApi) -> Result<(), Report> {
+  let cli_only = AppCommand::iter()
+    .filter(|command| !command.in_apps())
+    .map(|command| json!(<&str>::from(command)))
+    .collect_vec();
+  let paths = serde_json::to_value(&api.paths)?;
+  let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
+  let referenced_before = referenced_components(&paths, schemas);
+
+  for schema in schemas.values_mut() {
+    let Some(root) = schema.json_schema.as_object_mut() else {
+      continue;
+    };
+    if let Some(Value::Array(variants)) = root.get_mut("oneOf") {
+      variants.retain(|variant| {
+        variant
+          .pointer("/properties/command/const")
+          .is_none_or(|command| !cli_only.contains(command))
+      });
+    }
+  }
+  let Some(Value::Array(values)) = schemas
+    .get_mut(&AppCommand::schema_name().into_owned())
+    .and_then(|schema| schema.json_schema.as_object_mut())
+    .and_then(|root| root.get_mut("enum"))
+  else {
+    return make_error!("the schema of `AppCommand` has no `enum` of commands");
+  };
+  values.retain(|command| !cli_only.contains(command));
+
+  loop {
+    let referenced = referenced_components(&paths, schemas);
+    let orphans = referenced_before
+      .difference(&referenced)
+      .filter(|name| schemas.contains_key(*name))
+      .cloned()
+      .collect_vec();
+    if orphans.is_empty() {
+      return Ok(());
+    }
+    for name in orphans {
+      schemas.shift_remove(&name);
+    }
+  }
+}
+
+fn referenced_components(paths: &Value, schemas: &IndexMap<String, SchemaObject>) -> BTreeSet<String> {
+  let mut refs = vec![];
+  component_refs(paths, &mut refs);
+  for schema in schemas.values() {
+    component_refs(schema.json_schema.as_value(), &mut refs);
+  }
+  refs.into_iter().collect()
 }
 
 pub(crate) fn add_discriminators(api: &mut OpenApi) -> Result<(), Report> {

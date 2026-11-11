@@ -1,9 +1,9 @@
 import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
 import { applyFilter, explodeTree } from "auspice/src/actions/tree";
 import { CLEAN_START, NEW_COLORS } from "auspice/src/actions/types";
-import { NODE_VISIBLE, strainSymbol } from "auspice/src/util/globals";
+import { encodeColorByGenotype } from "auspice/src/util/getGenotype";
+import { NODE_VISIBLE, nucleotide_gene, strainSymbol } from "auspice/src/util/globals";
 
-import { nucleotideColorBy } from "../genotype";
 import { createAuspiceStore } from "../store";
 import { colorTreeBy, focusNode, showSecondTree } from "../store-hooks";
 
@@ -130,7 +130,7 @@ describe("auspice store", () => {
 
     showSecondTree(store, secondTreeDocument(), { first: "First run", second: "Second run" });
 
-    colorTreeBy(store, nucleotideColorBy(1) ?? "");
+    colorTreeBy(store, encodeColorByGenotype({ gene: nucleotide_gene, positions: [1] }) ?? "");
 
     const { treeToo } = store.getState();
     const mutated = treeToo.nodes?.find((node) => node.name === "A");

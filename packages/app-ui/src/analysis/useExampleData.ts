@@ -1,4 +1,4 @@
-import type { AppCommand, IndexedConfig, IndexedDataset } from "@neherlab/app-contracts";
+import type { AppCommand, IndexedDataset } from "@neherlab/app-contracts";
 import { examples } from "@neherlab/app-contracts/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -14,6 +14,7 @@ import {
   configInputs,
   DATA_INDEX_FILE,
   indexedDatasetInputs,
+  type AppConfig,
   type ExampleIndex,
   exampleDataUrl,
   fetchExampleFile,
@@ -56,7 +57,7 @@ export function useExampleConfigLoader() {
   const { uploadRun, uploadFiles, releaseFromPendingRun } = useRunUploads();
 
   return useCallback(
-    async (examples: ExampleIndex, config: IndexedConfig): Promise<ConfigLoadResult> => {
+    async (examples: ExampleIndex, config: AppConfig): Promise<ConfigLoadResult> => {
       if (examples.origin === "local") {
         return loadConfig(config.content, config.command, { folder: localExamplePath(examples.folder, config.folder) });
       }
@@ -174,7 +175,7 @@ export interface ExampleIndexQuery {
 }
 
 async function uploadConfigInputs(
-  config: IndexedConfig,
+  config: AppConfig,
   upload: (files: readonly File[]) => Promise<StoredFile[] | undefined>,
   uploaded: UploadedConfigInput[],
 ): Promise<boolean> {

@@ -9,7 +9,7 @@ use crate::api::timeout::with_request_timeout;
 use crate::app_settings_routes::{app_settings_routes, host_routes};
 use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
-use crate::openapi::{add_components, add_discriminators};
+use crate::openapi::{add_components, add_discriminators, remove_cli_only_commands};
 use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{delete_with, get_with, post_with, put_with};
@@ -145,6 +145,7 @@ fn build_api(scope: RouteScope, settings: &SchemaSettings) -> Result<(Router<Arc
     routes.finish_api_with(&mut api, |api| api.default_response::<AppError>())
   })?;
   add_components(&mut api, settings)?;
+  remove_cli_only_commands(&mut api)?;
   add_discriminators(&mut api)?;
   Ok((router, api))
 }

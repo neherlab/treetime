@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{InputKind, InputNeed, InputSlot};
+  use crate::command::offered_commands;
   use crate::config::catalog::{
     ListItemKind, SettingKind, SettingOption, SettingRole, SettingSpec, command_settings, setting_catalog,
   };
@@ -11,11 +12,10 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
-  use strum::IntoEnumIterator;
   use treetime_utils::{o, vec_of_owned};
 
   #[test]
-  fn test_setting_catalog_lists_every_app_command_once() {
+  fn test_setting_catalog_lists_every_offered_command_once() {
     let commands = setting_catalog()
       .unwrap()
       .commands
@@ -27,12 +27,21 @@ mod tests {
         AppCommand::Timetree,
         AppCommand::Clock,
         AppCommand::Ancestral,
-        AppCommand::Homoplasy,
-        AppCommand::Mugration,
         AppCommand::Optimize,
         AppCommand::Prune
       ],
       commands
+    );
+  }
+
+  #[rstest]
+  #[case::homoplasy(AppCommand::Homoplasy)]
+  #[case::mugration(AppCommand::Mugration)]
+  #[trace]
+  fn test_setting_catalog_has_no_settings_of_a_command_line_only_command(#[case] command: AppCommand) {
+    assert_eq!(
+      format!("the command `{command}` is available in the command-line tool only"),
+      command_settings(command).unwrap_err().to_string()
     );
   }
 
@@ -59,7 +68,7 @@ mod tests {
 
   #[test]
   fn test_setting_catalog_settings_are_ordered_by_group() {
-    for command in AppCommand::iter() {
+    for command in offered_commands() {
       let settings = command_settings(command).unwrap();
       let group_order = settings
         .settings
@@ -72,7 +81,7 @@ mod tests {
 
   #[test]
   fn test_setting_catalog_has_every_leaf_of_the_config_once() {
-    for command in AppCommand::iter() {
+    for command in offered_commands() {
       let keys = command_settings(command)
         .unwrap()
         .settings
@@ -196,7 +205,7 @@ mod tests {
   #[case::enum_default(   AppCommand::Ancestral, "method_anc",          SettingKind::Enum,     false, Some(json!("marginal")))]
   #[case::integer(        AppCommand::Timetree,  "max_iter",            SettingKind::Integer,  false, Some(json!(2)))]
   #[case::optional_int(   AppCommand::Timetree,  "seed",                SettingKind::Integer,  true,  None)]
-  #[case::text(           AppCommand::Mugration, "missing_data",        SettingKind::Text,     false, Some(json!("?")))]
+  #[case::text(           AppCommand::Clock,     "date_format",         SettingKind::Text,     false, Some(json!("%Y-%m-%d")))]
   #[case::number_list(    AppCommand::Timetree,  "relax",               SettingKind::List,     false, Some(json!([])))]
   #[case::string_list(    AppCommand::Clock,     "metadata_id_columns", SettingKind::List,     false, Some(json!(["strain", "name", "accession"])))]
   #[case::enum_list(      AppCommand::Clock,     "output_selection",    SettingKind::EnumList, false, Some(json!([])))]
@@ -300,7 +309,7 @@ mod tests {
 
   #[test]
   fn test_setting_catalog_every_enum_value_has_a_command_line_spelling() {
-    for command in AppCommand::iter() {
+    for command in offered_commands() {
       let cli = command.cli_command();
       for spec in command_settings(command).unwrap().settings {
         let arg = cli
@@ -336,8 +345,6 @@ mod tests {
   #[case::timetree( AppCommand::Timetree,  true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required), (InputKind::Alignment, InputNeed::Recommended)])]
   #[case::clock(    AppCommand::Clock,     true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required)])]
   #[case::ancestral(AppCommand::Ancestral, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
-  #[case::homoplasy(AppCommand::Homoplasy, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
-  #[case::mugration(AppCommand::Mugration, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required)])]
   #[case::optimize( AppCommand::Optimize,  false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
   #[case::prune(    AppCommand::Prune,     false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Optional)])]
   #[trace]
@@ -388,7 +395,7 @@ mod tests {
 
   #[test]
   fn test_setting_catalog_every_input_is_a_setting_of_its_command() {
-    for command in AppCommand::iter() {
+    for command in offered_commands() {
       let settings = command_settings(command).unwrap();
       for input in &settings.inputs {
         let spec = settings

@@ -19,3 +19,7 @@ export function commandSettings(command: AppCommand): CommandSettings {
 
   return settings;
 }
+
+export function isAppCommand(command: string): command is AppCommand {
+  return COMMANDS.some((candidate) => candidate.command === command);
+}

@@ -1,10 +1,4 @@
-import {
-  errorMessage,
-  type AppCommand,
-  type IndexedConfig,
-  type IndexedDataset,
-  type RunRecord,
-} from "@neherlab/app-contracts";
+import { errorMessage, type AppCommand, type IndexedDataset, type RunRecord } from "@neherlab/app-contracts";
 import { runsGet, runsList } from "@neherlab/app-contracts/client";
 import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
 import { Button } from "@neherlab/design/ui/button";
@@ -20,7 +14,7 @@ import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
 import { commandSettings } from "../settings/catalog";
 import { runInputAssignments, type InputAssignment } from "../settings/inputs";
-import { indexedDatasetInputs, type ExampleIndex } from "./exampleData";
+import { appConfigs, indexedDatasetInputs, type AppConfig, type ExampleIndex } from "./exampleData";
 import { ExamplesDownload } from "./ExamplesDownload";
 import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "./useExampleData";
 import { useInputActions } from "./useInputActions";
@@ -89,7 +83,7 @@ export function ExamplesPanel({
           <Table>
             <TableBody>
               {examples !== undefined &&
-                (examples.index?.configs ?? []).map((config) => (
+                appConfigs(examples).map((config) => (
                   <ConfigRow key={config.path} examples={examples} config={config} />
                 ))}
             </TableBody>
@@ -147,7 +141,7 @@ function DatasetRow({
   );
 }
 
-function ConfigRow({ examples, config }: { examples: ExampleIndex; config: IndexedConfig }) {
+function ConfigRow({ examples, config }: { examples: ExampleIndex; config: AppConfig }) {
   const loadExample = useExampleConfigLoader();
   const toasts = useToastManager();
   const [loading, setLoading] = useState(false);

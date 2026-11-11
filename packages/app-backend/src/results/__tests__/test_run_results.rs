@@ -18,14 +18,11 @@ mod tests {
   use app_commands::json_value::JsonValue;
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
-  use helpers::{
-    auspice_path, clock_model, dataset, finished_run, homoplasy_config, output_path, timetree_config, zika,
-  };
+  use helpers::{auspice_path, clock_model, finished_run, output_path, timetree_config, zika};
   use itertools::izip;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
-  use std::collections::BTreeSet;
   use std::fs;
   use tempfile::tempdir;
   use treetime::clock::rtt::ClockDateSource;
@@ -183,83 +180,6 @@ mod tests {
   }
 
   #[test]
-  fn test_run_results_of_a_homoplasy_run_read_its_statistics_file() -> Result<(), Report> {
-    let root = tempdir()?;
-    let runs = RunManager::open(root.path())?;
-    let id = finished_run(&runs, AppCommand::Homoplasy, homoplasy_config());
-
-    let RunResults {
-      tree,
-      results: CommandResults::Homoplasy(homoplasy),
-      problems,
-      ..
-    } = run_results(&runs, &id)?
-    else {
-      panic!("a homoplasy run has homoplasy results");
-    };
-
-    let record = runs.get(&id)?;
-    let homoplasy = homoplasy.statistics.expect("the run wrote its statistics file");
-    let kinds = record
-      .output_files
-      .iter()
-      .map(|file| file.kind)
-      .collect::<BTreeSet<_>>();
-    assert_eq!(
-      (
-        (true, true),
-        Vec::<String>::new(),
-        20,
-        homoplasy.sites_hit_more_than_once,
-        Some(homoplasy.recurrent_substitutions),
-      ),
-      (
-        (
-          kinds.contains(&OutputSelection::Auspice),
-          kinds.contains(&OutputSelection::HomoplasyStats)
-        ),
-        problems.into_iter().map(|problem| problem.message).collect(),
-        tree.expect("the run wrote an Auspice tree").tips().count(),
-        homoplasy.sites.len(),
-        record.headline.recurrent_substitutions,
-      )
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_run_results_of_a_homoplasy_run_without_statistics_file_are_absent() -> Result<(), Report> {
-    let root = tempdir()?;
-    let runs = RunManager::open(root.path())?;
-    let id = finished_run(&runs, AppCommand::Homoplasy, homoplasy_config());
-    let record = runs.get(&id)?;
-    let stats = record
-      .output_files
-      .iter()
-      .find(|file| file.kind == OutputSelection::HomoplasyStats)
-      .expect("the run wrote its statistics file");
-    fs::write(runs.store().out_dir(&id).join(&stats.path), "{}")?;
-
-    let RunResults {
-      results: CommandResults::Homoplasy(homoplasy),
-      problems,
-      ..
-    } = run_results(&runs, &id)?
-    else {
-      panic!("a homoplasy run has homoplasy results");
-    };
-
-    assert_eq!(
-      (None, vec![stats.path.to_string_lossy().into_owned()]),
-      (
-        homoplasy.statistics,
-        problems.into_iter().map(|problem| problem.path).collect::<Vec<_>>()
-      )
-    );
-    Ok(())
-  }
-
-  #[test]
   fn test_run_results_of_a_clock_run_count_dated_samples_and_outliers() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
@@ -281,36 +201,6 @@ mod tests {
       (20, points.iter().filter(|point| point.outlier).count(), 20),
       (clock.estimates.dated_samples, clock.estimates.outliers, points.len())
     );
-    Ok(())
-  }
-
-  #[test]
-  fn test_run_results_of_a_mugration_run_count_the_states_of_the_samples() -> Result<(), Report> {
-    let root = tempdir()?;
-    let runs = RunManager::open(root.path())?;
-    let id = finished_run(
-      &runs,
-      AppCommand::Mugration,
-      json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv"), "attribute": "country" }),
-    );
-
-    let CommandResults::Mugration(mugration) = run_results(&runs, &id)?.results else {
-      panic!("a mugration run has mugration results");
-    };
-
-    assert_eq!(
-      (
-        "country",
-        10,
-        mugration.state_changes.iter().map(|change| change.branches).sum()
-      ),
-      (
-        mugration.attribute.as_str(),
-        mugration.states,
-        mugration.changed_branches
-      )
-    );
-    assert!(mugration.root.is_some());
     Ok(())
   }
 
@@ -458,35 +348,6 @@ mod tests {
   }
 
   #[test]
-  fn test_run_results_of_a_mugration_run_list_the_trait_model_with_its_states() -> Result<(), Report> {
-    let root = tempdir()?;
-    let runs = RunManager::open(root.path())?;
-    let id = finished_run(
-      &runs,
-      AppCommand::Mugration,
-      json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv"), "attribute": "country" }),
-    );
-
-    let results = run_results(&runs, &id)?;
-
-    let CommandResults::Mugration(mugration) = &results.results else {
-      panic!("a mugration run has mugration results");
-    };
-    let [RunModel::Trait(model)] = results.models.models.as_slice() else {
-      panic!("a mugration run lists one trait model, got {:?}", results.models.models);
-    };
-    assert_eq!(
-      ("country", true, true),
-      (
-        model.attribute.as_str(),
-        model.states.len() >= mugration.states,
-        model.mu > 0.0
-      )
-    );
-    Ok(())
-  }
-
-  #[test]
   fn test_run_results_of_a_fitch_ancestral_run_list_no_model() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
@@ -519,49 +380,11 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_run_auspice_colors_a_mugration_trait_with_the_app_palette() -> Result<(), Report> {
-    let root = tempdir()?;
-    let runs = RunManager::open(root.path())?;
-    let id = finished_run(
-      &runs,
-      AppCommand::Mugration,
-      json!({
-        "tree": dataset("dengue/20", "tree.nwk"),
-        "metadata": dataset("dengue/20", "metadata.tsv"),
-        "metadata_id_columns": ["genbank_accession"],
-        "attribute": "region",
-      }),
-    );
-
-    let document = to_json_value(&run_auspice(&runs, &id)?)?;
-
-    let tree = run_results(&runs, &id)?.tree.expect("the run wrote an Auspice tree");
-    let region = tree
-      .colorings
-      .iter()
-      .find(|coloring| coloring.key == "region")
-      .expect("the trait is a coloring");
-    let scale = document["meta"]["colorings"]
-      .as_array()
-      .expect("colorings")
-      .iter()
-      .find(|coloring| coloring["key"] == "region")
-      .map(|coloring| coloring["scale"].clone());
-    let expected = izip!(&region.states, ["#332288", "#88ccee", "#44aa99", "#117733"])
-      .map(|(state, color)| [state.as_str(), color])
-      .collect::<Vec<_>>();
-    assert_eq!(Some(json!(expected)), scale);
-    Ok(())
-  }
-
   #[rustfmt::skip]
   #[rstest]
-  #[case::mugration(AppCommand::Mugration, json!({ "tree": dataset("dengue/20", "tree.nwk"), "metadata": dataset("dengue/20", "metadata.tsv"), "metadata_id_columns": ["genbank_accession"], "attribute": "region" }))]
   #[case::timetree( AppCommand::Timetree,  timetree_config(None))]
   #[case::ancestral(AppCommand::Ancestral, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")] }))]
   #[case::clock(    AppCommand::Clock,     json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv") }))]
-  #[case::homoplasy(AppCommand::Homoplasy, homoplasy_config())]
   #[trace]
   fn test_run_auspice_changes_only_color_scales_and_leaves_the_written_file_unchanged(
     #[case] command: AppCommand,
@@ -772,10 +595,6 @@ mod tests {
         .run();
       assert_eq!(RunStatus::Ok, runs.get(&created.id).unwrap().status);
       created.id
-    }
-
-    pub(super) fn homoplasy_config() -> Value {
-      json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")] })
     }
 
     pub(super) fn zika(file: &str) -> PathBuf {

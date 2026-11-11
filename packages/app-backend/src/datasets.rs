@@ -150,7 +150,9 @@ pub struct IndexedInput {
 pub struct IndexedConfig {
   /// Path of the file relative to the data folder.
   pub path: String,
-  /// Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
+  /// Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive. It may be
+  /// a command that only the command-line tool runs.
+  #[schemars(with = "String")]
   pub command: AppCommand,
   /// Title of the example: the first comment line after the directive.
   pub title: String,
@@ -216,7 +218,8 @@ impl IndexedPipeline {
 pub struct IndexedStep {
   /// Name of the step.
   pub name: String,
-  /// Command the step runs.
+  /// Command the step runs. It may be a command that only the command-line tool runs.
+  #[schemars(with = "String")]
   pub command: AppCommand,
 }
 

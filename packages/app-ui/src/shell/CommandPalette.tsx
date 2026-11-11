@@ -1,4 +1,4 @@
-import { errorMessage, type IndexedConfig, type IndexedDataset } from "@neherlab/app-contracts";
+import { errorMessage, type IndexedDataset } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
 import {
   Command,
@@ -15,6 +15,7 @@ import { useToastManager } from "@neherlab/design/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { appConfigs, type AppConfig } from "../analysis/exampleData";
 import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis/ExamplesDownload";
 import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
@@ -151,7 +152,7 @@ function usePaletteItems(): PaletteItem[] {
   const { mutate: startDownload } = useStartExamplesDownload();
 
   const loadExample = useCallback(
-    async (config: IndexedConfig) => {
+    async (config: AppConfig) => {
       if (examples === undefined) {
         return;
       }
@@ -243,7 +244,7 @@ function usePaletteItems(): PaletteItem[] {
 
     items.push(...datasetPaletteItems(examples?.index?.datasets ?? [], command, loadDataset));
 
-    for (const config of examples?.index?.configs ?? []) {
+    for (const config of appConfigs(examples)) {
       items.push(
         paletteItem("Example", `example-${config.path}`, config.title, config.path, () => loadExample(config)),
       );

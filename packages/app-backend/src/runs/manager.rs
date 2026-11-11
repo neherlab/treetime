@@ -1,5 +1,5 @@
 use crate::atomic_write::write_atomically;
-use crate::command::config_from_request;
+use crate::command::{AppCommandExt, config_from_request, ensure_in_apps};
 use crate::job::{CancelToken, JobEvent, JobId, TerminalEvent};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
@@ -78,7 +78,13 @@ impl RunManager {
 
   pub fn list(&self) -> Result<RunList, Report> {
     Ok(RunList {
-      runs: self.store.list()?.iter().map(RunRecord::summary).collect(),
+      runs: self
+        .store
+        .list()?
+        .iter()
+        .filter(|record| record.config.command().in_apps())
+        .map(RunRecord::summary)
+        .collect(),
       active_runs: self.active_count(),
     })
   }
@@ -120,6 +126,7 @@ impl RunManager {
         return Err(conflict(format!("run `{}` has already started", id.as_str())));
       }
       let command = request.command.unwrap_or_else(|| record.config.command());
+      ensure_in_apps(command)?;
       if let Some(config) = &request.config {
         record.config = config_from_request(command, config)?;
       } else if command != record.config.command() {

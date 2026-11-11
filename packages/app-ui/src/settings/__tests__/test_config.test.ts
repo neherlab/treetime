@@ -139,15 +139,15 @@ describe("form config", () => {
 
   test("switching the command keeps a shared choice only when the target command offers its value", () => {
     const ancestral = commandSettings("ancestral").settings;
-    const homoplasy = commandSettings("homoplasy").settings;
+    const clock = commandSettings("clock").settings;
 
     const previous = withSetting(
-      withSetting(defaultConfig(ancestral), "output_selection", ["nwk", "model"]),
+      withSetting(defaultConfig(ancestral), "output_selection", ["sequences", "translations"]),
       "newick_annotations",
       "nhx",
     );
 
-    const config = carryOverConfig(homoplasy, ancestral, previous);
+    const config = carryOverConfig(clock, ancestral, previous);
 
     expect({ selection: config["output_selection"], annotations: config["newick_annotations"] }).toStrictEqual({
       selection: [],

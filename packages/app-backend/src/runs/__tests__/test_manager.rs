@@ -5,7 +5,7 @@ mod tests {
   use crate::job::{JobEvent, JobId, TerminalEvent};
   use crate::runs::events::{RunEvent, read_events};
   use crate::runs::manager::RunManager;
-  use crate::runs::record::{RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
+  use crate::runs::record::{CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
   use crate::runs::store::{RunStore, default_title};
   use app_commands::command::AppCommand;
   use chrono::{Local, TimeDelta, Utc};
@@ -110,6 +110,72 @@ mod tests {
     );
     started.run();
     assert_eq!(0, runs.list().unwrap().active_runs);
+  }
+
+  #[test]
+  fn test_manager_list_skips_stored_runs_of_command_line_only_commands() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let clock = create(&runs, AppCommand::Clock, clock_config());
+    let tree = json!({ "tree": "t.nwk", "alignment": ["a.fasta"] });
+    runs
+      .store()
+      .create(config_from_settings(AppCommand::Homoplasy, &tree).unwrap())
+      .unwrap();
+    assert_eq!(
+      vec![clock.id],
+      runs
+        .list()
+        .unwrap()
+        .runs
+        .into_iter()
+        .map(|run| run.id)
+        .collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_manager_start_rejects_a_stored_run_of_a_command_line_only_command() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let tree = json!({ "tree": "t.nwk", "alignment": ["a.fasta"] });
+    let record = runs
+      .store()
+      .create(config_from_settings(AppCommand::Homoplasy, &tree).unwrap())
+      .unwrap();
+    assert_error!(
+      runs.start(&record.id, &StartRunRequest::default(), accept()),
+      "the command `homoplasy` is available in the command-line tool only"
+    );
+  }
+
+  #[test]
+  fn test_manager_create_rejects_a_command_line_only_command() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    assert_error!(
+      runs.create(&CreateRunRequest {
+        command: AppCommand::Mugration,
+        config: sparse(json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" })),
+        defer_start: true,
+      }),
+      "the command `mugration` is available in the command-line tool only"
+    );
+  }
+
+  #[test]
+  fn test_manager_start_rejects_a_switch_to_a_command_line_only_command() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, clock_config());
+    let request = StartRunRequest {
+      command: Some(AppCommand::Mugration),
+      config: None,
+    };
+    assert_error!(
+      runs.start(&created.id, &request, accept()).map(|_| ()),
+      "the command `mugration` is available in the command-line tool only"
+    );
   }
 
   #[test]

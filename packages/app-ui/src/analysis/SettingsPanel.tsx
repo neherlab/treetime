@@ -1,7 +1,6 @@
 import type {
   ActiveChoice,
   AppCommand,
-  InputFacts,
   RunCheck,
   SettingSpec,
   SparseConfig,
@@ -30,14 +29,12 @@ import { SettingField } from "./SettingField";
 export function SettingsPanel({
   command,
   config,
-  facts,
   checks,
   reported,
   checked,
 }: {
   command: AppCommand;
   config: SparseConfig;
-  facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
   reported: readonly ActiveChoice[] | undefined;
   checked: SparseConfig | undefined;
@@ -95,14 +92,7 @@ export function SettingsPanel({
         )}
       </div>
       {view === "main" ? (
-        <MainSettings
-          command={command}
-          config={config}
-          facts={facts}
-          checks={checks}
-          reported={reported}
-          checked={checked}
-        />
+        <MainSettings command={command} config={config} checks={checks} reported={reported} checked={checked} />
       ) : (
         <AllSettings command={command} config={config} search={search} changedOnly={changedOnly} />
       )}

@@ -22,9 +22,7 @@ import { commandSettings } from "../settings/catalog";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
 import { AncestralResultsView } from "./AncestralResultsView";
 import { ClockResultsView } from "./ClockResultsView";
-import { HomoplasyResultsView } from "./HomoplasyResultsView";
 import { LogTab } from "./LogTab";
-import { MugrationResultsView } from "./MugrationResultsView";
 import { OutputFiles } from "./OutputFiles";
 import { RunningView } from "./RunningView";
 import { RunTitle } from "./RunTitle";
@@ -238,14 +236,6 @@ function CommandResults({
 
   if (view.command === "ancestral") {
     return <AncestralResultsView record={record} data={view.data} tree={tree} />;
-  }
-
-  if (view.command === "homoplasy") {
-    return <HomoplasyResultsView record={record} data={view.data} tree={tree} />;
-  }
-
-  if (view.command === "mugration") {
-    return <MugrationResultsView record={record} data={view.data} tree={tree} />;
   }
 
   return <TreeOnlyResults record={record} data={view.data} tree={tree} />;

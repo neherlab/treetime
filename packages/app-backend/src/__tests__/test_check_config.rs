@@ -135,7 +135,6 @@ pub(crate) mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::ancestral_parsimony( AppCommand::Ancestral, json!({ "method_anc": "parsimony" }))]
-  #[case::homoplasy_parsimony( AppCommand::Homoplasy, json!({ "method_anc": "parsimony" }))]
   #[case::optimize_dense(      AppCommand::Optimize,  json!({ "representation": "dense" }))]
   #[case::timetree_opt(        AppCommand::Timetree,  json!({ "coalescent": "opt" }))]
   #[case::timetree_input_mode( AppCommand::Timetree,  json!({ "branch_length_mode": "input" }))]
@@ -278,9 +277,7 @@ pub(crate) mod tests {
       AppCommand::Optimize,
       AppCommand::Prune,
       AppCommand::Ancestral,
-      AppCommand::Homoplasy,
-      AppCommand::Clock,
-      AppCommand::Mugration
+      AppCommand::Clock
     )]
     command: AppCommand,
   ) {
@@ -296,6 +293,47 @@ pub(crate) mod tests {
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
       "{command}: {response:?}"
+    );
+  }
+
+  #[rstest]
+  #[trace]
+  fn test_check_config_rejects_a_command_line_only_command(
+    #[values(AppCommand::Homoplasy, AppCommand::Mugration)] command: AppCommand,
+  ) {
+    let response = check_config(&CheckConfigRequest {
+      command,
+      text: "tree: t.nwk\n".to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig::default(),
+    });
+    let CheckConfigResponse::Invalid { message, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      format!("the command `{command}` is available in the command-line tool only"),
+      message
+    );
+  }
+
+  #[test]
+  fn test_check_config_rejects_a_command_line_only_command_named_by_the_schema_of_the_text() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: include_str!("../../../../data/zika/20/mugration-country-weights.yaml").to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig::default(),
+    });
+    let CheckConfigResponse::Invalid { message, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      "the command `mugration` is available in the command-line tool only",
+      message
     );
   }
 
@@ -318,7 +356,7 @@ pub(crate) mod tests {
   #[test]
   fn test_check_config_missing_required_input_uses_cli_wording() {
     let response = check_config(&CheckConfigRequest {
-      command: AppCommand::Mugration,
+      command: AppCommand::Clock,
       text: "tree: t.nwk\n".to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
@@ -336,7 +374,7 @@ pub(crate) mod tests {
     };
     assert_eq!(
       (
-        "the following required arguments were not provided:\n  --metadata <FILE>\n  --attribute <COLUMN>",
+        "the following required arguments were not provided:\n  --metadata <FILE>",
         0,
         None
       ),
@@ -502,12 +540,12 @@ pub(crate) mod tests {
   fn test_check_config_replace_inputs_swaps_the_paths_of_an_example_config() {
     let replacements = json!({
       "tree": "inputs/1/tree.nwk",
-      "metadata": "inputs/2/metadata.tsv",
-      "weights": "inputs/3/country_weights.csv",
+      "alignment": ["inputs/2/aln.fasta.xz"],
+      "remove_file": "inputs/3/prune-nodes.txt",
     });
     let response = check_config(&CheckConfigRequest {
-      command: AppCommand::Mugration,
-      text: include_str!("../../../../data/zika/20/mugration-country-weights.yaml").to_owned(),
+      command: AppCommand::Prune,
+      text: include_str!("../../../../data/ebola/20/prune-remove.yaml").to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
@@ -519,20 +557,18 @@ pub(crate) mod tests {
     assert_eq!(
       (
         json!("inputs/1/tree.nwk"),
-        json!("inputs/2/metadata.tsv"),
-        json!("inputs/3/country_weights.csv"),
-        json!("country"),
+        json!(["inputs/2/aln.fasta.xz"]),
+        json!("inputs/3/prune-nodes.txt"),
         true
       ),
       (
         config["tree"].clone(),
-        config["metadata"].clone(),
-        config["weights"].clone(),
-        config["attribute"].clone(),
+        config["alignment"].clone(),
+        config["remove_file"].clone(),
         code
           .command_line
           .iter()
-          .any(|line| line.text == "--weights inputs/3/country_weights.csv")
+          .any(|line| line.text == "--remove-file inputs/3/prune-nodes.txt")
       )
     );
   }
@@ -540,18 +576,18 @@ pub(crate) mod tests {
   #[test]
   fn test_check_config_replace_inputs_rejects_a_setting_that_is_not_an_input() {
     let response = check_config(&CheckConfigRequest {
-      command: AppCommand::Mugration,
-      text: "tree: tree.nwk\nmetadata: metadata.tsv\nattribute: country\n".to_owned(),
+      command: AppCommand::Clock,
+      text: "tree: tree.nwk\nmetadata: metadata.tsv\n".to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
-      replace_inputs: SparseConfig(json!({ "attribute": "region" }).as_object().unwrap().clone()),
+      replace_inputs: SparseConfig(json!({ "reroot": "oldest" }).as_object().unwrap().clone()),
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
     };
     assert_eq!(
-      "`replace_inputs` names `attribute`, which is not an input setting of the command",
+      "`replace_inputs` names `reroot`, which is not an input setting of the command",
       message
     );
   }
@@ -559,8 +595,8 @@ pub(crate) mod tests {
   #[test]
   fn test_check_config_replace_inputs_checks_the_type_of_the_values() {
     let response = check_config(&CheckConfigRequest {
-      command: AppCommand::Mugration,
-      text: "tree: tree.nwk\nmetadata: metadata.tsv\nattribute: country\n".to_owned(),
+      command: AppCommand::Clock,
+      text: "tree: tree.nwk\nmetadata: metadata.tsv\n".to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
@@ -701,9 +737,6 @@ pub(crate) mod tests {
           InputKind::Alignment => ("alignment", json!(["a.fasta"])),
         };
         draft.insert(o!(key), value);
-      }
-      if command == AppCommand::Mugration {
-        draft.insert(o!("attribute"), json!("country"));
       }
       draft
     }
