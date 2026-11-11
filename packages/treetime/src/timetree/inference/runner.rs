@@ -335,7 +335,7 @@ fn compute_branch_distributions_marginal_mode(
   );
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   let indel_rate = indels.rate();
-  debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
+  debug!("Indel rate = {indel_rate:.6e} indel events per unit of branch length, over all {total_sites} sites");
 
   graph
     .get_edges()
