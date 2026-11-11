@@ -2012,6 +2012,7 @@ export const zTimetreeEstimates = z.object({
   r: z.number().optional(),
   r_squared: z.number().optional(),
   samples: z.int().gte(0),
+  latest_sample: zYearDate.optional(),
   excluded_samples: z.int().gte(0),
   coalescent_prior: zCoalescentPrior,
   relaxed_clock: zRelaxedClock.optional(),

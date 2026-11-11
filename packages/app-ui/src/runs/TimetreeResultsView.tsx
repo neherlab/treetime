@@ -100,11 +100,11 @@ function TimetreeAside({
             <>
               Estimate of <i>T</i>
               <sub>c</sub> in years with its interval. The effective population size equals <i>T</i>
-              <sub>c</sub> multiplied by the number of generations per year.
+              <sub>c</sub> multiplied by the number of generations per year. Shown up to the latest sample.
             </>
           }
         >
-          <SkylinePlot segments={data.skyline} />
+          <SkylinePlot segments={data.skyline} until={data.estimates?.latest_sample?.year} />
         </Panel>
       )}
     </>

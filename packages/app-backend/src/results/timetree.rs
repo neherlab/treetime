@@ -144,6 +144,7 @@ fn timetree_estimates(
     r,
     r_squared: outputs.clock_model.and_then(ClockModel::r_squared),
     samples: tree.tips().count(),
+    latest_sample: latest_sample(tree),
     excluded_samples: tree.tips().filter(|tip| tip.excluded == Some(true)).count(),
     coalescent_prior: coalescent_prior(config),
     relaxed_clock: relaxed_clock(config),
@@ -178,6 +179,8 @@ pub struct TimetreeEstimates {
   pub r_squared: Option<f64>,
   /// Number of samples in the tree.
   pub samples: usize,
+  /// Date of the latest sample that the clock model kept.
+  pub latest_sample: Option<YearDate>,
   /// Number of samples the clock model left out: without a usable date or clock outliers.
   pub excluded_samples: usize,
   /// Coalescent prior the run used.
@@ -267,6 +270,14 @@ pub struct RelaxedClock {
   pub slack: f64,
   /// Coupling: how strongly the rates of parent and child branches are tied.
   pub coupling: f64,
+}
+
+fn latest_sample(tree: &ResultTree) -> Option<YearDate> {
+  tree
+    .tips()
+    .filter(|tip| tip.excluded != Some(true))
+    .filter_map(|tip| tip.date.clone())
+    .max_by(|left, right| left.year.total_cmp(&right.year))
 }
 
 fn near_interval_edge(date: f64, interval: &DateInterval) -> bool {

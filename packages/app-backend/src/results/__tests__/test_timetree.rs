@@ -51,6 +51,7 @@ mod tests {
       r: Some(0.9),
       r_squared: Some(0.9 * 0.9),
       samples: 3,
+      latest_sample: Some(YearDate::new(2015.0)),
       excluded_samples: 1,
       coalescent_prior: CoalescentPrior::None,
       relaxed_clock: None,

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useMemo } from "react";
 
 import { Panel } from "../components/Panel";
+import { baseName } from "../settings/inputs";
 
 export function SubstitutionModels({ models: { alignments, models } }: { models: RunModels }) {
   const sequences = useMemo(
@@ -52,7 +53,7 @@ function SequenceModels({ models }: { models: readonly SequenceModelSummary[] })
             <TableCell>{model.name ?? "-"}</TableCell>
             <TableCell className="text-right">{model.alignment}</TableCell>
             <TableCell>
-              <code className="font-mono text-xs">{model.path ?? "-"}</code>
+              <FileName path={model.path} />
             </TableCell>
             <TableCell className="text-right">{model.sites}</TableCell>
             <TableCell>{model.model}</TableCell>
@@ -81,7 +82,7 @@ function Alignments({ alignments }: { alignments: readonly AlignmentSummary[] })
           <TableRow key={alignment.alignment}>
             <TableCell className="text-right">{alignment.alignment}</TableCell>
             <TableCell>
-              <code className="font-mono text-xs">{alignment.path}</code>
+              <FileName path={alignment.path} />
             </TableCell>
             <TableCell className="text-right">{alignment.sites}</TableCell>
             <TableCell className="text-right">{alignment.indel_rate?.toPrecision(4) ?? "-"}</TableCell>
@@ -114,5 +115,15 @@ function TraitModels({ models }: { models: readonly TraitModelSummary[] }) {
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function FileName({ path }: { path: string | undefined }) {
+  return path === undefined ? (
+    "-"
+  ) : (
+    <code title={path} className="font-mono text-xs">
+      {baseName(path)}
+    </code>
   );
 }

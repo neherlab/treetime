@@ -3132,6 +3132,11 @@
             "format": "uint",
             "minimum": 0
           },
+          "latest_sample": {
+            "description": "Date of the latest sample that the clock model kept.",
+            "$ref": "#/components/schemas/YearDate",
+            "x-unset": true
+          },
           "excluded_samples": {
             "description": "Number of samples the clock model left out: without a usable date or clock outliers.",
             "type": "integer",

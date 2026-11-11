@@ -1094,6 +1094,10 @@ export type TimetreeEstimates = {
    */
   samples: number;
   /**
+   * Date of the latest sample that the clock model kept.
+   */
+  latest_sample?: YearDate;
+  /**
    * Number of samples the clock model left out: without a usable date or clock outliers.
    */
   excluded_samples: number;

@@ -16,14 +16,22 @@ import {
 
 const AUTO_EXTENT = ["auto", "auto"];
 
-export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] }) {
+export function SkylinePlot({ segments, until }: { segments: readonly SkylineSegment[]; until: number | undefined }) {
   const data = useMemo(
     () =>
-      segments.flatMap((segment) => [
-        { t: segment.start, tc: segment.tc.value, band: band(segment) },
-        { t: segment.end, tc: segment.tc.value, band: band(segment) },
-      ]),
-    [segments],
+      segments.flatMap((segment) =>
+        until !== undefined && segment.start >= until
+          ? []
+          : [
+              { t: segment.start, tc: segment.tc.value, band: band(segment) },
+              {
+                t: until === undefined ? segment.end : Math.min(segment.end, until),
+                tc: segment.tc.value,
+                band: band(segment),
+              },
+            ],
+      ),
+    [segments, until],
   );
 
   const xAxis = useMemo(() => niceAxis(data.map((point) => point.t)), [data]);

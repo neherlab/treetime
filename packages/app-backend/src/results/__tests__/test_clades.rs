@@ -200,6 +200,7 @@ mod tests {
         r: None,
         r_squared: None,
         samples: 10,
+        latest_sample: None,
         excluded_samples,
         coalescent_prior: CoalescentPrior::None,
         relaxed_clock: None,
