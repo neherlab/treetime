@@ -19,13 +19,13 @@ import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { OptionToggle } from "../components/OptionToggle";
+import { OptionToggle, type ToggleOption } from "../components/OptionToggle";
 import { commandSettings } from "../settings/catalog";
 import { choiceRow } from "../settings/choices";
 import type { SettingKey } from "../settings/commands";
 import { documentedDefault, isChanged, resetValue, settingValue } from "../settings/config";
 import { SettingHelp } from "../settings/help";
-import { isNumber, sameJson } from "../settings/json";
+import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
@@ -40,11 +40,17 @@ const CLOCK_FILTER_STEP = 0.5;
 
 const NO_CHECKS: readonly RunCheck[] = [];
 
+const TOPOLOGY_SWITCHES = [
+  { key: "no_merge_shared_mutations", text: "Merge polytomy siblings that share mutations" },
+  { key: "no_hoist_reversions", text: "Hoist reversions in polytomies" },
+  { key: "no_collapse_short_branches", text: "Collapse short internal branches" },
+] as const satisfies readonly { key: SettingKey<"optimize">; text: string }[];
+
+const TOPOLOGY_KEYS: ReadonlySet<string> = new Set(TOPOLOGY_SWITCHES.map(({ key }) => key));
+
 const INTERVAL_KEYS = ["confidence"] as const satisfies readonly TimetreeKey[];
 
 const CLOCK_FILTER_KEYS = ["clock_filter"] as const satisfies readonly TimetreeKey[];
-
-const RELAX_KEYS = ["relax"] as const satisfies readonly TimetreeKey[];
 
 const COALESCENT_KEYS = ["coalescent", "n_skyline", "skyline_stiffness"] as const satisfies readonly TimetreeKey[];
 
@@ -67,15 +73,15 @@ const CHOICE_TEXT: Record<ChoiceName, ChoiceText> = {
   },
   root: {
     label: "Root",
-    sub: "Where the tree is rooted",
+    sub: "Pick rooting behavior",
     options: {
-      reroot: { label: "Optimize root", note: "Not set uses the command default." },
+      reroot: { label: "Reroot", note: "Not set uses the command default." },
       outgroup: {
         label: "Outgroup",
         note: "The root is placed on the branch above the most recent common ancestor of the named tips.",
       },
       keep: {
-        label: "Keep input root",
+        label: "Keep root",
         note: "The input root is kept; use this when the input tree is already rooted.",
       },
     },
@@ -177,6 +183,12 @@ export function MainSettings({
           ) : null;
         }
 
+        if (TOPOLOGY_KEYS.has(key)) {
+          return settings.main_settings.find((first) => TOPOLOGY_KEYS.has(first)) === key ? (
+            <TopologyRow key={key} context={context} shown={settings.main_settings} />
+          ) : null;
+        }
+
         return <SimpleRow key={key} context={context} settingKey={key} />;
       })}
     </div>
@@ -191,7 +203,6 @@ function TimetreeSettings({ context }: { context: RowContext }) {
       <CoalescentRow context={context} />
       <ChoiceRow context={context} choice="root" />
       <ClockFilterRow context={context} />
-      <RelaxRow context={context} />
       <MainRow context={context} label="Polytomies" sub="Nodes with more than two children" keys={POLYTOMY_KEYS}>
         <SwitchLabel context={context} settingKey="keep_polytomies" text="Keep polytomies unresolved" />
       </MainRow>
@@ -203,9 +214,14 @@ function TimetreeSettings({ context }: { context: RowContext }) {
 
 function IntervalsRow({ context }: { context: RowContext }) {
   return (
-    <MainRow context={context} label="Date intervals" sub="Marginal intervals on every node" keys={INTERVAL_KEYS}>
+    <MainRow
+      context={context}
+      label="Confidence intervals"
+      sub="Marginal dating uncertainty of nodes"
+      keys={INTERVAL_KEYS}
+    >
       <Inline>
-        <SwitchLabel context={context} settingKey="confidence" text="Compute date intervals" />
+        <SwitchLabel context={context} settingKey="confidence" text="Compute confidence intervals" />
       </Inline>
     </MainRow>
   );
@@ -259,19 +275,113 @@ function ChoiceRow({ context, choice: name }: { context: RowContext; choice: Cho
 }
 
 function CoalescentRow({ context }: { context: RowContext }) {
+  const { get, set, reset } = context;
+  const value = get("coalescent");
+  const derived = coalescentMode(value);
+  const [picked, setPicked] = useState<string>();
+  const mode = picked === "fixed" && derived === "none" ? "fixed" : derived;
+  const years = yearsOf(value);
+
+  const onPick = useCallback(
+    (next: string) => {
+      setPicked(next);
+
+      if (next !== "skyline") {
+        reset(SKYLINE_KEYS);
+      }
+
+      if (COALESCENT_NAMED.has(next)) {
+        set("coalescent", next);
+      } else if (next === "none" || coalescentMode(get("coalescent")) !== "fixed") {
+        reset(["coalescent"]);
+      }
+    },
+    [get, reset, set],
+  );
+
+  const onYears = useCallback(
+    (next: number | string | undefined) => {
+      if (next === undefined || next === "") {
+        reset(["coalescent"]);
+      } else {
+        set("coalescent", `${next}y`);
+      }
+    },
+    [reset, set],
+  );
+
   return (
-    <MainRow context={context} label="Coalescent prior" sub="Prior on node times" keys={COALESCENT_KEYS}>
-      <Inline>
-        <Control context={context} settingKey="coalescent" className="w-auto" />
-        <Labeled text="Skyline grid points">
-          <Control context={context} settingKey="n_skyline" className="w-20" />
-        </Labeled>
-        <Labeled text="Skyline stiffness">
-          <Control context={context} settingKey="skyline_stiffness" className="w-20" />
-        </Labeled>
-      </Inline>
+    <MainRow context={context} label="Coalescent model" sub="Tree prior on node times" keys={COALESCENT_KEYS}>
+      <OptionToggle label="Coalescent model" value={mode} onChange={onPick} options={COALESCENT_OPTIONS} />
+      {mode === "fixed" && (
+        <>
+          <Inline>
+            <Labeled text="Time scale">
+              <NumberInput
+                aria-label="Coalescent time scale in years"
+                value={years}
+                onValueChange={onYears}
+                className="h-8 w-24 font-mono"
+              />
+              years
+            </Labeled>
+          </Inline>
+          {years === undefined && value !== undefined && derived === "fixed" && (
+            <Note>
+              The configuration sets {isNumber(value) ? `${value} substitutions per site` : fixedText(value)}; a value
+              in years replaces it.
+            </Note>
+          )}
+        </>
+      )}
+      {mode === "skyline" && (
+        <Inline>
+          <Labeled text="Skyline grid points">
+            <Control context={context} settingKey="n_skyline" className="w-20" />
+          </Labeled>
+          <Labeled text="Skyline stiffness">
+            <Control context={context} settingKey="skyline_stiffness" className="w-20" />
+          </Labeled>
+        </Inline>
+      )}
     </MainRow>
   );
+}
+
+const COALESCENT_NAMED: ReadonlySet<string> = new Set(
+  commandSettings("timetree")
+    .settings.find(({ key }) => key === "coalescent")
+    ?.options.map(({ value }) => value) ?? [],
+);
+
+const COALESCENT_LABELS = new Map([
+  ["none", "None"],
+  ["fixed", "Fixed constant"],
+  ["opt", "Optimized constant"],
+  ["skyline", "Skyline"],
+]);
+
+const COALESCENT_OPTIONS: readonly ToggleOption<string>[] = ["none", "fixed", ...COALESCENT_NAMED].map((value) => ({
+  value,
+  label: COALESCENT_LABELS.get(value) ?? value,
+}));
+
+const SKYLINE_KEYS = ["n_skyline", "skyline_stiffness"] as const satisfies readonly TimetreeKey[];
+
+const YEARS_PATTERN = /^\+?(\d+(?:\.\d*)?|\.\d+)y$/u;
+
+function coalescentMode(value: JsonValue | undefined): string {
+  if (value === undefined || value === null) {
+    return "none";
+  }
+
+  return isString(value) && COALESCENT_NAMED.has(value) ? value : "fixed";
+}
+
+function yearsOf(value: JsonValue | undefined): number | undefined {
+  const match = isString(value) ? YEARS_PATTERN.exec(value) : null;
+
+  return match?.[1] === undefined ? undefined : Number(match[1]);
 }
 
 function ClockFilterRow({ context }: { context: RowContext }) {
@@ -311,44 +421,6 @@ function ClockFilterRow({ context }: { context: RowContext }) {
   );
 }
 
-function RelaxRow({ context }: { context: RowContext }) {
-  const { get, set, reset, example, specs } = context;
-  const relax = get("relax");
-  const relaxed = Array.isArray(relax) && relax.length > 0;
-  const valueNames = specs.get("relax")?.value_names;
-
-  const [slack = "Slack", coupling = "Coupling"] = useMemo(() => (valueNames ?? []).map(valueNameLabel), [valueNames]);
-
-  const onRelax = useCallback(
-    (checked: boolean) => (checked ? set("relax", example("relax")) : reset(RELAX_KEYS)),
-    [example, reset, set],
-  );
-
-  const onPair = useCallback((next: JsonValue) => set("relax", next), [set]);
-
-  return (
-    <MainRow context={context} label="Relaxed clock" sub="Rate variation between branches" keys={RELAX_KEYS}>
-      <Inline>
-        <Label className="font-normal">
-          <Switch checked={relaxed} onCheckedChange={onRelax} />
-          Relax the clock
-        </Label>
-        {relaxed && (
-          <>
-            <Labeled text={slack}>
-              <NumberPairInput value={relax} index={0} onChange={onPair} label={slack} />
-            </Labeled>
-            <Labeled text={coupling}>
-              <NumberPairInput value={relax} index={1} onChange={onPair} label={coupling} />
-            </Labeled>
-          </>
-        )}
-      </Inline>
-      <Note>Values near 1 are weak priors. Coupling 0 is an uncorrelated clock.</Note>
-    </MainRow>
-  );
-}
-
 function ModelRow({ context }: { context: RowContext }) {
   const { get, set, specs } = context;
   const modelSpec = specs.get("model");
@@ -362,7 +434,7 @@ function ModelRow({ context }: { context: RowContext }) {
   );
 
   return (
-    <MainRow context={context} label="Substitution model" sub="Nucleotide or amino-acid model" keys={MODEL_KEYS}>
+    <MainRow context={context} label="Substitution model" keys={MODEL_KEYS}>
       <Control context={context} settingKey="model" className="w-auto" />
       {modelHelp !== "" && <Note>{modelHelp}</Note>}
       <Labeled text="Parameters">
@@ -459,6 +531,42 @@ function Control({ context, settingKey, className }: { context: RowContext; sett
   );
 }
 
+function TopologyRow({ context, shown }: { context: RowContext; shown: readonly string[] }) {
+  const switches = useMemo(() => TOPOLOGY_SWITCHES.filter(({ key }) => shown.includes(key)), [shown]);
+  const keys = useMemo(() => switches.map(({ key }) => key), [switches]);
+
+  return (
+    <MainRow
+      context={context}
+      label="Topology optimizations"
+      sub="On by default; switch off to keep the topology as it is"
+      keys={keys}
+    >
+      <div className="grid gap-2">
+        {switches.map(({ key, text }) => (
+          <OnUnlessSwitch key={key} context={context} settingKey={key} text={text} />
+        ))}
+      </div>
+    </MainRow>
+  );
+}
+
+function OnUnlessSwitch({ context, settingKey, text }: { context: RowContext; settingKey: string; text: string }) {
+  const { get, set, reset } = context;
+
+  const onChange = useCallback(
+    (checked: boolean) => (checked ? reset([settingKey]) : set(settingKey, true)),
+    [reset, set, settingKey],
+  );
+
+  return (
+    <Label className="font-normal">
+      <Switch checked={get(settingKey) !== true} onCheckedChange={onChange} />
+      {text}
+    </Label>
+  );
+}
+
 function SwitchLabel({ context, settingKey, text }: { context: RowContext; settingKey: string; text: string }) {
   const { get, set } = context;
   const onChange = useCallback((checked: boolean) => set(settingKey, checked), [set, settingKey]);
@@ -471,39 +579,11 @@ function SwitchLabel({ context, settingKey, text }: { context: RowContext; setti
   );
 }
 
-function NumberPairInput({
-  value,
-  index,
-  onChange,
-  label,
-}: {
-  value: JsonValue | undefined;
-  index: number;
-  onChange: (value: JsonValue) => void;
-  label: string;
-}) {
-  const pair = useMemo(() => (Array.isArray(value) ? value : []), [value]);
-
-  const onInput = useCallback(
-    (next: number | string | undefined) =>
-      onChange(pair.map((current, position) => (position === index ? (next ?? "") : current))),
-    [index, onChange, pair],
-  );
-
-  return <NumberInput aria-label={label} value={pair[index]} onValueChange={onInput} className="h-8 w-24 font-mono" />;
-}
-
 interface ChoiceText {
   label: string;
   sub: string;
   options: Partial<Record<ChoiceOptionName, { label: string; note?: string }>>;
   settings: Partial<Record<string, string>>;
-}
-
-function valueNameLabel(name: string): string {
-  const lower = name.toLowerCase().replaceAll("_", " ");
-
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 function Inline({ children }: { children: React.ReactNode }) {
@@ -521,4 +601,8 @@ function Labeled({ text, children }: { text: string; children: React.ReactNode }
 
 function Note({ children }: { children: React.ReactNode }) {
   return <p className="text-muted-foreground text-xs">{children}</p>;
+}
+
+function fixedText(value: JsonValue): string {
+  return isString(value) ? value : JSON.stringify(value);
 }

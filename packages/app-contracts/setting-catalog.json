@@ -84,7 +84,6 @@
         "outgroup",
         "keep_root",
         "clock_filter",
-        "relax",
         "keep_polytomies",
         "model",
         "model_params",
@@ -4427,12 +4426,14 @@
         "Tree ordering"
       ],
       "main_settings": [
-        "optimizer",
         "reroot",
         "outgroup",
         "keep_root",
         "divergence_units",
         "no_indels",
+        "no_merge_shared_mutations",
+        "no_collapse_short_branches",
+        "no_hoist_reversions",
         "max_iter"
       ],
       "choices": [

@@ -70,7 +70,7 @@ export function AncestralResultsView({
     () => [
       { label: "Mutations", value: String(total), detail: "On all branches" },
       { label: "Branches with mutations", value: String(branches.length) },
-      { label: "Sites mutated on several branches", value: String(sites.length), detail: "Candidates for homoplasy" },
+      { label: "Homoplasic sites", value: String(sites.length), detail: "Sites mutated on several branches" },
       { label: "Substitution model", value: settingText(record, "model", locale) },
       { label: "Reconstruction", value: settingText(record, "method_anc", locale) },
       runTimeEntry(record),
