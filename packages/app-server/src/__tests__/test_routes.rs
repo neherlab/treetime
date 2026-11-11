@@ -33,26 +33,15 @@ pub(crate) mod tests {
     let (_, record) = request(&test, "GET", &format!("/api/runs/{id}"), None).await;
     let run_dir = test.runs_dir.path().canonicalize().unwrap().join(&id);
     assert_eq!(
-      (
-        json!("ok"),
-        json!(run_dir.join("out")),
-        json!([
-          "nwk",
-          "nexus",
-          "auspice",
-          "node-data",
-          "model",
-          "sequences",
-          "clock-model",
-          "dates",
-          "tracelog",
-          "rtt"
-        ])
-      ),
+      (json!("ok"), json!(run_dir.join("out")), json!([]), false,),
       (
         record["status"].clone(),
         record["config"]["output_all"].clone(),
-        record["config"]["output_selection"].clone()
+        record["config"]["output_selection"].clone(),
+        record["changed_settings"]
+          .as_array()
+          .unwrap()
+          .contains(&json!("output_selection")),
       )
     );
     assert!(record["headline"]["clock_rate"].as_f64().unwrap() > 0.0);
