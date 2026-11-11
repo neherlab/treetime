@@ -2,9 +2,12 @@
 
 `fn LineageExpectation::span()` [packages/treetime/src/coalescent/mean_field.rs#L467-L477](../../packages/treetime/src/coalescent/mean_field.rs#L467-L477) ends at the last point of the expectation grid, which reaches the latest time at which any node's survival function is below one. An undated leaf enters the lineage counts by its posterior ([kb/decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md](../decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md)). Its posterior has no upper bound from a sampling window: past the latest sample $\bar k_{-v} \approx 0$, so its leaf factor is nearly flat there, and the right tail follows the branch likelihood.
 
+Clock-filter outliers extend the span the same way. A tip that the clock filter flags loses its date constraint, and the time inference dates it from the clock alone ([M-clock-filter-outlier-clade-dated-after-the-samples.md](M-clock-filter-outlier-clade-dated-after-the-samples.md)), so its posterior has no upper bound from the sampling window either.
+
 ## Evidence
 
 - **Validation**: `validation/data_n100_messy` (3% of tips undated), `keep-opt-fixed`, $L=10^3$, $\mu=3\cdot10^{-4}$, `const`: the one segment of the coalescent output ends between 2057 and 2088 in the 10 replicates, against a latest sample date of 2025.08. $T_c$ is 17.0 against 16.5 on the clean data, so the fit itself is barely affected
+- **Clock-filter outliers**: `data/ebola/362`, `--coalescent skyline --n-skyline 50 --clock-filter 4` (a web app run): the 344 tips that the clock model keeps lie between 2014.21 and 2015.81, the 18 flagged tips are dated between 2015.08 and 2016.35, and the skyline segments end at 2018.66, so 30 of the 50 segments start after the latest kept sample. The app plots the skyline up to the latest kept sample (`latest_sample` of `TimetreeEstimates` in [packages/app-backend/src/results/timetree.rs](../../packages/app-backend/src/results/timetree.rs)); the coalescent output still reports every segment
 - **Evaluation**: `validation/evaluate.py` scores a segment at its midpoint and drops segments whose midpoint lies after the present, so `tc_log_bias` of that cell is `NaN`
 
 ## Impact
@@ -18,4 +21,4 @@
 ## Fix direction
 
 > [!IMPORTANT]
-> **Decision required.** Options: (a) end the span at the latest dated leaf, or at the latest time where $\bar k \ge 1$, and let the survival tails beyond it fall in the last segment; (b) bound the posterior of an undated leaf by a sampling window, such as the range of the observed dates, in the forward pass only, so $\log Z$ stays free of a sampling-date prior. Option (a) changes the segments only; option (b) also changes the dates of undated leaves.
+> **Decision required.** Options: (a) end the span at the latest dated leaf, or at the latest time where $\bar k \ge 1$, and let the survival tails beyond it fall in the last segment; (b) bound the posterior of an undated leaf by a sampling window, such as the range of the observed dates, in the forward pass only, so $\log Z$ stays free of a sampling-date prior. Option (a) changes the segments only; option (b) also changes the dates of undated leaves, and leaves the span of clock-filter outliers unbounded unless it bounds their posterior too. For option (a) the latest dated leaf is the latest leaf whose date the clock model keeps.
