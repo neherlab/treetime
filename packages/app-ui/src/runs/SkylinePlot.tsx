@@ -20,8 +20,8 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
   const data = useMemo(
     () =>
       segments.flatMap((segment) => [
-        { t: segment.start, ne: segment.ne.value, band: band(segment) },
-        { t: segment.end, ne: segment.ne.value, band: band(segment) },
+        { t: segment.start, tc: segment.tc.value, band: band(segment) },
+        { t: segment.end, tc: segment.tc.value, band: band(segment) },
       ]),
     [segments],
   );
@@ -49,7 +49,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
           allowDataOverflow
           tick={TICK_STYLE}
           width={56}
-          label={leftAxisLabel("Effective population size")}
+          label={leftAxisLabel("Tc (years)")}
         />
         <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
         <Area
@@ -62,13 +62,13 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
           name="Interval"
         />
         <Line
-          dataKey="ne"
+          dataKey="tc"
           type="linear"
           stroke={CHART.series}
           strokeWidth={1.8}
           dot={false}
           isAnimationActive={false}
-          name="Ne"
+          name="Tc"
         />
       </ComposedChart>
     </ChartContainer>
@@ -76,5 +76,5 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
 }
 
 function band(segment: SkylineSegment): [number, number] {
-  return [segment.ne.lower ?? segment.ne.value, segment.ne.upper ?? segment.ne.value];
+  return [segment.tc.lower ?? segment.tc.value, segment.tc.upper ?? segment.tc.value];
 }

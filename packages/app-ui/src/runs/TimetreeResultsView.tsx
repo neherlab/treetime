@@ -95,8 +95,14 @@ function TimetreeAside({
       {data.skyline.length > 0 && (
         <Panel
           figure
-          title="Effective population size"
-          hint="Skyline estimate with its interval, from the coalescent table"
+          title="Coalescent time scale"
+          hint={
+            <>
+              Estimate of <i>T</i>
+              <sub>c</sub> in years with its interval. The effective population size equals <i>T</i>
+              <sub>c</sub> multiplied by the number of generations per year.
+            </>
+          }
         >
           <SkylinePlot segments={data.skyline} />
         </Panel>
