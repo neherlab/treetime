@@ -1,4 +1,4 @@
-import type { RunRecord, UploadedInput } from "@neherlab/app-contracts";
+import type { RunRecord, UploadAllowance, UploadedInput } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
 import { Toaster } from "@neherlab/design/ui/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,6 +16,8 @@ import type { FormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
 
 const NATIVE_FETCH = { fetch, Request, Response, Headers, Blob, File, FormData, AbortController, AbortSignal };
+
+const ALLOWANCE: UploadAllowance = { remaining: 1 << 30, limit: 1 << 30, limit_text: "1 GiB" };
 
 const UPLOAD_RUN: RunRecord = {
   id: "r1",
@@ -321,6 +323,10 @@ function fakeServer({ failing, held, holdCreates }: { failing?: string; held?: s
     }
 
     const name = /^\/api\/runs\/r\d+\/inputs\/(?<name>[^/]+)$/u.exec(pathname)?.groups?.["name"];
+
+    if (request.method === "GET" && pathname === `/api/runs/${run}/inputs`) {
+      return Response.json(ALLOWANCE);
+    }
 
     if (request.method === "DELETE" && pathname === `/api/runs/${run}/inputs`) {
       released.push(new URL(request.url).searchParams.get("path") ?? "");

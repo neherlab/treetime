@@ -5,6 +5,7 @@ import type {
   DataIndex,
   RunRecord,
   SparseConfig,
+  UploadAllowance,
   UploadedInput,
 } from "@neherlab/app-contracts";
 import { zCheckConfigRequest } from "@neherlab/app-contracts";
@@ -102,6 +103,8 @@ const FILES = new Map([
   ["zika/20/tree.nwk", "(A:1,B:1);\n"],
   ["zika/keep_tips.txt", "country,w\nA,1\n"],
 ]);
+
+const ALLOWANCE: UploadAllowance = { remaining: 1 << 30, limit: 1 << 30, limit_text: "1 GiB" };
 
 const UPLOAD_RUN: RunRecord = {
   id: "r1",
@@ -425,6 +428,10 @@ function fakeServer({
 
     if (request.method === "GET" && pathname === "/api/runs/r1") {
       return Response.json(UPLOAD_RUN);
+    }
+
+    if (request.method === "GET" && pathname === "/api/runs/r1/inputs") {
+      return Response.json(ALLOWANCE);
     }
 
     if (request.method === "DELETE" && pathname === "/api/runs/r1/inputs") {

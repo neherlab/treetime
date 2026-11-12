@@ -1,5 +1,5 @@
 import { errorMessage, type AppCommand } from "@neherlab/app-contracts";
-import { runsCreate, runsReleaseInput, runsUploadInput } from "@neherlab/app-contracts/client";
+import { runsCreate, runsReleaseInput, runsUploadAllowance, runsUploadInput } from "@neherlab/app-contracts/client";
 import { useToastManager } from "@neherlab/design/ui/toast";
 import { useCallback, useMemo } from "react";
 
@@ -8,6 +8,7 @@ import { useDraftStore } from "../store/draft";
 import { type StoredFile, storeInOrder } from "./fileSelection";
 import { pendingUploadRun } from "./pendingUpload";
 import { whileRunBusy } from "./runWork";
+import { storeWithinAllowance } from "./uploadAllowance";
 
 export interface RunUploads {
   uploadRun: (command: AppCommand) => Promise<string>;
@@ -91,23 +92,37 @@ export function useRunUploads(): RunUploads {
   const uploadFiles = useCallback(
     async (runId: string, files: readonly File[], replaces: readonly string[]) =>
       whileRunBusy(runId, async () =>
-        storeInOrder(
+        storeWithinAllowance(
           files,
-          async (file) => {
-            const { data: uploaded } = await runsUploadInput({
+          async () => {
+            const { data: allowance } = await runsUploadAllowance({
               client,
-              path: { id: runId, name: file.name },
+              path: { id: runId },
               query: { replaces: [...replaces] },
-              body: file,
               throwOnError: true,
             });
 
-            return { name: file.name, path: uploaded.path, size: uploaded.size };
+            return allowance;
           },
-          (partial) =>
-            releaseFromPendingRun(
-              runId,
-              partial.map((file) => file.path),
+          async (allowed) =>
+            storeInOrder(
+              allowed,
+              async (file) => {
+                const { data: uploaded } = await runsUploadInput({
+                  client,
+                  path: { id: runId, name: file.name },
+                  query: { replaces: [...replaces] },
+                  body: file,
+                  throwOnError: true,
+                });
+
+                return { name: file.name, path: uploaded.path, size: uploaded.size };
+              },
+              (partial) =>
+                releaseFromPendingRun(
+                  runId,
+                  partial.map((file) => file.path),
+                ),
             ),
         ),
       ),
