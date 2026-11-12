@@ -63,7 +63,7 @@ fn compare_settings(first: &RunRecord, second: &RunRecord) -> Result<Option<Sett
   Ok(Some(SettingsComparison {
     differences,
     compared: compared_settings(&catalog).count(),
-    same_config_hash: first.config_hash.is_some() && first.config_hash == second.config_hash,
+    same_config: first.config_hash.is_some() && first.config_hash == second.config_hash && first.seed == second.seed,
   }))
 }
 
@@ -196,8 +196,8 @@ pub struct SettingsComparison {
   pub differences: Vec<SettingDifference>,
   /// Number of settings and inputs compared.
   pub compared: usize,
-  /// Whether both runs have the same configuration hash: the same settings on the same input contents.
-  pub same_config_hash: bool,
+  /// Whether both runs have the same settings, the seed of the random step included, on the same input contents.
+  pub same_config: bool,
 }
 
 pub fn compare_estimates(

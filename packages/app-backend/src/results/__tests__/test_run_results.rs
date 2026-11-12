@@ -22,7 +22,7 @@ mod tests {
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
   use helpers::{auspice_path, clock_model, finished_run, output_path, timetree_config, zika};
-  use itertools::izip;
+  use itertools::{Itertools, izip};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -579,7 +579,7 @@ mod tests {
       (
         comparison.same_analysis,
         settings.differences.is_empty(),
-        settings.same_config_hash
+        settings.same_config
       )
     );
     assert_eq!(
@@ -592,6 +592,36 @@ mod tests {
         estimates.log_likelihood_mismatches,
         ancestors.shifts.len(),
         ancestors.shifts.iter().all(|shift| shift.shift_days == 0.0)
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_compare_runs_with_different_drawn_seeds_have_different_configs() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let mut config = timetree_config(None);
+    config
+      .as_object_mut()
+      .expect("a configuration is a mapping")
+      .remove("seed");
+    let first = finished_run(&runs, AppCommand::Timetree, config.clone());
+    let second = finished_run(&runs, AppCommand::Timetree, config);
+
+    let settings = compare_runs(&runs, &first, &second)?
+      .settings
+      .expect("both runs execute the same command");
+
+    assert_eq!(
+      (vec![o!("seed")], false),
+      (
+        settings
+          .differences
+          .iter()
+          .map(|difference| difference.key.clone())
+          .collect_vec(),
+        settings.same_config
       )
     );
     Ok(())
@@ -623,7 +653,7 @@ mod tests {
         false,
         true,
       ),
-      (settings.differences, settings.same_config_hash, settings.compared > 1)
+      (settings.differences, settings.same_config, settings.compared > 1)
     );
     Ok(())
   }

@@ -73,8 +73,9 @@ pub struct RunRecord {
   pub inputs: Vec<RunInput>,
   /// Files uploaded for the run before it started; the run drops them when it starts.
   pub uploads: Vec<StoredInput>,
-  /// SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-  /// paths removed. Two runs with equal hashes used the same settings on the same input contents.
+  /// SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+  /// output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+  /// input contents.
   pub config_hash: Option<String>,
   /// Setting keys whose values differ from the command defaults, as dot-separated key paths.
   pub changed_settings: Vec<String>,
@@ -103,6 +104,7 @@ impl RunRecord {
       finished_at: self.finished_at,
       duration_seconds: self.duration_seconds,
       config_hash: self.config_hash.clone(),
+      seed: self.seed,
       changed_settings: self.changed_settings.clone(),
       headline: self.headline.clone(),
       package_name: package_name(self),
@@ -193,8 +195,11 @@ pub struct RunSummary {
   pub finished_at: Option<DateTime<Utc>>,
   /// Duration of the computation, in seconds.
   pub duration_seconds: Option<f64>,
-  /// Hash that identifies runs with the same settings and input contents.
+  /// Hash that identifies runs with the same settings and input contents, leaving out the seed: runs with the same
+  /// hash have the same settings when they have the same `seed`.
   pub config_hash: Option<String>,
+  /// Seed of the random number generator that the run used, for a run with a random step.
+  pub seed: Option<u64>,
   /// Setting keys whose values differ from the command defaults.
   pub changed_settings: Vec<String>,
   /// Key results of a finished run.

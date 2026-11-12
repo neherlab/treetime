@@ -240,6 +240,37 @@ pub(crate) mod tests {
     );
   }
 
+  #[test]
+  fn test_run_storage_config_hash_is_the_same_for_every_seed() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let config = json!({ "max_iter": 1, "sequence_length": 10807 });
+    let drawn = run_with_uploads(&runs, AppCommand::Timetree, ZIKA, &config);
+    let seed = drawn
+      .seed
+      .expect("a time tree with polytomy resolution records its seed");
+    let with_seed = |seed: u64| {
+      let mut config = config.clone();
+      config["seed"] = json!(seed);
+      run_with_uploads(&runs, AppCommand::Timetree, ZIKA, &config)
+    };
+    let kept = with_seed(seed);
+    let changed = with_seed(seed + 1);
+
+    assert_eq!(
+      (
+        (RunStatus::Ok, RunStatus::Ok, RunStatus::Ok),
+        (Some(seed), Some(seed + 1)),
+        (true, drawn.config_hash.clone(), drawn.config_hash.clone())
+      ),
+      (
+        (drawn.status, kept.status, changed.status),
+        (kept.seed, changed.seed),
+        (drawn.config_hash.is_some(), kept.config_hash, changed.config_hash)
+      )
+    );
+  }
+
   pub(crate) mod helpers {
     use crate::__tests__::test_support::tests::{sparse, unconfined, upload_bytes};
     use crate::job::JobId;

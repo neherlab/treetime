@@ -251,7 +251,7 @@ function SettingsDifferences({
         settings === undefined
           ? "The runs use different analyses"
           : differences.length === 0
-            ? settings.same_config_hash
+            ? settings.same_config
               ? "None: same settings on the same input contents"
               : "None"
             : `${differences.length} of ${settings.compared}`

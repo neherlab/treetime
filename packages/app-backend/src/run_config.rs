@@ -28,10 +28,11 @@ pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &Inpu
     .and_then(|prepared| {
       let mut config = prepared.config.clone();
       PortablePaths::of_settings(command, &config, store)?.apply(command, &mut config)?;
-      Ok((config_code(command, &config)?, config, prepared.config))
+      let seed = prepared.args.random_step().and_then(|_| prepared.args.seed());
+      Ok((config_code(command, &config)?, config, prepared.config, seed))
     });
   match resolved {
-    Ok((code, config, requested)) => {
+    Ok((code, config, requested, seed)) => {
       let (config_hash, config_hash_error) = match config_hash(command, &requested, confine) {
         Ok(hash) => (Some(hash), None),
         Err(report) => (None, Some(format!("{report:#}"))),
@@ -41,6 +42,7 @@ pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &Inpu
         code: Box::new(code),
         config_hash,
         config_hash_error,
+        seed,
       }
     },
     Err(report) => RunConfigResponse::invalid(&report),
@@ -77,6 +79,10 @@ pub enum RunConfigResponse {
     config_hash: Option<String>,
     /// Why `config_hash` is absent.
     config_hash_error: Option<String>,
+    /// Seed that the configuration sets for its random step; absent when it sets none, so that the run draws one, and
+    /// when the run has no random step. A finished run with the same `config_hash` has the settings of this
+    /// configuration when the configuration sets no seed or the seed of that run.
+    seed: Option<u64>,
   },
   /// The configuration is rejected.
   Invalid {

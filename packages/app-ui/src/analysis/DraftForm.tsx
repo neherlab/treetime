@@ -20,6 +20,7 @@ import { RunFooter } from "./ChecksPanel";
 import { type CommandLineCode, CommandLineDialog } from "./CommandLineDialog";
 import { configResolver } from "./configResolver";
 import { datasetLabel } from "./datasetLabel";
+import { duplicateRun } from "./duplicateRun";
 import { fromFormConfig, toFormConfig, type FormConfig } from "./formValues";
 import { OptionsMenu } from "./OptionsMenu";
 import { OptionsPanel } from "./OptionsPanel";
@@ -94,14 +95,10 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
 
   const checks = check?.checks;
   const checked = check === undefined || checkPending ? undefined : settled;
-  const configHash = runConfig?.status === "valid" ? runConfig.config_hash : undefined;
 
   const duplicate = useMemo(
-    () =>
-      configHash === undefined
-        ? undefined
-        : runList?.runs.find((run) => run.status === "ok" && run.command === command && run.config_hash === configHash),
-    [command, configHash, runList],
+    () => duplicateRun(runList?.runs ?? [], command, runConfig?.status === "valid" ? runConfig : undefined),
+    [command, runConfig, runList],
   );
 
   const submit = useMemo(

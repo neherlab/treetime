@@ -7,7 +7,7 @@ use crate::job::{JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_jo
 use crate::run_checks::named_settings;
 use crate::runs::errors::invalid;
 use crate::runs::headline::{RunHeadline, run_headline};
-use crate::runs::inputs::hash_inputs;
+use crate::runs::inputs::{SEED_KEY, hash_inputs};
 use crate::runs::manager::{ActiveRun, ConfigHook, RunManager};
 use crate::runs::record::{RunError, RunInput, RunRecord, RunStatus};
 use crate::runs::run_name::{dataset_label, run_name};
@@ -33,8 +33,6 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
 
 const NO_ERROR_LINES: &str = "the run worker stopped without an error message";
-
-const SEED_KEY: &str = "seed";
 
 const MAX_DRAWN_SEED: u64 = (1 << 53) - 1;
 

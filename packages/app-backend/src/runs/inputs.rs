@@ -22,10 +22,13 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
+pub const SEED_KEY: &str = "seed";
+
 const HASH_BUFFER_SIZE: usize = 1 << 16;
 
 pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<HashedInputs, Report> {
   let mut canonical = config.clone();
+  canonical.remove(SEED_KEY);
   let mut inputs = vec![];
   for property in setting_properties(command.config_schema().as_value())? {
     let setting = property.key.as_str();

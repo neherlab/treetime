@@ -95,6 +95,22 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_inputs_config_hash_leaves_out_the_seed() {
+    let dir = tempdir().unwrap();
+    fs::write(dir.path().join("t.nwk"), "(A:1,B:1);\n").unwrap();
+    let tree = dir.path().join("t.nwk");
+    let hash = |seed: Option<u64>| {
+      let mut config = settings(json!({ "tree": tree, "sequence_length": 100 }));
+      if let Some(seed) = seed {
+        config.insert("seed".to_owned(), json!(seed));
+      }
+      hash_inputs(AppCommand::Timetree, &config).unwrap().config_hash
+    };
+    let drawn = hash(None);
+    assert_eq!((drawn.clone(), drawn), (hash(Some(7)), hash(Some(8))));
+  }
+
   #[cfg(unix)]
   #[rustfmt::skip]
   #[rstest]

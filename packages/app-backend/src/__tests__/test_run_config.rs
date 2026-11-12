@@ -4,7 +4,8 @@ mod tests {
   use app_commands::command::AppCommand;
   use helpers::{ZIKA_METADATA, ZIKA_TREE, resolve, resolve_in};
   use pretty_assertions::assert_eq;
-  use serde_json::json;
+  use rstest::rstest;
+  use serde_json::{Value, json};
   use std::fs;
   use std::path::Path;
   use tempfile::tempdir;
@@ -67,6 +68,34 @@ mod tests {
         relative["config_hash"].is_string(),
         relative["config_hash"] == absolute["config_hash"],
         relative["config_hash"] == changed["config_hash"]
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::drawn(            json!({}),                                     json!(null))]
+  #[case::set(              json!({ "seed": 7 }),                          json!(7))]
+  #[case::no_random_step(   json!({ "seed": 7, "keep_polytomies": true }), json!(null))]
+  #[trace]
+  fn test_run_config_names_the_seed_of_the_random_step(#[case] extra: Value, #[case] seed: Value) {
+    let mut config = json!({ "tree": ZIKA_TREE, "metadata": ZIKA_METADATA, "sequence_length": 10807 });
+    let mut without_seed = config.clone();
+    for (key, value) in extra.as_object().unwrap() {
+      config[key] = value.clone();
+      if key != "seed" {
+        without_seed[key] = value.clone();
+      }
+    }
+    let response = resolve(AppCommand::Timetree, config);
+    let unseeded = resolve(AppCommand::Timetree, without_seed);
+    assert_eq!(
+      (json!("valid"), seed, true, unseeded["config_hash"].clone()),
+      (
+        response["status"].clone(),
+        response["seed"].clone(),
+        response["config_hash"].is_string(),
+        response["config_hash"].clone()
       )
     );
   }
