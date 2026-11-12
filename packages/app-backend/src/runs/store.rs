@@ -7,12 +7,11 @@ use crate::runs::input_store::InputStore;
 use crate::runs::record::{RunInput, RunRecord, RunStatus};
 use crate::runs::run_paths::OUT_DIR;
 use app_commands::command_config::CommandConfig;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::warn;
 use std::cmp::Reverse;
-use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -25,7 +24,6 @@ use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 pub const RUN_FILE: &str = "run.json";
 pub const EVENTS_FILE: &str = "events.jsonl";
 const STAGING_DIR: &str = ".staging";
-const DEFAULT_TITLE_FORMAT: &str = "Run %Y-%m-%d %H:%M";
 
 #[derive(Clone, Debug)]
 pub struct RunStore {
@@ -60,9 +58,11 @@ impl RunStore {
   pub fn create(&self, run: NewRun) -> Result<RunRecord, Report> {
     let NewRun {
       id,
+      title,
       config,
       inputs,
       source_run_id,
+      example,
     } = run;
     fs::create_dir_all(&self.root)
       .wrap_err_with(|| format!("When creating the runs directory '{}'", self.root.display()))?;
@@ -74,7 +74,9 @@ impl RunStore {
     let record = RunRecord {
       group_id: id.clone(),
       id,
-      title: default_title(&created_at),
+      title,
+      renamed: false,
+      example,
       config,
       status: RunStatus::Created,
       pinned: false,
@@ -225,20 +227,15 @@ impl RunStore {
 
 pub struct NewRun {
   pub id: JobId,
+  pub title: String,
   pub config: CommandConfig,
   pub inputs: Vec<RunInput>,
   pub source_run_id: Option<JobId>,
+  pub example: Option<String>,
 }
 
 pub fn record_text(record: &RunRecord) -> Result<String, Report> {
   Ok(format!("{}\n", json_write_str(record, JsonPretty(true))?))
-}
-
-pub fn default_title<Tz: TimeZone>(created_at: &DateTime<Tz>) -> String
-where
-  Tz::Offset: Display,
-{
-  created_at.format(DEFAULT_TITLE_FORMAT).to_string()
 }
 
 #[expect(

@@ -25,8 +25,15 @@ use treetime_schema::skip_serializing_optionals;
 pub struct RunRecord {
   /// Identifier of the run, also the name of its folder.
   pub id: JobId,
-  /// Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+  /// Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+  /// the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+  /// for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+  /// as in `+2`. A renamed run keeps its title.
   pub title: String,
+  /// Whether the user renamed the run.
+  pub renamed: bool,
+  /// Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+  pub example: Option<String>,
   /// Command of the run and its configuration, with every default filled in. After the run starts, the configuration
   /// also holds the outputs the run layer adds and the seed the run used.
   #[schemars(flatten)]
@@ -235,6 +242,11 @@ pub struct CreateRunRequest {
   #[schemars(default)]
   #[deser(default)]
   pub source_run_id: Option<JobId>,
+  /// Name of the example dataset whose files the run reads, for example `ebola/100`; unset for the user's own files.
+  /// The run's name starts with it.
+  #[schemars(default)]
+  #[deser(default)]
+  pub example: Option<String>,
 }
 
 /// Request to start a created run.

@@ -107,6 +107,7 @@ mod tests {
           config: sparse(config),
           defer_start: true,
           source_run_id: None,
+          example: None,
         })
         .unwrap();
       runs

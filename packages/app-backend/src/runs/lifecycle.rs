@@ -2,13 +2,16 @@ use crate::command::AppCommandExt;
 use crate::command::config_from_settings;
 use crate::command::run_command;
 use crate::command::{CommandOutcome, OutputAlignment, OutputFile};
+use crate::config::catalog::command_settings;
 use crate::job::{JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job, run_job_step};
 use crate::runs::errors::invalid;
 use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::{ActiveRun, ConfigHook, RunManager};
 use crate::runs::record::{RunError, RunInput, RunRecord, RunStatus};
+use crate::runs::run_name::{dataset_label, run_name};
 use crate::runs::run_paths::{OUT_DIR, PortablePaths, resolve_settings};
+use crate::runs::setting_differences::{ComparedConfig, OUTPUT_SELECTION_KEY, compared_inputs, setting_differences};
 use crate::runs::warnings::WarningCollector;
 use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
@@ -156,7 +159,11 @@ impl StartedRun {
         })
         .collect_vec();
       let group_id = derivation_group(&manager, &record, &inputs)?;
+      let title = run_title(&manager, &record, &prepared.config, &inputs, &hook)?;
       manager.modify(&id, |record| {
+        if !record.renamed {
+          record.title = title;
+        }
         record.config = resolved;
         record.changed_settings = prepared
           .changed_settings
@@ -446,6 +453,47 @@ fn derivation_group(manager: &RunManager, record: &RunRecord, inputs: &[RunInput
   )
 }
 
+fn run_title(
+  manager: &RunManager,
+  record: &RunRecord,
+  config: &Map<String, Value>,
+  inputs: &[RunInput],
+  hook: &ConfigHook,
+) -> Result<String, Report> {
+  let command = record.config.command();
+  let catalog = command_settings(command)?;
+  let source = record
+    .source_run_id
+    .as_ref()
+    .filter(|source| manager.store().contains(source))
+    .map(|source| manager.store().read(source))
+    .transpose()?
+    .filter(|source| source.config.command() == command);
+  let (baseline, baseline_inputs) = if let Some(source) = &source {
+    (source.config.settings()?, compared_inputs(&source.inputs))
+  } else {
+    let mut defaults = Value::Object(command.config_over_defaults(&Value::Object(Map::new()))?);
+    hook(&mut defaults)?;
+    let Value::Object(defaults) = defaults else {
+      return make_error!("a command configuration must be a mapping of settings");
+    };
+    (defaults, vec![])
+  };
+  let differences = setting_differences(
+    &catalog,
+    &ComparedConfig {
+      settings: &baseline,
+      inputs: &baseline_inputs,
+    },
+    &ComparedConfig {
+      settings: config,
+      inputs: &compared_inputs(inputs),
+    },
+  );
+  let dataset = dataset_label(record.example.as_deref(), inputs);
+  Ok(run_name(dataset.as_deref(), &catalog, &differences))
+}
+
 fn input_digests(inputs: &[RunInput]) -> Vec<&str> {
   inputs
     .iter()
@@ -454,8 +502,6 @@ fn input_digests(inputs: &[RunInput]) -> Vec<&str> {
     .dedup()
     .collect_vec()
 }
-
-const OUTPUT_SELECTION_KEY: &str = "output_selection";
 
 fn requested_outputs(config: &Value) -> Option<&Value> {
   config

@@ -109,6 +109,7 @@ pub(crate) mod tests {
         config: sparse(json!({})),
         defer_start: true,
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     let started = runs
@@ -265,6 +266,7 @@ pub(crate) mod tests {
           config: sparse(Value::Object(Map::new())),
           defer_start: true,
           source_run_id: None,
+          example: None,
         })
         .unwrap();
       let mut config = extra.as_object().cloned().unwrap_or_default();
@@ -294,6 +296,7 @@ pub(crate) mod tests {
           config: settings.clone(),
           defer_start: true,
           source_run_id: source.cloned(),
+          example: None,
         })
         .unwrap();
       runs

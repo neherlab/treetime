@@ -200,6 +200,7 @@ mod tests {
           config: sparse(json!({ "tree": "tree.nwk", "metadata": "metadata.tsv" })),
           defer_start: true,
           source_run_id: None,
+          example: None,
         })
         .unwrap();
       let run_json = fs::read_to_string(root.path().join(record.id.as_str()).join("run.json")).unwrap();

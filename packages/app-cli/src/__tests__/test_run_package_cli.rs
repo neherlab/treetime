@@ -20,6 +20,7 @@ mod tests {
         config: SparseConfig(Map::new()),
         defer_start: true,
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     let mut config = Map::new();

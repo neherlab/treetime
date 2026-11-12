@@ -375,6 +375,7 @@ mod tests {
       config: sparse(json!({ "tree": zika("tree.nwk") })),
       defer_start: true,
       source_run_id: None,
+      example: None,
     })?;
 
     assert_error!(
@@ -422,6 +423,7 @@ mod tests {
       config: sparse(json!({ "tree": zika("tree.nwk") })),
       defer_start: true,
       source_run_id: None,
+      example: None,
     })?;
 
     assert_error!(
@@ -630,6 +632,7 @@ mod tests {
           config: sparse(config),
           defer_start: true,
           source_run_id: None,
+          example: None,
         })
         .unwrap();
       runs

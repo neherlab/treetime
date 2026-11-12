@@ -1,5 +1,6 @@
 use crate::atomic_write::write_atomically;
 use crate::command::{AppCommandExt, config_from_request, config_from_settings, ensure_in_apps};
+use crate::config::catalog::command_settings;
 use crate::job::{CancelToken, JobEvent, JobId, TerminalEvent};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{conflict, invalid};
@@ -13,6 +14,7 @@ use crate::runs::record::{
   CreateRunRequest, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
   UpdateRunRequest,
 };
+use crate::runs::run_name::{dataset_label, run_name};
 use crate::runs::run_paths::{PortablePaths, resolve_settings};
 use crate::runs::store::{NewRun, RunStore};
 use app_commands::command_config::CommandConfig;
@@ -133,11 +135,15 @@ impl RunManager {
     let record = {
       let _records = self.records.lock();
       let PortableConfig { config, inputs } = self.portable(&id, &config)?;
+      let dataset = dataset_label(request.example.as_deref(), &inputs);
+      let title = run_name(dataset.as_deref(), &command_settings(request.command)?, &[]);
       self.store.create(NewRun {
         id,
+        title,
         config,
         inputs,
         source_run_id: request.source_run_id.clone(),
+        example: request.example.clone(),
       })?
     };
     let record = self.with_size(record)?;
@@ -299,6 +305,7 @@ impl RunManager {
           return Err(invalid("a run title must not be empty"));
         }
         record.title = title;
+        record.renamed = true;
       }
       if let Some(pinned) = request.pinned {
         record.pinned = pinned;
@@ -586,7 +593,7 @@ impl RunManager {
   }
 }
 
-pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
+pub type ConfigHook = Box<dyn Fn(&mut Value) -> Result<(), Report> + Send>;
 
 /// A file uploaded for a run that has not started.
 #[derive(Clone, Debug, JsonSchema, Serialize)]

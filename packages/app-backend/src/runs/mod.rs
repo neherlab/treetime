@@ -13,6 +13,7 @@ pub mod manager;
 pub mod package;
 pub mod package_import;
 pub mod record;
+pub mod run_name;
 pub mod run_paths;
 pub mod setting_differences;
 pub mod store;

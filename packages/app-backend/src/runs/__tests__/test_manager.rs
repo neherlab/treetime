@@ -7,7 +7,7 @@ mod tests {
   use crate::runs::input_store::StoredInput;
   use crate::runs::manager::RunManager;
   use crate::runs::record::{CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
-  use crate::runs::store::{NewRun, RunStore, default_title};
+  use crate::runs::store::{NewRun, RunStore};
   use app_commands::command::AppCommand;
   use chrono::{TimeDelta, Utc};
   use helpers::{GatedReader, accept, clock_config, create, event_types, terminal_status, timetree_config};
@@ -124,9 +124,11 @@ mod tests {
       .store()
       .create(NewRun {
         id: JobId::random(),
+        title: "homoplasy".to_owned(),
         config: config_from_settings(AppCommand::Homoplasy, &tree).unwrap(),
         inputs: vec![],
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     assert_eq!(
@@ -150,9 +152,11 @@ mod tests {
       .store()
       .create(NewRun {
         id: JobId::random(),
+        title: "homoplasy".to_owned(),
         config: config_from_settings(AppCommand::Homoplasy, &tree).unwrap(),
         inputs: vec![],
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     assert_error!(
@@ -171,6 +175,7 @@ mod tests {
         config: sparse(json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" })),
         defer_start: true,
         source_run_id: None,
+        example: None,
       }),
       "the command `mugration` is available in the command-line tool only"
     );
@@ -687,9 +692,11 @@ mod tests {
     let record = store
       .create(NewRun {
         id: JobId::random(),
+        title: "prune".to_owned(),
         config: config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap(),
         inputs: vec![],
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     let dir = store.run_dir(&record.id);
@@ -701,8 +708,11 @@ mod tests {
       .collect();
     let reread: RunRecord = json_read_str(fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
     assert_eq!(
-      (vec!["out", "run.json"], default_title(&record.created_at)),
-      (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
+      (vec!["out", "run.json"], "prune"),
+      (
+        names.iter().map(String::as_str).collect::<Vec<_>>(),
+        reread.title.as_str()
+      )
     );
   }
 
@@ -841,6 +851,7 @@ mod tests {
           config: sparse(config),
           defer_start: true,
           source_run_id: None,
+          example: None,
         })
         .unwrap()
     }

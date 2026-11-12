@@ -129,7 +129,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_support::tests::sparse;
+    use crate::__tests__::test_support::tests::{sparse, unconfined};
     use crate::run_config::{RunConfigRequest, run_config};
     use crate::runs::input_store::InputStore;
     use app_commands::command::AppCommand;
@@ -151,7 +151,7 @@ mod tests {
           command,
           config: sparse(config),
         },
-        Box::new(|_config: &mut Value| Ok(())),
+        &unconfined(),
         store,
       );
       to_json_value(&response).unwrap()

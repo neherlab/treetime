@@ -18,7 +18,7 @@ use treetime_utils::make_error;
 
 pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
 
-pub fn run_config(request: &RunConfigRequest, confine: ConfigHook, store: &InputStore) -> RunConfigResponse {
+pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &InputStore) -> RunConfigResponse {
   let command = request.command;
   let resolved = command
     .prepare_run(
@@ -100,7 +100,7 @@ impl RunConfigResponse {
   }
 }
 
-fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: ConfigHook) -> Result<String, Report> {
+fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: &ConfigHook) -> Result<String, Report> {
   let mut confined = Value::Object(config.clone());
   confine(&mut confined)?;
   let Value::Object(confined) = confined else {

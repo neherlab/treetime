@@ -70,7 +70,7 @@ impl AppService {
       config,
     };
     let hook = self.hook(request.command);
-    Ok(run_config(&request, hook, self.runs.input_store()))
+    Ok(run_config(&request, &hook, self.runs.input_store()))
   }
 
   pub fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {

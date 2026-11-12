@@ -142,6 +142,7 @@ mod tests {
         config: sparse(json!({ "tree": data.join("tree.nwk"), "metadata": data.join("metadata.tsv") })),
         defer_start: true,
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     runs
@@ -233,6 +234,7 @@ mod tests {
         config: sparse(json!({})),
         defer_start: true,
         source_run_id: None,
+        example: None,
       })
       .unwrap();
     assert_error!(
