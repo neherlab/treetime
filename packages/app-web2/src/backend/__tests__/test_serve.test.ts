@@ -2,6 +2,8 @@ import type { PortReply } from "@neherlab/app-ui/port";
 import pWaitFor from "p-wait-for";
 
 import {
+  BODY_SLICE_SIZE,
+  bodyChunks,
   ExchangeServer,
   responseHeaders,
   TRAPPED_MESSAGE,
@@ -36,16 +38,9 @@ describe("serve exchanges", () => {
     });
     await ended(endpoint, 3);
 
-    expect([calls, endpoint.posted, exchange.freed()]).toStrictEqual([
-      [
-        [
-          "PUT",
-          "/api/runs/r1/inputs/aln.fasta",
-          ["content-type", "x-a"],
-          ["application/octet-stream", "1"],
-          new Uint8Array([1, 2]),
-        ],
-      ],
+    expect([calls, exchange.sent(), endpoint.posted, exchange.freed()]).toStrictEqual([
+      [["PUT", "/api/runs/r1/inputs/aln.fasta", ["content-type", "x-a"], ["application/octet-stream", "1"], true]],
+      { chunks: [new Uint8Array([1, 2])], ended: true },
       [
         {
           reply: { kind: "head", seq: 3, status: 200, headers: [{ name: "content-type", value: "text/plain" }] },
@@ -55,6 +50,56 @@ describe("serve exchanges", () => {
         { reply: { kind: "end", seq: 3 }, transfer: [] },
       ],
       true,
+    ]);
+  });
+
+  test("a blob body reaches the back end in slices of at most the slice size, in order", async () => {
+    const slices: string[] = [];
+
+    for await (const slice of bodyChunks(new Blob(["abcdefg"]), 3)) {
+      slices.push(new TextDecoder().decode(slice));
+    }
+
+    expect(slices).toStrictEqual(["abc", "def", "g"]);
+  });
+
+  test("a request without a body tells the back end so and sends no chunk", async () => {
+    const exchange = fakeExchange({});
+    const { backend, calls } = fakeBackend(exchange);
+    const endpoint = fakeEndpoint();
+
+    serve(endpoint, backend);
+    endpoint.receive(REQUEST);
+    await ended(endpoint, 7);
+
+    expect([calls.map((call) => call[4]), exchange.sent()]).toStrictEqual([[false], { chunks: [], ended: false }]);
+  });
+
+  test("the body stops without an end when the back end no longer reads it", async () => {
+    const exchange = fakeExchange({ accepts: 1 });
+    const endpoint = fakeEndpoint();
+
+    serve(endpoint, fakeBackend(exchange).backend);
+    endpoint.receive({
+      kind: "request",
+      request: { ...REQUEST.request, method: "PUT", body: new Blob([new Uint8Array(BODY_SLICE_SIZE * 3)]) },
+    });
+    await ended(endpoint, 7);
+
+    expect([exchange.sent().chunks.length, exchange.sent().ended]).toStrictEqual([1, false]);
+  });
+
+  test("a failed body send aborts the exchange and resets the request with the cause", async () => {
+    const exchange = fakeExchange({ sendError: new Error("the file cannot be read"), headWaitsForAbort: true });
+    const endpoint = fakeEndpoint();
+
+    serve(endpoint, fakeBackend(exchange).backend);
+    endpoint.receive({ kind: "request", request: { ...REQUEST.request, method: "PUT", body: new Blob(["x"]) } });
+    await ended(endpoint, 7);
+
+    expect([exchange.aborted(), endpoint.posted.map(({ reply }) => reply)]).toStrictEqual([
+      true,
+      [{ kind: "reset", seq: 7, message: "the file cannot be read" }],
     ]);
   });
 
@@ -181,6 +226,7 @@ interface FakeBackend {
 interface FakeExchange extends WasmExchange {
   aborted(): boolean;
   freed(): boolean;
+  sent(): { chunks: Uint8Array[]; ended: boolean };
 }
 
 function serve(
@@ -230,19 +276,49 @@ function fakeExchange({
   chunks = [],
   chunkError,
   endless = false,
+  accepts = Number.POSITIVE_INFINITY,
+  sendError,
+  headWaitsForAbort = false,
 }: {
   chunks?: Uint8Array[];
   chunkError?: Error;
   endless?: boolean;
+  accepts?: number;
+  sendError?: Error;
+  headWaitsForAbort?: boolean;
 }): FakeExchange {
   const head: WasmResponseHead = { status: 200, headerNames: ["content-type"], headerValues: ["text/plain"] };
   const remaining = [...chunks];
   const { promise: abortedRead, reject: rejectRead } = Promise.withResolvers<undefined>();
+  const sent: Uint8Array[] = [];
+  let ended = false;
   let aborted = false;
   let freed = false;
 
   return {
-    head: () => Promise.resolve(head),
+    head: async () => {
+      if (headWaitsForAbort) {
+        await abortedRead;
+      }
+
+      return head;
+    },
+    send: (chunk) => {
+      if (sendError !== undefined) {
+        return Promise.reject(sendError);
+      }
+
+      if (sent.length >= accepts) {
+        return Promise.resolve(false);
+      }
+
+      sent.push(chunk);
+
+      return Promise.resolve(true);
+    },
+    end: () => {
+      ended = true;
+    },
     chunk: async () => {
       if (endless) {
         return abortedRead;
@@ -263,6 +339,7 @@ function fakeExchange({
     },
     aborted: () => aborted,
     freed: () => freed,
+    sent: () => ({ chunks: sent, ended }),
   };
 }
 

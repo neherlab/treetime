@@ -5,8 +5,8 @@ mod tests {
   use axum::Router;
   use axum::body::{Body, Bytes};
   use axum::http::Request;
-  use axum::routing::get;
-  use helpers::{exchange, read_all, test_router};
+  use axum::routing::{get, put};
+  use helpers::{exchange, read_all, streaming, test_router};
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::io;
@@ -98,8 +98,45 @@ mod tests {
     assert_error!(after, "this exchange has ended");
   }
 
+  #[tokio::test]
+  async fn test_exchange_feeds_a_streamed_request_body_to_the_route_in_order() {
+    let exchange = streaming(test_router(), "/echo");
+    let (head, sent) = tokio::join!(exchange.head(), async {
+      let first = exchange.send(Bytes::from("one")).await.unwrap();
+      let second = exchange.send(Bytes::from("two")).await.unwrap();
+      exchange.end();
+      (first, second)
+    });
+    head.unwrap();
+    let mut chunks = vec![];
+    while let Some(chunk) = exchange.chunk().await.unwrap() {
+      chunks.push(chunk);
+    }
+    assert_eq!(
+      ((true, true), o!("onetwo")),
+      (sent, String::from_utf8(chunks.concat()).unwrap())
+    );
+  }
+
+  #[tokio::test]
+  async fn test_exchange_send_reports_a_body_that_the_route_no_longer_reads() {
+    let exchange = streaming(test_router(), "/ignored");
+    exchange.head().await.unwrap();
+    assert!(!exchange.send(Bytes::from("unread")).await.unwrap());
+  }
+
+  #[tokio::test]
+  async fn test_exchange_refuses_a_request_body_after_its_end() {
+    let exchange = streaming(test_router(), "/echo");
+    exchange.end();
+    assert_error!(
+      exchange.send(Bytes::from("late")).await,
+      "this exchange takes no more request body"
+    );
+  }
+
   mod helpers {
-    use super::{Body, Bytes, PortExchange, Request, ResponseHead, Router, get, io, iter, o, pending};
+    use super::{Body, Bytes, PortExchange, Request, ResponseHead, Router, get, io, iter, o, pending, put};
     use axum::response::IntoResponse;
 
     pub(super) fn test_router() -> Router {
@@ -118,6 +155,8 @@ mod tests {
           "/endless",
           get(|| async { Body::from_stream(pending::<Result<Bytes, io::Error>>()) }),
         )
+        .route("/echo", put(|body: Bytes| async move { body }))
+        .route("/ignored", put(|| async {}))
         .route(
           "/broken",
           get(|| async { Body::from_stream(iter([Err::<Bytes, _>(io::Error::other("the body broke"))])) }),
@@ -126,6 +165,10 @@ mod tests {
 
     pub(super) fn exchange(router: Router, url: &str) -> PortExchange {
       PortExchange::start(router, Ok(Request::get(url).body(Body::empty()).unwrap()))
+    }
+
+    pub(super) fn streaming(router: Router, url: &str) -> PortExchange {
+      PortExchange::start_streaming(router, Ok(Request::put(url).body(Body::empty()).unwrap()))
     }
 
     pub(super) async fn read_all(exchange: &PortExchange) -> (ResponseHead, Vec<Bytes>) {

@@ -115,10 +115,16 @@ async function call(method: string, url: string, body?: Uint8Array, headers: Hea
     url,
     headers.map(([name]) => name),
     headers.map(([, value]) => value),
-    body,
+    body !== undefined,
   );
 
+  const sending = body === undefined ? Promise.resolve(true) : exchange.send(body);
   const head = await exchange.head();
+
+  if (await sending) {
+    exchange.end();
+  }
+
   const chunks: Uint8Array[] = [];
 
   for (let chunk = await exchange.chunk(); chunk !== undefined; chunk = await exchange.chunk()) {

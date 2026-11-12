@@ -3,8 +3,8 @@ import { ApiError } from "@neherlab/app-contracts/client";
 import pWaitFor from "p-wait-for";
 
 import type { BackendStopped } from "../host";
-import type { PortMessage, PortReply } from "../port";
-import { createPortFetch, type FetchConnection, type FetchPort } from "../port-fetch";
+import type { BlobPortMessage, BlobPortRequest, PortReply } from "../port";
+import { createBlobPortFetch, createPortFetch, type FetchConnection, type FetchPort } from "../port-fetch";
 
 const ORIGIN = "http://treetime.desktop";
 
@@ -58,41 +58,21 @@ describe("port_fetch requests", () => {
     expect(backend.posted.map((message) => message.kind === "request" && message.request.body)).toStrictEqual([bytes]);
   });
 
-  test("with body transfer, a request transfers its body buffer to the back end instead of copying it", async () => {
+  test("with blob bodies, a file reaches the back end as a blob of the same bytes", async () => {
     const backend = fakeBackend({ connected: true });
+    const file = new File([">A\nACGT\n"], "aln.fasta");
 
-    void createPortFetch(backend.connection, { transferBodies: true })(`${ORIGIN}/api/runs/r1/inputs/aln.fasta`, {
+    void createBlobPortFetch(backend.connection)(`${ORIGIN}/api/runs/r1/inputs/aln.fasta`, {
       method: "PUT",
-      body: ">A\nACGT\n",
+      body: file,
     });
     await sent(backend, 1);
 
     const [message] = backend.posted;
-    const body = message?.kind === "request" ? message.request.body?.buffer : undefined;
+    const body = message?.kind === "request" ? message.request.body : undefined;
 
-    expect(backend.transferred).toStrictEqual([[body]]);
-    expect(body).toBeInstanceOf(ArrayBuffer);
-  });
-
-  test("with body transfer, a request without a body posts no transfer list", async () => {
-    const backend = fakeBackend({ connected: true });
-
-    void createPortFetch(backend.connection, { transferBodies: true })(`${ORIGIN}/api/version`);
-    await sent(backend, 1);
-
-    expect(backend.transferred).toStrictEqual([undefined]);
-  });
-
-  test("without body transfer, a request with a body posts no transfer list", async () => {
-    const backend = fakeBackend({ connected: true });
-
-    void createPortFetch(backend.connection)(`${ORIGIN}/api/runs/r1/inputs/aln.fasta`, {
-      method: "PUT",
-      body: ">A\nACGT\n",
-    });
-    await sent(backend, 1);
-
-    expect(backend.transferred).toStrictEqual([undefined]);
+    expect(body).toBeInstanceOf(Blob);
+    expect(body instanceof Blob ? await body.text() : body).toBe(">A\nACGT\n");
   });
 
   test("a request without a body sends no body", async () => {
@@ -363,9 +343,8 @@ describe("port_fetch back end stops", () => {
 });
 
 interface FakeBackend {
-  connection: FetchConnection;
-  posted: PortMessage[];
-  transferred: Array<ArrayBuffer[] | undefined>;
+  connection: FetchConnection<BlobPortRequest>;
+  posted: BlobPortMessage[];
   connect(): void;
   reply(reply: PortReply): void;
   deliver(data: unknown): void;
@@ -379,7 +358,6 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
 
   const backend: FakeBackend = {
     posted: [],
-    transferred: [],
     connection: {
       onPort(listener) {
         portListeners.push(listener);
@@ -393,10 +371,9 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
       },
     },
     connect() {
-      const port: FetchPort = {
-        postMessage(message: PortMessage, transfer?: ArrayBuffer[]) {
+      const port: FetchPort<BlobPortRequest> = {
+        postMessage(message: BlobPortMessage) {
           backend.posted.push(message);
-          backend.transferred.push(transfer);
         },
         addEventListener(_type, listener) {
           deliver = (data) => {

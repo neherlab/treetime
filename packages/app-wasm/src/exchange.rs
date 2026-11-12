@@ -7,15 +7,21 @@ use axum::http::Request;
 use axum::response::Response;
 use eyre::Report;
 use parking_lot::Mutex;
+use std::convert::Infallible;
 use std::future::Future;
 use std::mem;
 use std::pin::Pin;
+use tokio::sync::mpsc::error::SendError;
+use tokio::sync::mpsc::{Sender, channel};
 use tokio_stream::StreamExt as _;
+use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
 use treetime_utils::error::report_to_string;
 use treetime_utils::{make_error, make_report};
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
+
+const REQUEST_BODY_CAPACITY: usize = 1;
 
 #[wasm_bindgen]
 pub struct Exchange {
@@ -41,6 +47,18 @@ impl Exchange {
       .map_err(|report| js_error(&report))
   }
 
+  pub async fn send(&self, chunk: Vec<u8>) -> Result<bool, JsError> {
+    self
+      .inner
+      .send(Bytes::from(chunk))
+      .await
+      .map_err(|report| js_error(&report))
+  }
+
+  pub fn end(&self) {
+    self.inner.end();
+  }
+
   pub fn abort(&self) {
     self.inner.abort();
   }
@@ -48,11 +66,22 @@ impl Exchange {
 
 pub(crate) struct PortExchange {
   state: Mutex<State>,
+  body: Mutex<Option<Sender<Bytes>>>,
   cancel: CancellationToken,
 }
 
 impl PortExchange {
   pub(crate) fn start(router: Router, request: Result<Request<Body>, Report>) -> Self {
+    Self::open(router, request, None)
+  }
+
+  pub(crate) fn start_streaming(router: Router, request: Result<Request<Body>, Report>) -> Self {
+    let (sender, receiver) = channel(REQUEST_BODY_CAPACITY);
+    let body = Body::from_stream(ReceiverStream::new(receiver).map(Ok::<_, Infallible>));
+    Self::open(router, request.map(|request| request.map(|_| body)), Some(sender))
+  }
+
+  fn open(router: Router, request: Result<Request<Body>, Report>, body: Option<Sender<Bytes>>) -> Self {
     let response: ResponseFuture = match request {
       Ok(request) => Box::pin(async move {
         match router.oneshot(request).await {
@@ -64,8 +93,30 @@ impl PortExchange {
     };
     Self {
       state: Mutex::new(State::Waiting(response)),
+      body: Mutex::new(body),
       cancel: CancellationToken::new(),
     }
+  }
+
+  pub(crate) async fn send(&self, chunk: Bytes) -> Result<bool, Report> {
+    let sender = self
+      .body
+      .lock()
+      .clone()
+      .ok_or_else(|| make_report!("this exchange takes no more request body"))?;
+    let sent = self
+      .cancel
+      .run_until_cancelled(sender.send(chunk))
+      .await
+      .ok_or_else(aborted)?;
+    Ok(match sent {
+      Ok(()) => true,
+      Err(SendError(_)) => false,
+    })
+  }
+
+  pub(crate) fn end(&self) {
+    self.body.lock().take();
   }
 
   pub(crate) async fn head(&self) -> Result<ResponseHead, Report> {

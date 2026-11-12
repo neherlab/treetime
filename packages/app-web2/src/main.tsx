@@ -9,7 +9,7 @@ import {
   reloadOnChunkError,
   ThemeProvider,
 } from "@neherlab/app-ui";
-import { createPortFetch } from "@neherlab/app-ui/port-fetch";
+import { createBlobPortFetch } from "@neherlab/app-ui/port-fetch";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -31,7 +31,7 @@ const connection = new WorkerConnection(browserWorkerHost(jobs));
 
 const client = createApiClient({
   baseUrl: globalThis.location.origin,
-  fetch: createPortFetch(connection, { transferBodies: true }),
+  fetch: createBlobPortFetch(connection),
 });
 
 const preferences = browserPreferencesStorage(globalThis.localStorage, globalThis.sessionStorage);

@@ -11,7 +11,7 @@ declare class Backend {
     beginRunOutput(runId: string, relativePath: string): void;
     completeRun(runId: string, outcomeJson: string): boolean;
     failRun(runId: string, lines: string[]): boolean;
-    fetch(method: string, url: string, headerNames: string[], headerValues: string[], body?: Uint8Array | null): Exchange;
+    fetch(method: string, url: string, headerNames: string[], headerValues: string[], hasBody: boolean): Exchange;
     constructor();
     readRunInput(runId: string, path: string): ChunkReader;
     takeJobOrders(): JobOrder[];
@@ -30,7 +30,9 @@ declare class Exchange {
     [Symbol.dispose](): void;
     abort(): void;
     chunk(): Promise<Uint8Array | undefined>;
+    end(): void;
     head(): Promise<ResponseHead>;
+    send(chunk: Uint8Array): Promise<boolean>;
 }
 
 declare class Job {

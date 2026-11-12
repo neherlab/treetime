@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -21,6 +22,8 @@ const ZIP_SIGNATURE = "PK";
 const RUN_INPUT_PATHS = ["inputs/aln.fasta.xz", "inputs/tree.nwk"];
 
 const KEEP_ALIVE_INTERVAL_MS = 1000;
+
+const UPLOAD_SLICE_SIZE = 256;
 
 const moduleSchema = z.object({
   // oxlint-disable-next-line unicorn/no-instanceof-builtins -- the imported module belongs to this realm, so instanceof Function is reliable
@@ -56,6 +59,8 @@ await checkRepeatedInput();
 await checkClockRunWithoutCharts();
 
 await checkEventStreamAborts();
+
+await checkUploadInSlices();
 
 async function checkNewBackend(): Promise<void> {
   const version = await call("GET", "/api/version");
@@ -325,9 +330,22 @@ function readAll(reader: { chunk(): Uint8Array | undefined }): Uint8Array[] {
   return chunks;
 }
 
+async function checkUploadInSlices(): Promise<void> {
+  const created = parse(
+    zRunRecord,
+    await call("POST", "/api/runs", encode({ command: "ancestral", config: {}, defer_start: true }), JSON_HEADERS),
+  );
+
+  const bytes = readFileSync(join(DATASET, "aln.fasta.xz"));
+  const uploaded = await uploadInSlices(created.id, "aln.fasta.xz", bytes);
+
+  assert.ok(bytes.length > 2 * UPLOAD_SLICE_SIZE, "the upload spans several slices");
+  assert.deepEqual([uploaded.size, uploaded.sha256], [bytes.length, createHash("sha256").update(bytes).digest("hex")]);
+}
+
 async function checkEventStreamAborts(): Promise<void> {
   // oxlint-disable-next-line custom/require-io-timeout -- the back end answers in this process; the check aborts the stream itself
-  const exchange = backend.fetch("GET", "/api/events", [], [], undefined);
+  const exchange = backend.fetch("GET", "/api/events", [], [], false);
   const head = await exchange.head();
   const contentType = head.headerValues[head.headerNames.indexOf("content-type")];
 
@@ -341,22 +359,37 @@ async function upload(id: string, name: string): Promise<string> {
 }
 
 async function uploadBytes(id: string, name: string, bytes: Uint8Array): Promise<string> {
-  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, bytes, BYTES_HEADERS);
-
-  return parse(zUploadedInput, response).path;
+  return (await uploadInSlices(id, name, bytes)).path;
 }
 
-async function call(method: string, url: string, body?: Uint8Array, headers: Header[] = []): Promise<Reply> {
+async function uploadInSlices(id: string, name: string, bytes: Uint8Array): Promise<z.infer<typeof zUploadedInput>> {
+  const slices = Array.from({ length: Math.ceil(bytes.length / UPLOAD_SLICE_SIZE) }, (_, index) =>
+    bytes.subarray(index * UPLOAD_SLICE_SIZE, (index + 1) * UPLOAD_SLICE_SIZE),
+  );
+
+  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, slices, BYTES_HEADERS);
+
+  return parse(zUploadedInput, response);
+}
+
+async function call(
+  method: string,
+  url: string,
+  body?: Uint8Array | Uint8Array[],
+  headers: Header[] = [],
+): Promise<Reply> {
   // oxlint-disable-next-line custom/require-io-timeout -- the back end answers in this process, without network IO
   const exchange = backend.fetch(
     method,
     url,
     headers.map(([name]) => name),
     headers.map(([, value]) => value),
-    body,
+    body !== undefined,
   );
 
+  const sending = body === undefined ? Promise.resolve() : sendBody(exchange, [body].flat());
   const head = await exchange.head();
+  await sending;
   const chunks: Uint8Array[] = [];
 
   for (let chunk = await exchange.chunk(); chunk !== undefined; chunk = await exchange.chunk()) {
@@ -366,6 +399,16 @@ async function call(method: string, url: string, body?: Uint8Array, headers: Hea
   exchange.free();
 
   return { status: head.status, body: Buffer.concat(chunks) };
+}
+
+async function sendBody(exchange: Exchange, chunks: Uint8Array[]): Promise<void> {
+  for (const chunk of chunks) {
+    if (!(await exchange.send(chunk))) {
+      return;
+    }
+  }
+
+  exchange.end();
 }
 
 function parse<T extends z.ZodType>(schema: T, reply: Reply): z.infer<T> {
@@ -386,6 +429,8 @@ type ModuleFactory = typeof createModule;
 type JobModule = Awaited<ReturnType<ModuleFactory>>;
 
 type Header = [name: string, value: string];
+
+type Exchange = ReturnType<InstanceType<JobModule["Backend"]>["fetch"]>;
 
 type RunInputs = Record<string, string | string[]>;
 

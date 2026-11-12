@@ -1,11 +1,13 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import { type PortHeader, type PortReply, type PortRequest, portMessageSchema } from "@neherlab/app-ui/port";
+import { type BlobPortRequest, type PortHeader, type PortReply, blobPortMessageSchema } from "@neherlab/app-ui/port";
 import type { MainModule } from "@neherlab/app-wasm";
 import { zip } from "remeda";
 
 import { transferList } from "../job/protocol";
 
 export const TRAPPED_MESSAGE = "the back end stopped after an internal error";
+
+export const BODY_SLICE_SIZE = 1 << 20;
 
 export function messagePortEndpoint(port: MessagePort): ServeEndpoint {
   return {
@@ -29,6 +31,18 @@ export function responseHeaders({ headerNames, headerValues }: WasmResponseHead)
   }
 
   return zip(headerNames, headerValues).map(([name, value]) => ({ name, value }));
+}
+
+export async function* bodyChunks(body: Uint8Array | Blob, sliceSize = BODY_SLICE_SIZE): AsyncGenerator<Uint8Array> {
+  if (body instanceof Uint8Array) {
+    yield body;
+
+    return;
+  }
+
+  for (let start = 0; start < body.size; start += sliceSize) {
+    yield new Uint8Array(await body.slice(start, start + sliceSize).arrayBuffer());
+  }
 }
 
 export class ExchangeServer {
@@ -59,7 +73,7 @@ export class ExchangeServer {
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- port messages arrive untyped; the server parses them with the message schema
   #receive(data: unknown): void {
-    const message = portMessageSchema.parse(data);
+    const message = blobPortMessageSchema.parse(data);
 
     if (message.kind === "request") {
       void this.#serve(message.request);
@@ -68,7 +82,7 @@ export class ExchangeServer {
     }
   }
 
-  async #serve(request: PortRequest): Promise<void> {
+  async #serve(request: BlobPortRequest): Promise<void> {
     const { seq } = request;
 
     if (this.#trapped) {
@@ -86,7 +100,7 @@ export class ExchangeServer {
         request.url,
         request.headers.map(({ name }) => name),
         request.headers.map(({ value }) => value),
-        request.body,
+        request.body !== undefined,
       );
     } catch (error) {
       this.#fail(seq, error);
@@ -95,6 +109,8 @@ export class ExchangeServer {
     }
 
     this.#open.set(seq, exchange);
+
+    const sending = request.body === undefined ? Promise.resolve(undefined) : this.#send(seq, exchange, request.body);
 
     try {
       const head = await exchange.head();
@@ -108,13 +124,30 @@ export class ExchangeServer {
 
       this.#post({ kind: "end", seq });
     } catch (error) {
+      const failure = error instanceof WebAssembly.RuntimeError ? error : ((await sending) ?? error);
+
       if (this.#open.has(seq)) {
-        this.#fail(seq, error);
+        this.#fail(seq, failure);
       }
-    } finally {
-      this.#open.delete(seq);
+    }
+
+    this.#open.delete(seq);
+
+    if (!this.#trapped) {
+      await sending;
       exchange.free();
     }
+  }
+
+  async #send(seq: number, exchange: WasmExchange, body: Uint8Array | Blob): Promise<Error | undefined> {
+    const error = await sendBody(exchange, body);
+
+    if (error instanceof WebAssembly.RuntimeError && this.#open.has(seq)) {
+      this.#open.delete(seq);
+      this.#fail(seq, error);
+    }
+
+    return error;
   }
 
   #abort(seq: number): void {
@@ -145,6 +178,24 @@ export class ExchangeServer {
   }
 }
 
+async function sendBody(exchange: WasmExchange, body: Uint8Array | Blob): Promise<Error | undefined> {
+  try {
+    for await (const chunk of bodyChunks(body)) {
+      if (!(await exchange.send(chunk))) {
+        return undefined;
+      }
+    }
+  } catch (error) {
+    exchange.abort();
+
+    return error instanceof Error ? error : new Error(errorMessage(error));
+  }
+
+  exchange.end();
+
+  return undefined;
+}
+
 export interface ServeEndpoint {
   post(reply: PortReply, transfer: Transferable[]): void;
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- port messages arrive untyped; the server parses them
@@ -158,6 +209,8 @@ export interface WasmBackend {
 export interface WasmExchange {
   head(): Promise<WasmResponseHead>;
   chunk: Exchange["chunk"];
+  send: Exchange["send"];
+  end: Exchange["end"];
   abort: Exchange["abort"];
   free: Exchange["free"];
 }

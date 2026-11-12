@@ -224,6 +224,8 @@ class RunningBackend extends FakeBackend {
     return {
       head: () => Promise.resolve({ status: 200, headerNames: [], headerValues: [] }),
       chunk: () => Promise.resolve(undefined),
+      send: () => Promise.resolve(true),
+      end: () => undefined,
       abort: () => undefined,
       free: () => undefined,
     };

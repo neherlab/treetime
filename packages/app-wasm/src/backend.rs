@@ -39,13 +39,16 @@ impl Backend {
     url: &str,
     #[wasm_bindgen(js_name = headerNames)] header_names: Vec<String>,
     #[wasm_bindgen(js_name = headerValues)] header_values: Vec<String>,
-    body: Option<Vec<u8>>,
+    #[wasm_bindgen(js_name = hasBody)] has_body: bool,
   ) -> Exchange {
+    let router = self.router.clone();
+    let request = header_list(header_names, header_values).and_then(|headers| port_request(method, url, headers, None));
     Exchange {
-      inner: PortExchange::start(
-        self.router.clone(),
-        header_list(header_names, header_values).and_then(|headers| port_request(method, url, headers, body)),
-      ),
+      inner: if has_body {
+        PortExchange::start_streaming(router, request)
+      } else {
+        PortExchange::start(router, request)
+      },
     }
   }
 
