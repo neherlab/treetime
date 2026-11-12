@@ -8,9 +8,10 @@ import { useDraftSession } from "./analysis/useDraftSession";
 import { useNativeThemeSync } from "./hooks/useNativeThemeSync";
 import { AppSidebar } from "./shell/AppSidebar";
 import { CommandPalette } from "./shell/CommandPalette";
+import { RunActionDialogs } from "./shell/runActions";
 import { SiteHeader } from "./shell/SiteHeader";
+import { useAppFileDrop } from "./shell/useAppFileDrop";
 import { useGlobalShortcuts } from "./shell/useGlobalShortcuts";
-import { useYamlDrop } from "./shell/useYamlDrop";
 import { WorkspaceDialog } from "./shell/WorkspaceDialog";
 import { usePreferencesStore } from "./store/preferences";
 
@@ -20,7 +21,7 @@ export function RootLayout() {
   useNativeThemeSync();
   useGlobalShortcuts();
   useDraftSession();
-  const { getRootProps, getInputProps } = useYamlDrop();
+  const { getRootProps, getInputProps } = useAppFileDrop();
   const { width: viewportWidth } = useViewportSize();
   const storedWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.preferences.sidebar_width));
   const sidebarWidth = fitSidebarWidth(storedWidth, viewportWidth);
@@ -48,6 +49,7 @@ export function RootLayout() {
       </SidebarProvider>
       <CommandPalette />
       <WorkspaceDialog />
+      <RunActionDialogs />
     </TooltipProvider>
   );
 }

@@ -7,10 +7,11 @@ import { NotFoundPage } from "./NotFoundPage";
 import { MAIN_SCROLL_ID, RootLayout } from "./RootLayout";
 import { ComparePage } from "./runs/ComparePage";
 import { RunLogTab, RunPage, RunResultsTab, RunSettingsTab } from "./runs/RunPage";
+import { StartPage } from "./start/StartPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: IndexRedirect });
+const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: StartPage });
 
 const workspaceRoute = createRoute({ getParentRoute: () => rootRoute, id: "workspace", component: WorkspaceRoute });
 
@@ -49,10 +50,6 @@ declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
-}
-
-function IndexRedirect() {
-  return <Navigate to="/new" replace />;
 }
 
 function RunLayout() {

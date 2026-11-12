@@ -1,57 +1,44 @@
 import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
-import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
+import { Button } from "@neherlab/design/ui/button";
 import { cn } from "cn";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useWatch } from "react-hook-form";
+import History from "~icons/lucide/history";
 import Upload from "~icons/lucide/upload";
 
-import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";
 import type { Host } from "../host";
 import { useHost } from "../host-context";
 import { commandSettings } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblems } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
+import { EarlierInputsPanel } from "./EarlierInputsPanel";
 import type { FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";
 
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
-  const [panel, setPanel] = useState<ExamplesPanelKind | null>(null);
+  const [earlierOpen, setEarlierOpen] = useState(false);
   const host = useHost();
-  const pressed = useMemo(() => (panel === null ? [] : [panel]), [panel]);
-  const closePanel = useCallback(() => setPanel(null), []);
-
-  const onPanelChange = useCallback(
-    (next: string[]) => setPanel(pressedChoice(EXAMPLES_PANEL_KINDS, next) ?? null),
-    [],
-  );
+  const closeEarlier = useCallback(() => setEarlierOpen(false), []);
+  const toggleEarlier = useCallback(() => setEarlierOpen((open) => !open), []);
 
   return (
     <div className="grid grid-cols-1 gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-sm">{inputsNote(host)}</span>
-        <ToggleGroup
-          aria-label="Examples"
+        <Button
+          type="button"
           variant="outline"
           size="sm"
           className="ml-auto"
-          value={pressed}
-          onValueChange={onPanelChange}
+          aria-pressed={earlierOpen}
+          onClick={toggleEarlier}
         >
-          {EXAMPLES_PANEL_KINDS.map((kind) => {
-            const { title, icon: Icon } = EXAMPLES_PANELS[kind];
-
-            return (
-              <ToggleGroupItem key={kind} value={kind}>
-                <Icon aria-hidden />
-                {title}
-              </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
+          <History aria-hidden />
+          Inputs of earlier runs
+        </Button>
       </div>
-      {panel !== null && <ExamplesPanel kind={panel} command={command} close={closePanel} />}
+      {earlierOpen && <EarlierInputsPanel command={command} close={closeEarlier} />}
       {commandSettings(command).inputs.map((input) => (
         <InputSlotRow key={input.kind} command={command} slot={input} facts={facts} />
       ))}

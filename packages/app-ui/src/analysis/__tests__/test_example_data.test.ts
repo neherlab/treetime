@@ -8,7 +8,6 @@ import {
   indexedDatasetInputs,
   localExampleIndex,
   localInputAssignment,
-  matchingExampleFiles,
   uploadedConfigInputs,
   webExampleIndex,
 } from "../exampleData";
@@ -161,15 +160,5 @@ describe("example data", () => {
       appConfigs(localExampleIndex({ folder: "/examples", index })).map((config) => config.path),
       appConfigs(localExampleIndex({ folder: "/examples" })),
     ]).toStrictEqual([[CLOCK.path, TIMETREE.path], [CLOCK.path, TIMETREE.path], []]);
-  });
-
-  test.each([
-    ["", FILES.map((file) => file.path)],
-    ["zika tree", ["zika/20/tree.nwk"]],
-    ["weights", ["zika/country_weights.csv"]],
-    ["nwk", ["ebola/20/tree.nwk", "zika/20/tree.nwk"]],
-    ["sars", []],
-  ])("the example files matching %j are %j", (query, paths) => {
-    expect(matchingExampleFiles(FILES, query).map((file) => file.path)).toStrictEqual(paths);
   });
 });

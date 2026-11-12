@@ -19,7 +19,7 @@ import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis
 import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
 import { useNewAnalysis } from "../analysis/useDraftSession";
-import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
+import { useExampleConfigLoader, useExampleIndex, useOpenExample } from "../analysis/useExampleData";
 import { nextTheme } from "../chrome/ThemeCycleButton";
 import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
@@ -146,7 +146,7 @@ function usePaletteItems(): PaletteItem[] {
   const host = useHost();
   const { theme, chooseTheme } = useThemeChoice();
   const loadExampleConfig = useExampleConfigLoader();
-  const loadExampleDataset = useDatasetLoader();
+  const openExample = useOpenExample();
   const toasts = useToastManager();
   const downloadStatus = useExamplesDownloadStatus(host !== null);
   const { mutate: startDownload } = useStartExamplesDownload();
@@ -177,12 +177,12 @@ function usePaletteItems(): PaletteItem[] {
       }
 
       try {
-        await loadExampleDataset(examples, dataset, command);
+        await openExample(examples, dataset);
       } catch (error: unknown) {
         toasts.add({ title: `${dataset.name} cannot be loaded`, description: errorMessage(error) });
       }
     },
-    [command, examples, loadExampleDataset, toasts],
+    [examples, openExample, toasts],
   );
 
   return useMemo(() => {
@@ -238,7 +238,7 @@ function usePaletteItems(): PaletteItem[] {
       }
     }
 
-    items.push(...datasetPaletteItems(examples?.index?.datasets ?? [], command, loadDataset));
+    items.push(...datasetPaletteItems(examples?.index?.datasets ?? [], loadDataset));
 
     for (const config of appConfigs(examples)) {
       items.push(
@@ -261,7 +261,7 @@ function usePaletteItems(): PaletteItem[] {
             });
             toasts.add({
               title: "Downloading the example datasets",
-              description: "The Example datasets panel of a new analysis shows the progress.",
+              description: "The start page shows the progress.",
             });
           },
         ),

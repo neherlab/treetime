@@ -3,8 +3,8 @@ import { router } from "../router";
 const RUN_TABS = ["results", "settings", "log"] as const;
 
 describe("root route", () => {
-  test("the root path matches the index route that opens a new analysis", () => {
-    expect(router.matchRoutes("/").at(-1)?.routeId).toBe("/");
+  test("the root path matches the index route of the start page, outside the workspace", () => {
+    expect(router.matchRoutes("/").map((match) => match.routeId)).toStrictEqual(["__root__", "/"]);
   });
 });
 

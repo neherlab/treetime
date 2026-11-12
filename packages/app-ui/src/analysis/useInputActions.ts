@@ -25,7 +25,6 @@ interface InputActions {
   assignAll: (assignments: readonly InputAssignment[], from: InputOrigin) => void;
   clear: (key: string, emptyValue: JsonValue | undefined) => void;
   addFiles: (key: string, files: readonly File[], list: boolean) => Promise<void>;
-  addPendingFiles: (key: string, pending: Promise<readonly File[]>, list: boolean) => Promise<void>;
   pick: (key: string, title: string, extensions: string[], list: boolean) => Promise<void>;
 }
 
@@ -181,7 +180,7 @@ export function useInputActions(command: AppCommand): InputActions {
   );
 
   return useMemo(
-    () => ({ canPick: host !== null, assign, assignAll, clear, addFiles, addPendingFiles, pick }),
-    [addFiles, addPendingFiles, assign, assignAll, clear, host, pick],
+    () => ({ canPick: host !== null, assign, assignAll, clear, addFiles, pick }),
+    [addFiles, assign, assignAll, clear, host, pick],
   );
 }

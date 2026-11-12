@@ -4,7 +4,6 @@ import {
   type ExamplesFolder,
   type IndexedConfig,
   type IndexedDataset,
-  type IndexedFile,
   type InputKind,
   type SparseConfig,
   type UiDraftOrigin,
@@ -12,7 +11,6 @@ import {
   zDataIndex,
 } from "@neherlab/app-contracts";
 
-import { fuzzyFilter } from "../fuzzy";
 import { commandSettings, isAppCommand } from "../settings/catalog";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import { type StoredFile, storedSource, storedValue } from "./fileSelection";
@@ -114,10 +112,6 @@ function exampleOrigin(paths: readonly string[]): UiDraftOrigin {
   const [path, ...others] = paths;
 
   return path === undefined || others.length > 0 ? { kind: "upload" } : { kind: "example", path };
-}
-
-export function matchingExampleFiles(files: readonly IndexedFile[], query: string): IndexedFile[] {
-  return fuzzyFilter(files, query, (file) => file.path);
 }
 
 export type AppConfig = IndexedConfig & { command: AppCommand };

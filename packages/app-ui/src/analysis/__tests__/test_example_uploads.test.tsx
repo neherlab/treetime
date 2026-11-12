@@ -9,7 +9,7 @@ import type {
 } from "@neherlab/app-contracts";
 import { zCheckConfigRequest } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
-import { Toaster } from "@neherlab/design/ui/toast";
+import { toast, Toaster } from "@neherlab/design/ui/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
@@ -28,10 +28,11 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { ApiContext, type ApiContextValue } from "../../api/context";
 import { blankDraftState } from "../../store/__tests__/draftState";
 import { useDraftStore } from "../../store/draft";
+import { type AppConfig, appConfigs, type ExampleIndex } from "../exampleData";
 import { type FormConfig, fromFormConfig, toFormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
 import { PathPicker } from "../PathPicker";
-import { useDatasetLoader, useExampleIndex } from "../useExampleData";
+import { useExampleConfigLoader, useExampleIndex, useOpenExample } from "../useExampleData";
 
 const NATIVE_FETCH = { fetch, Request, Response, Headers, Blob, File, FormData, AbortController, AbortSignal };
 
@@ -59,6 +60,7 @@ const INDEX: DataIndex = {
       name: "zika/20",
       organism: "Zika virus",
       samples: 20,
+      settings: { metadata_id_columns: ["accession"] },
       inputs: [
         { kind: "tree", path: "zika/20/tree.nwk" },
         { kind: "alignment", path: "zika/20/aln.fasta.xz" },
@@ -156,10 +158,8 @@ describe("example data of the web apps", () => {
   test("a dataset uploads its input files from the data folder under the base path", async () => {
     const server = fakeServer();
     await render(server, "timetree");
-    const user = userEvent.setup({ document });
 
-    await user.click(page().getByRole("button", { name: "Example datasets" }));
-    await user.click(await page().findByRole("button", { name: "Load" }));
+    await openExampleDataset();
     await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
 
     expect([
@@ -182,36 +182,29 @@ describe("example data of the web apps", () => {
     ]);
   });
 
-  test("a dataset loads outside the form, as the command palette loads it", async () => {
+  test("a dataset opens as a new time tree draft with the settings that reading it needs", async () => {
     const server = fakeServer();
-    await render(server, "timetree");
+    await render(server, "clock");
 
-    await userEvent.setup({ document }).click(page().getByRole("button", { name: "Load a dataset outside the form" }));
+    await openExampleDataset();
     await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
 
-    expect([server.uploads, settingText("Tree setting"), useDraftStore.getState().draft.sources["tree"]]).toStrictEqual(
-      [
-        ["tree.nwk:11", "metadata.tsv:9", "aln.fasta.xz:4"],
-        JSON.stringify("/runs/r1/inputs/tree.nwk"),
-        { label: "tree.nwk", size: 11, origin: { kind: "example", path: "zika/20/tree.nwk" }, run_id: "r1" },
-      ],
-    );
+    expect([
+      useDraftStore.getState().draft.command,
+      useDraftStore.getState().draft.config["metadata_id_columns"],
+      useDraftStore.getState().undo?.reason,
+    ]).toStrictEqual(["timetree", ["accession"], undefined]);
   });
 
   test("a dataset file that cannot be read uploads nothing", async () => {
     const server = fakeServer({ missing: "zika/20/metadata.tsv" });
     await render(server, "timetree");
-    const user = userEvent.setup({ document });
 
-    await user.click(page().getByRole("button", { name: "Example datasets" }));
-    await user.click(await page().findByRole("button", { name: "Load" }));
+    await openExampleDataset();
     await pWaitFor(() => server.static.length === 4);
+    await page().findByRole("button", { name: "Open the example dataset" });
 
-    expect([
-      await page().findByRole("button", { name: "Load" }),
-      server.uploads,
-      settingText("Tree setting"),
-    ]).toStrictEqual([page().getByRole("button", { name: "Load" }), [], "null"]);
+    expect([server.static.length, server.uploads, settingText("Tree setting")]).toStrictEqual([4, [], "null"]);
   });
 
   test("a config uploads each file it reads and checks its text with the uploads as inputs", async () => {
@@ -265,7 +258,7 @@ describe("example data of the web apps", () => {
     const alignment = Promise.withResolvers<void>();
     const server = fakeServer({ held: new Map([["zika/20/aln.fasta.xz", alignment.promise]]) });
     await render(server, "timetree");
-    await chooseExampleDataset();
+    await openExampleDataset();
     await pWaitFor(() => server.static.includes("/treetime/data/zika/20/aln.fasta.xz"));
 
     await userEvent
@@ -273,7 +266,7 @@ describe("example data of the web apps", () => {
       .upload(page().getByLabelText("Tree file to upload"), new File(["(C:1,D:1);\n"], "mine.nwk"));
     await page().findByText(JSON.stringify("/runs/r1/inputs/mine.nwk"));
     alignment.resolve();
-    await pWaitFor(() => page().queryByRole("cell", { name: "zika/20" }) === null);
+    await pWaitFor(() => page().queryByRole("button", { name: "Opening the example dataset" }) === null);
 
     expect([settingText("Tree setting"), settingText("Alignment setting"), server.uploads]).toStrictEqual([
       JSON.stringify("/runs/r1/inputs/mine.nwk"),
@@ -282,7 +275,7 @@ describe("example data of the web apps", () => {
     ]);
   });
 
-  test("an upload of an input a dataset does not set is kept when it completes after the dataset load", async () => {
+  test("an upload of the earlier draft that completes after a dataset opens stays out of the new draft", async () => {
     const keepTips = Promise.withResolvers<void>();
     const server = fakeServer({ heldUploads: new Map([["mine.csv", keepTips.promise]]) });
     await render(server, "clock");
@@ -291,22 +284,16 @@ describe("example data of the web apps", () => {
       .setup({ document })
       .upload(page().getByLabelText("Keep tips file to upload"), new File(["country,w\nA,1\n"], "mine.csv"));
     await pWaitFor(() => server.started.includes("mine.csv"));
-    await chooseExampleDataset();
-    await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 2);
+    await openExampleDataset();
+    await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
     keepTips.resolve();
-    await pWaitFor(() => useDraftStore.getState().draft.sources["keep_tips_file"] !== undefined);
+    await pWaitFor(() => server.uploads.includes("mine.csv:14"));
 
     expect([
       settingText("Keep tips setting"),
       settingText("Tree setting"),
       Object.keys(useDraftStore.getState().draft.sources).toSorted(),
-      server.released,
-    ]).toStrictEqual([
-      JSON.stringify("/runs/r1/inputs/mine.csv"),
-      JSON.stringify("/runs/r1/inputs/tree.nwk"),
-      ["keep_tips_file", "metadata", "tree"],
-      [],
-    ]);
+    ]).toStrictEqual(["null", JSON.stringify("/runs/r1/inputs/tree.nwk"), ["alignment", "metadata", "tree"]]);
   });
 
   test("a dataset chosen while an example config is fetched replaces the config and releases its uploads", async () => {
@@ -316,7 +303,7 @@ describe("example data of the web apps", () => {
     await chooseExampleConfig(CLOCK_CONFIG);
     await pWaitFor(() => server.static.includes("/treetime/data/zika/keep_tips.txt"));
 
-    await chooseExampleDataset();
+    await openExampleDataset();
     await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
     keepTips.resolve();
     await pWaitFor(() => server.released.length === 2);
@@ -366,10 +353,8 @@ describe("example data of the web apps", () => {
   test("a config the check rejects releases its uploads and keeps the form", async () => {
     const server = fakeServer({ rejected: true });
     await render(server, "timetree");
-    const user = userEvent.setup({ document });
 
-    await user.click(page().getByRole("button", { name: "Example configs" }));
-    await user.click(await loadButton(CLOCK_CONFIG));
+    await chooseExampleConfig(CLOCK_CONFIG);
     await pWaitFor(() => server.released.length === 3);
 
     expect([server.released.toSorted(), useDraftStore.getState().draft]).toStrictEqual([
@@ -385,23 +370,11 @@ async function loadExampleConfig(title = CLOCK_CONFIG, command: AppCommand = "cl
 }
 
 async function chooseExampleConfig(title: string) {
-  const user = userEvent.setup({ document });
-
-  if (page().queryByRole("button", { name: "Example configs" }) !== null) {
-    await user.click(page().getByRole("button", { name: "Example configs" }));
-  }
-
-  await user.click(await loadButton(title));
+  await userEvent.setup({ document }).click(await page().findByRole("button", { name: `Load ${title}` }));
 }
 
-async function chooseExampleDataset() {
-  const user = userEvent.setup({ document });
-  await user.click(page().getByRole("button", { name: "Example datasets" }));
-  await user.click(await page().findByRole("button", { name: "Load" }));
-}
-
-async function loadButton(title: string): Promise<HTMLElement> {
-  return within(await page().findByRole("row", { name: new RegExp(title, "u") })).getByRole("button", { name: "Load" });
+async function openExampleDataset() {
+  await userEvent.setup({ document }).click(await page().findByRole("button", { name: "Open the example dataset" }));
 }
 
 function fakeServer({
@@ -544,7 +517,7 @@ async function render(server: ReturnType<typeof fakeServer>, command: AppCommand
       </ApiContext.Provider>,
     ),
   );
-  await page().findByRole("button", { name: "Example datasets" });
+  await page().findByRole("button", { name: "Open the example dataset" });
 }
 
 function apiContext(fetch: typeof globalThis.fetch): ApiContextValue {
@@ -557,26 +530,45 @@ function DraftPage() {
 
   return (
     <>
-      <DatasetOutsideForm command={command} />
+      <ExamplesOutsideForm />
       <DraftForm key={`${command}:${epoch}`} command={command} />
     </>
   );
 }
 
-function DatasetOutsideForm({ command }: { command: AppCommand }) {
+function ExamplesOutsideForm() {
   const { data: examples } = useExampleIndex();
-  const loadDataset = useDatasetLoader();
+  const openExample = useOpenExample();
+  const [opening, setOpening] = useState(false);
   const dataset = examples?.index?.datasets[0];
 
-  const onClick = useCallback(() => {
+  const onOpen = useCallback(() => {
     if (examples !== undefined && dataset !== undefined) {
-      void loadDataset(examples, dataset, command);
+      setOpening(true);
+      openExample(examples, dataset)
+        .catch((error: unknown) => toast.add({ title: `${dataset.name} cannot be opened`, description: String(error) }))
+        .finally(() => setOpening(false));
     }
-  }, [command, dataset, examples, loadDataset]);
+  }, [dataset, examples, openExample]);
+
+  return (
+    <>
+      <button type="button" onClick={onOpen}>
+        {opening ? "Opening the example dataset" : "Open the example dataset"}
+      </button>
+      {examples !== undefined &&
+        appConfigs(examples).map((config) => <ConfigButton key={config.path} examples={examples} config={config} />)}
+    </>
+  );
+}
+
+function ConfigButton({ examples, config }: { examples: ExampleIndex; config: AppConfig }) {
+  const loadConfig = useExampleConfigLoader();
+  const onClick = useCallback(() => void loadConfig(examples, config), [config, examples, loadConfig]);
 
   return (
     <button type="button" onClick={onClick}>
-      Load a dataset outside the form
+      Load {config.title}
     </button>
   );
 }

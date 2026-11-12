@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
+import { commandSettings } from "../settings/catalog";
+import { normalizeConfig } from "../settings/config";
 import { inputSettingKeys } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import type { QueuedExample } from "../store/draftSchema";
@@ -31,6 +33,8 @@ import { draftUploadPaths, type StoredFile, storedSource, storedValue } from "./
 import { claimInputs } from "./inputClaims";
 import { type ConfigLoadResult, SUPERSEDED, useConfigLoader } from "./useConfigLoader";
 import { useRunUploads } from "./useRunUploads";
+
+const EXAMPLE_COMMAND: AppCommand = "timetree";
 
 export function useExampleIndex(): ExampleIndexQuery {
   const host = useHost();
@@ -103,14 +107,19 @@ export function useExampleConfigLoader() {
   );
 }
 
-export function useDatasetLoader() {
+export function useOpenExample() {
   const navigate = useNavigate();
   const { release } = useRunUploads();
   const uploadExampleInputs = useExampleInputsUpload();
 
   return useCallback(
-    async (examples: ExampleIndex, dataset: IndexedDataset, command: AppCommand) => {
-      const inputs = indexedDatasetInputs(dataset, command);
+    async (examples: ExampleIndex, dataset: IndexedDataset): Promise<void> => {
+      const { discard } = useDraftStore.getState();
+      discard("new", EXAMPLE_COMMAND);
+      const { draft, load } = useDraftStore.getState();
+      const specs = commandSettings(EXAMPLE_COMMAND).settings;
+      load({ ...draft, config: normalizeConfig(specs, { ...draft.config, ...dataset.settings }) });
+      const inputs = indexedDatasetInputs(dataset, EXAMPLE_COMMAND);
 
       if (examples.origin === "local") {
         applyDraftInputs(
@@ -126,7 +135,7 @@ export function useDatasetLoader() {
         return;
       }
 
-      if (await uploadExampleInputs(inputs, command)) {
+      if (await uploadExampleInputs(inputs, EXAMPLE_COMMAND)) {
         await navigate({ to: "/new" });
       }
     },
@@ -215,10 +224,6 @@ function useExampleInputsUpload() {
   );
 }
 
-export function exampleDataBase(): string {
-  return import.meta.env.BASE_URL;
-}
-
 export interface ExampleIndexQuery {
   data: ExampleIndex | undefined;
   error: Error | null;
@@ -246,4 +251,8 @@ async function uploadConfigInputs(
 interface UploadedConfigInput {
   input: ConfigInput;
   stored: StoredFile[];
+}
+
+function exampleDataBase(): string {
+  return import.meta.env.BASE_URL;
 }
