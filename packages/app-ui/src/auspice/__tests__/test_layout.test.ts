@@ -1,17 +1,13 @@
-import { isSidebarDocked, panelSizes, renderedPanels, startLayout, type ViewPanel } from "../layout";
+import { isSidebarDocked, panelSizes, renderedPanels, startPanelLayout, type ViewPanel } from "../layout";
 
 describe("viewer start layout (auspice controlsHiddenWidth 780, twoColumnBreakpoint 1600)", () => {
   test.each([
-    { width: 780, sidebarOpen: false, panelLayout: "full" },
-    { width: 781, sidebarOpen: true, panelLayout: "full" },
-    { width: 1600, sidebarOpen: true, panelLayout: "full" },
-    { width: 1601, sidebarOpen: true, panelLayout: "grid" },
-  ])(
-    "a viewer $width px wide starts with the sidebar open: $sidebarOpen, layout $panelLayout",
-    ({ width, ...expected }) => {
-      expect(startLayout(width)).toStrictEqual(expected);
-    },
-  );
+    { width: 780, panelLayout: "full" },
+    { width: 1600, panelLayout: "full" },
+    { width: 1601, panelLayout: "grid" },
+  ])("a viewer $width px wide starts with the $panelLayout panel layout", ({ width, panelLayout }) => {
+    expect(startPanelLayout(width)).toBe(panelLayout);
+  });
 
   test.each([
     { width: 780, docked: false },

@@ -16,16 +16,8 @@ export function isSidebarDocked(viewerWidth: number): boolean {
   return viewerWidth > controlsHiddenWidth;
 }
 
-export function startLayout(viewerWidth: number): StartLayout {
-  return {
-    sidebarOpen: viewerWidth > controlsHiddenWidth,
-    panelLayout: viewerWidth > twoColumnBreakpoint ? "grid" : "full",
-  };
-}
-
-export interface StartLayout {
-  sidebarOpen: boolean;
-  panelLayout: AuspicePanelLayout;
+export function startPanelLayout(viewerWidth: number): AuspicePanelLayout {
+  return viewerWidth > twoColumnBreakpoint ? "grid" : "full";
 }
 
 export function panelSizes({

@@ -17,15 +17,18 @@ import {
 import { MAIN_SCROLL_ID } from "../RootLayout";
 import { AuspicePanels } from "./AuspicePanels";
 import { AuspiceProviders } from "./AuspiceProviders";
-import { HideControlsButton, ShowControlsTab, SidebarControls } from "./AuspiceSidebar";
+import { HideControlsButton, SidebarControls } from "./AuspiceSidebar";
 import type { FigureRuns } from "./downloads";
-import { isSidebarDocked, SIDEBAR_WIDTH, startLayout } from "./layout";
+import { isSidebarDocked, SIDEBAR_WIDTH, startPanelLayout } from "./layout";
 import { useNotificationToasts } from "./notifications";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
+import { ViewerToolbar } from "./ViewerToolbar";
 
 const SLIDE_MS = 300;
+
+const STARTED_STORES = new WeakSet<AuspiceStore>();
 
 const SIDEBAR_CLASS =
   "bg-muted absolute inset-y-0 left-0 z-20 w-(--auspice-sidebar-width) overflow-x-hidden overflow-y-auto border-r transition-[left] duration-300 ease-out motion-reduce:transition-none data-ending-style:-left-(--auspice-sidebar-width) data-starting-style:-left-(--auspice-sidebar-width)";
@@ -89,30 +92,49 @@ function Viewer({
     />
   );
 
+  const optionsRef = useRef<HTMLButtonElement>(null);
+
   return (
-    <div
-      ref={measureViewer}
-      // oxlint-disable-next-line react/forbid-dom-props -- the sidebar width comes from Auspice's layout constants, which no Tailwind class can hold
-      style={VIEWER_STYLE}
-      className="bg-card text-foreground relative min-w-0 overflow-hidden rounded-lg border scheme-light"
-    >
-      {docked && (
-        <DockedSidebar store={store} open={open} onOpenChange={setOpen} sidebarId={sidebarId} entropy={entropy}>
-          {panels}
-        </DockedSidebar>
-      )}
-      {viewerWidth > 0 && !docked && (
-        <OverlaySidebar
-          store={store}
-          open={open}
-          onOpenChange={setOpen}
-          sidebarId={sidebarId}
-          entropy={entropy}
-          viewerRef={viewerRef}
-        >
-          {panels}
-        </OverlaySidebar>
-      )}
+    <div className="grid min-w-0 gap-2">
+      <ViewerToolbar
+        store={store}
+        sidebarId={sidebarId}
+        sidebarOpen={open}
+        onSidebarOpen={setOpen}
+        optionsRef={optionsRef}
+      />
+      <div
+        ref={measureViewer}
+        // oxlint-disable-next-line react/forbid-dom-props -- the sidebar width comes from Auspice's layout constants, which no Tailwind class can hold
+        style={VIEWER_STYLE}
+        className="bg-card text-foreground relative min-w-0 overflow-hidden rounded-lg border scheme-light"
+      >
+        {docked && (
+          <DockedSidebar
+            store={store}
+            open={open}
+            onOpenChange={setOpen}
+            sidebarId={sidebarId}
+            entropy={entropy}
+            optionsRef={optionsRef}
+          >
+            {panels}
+          </DockedSidebar>
+        )}
+        {viewerWidth > 0 && !docked && (
+          <OverlaySidebar
+            store={store}
+            open={open}
+            onOpenChange={setOpen}
+            sidebarId={sidebarId}
+            entropy={entropy}
+            optionsRef={optionsRef}
+            viewerRef={viewerRef}
+          >
+            {panels}
+          </OverlaySidebar>
+        )}
+      </div>
     </div>
   );
 }
@@ -123,25 +145,23 @@ function DockedSidebar({
   onOpenChange,
   sidebarId,
   entropy,
+  optionsRef,
   children,
 }: SidebarProps & { children: ReactNode }) {
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const focusTab = useRef(false);
 
   const changeOpen = useCallback(
     (value: boolean) => {
-      focusTab.current = !value && sidebarRef.current?.contains(document.activeElement) === true;
-      onOpenChange(value);
-    },
-    [onOpenChange],
-  );
+      const hadFocus = sidebarRef.current?.contains(document.activeElement) === true;
 
-  const tabRef = useCallback((tab: HTMLButtonElement | null) => {
-    if (tab !== null && focusTab.current) {
-      focusTab.current = false;
-      tab.focus();
-    }
-  }, []);
+      onOpenChange(value);
+
+      if (!value && hadFocus) {
+        optionsRef.current?.focus();
+      }
+    },
+    [onOpenChange, optionsRef],
+  );
 
   return (
     <Collapsible open={open} onOpenChange={changeOpen}>
@@ -153,7 +173,6 @@ function DockedSidebar({
         data-open={open ? "" : undefined}
         className="relative isolate transition-[margin-left] duration-300 ease-out data-open:ml-(--auspice-sidebar-width) motion-reduce:transition-none"
       >
-        {!open && <CollapsibleTrigger render={<ShowControlsTab ref={tabRef} />} />}
         {children}
       </div>
     </Collapsible>
@@ -166,18 +185,16 @@ function OverlaySidebar({
   onOpenChange,
   sidebarId,
   entropy,
+  optionsRef,
   viewerRef,
   children,
 }: SidebarProps & { viewerRef: RefObject<HTMLDivElement | null>; children: ReactNode }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange} modal="trap-focus">
-      <div className="relative isolate">
-        <Dialog.Trigger render={<ShowControlsTab />} />
-        {children}
-      </div>
+      <div className="relative isolate">{children}</div>
       <Dialog.Portal container={viewerRef}>
         <Dialog.Backdrop className="absolute inset-y-0 right-0 left-(--auspice-sidebar-width) z-10 bg-black/50 transition-opacity duration-300 ease-out data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
-        <Dialog.Popup id={sidebarId} aria-label="Auspice controls" className={SIDEBAR_CLASS}>
+        <Dialog.Popup id={sidebarId} aria-label="Auspice controls" className={SIDEBAR_CLASS} finalFocus={optionsRef}>
           <Dialog.Close render={<HideControlsButton />} />
           <SidebarControls store={store} entropy={entropy} />
         </Dialog.Popup>
@@ -192,6 +209,7 @@ interface SidebarProps {
   onOpenChange: (open: boolean) => void;
   sidebarId: string;
   entropy: boolean;
+  optionsRef: RefObject<HTMLButtonElement | null>;
 }
 
 function useViewerWidth(
@@ -233,12 +251,16 @@ function useViewerWidth(
 }
 
 function applyStartLayout(store: AuspiceStore, viewerWidth: number): void {
-  const { sidebarOpen, panelLayout } = startLayout(viewerWidth);
+  if (STARTED_STORES.has(store)) {
+    return;
+  }
 
-  store.dispatch({ type: TOGGLE_SIDEBAR, value: sidebarOpen });
+  STARTED_STORES.add(store);
+
+  store.dispatch({ type: TOGGLE_SIDEBAR, value: false });
 
   if (store.getState().controls.canTogglePanelLayout) {
-    store.dispatch({ type: CHANGE_PANEL_LAYOUT, data: panelLayout });
+    store.dispatch({ type: CHANGE_PANEL_LAYOUT, data: startPanelLayout(viewerWidth) });
   }
 }
 
