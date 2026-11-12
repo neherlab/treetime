@@ -9,6 +9,7 @@ mod tests {
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use serde_json::{Map, Value, json};
+  use treetime_schema::version_info;
 
   #[test]
   fn test_config_code_command_line_of_each_setting_parses_back_to_the_same_config() {
@@ -227,6 +228,52 @@ mod tests {
     let config: Map<String, Value> = AppCommand::Prune.default_config().unwrap();
     let code = config_code(AppCommand::Prune, &config).unwrap();
     assert_eq!("treetime prune \\\n  --output-all out", code.command_line_text);
+  }
+
+  #[test]
+  fn test_config_code_methods_name_the_analysis_version_and_changed_key_settings() {
+    let mut config = AppCommand::Timetree.default_config().unwrap();
+    config.extend(
+      json!({
+        "tree": "tree.nwk",
+        "max_iter": 5,
+        "confidence": true,
+        "coalescent": "skyline",
+        "prune_undated_tips": true,
+        "seed": 7,
+      })
+      .as_object()
+      .unwrap()
+      .clone(),
+    );
+
+    let code = config_code(AppCommand::Timetree, &config).unwrap();
+
+    assert_eq!(
+      format!(
+        "We used the time tree analysis of TreeTime {} (Sagulenko et al. 2018; command `treetime timetree`). Key \
+         settings changed from their defaults: iterations = 5, confidence = on, coalescent prior = skyline. 2 further \
+         settings differ from their defaults, as the configuration lists them.",
+        version_info().version
+      ),
+      code.methods
+    );
+  }
+
+  #[test]
+  fn test_config_code_methods_of_a_default_configuration_say_so() {
+    let config = AppCommand::Clock.default_config().unwrap();
+
+    let code = config_code(AppCommand::Clock, &config).unwrap();
+
+    assert_eq!(
+      format!(
+        "We used the clock signal analysis of TreeTime {} (Sagulenko et al. 2018; command `treetime clock`). All \
+         settings had their default values.",
+        version_info().version
+      ),
+      code.methods
+    );
   }
 
   mod helpers {

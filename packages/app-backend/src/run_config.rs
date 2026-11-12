@@ -38,7 +38,7 @@ pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &Inpu
       };
       RunConfigResponse::Valid {
         config: SparseConfig(config),
-        code,
+        code: Box::new(code),
         config_hash,
         config_hash_error,
       }
@@ -71,7 +71,7 @@ pub enum RunConfigResponse {
     /// `output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.
     config: SparseConfig,
     /// The command line and the YAML config that reproduce the run.
-    code: ConfigCode,
+    code: Box<ConfigCode>,
     /// Hash that a run of this configuration records, to find finished runs with the same settings and input
     /// contents; absent when an input cannot be read.
     config_hash: Option<String>,

@@ -113,7 +113,7 @@ fn reroot_text(command: AppCommand, config: &Map<String, Value>) -> Result<Strin
   Ok(format!("Automatic: {} rerooting", value_text(Some(&method))))
 }
 
-pub fn value_text(value: Option<&Value>) -> String {
+pub(crate) fn value_text(value: Option<&Value>) -> String {
   match value {
     None | Some(Value::Null) => "Not set".to_owned(),
     Some(Value::Bool(true)) => "On".to_owned(),

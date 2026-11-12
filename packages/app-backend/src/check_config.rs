@@ -78,7 +78,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
         choices,
         effective,
         config: SparseConfig(config),
-        code,
+        code: Box::new(code),
         run_differences: None,
       }
     },
@@ -201,7 +201,7 @@ pub enum CheckConfigResponse {
     /// The configuration with every default filled in and without output paths, which the app sets for each run.
     config: SparseConfig,
     /// The command line and the YAML config that reproduce the configuration.
-    code: ConfigCode,
+    code: Box<ConfigCode>,
     /// Findings about the configuration and its input files.
     checks: Vec<RunCheck>,
     /// The option of each choice of the command that the configuration selects.
