@@ -14,7 +14,7 @@ import { useRootToTip } from "../runs/rootToTip";
 import { RootToTipPlot } from "../runs/RootToTipPlot";
 import { commandSettings } from "../settings/catalog";
 import { inputFactsRequest } from "../settings/inputs";
-import { inputFactRows, PREVIEW_ROOT_CAPTIONS } from "./draftPreview";
+import { inputFactRows, PREVIEW_ROOT_CAPTIONS, previewSettings } from "./draftPreview";
 import { PreviewStatistics } from "./PreviewStatistics";
 import { useWorkspace } from "./workspaceContext";
 
@@ -70,9 +70,10 @@ function InputFactsPanel({ facts }: { facts: InputFacts }) {
 }
 
 function ClockPreviewPanel({ command, config }: { command: AppCommand; config: SparseConfig }) {
-  const treeKey = JSON.stringify(config["tree"] ?? null);
+  const previewConfig = useMemo(() => previewSettings(command, config), [command, config]);
+  const previewKey = JSON.stringify(previewConfig);
   const [requestedFor, setRequestedFor] = useState<string | undefined>(undefined);
-  const beyondLimit = requestedFor === treeKey;
+  const beyondLimit = requestedFor === previewKey;
   const hasTree = config["tree"] !== undefined && config["tree"] !== null;
 
   const {
@@ -83,12 +84,12 @@ function ClockPreviewPanel({ command, config }: { command: AppCommand; config: S
     (context) =>
       clockPreview({
         ...context,
-        body: beyondLimit ? { command, config, beyond_limit: true } : { command, config },
+        body: beyondLimit ? { command, config: previewConfig, beyond_limit: true } : { command, config: previewConfig },
       }),
     { enabled: hasTree, placeholderData: keepPreviousData, staleTime: 30_000, retry: false },
   );
 
-  const update = useCallback(() => setRequestedFor(treeKey), [treeKey]);
+  const update = useCallback(() => setRequestedFor(previewKey), [previewKey]);
   const { points, line } = useRootToTip(preview?.clock?.root_to_tip);
   const run = useMemo(() => ({ id: "preview", title: "Preview", command }), [command]);
 

@@ -36,6 +36,7 @@ export * from './docs_version_banner.js';
 export * from './docs_version_banner_link.js';
 export * from './settings_about.js';
 export * from './settings_command_line.js';
+export * from './settings_command_line_left_out.js';
 export * from './settings_config_key.js';
 export * from './settings_conflicts.js';
 export * from './settings_default.js';

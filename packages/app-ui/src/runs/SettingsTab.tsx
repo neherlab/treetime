@@ -38,6 +38,7 @@ export function SettingsTab({ record, configName }: { record: RunRecord; configN
   const changedCount = changedSettingCount(specs, changedKeys);
   const code = useRunCode(record, true);
   const yaml = code.state === "ready" ? code.code.yaml_text : undefined;
+  const commandLines = code.state === "ready" ? code.commandLines : undefined;
 
   const onExport = useCallback(() => {
     if (yaml !== undefined && configName !== undefined) {
@@ -90,7 +91,10 @@ export function SettingsTab({ record, configName }: { record: RunRecord; configN
                     <TableCell className="whitespace-normal">
                       {changed && <span className="sr-only">Changed: </span>}
                       <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
-                      <SettingHelpPopover spec={spec} value={effectiveValue(config, spec)} />
+                      <SettingHelpPopover
+                        spec={spec}
+                        commandLine={commandLines?.find((line) => line.key === spec.key)}
+                      />
                     </TableCell>
                     <TableCell className="font-mono text-xs break-all whitespace-normal">
                       {defaultText(effectiveValue(config, spec), locale, spec.options)}

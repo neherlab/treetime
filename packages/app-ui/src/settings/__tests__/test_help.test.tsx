@@ -1,4 +1,4 @@
-import type { JsonValue, SettingSpec } from "@neherlab/app-contracts";
+import type { JsonValue, SettingCommandLine, SettingSpec } from "@neherlab/app-contracts";
 import { within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -6,7 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { inAct, registerDom } from "../../__tests__/dom";
 import { LocaleProvider, type Locale } from "../../i18n/locale";
-import { commandLineText, defaultText, SettingHelp } from "../help";
+import { defaultText, SettingCommandLineNote, SettingHelp } from "../help";
 
 const TREE_DIALECT: SettingSpec = {
   key: "newick_dialect",
@@ -72,15 +72,23 @@ describe("setting help", () => {
   });
 });
 
-describe("command line of a setting", () => {
-  test.each<[string, SettingSpec, JsonValue | undefined, string]>([
-    ["a value", { ...TREE_DIALECT, kind: "enum" }, "rich,nhx", "--newick-dialect rich,nhx"],
-    ["a number", { ...TREE_DIALECT, flag: "--clock-filter", kind: "number" }, 4, "--clock-filter 4"],
-    ["a list", { ...TREE_DIALECT, flag: "--relax", kind: "list" }, [1, 0.5], "--relax 1 0.5"],
-    ["a switch", { ...TREE_DIALECT, flag: "--keep-root", kind: "switch" }, true, "--keep-root"],
-    ["no value", TREE_DIALECT, undefined, "--newick-dialect DIALECT"],
-  ])("shows %s", (_name, spec, value, expected) => {
-    expect(commandLineText(spec, value)).toBe(expected);
+describe("command line note of a setting", () => {
+  test.each<[string, SettingCommandLine | undefined, string | null]>([
+    [
+      "the command line of the value",
+      { key: "newick_dialect", text: "--newick-dialect beast" },
+      "Command line: --newick-dialect beast",
+    ],
+    [
+      "a value that the command line leaves out",
+      { key: "newick_dialect" },
+      "Command line: --newick-dialect is left out for this value",
+    ],
+    ["no command line without a value", undefined, null],
+  ])("names %s", (_, commandLine, expected) => {
+    render(<SettingCommandLineNote spec={TREE_DIALECT} commandLine={commandLine} />, "en");
+
+    expect(page().queryByText(/^Command line:/u)?.textContent ?? null).toBe(expected);
   });
 });
 

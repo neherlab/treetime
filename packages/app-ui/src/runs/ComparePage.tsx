@@ -287,7 +287,8 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
   return (
     <TableRow>
       <TableCell className="whitespace-normal">
-        {spec?.label ?? difference.key} {spec !== undefined && <SettingHelpPopover spec={spec} value={undefined} />}
+        {spec?.label ?? difference.key}{" "}
+        {spec !== undefined && <SettingHelpPopover spec={spec} commandLine={undefined} />}
         {difference.kind === "input" && (
           <span className="text-muted-foreground block text-xs">Different file contents</span>
         )}

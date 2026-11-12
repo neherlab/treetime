@@ -192,7 +192,7 @@ function Form({ value }: { value: FormValue | undefined }) {
 
   return (
     <FormProvider {...form}>
-      <SettingControl command="ancestral" spec={ENTRIES} label="Entries" />
+      <SettingControl command="ancestral" spec={ENTRIES} label="Entries" scope="all" />
       <SettingValue />
     </FormProvider>
   );

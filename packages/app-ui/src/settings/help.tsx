@@ -1,7 +1,8 @@
-import type { JsonValue, SettingOption, SettingSpec } from "@neherlab/app-contracts";
+import type { JsonValue, SettingCommandLine, SettingOption, SettingSpec } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@neherlab/design/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import type { ReactNode } from "react";
 import Info from "~icons/lucide/info";
 
@@ -38,24 +39,37 @@ export function SettingSummary({ spec, label }: { spec: SettingSpec; label: Reac
   );
 }
 
-export function SettingHelpPopover({ spec, value }: { spec: SettingSpec; value: JsonValue | undefined }) {
+export function SettingHelpPopover({
+  spec,
+  commandLine,
+}: {
+  spec: SettingSpec;
+  commandLine: SettingCommandLine | undefined;
+}) {
   const locale = useLocale();
 
   return (
     <Popover>
-      <PopoverTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label={m.settings_about({ label: spec.label }, { locale })}
-            className="text-muted-foreground"
-          />
-        }
-      >
-        <Info aria-hidden />
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={m.settings_about({ label: spec.label }, { locale })}
+                  className="text-muted-foreground"
+                />
+              }
+            />
+          }
+        >
+          <Info aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent>{m.settings_about({ label: spec.label }, { locale })}</TooltipContent>
+      </Tooltip>
       <PopoverContent align="start" className="grid w-96 max-w-[calc(100vw-2rem)] gap-2.5">
         <span className="font-bold">{spec.label}</span>
         <div className="text-muted-foreground grid gap-1.5">
@@ -76,31 +90,35 @@ export function SettingHelpPopover({ spec, value }: { spec: SettingSpec; value: 
             ))}
           </dl>
         )}
-        <p className="text-xs">
-          {m.settings_command_line({}, { locale })}: <code className={CODE_CLASS}>{commandLineText(spec, value)}</code>
-        </p>
+        <SettingCommandLineNote spec={spec} commandLine={commandLine} />
       </PopoverContent>
     </Popover>
   );
 }
 
-export function commandLineText(spec: SettingSpec, value: JsonValue | undefined): string {
-  if (value === undefined || value === null || isJsonObject(value) || spec.kind === "records") {
-    return [spec.flag, ...spec.value_names].join(" ");
+export function SettingCommandLineNote({
+  spec,
+  commandLine,
+}: {
+  spec: SettingSpec;
+  commandLine: SettingCommandLine | undefined;
+}) {
+  const locale = useLocale();
+
+  if (commandLine === undefined) {
+    return null;
   }
 
-  if (value === true || value === false) {
-    return spec.flag;
-  }
-
-  const values = Array.isArray(value) ? value : [value];
-
-  return values.length === 0
-    ? spec.flag
-    : [
-        spec.flag,
-        ...values.map((item) => (isJsonObject(item) || Array.isArray(item) ? JSON.stringify(item) : String(item))),
-      ].join(" ");
+  return (
+    <p className="text-xs">
+      {m.settings_command_line({}, { locale })}:{" "}
+      {commandLine.text === undefined ? (
+        m.settings_command_line_left_out({ flag: spec.flag }, { locale })
+      ) : (
+        <code className={CODE_CLASS}>{commandLine.text}</code>
+      )}
+    </p>
+  );
 }
 
 export function SettingHelpText({ spec }: { spec: SettingSpec }) {

@@ -7,7 +7,6 @@ import type {
   JsonValue,
   MainSettingRow,
   RowControl,
-  RowOption,
   RowSwitch,
   RunCheck,
   SettingChoice,
@@ -60,7 +59,6 @@ interface RowContext {
   set: (key: string, value: JsonValue | undefined) => void;
   reset: (keys: readonly string[]) => void;
   get: (key: string) => JsonValue | undefined;
-  example: (key: string) => JsonValue | undefined;
 }
 
 export function MainSettings({
@@ -126,7 +124,6 @@ export function MainSettings({
 
         return spec === undefined ? undefined : settingValue(config, spec);
       },
-      example: (key) => specs.get(key)?.examples[0],
     };
   }, [checked, checks, command, config, effective, reported, setValue, settings]);
 
@@ -148,11 +145,11 @@ function Row({ context, row }: { context: RowContext; row: MainSettingRow }) {
     case "switches":
       return <SwitchesRow context={context} row={row} switches={control.switches} />;
     case "coalescent":
-      return <CoalescentRow context={context} row={row} options={control.options} />;
+      return <CoalescentRow context={context} row={row} control={control} />;
     case "clock-filter":
       return <ClockFilterRow context={context} row={row} control={control} />;
     case "substitution-model":
-      return <ModelRow context={context} row={row} example={control.parameters_example} />;
+      return <ModelRow context={context} row={row} control={control} />;
     case "setting":
       break;
   }
@@ -246,19 +243,20 @@ function ChoiceRow({
 function CoalescentRow({
   context,
   row,
-  options,
+  control,
 }: {
   context: RowContext;
   row: MainSettingRow;
-  options: readonly RowOption[];
+  control: Extract<RowControl, { kind: "coalescent" }>;
 }) {
   const { get, set, reset } = context;
-  const value = get("coalescent");
-  const named = useMemo(() => namedCoalescents(context.specs.get("coalescent")), [context.specs]);
+  const { setting, skyline_settings: skylineSettings, years_suffix: yearsSuffix, options } = control;
+  const value = get(setting);
+  const named = useMemo(() => namedCoalescents(context.specs.get(setting)), [context.specs, setting]);
   const derived = coalescentMode(value, named);
   const [picked, setPicked] = useState<string>();
   const mode = picked === "fixed" && derived === "none" ? "fixed" : derived;
-  const years = yearsOf(value);
+  const years = yearsOf(value, yearsSuffix);
 
   const toggleOptions = useMemo(
     (): readonly ToggleOption<string>[] => options.map(({ value: option, label }) => ({ value: option, label })),
@@ -270,27 +268,27 @@ function CoalescentRow({
       setPicked(next);
 
       if (next !== "skyline") {
-        reset(SKYLINE_KEYS);
+        reset(skylineSettings);
       }
 
       if (named.has(next)) {
-        set("coalescent", next);
-      } else if (next === "none" || coalescentMode(get("coalescent"), named) !== "fixed") {
-        reset(["coalescent"]);
+        set(setting, next);
+      } else if (next === "none" || coalescentMode(get(setting), named) !== "fixed") {
+        reset([setting]);
       }
     },
-    [get, named, reset, set],
+    [get, named, reset, set, setting, skylineSettings],
   );
 
   const onYears = useCallback(
     (next: number | string | undefined) => {
       if (next === undefined || next === "") {
-        reset(["coalescent"]);
+        reset([setting]);
       } else {
-        set("coalescent", `${next}y`);
+        set(setting, `${next}${yearsSuffix}`);
       }
     },
-    [reset, set],
+    [reset, set, setting, yearsSuffix],
   );
 
   const note = options.find((option) => option.value === mode)?.note;
@@ -301,9 +299,9 @@ function CoalescentRow({
       {mode === "fixed" && (
         <>
           <Inline>
-            <Labeled text={rowLabel(context, row, "coalescent")}>
+            <Labeled text={rowLabel(context, row, setting)}>
               <NumberInput
-                aria-label={`${rowLabel(context, row, "coalescent")} in years`}
+                aria-label={`${rowLabel(context, row, setting)} in years`}
                 value={years}
                 onValueChange={onYears}
                 className="h-8 w-24 font-mono"
@@ -321,7 +319,7 @@ function CoalescentRow({
       )}
       {mode === "skyline" && (
         <Inline>
-          {SKYLINE_KEYS.map((key) => (
+          {skylineSettings.map((key) => (
             <Labeled key={key} text={rowLabel(context, row, key)}>
               <Control context={context} settingKey={key} className="w-20" />
             </Labeled>
@@ -332,10 +330,6 @@ function CoalescentRow({
     </MainRow>
   );
 }
-
-const SKYLINE_KEYS = ["n_skyline", "skyline_stiffness"] as const;
-
-const YEARS_PATTERN = /^\+?(\d+(?:\.\d*)?|\.\d+)y$/u;
 
 function namedCoalescents(spec: SettingSpec | undefined): ReadonlySet<string> {
   return new Set(spec?.options.map(({ value }) => value) ?? []);
@@ -349,10 +343,11 @@ function coalescentMode(value: JsonValue | undefined, named: ReadonlySet<string>
   return isString(value) && named.has(value) ? value : "fixed";
 }
 
-function yearsOf(value: JsonValue | undefined): number | undefined {
-  const match = isString(value) ? YEARS_PATTERN.exec(value) : null;
+function yearsOf(value: JsonValue | undefined, suffix: string): number | undefined {
+  const number = isString(value) && value.endsWith(suffix) ? value.slice(0, -suffix.length) : "";
+  const years = number.trim() === "" ? Number.NaN : Number(number);
 
-  return match?.[1] === undefined ? undefined : Number(match[1]);
+  return Number.isFinite(years) && years > 0 ? years : undefined;
 }
 
 function ClockFilterRow({
@@ -365,12 +360,15 @@ function ClockFilterRow({
   control: Extract<RowControl, { kind: "clock-filter" }>;
 }) {
   const { get, set } = context;
-  const filter = get("clock_filter");
+  const filter = get(control.setting);
   const value = isNumber(filter) ? filter : 0;
 
   const slid = useMemo(() => [Math.min(value, CLOCK_FILTER_MAX)], [value]);
 
-  const onSlide = useCallback((next: number | readonly number[]) => set("clock_filter", [next].flat()[0] ?? 0), [set]);
+  const onSlide = useCallback(
+    (next: number | readonly number[]) => set(control.setting, [next].flat()[0] ?? 0),
+    [control.setting, set],
+  );
 
   return (
     <MainRow context={context} row={row}>
@@ -384,31 +382,40 @@ function ClockFilterRow({
           onValueChange={onSlide}
           className="w-56"
         />
-        <Control context={context} settingKey="clock_filter" className="w-20" />
+        <Control context={context} settingKey={control.setting} className="w-20" />
       </Inline>
       <Note>{value === 0 ? control.off : control.on}</Note>
     </MainRow>
   );
 }
 
-function ModelRow({ context, row, example }: { context: RowContext; row: MainSettingRow; example: string }) {
+function ModelRow({
+  context,
+  row,
+  control,
+}: {
+  context: RowContext;
+  row: MainSettingRow;
+  control: Extract<RowControl, { kind: "substitution-model" }>;
+}) {
   const { get, set, specs } = context;
-  const modelSpec = specs.get("model");
-  const model = get("model") ?? (modelSpec === undefined ? undefined : documentedDefault(modelSpec));
-  const params = get("model_params");
+  const { model_setting: modelKey, parameters_setting: paramsKey, parameters_example: example } = control;
+  const modelSpec = specs.get(modelKey);
+  const model = get(modelKey) ?? (modelSpec === undefined ? undefined : documentedDefault(modelSpec));
+  const params = get(paramsKey);
   const modelHelp = modelSpec?.options.find((option) => option.value === model)?.help ?? "";
-  const paramsLabel = rowLabel(context, row, "model_params");
+  const paramsLabel = rowLabel(context, row, paramsKey);
 
   const onParams = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => set("model_params", parseList(event.target.value, "string")),
-    [set],
+    (event: React.ChangeEvent<HTMLInputElement>) => set(paramsKey, parseList(event.target.value, "string")),
+    [paramsKey, set],
   );
 
   return (
     <MainRow context={context} row={row}>
-      <Control context={context} settingKey="model" className="w-auto" />
+      <Control context={context} settingKey={modelKey} className="w-auto" />
       {modelHelp !== "" && <Note>{modelHelp}</Note>}
-      {specs.has("model_params") && (
+      {specs.has(paramsKey) && (
         <Labeled text={paramsLabel}>
           <Input
             type="text"
@@ -489,7 +496,13 @@ function Control({ context, settingKey, className }: { context: RowContext; sett
   const spec = context.specs.get(settingKey);
 
   return spec === undefined ? null : (
-    <SettingControl command={context.command} spec={spec} label={spec.label} className={cn("w-32", className)} />
+    <SettingControl
+      command={context.command}
+      spec={spec}
+      label={spec.label}
+      scope="main"
+      className={cn("w-32", className)}
+    />
   );
 }
 

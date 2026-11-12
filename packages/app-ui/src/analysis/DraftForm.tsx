@@ -143,6 +143,6 @@ function commandLineCode(runConfig: ReturnType<typeof useDraftChecks>["runConfig
   }
 
   return runConfig.status === "valid"
-    ? { state: "ready", code: runConfig.code }
+    ? { state: "ready", code: runConfig.code, commandLines: runConfig.command_lines }
     : { state: "invalid", message: [runConfig.message, ...runConfig.causes].join(": ") };
 }

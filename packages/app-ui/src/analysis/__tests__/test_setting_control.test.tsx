@@ -142,7 +142,7 @@ function Form({ spec, value }: { spec: SettingSpec; value: FormValue | undefined
 
   return (
     <FormProvider {...form}>
-      <SettingControl command="timetree" spec={spec} label={spec.label} />
+      <SettingControl command="timetree" spec={spec} label={spec.label} scope="all" />
       <SettingValue name={spec.key} />
     </FormProvider>
   );

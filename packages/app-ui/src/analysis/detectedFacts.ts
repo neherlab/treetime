@@ -1,10 +1,9 @@
 import type {
   AlphabetName,
-  DateForm,
-  DateReading,
   DetectedDateFormat,
   DetectedSettings,
   SettingOrigin,
+  SettingSpec,
 } from "@neherlab/app-contracts";
 
 const DELIMITER_NAMES = new Map([
@@ -21,20 +20,13 @@ const ALPHABET_NAMES: Readonly<Record<AlphabetName, string>> = {
   "aa-no-stop": "amino acids without stop codon",
 };
 
-const READING_TEXT: Readonly<Record<DateForm, string>> = {
-  numeric: "decimal years",
-  calendar: "calendar dates",
-  uncertain: "uncertain dates",
-  range: "date ranges",
-};
-
 const ORIGIN_NOTES: Readonly<Record<SettingOrigin, string | undefined>> = {
   detected: undefined,
   setting: "set",
   default: "default",
 };
 
-export function detectedFacts(detected: DetectedSettings): DetectedFact[] {
+export function detectedFacts(detected: DetectedSettings, specs: readonly SettingSpec[]): DetectedFact[] {
   const {
     newick_dialect,
     metadata_delimiter,
@@ -46,23 +38,30 @@ export function detectedFacts(detected: DetectedSettings): DetectedFact[] {
     partitions,
   } = detected;
 
+  const fact = (
+    { origin, setting }: { origin: SettingOrigin; setting: string },
+    value: string,
+    fileFact?: string,
+  ): DetectedFact => {
+    const spec = specs.find((candidate) => candidate.key === setting);
+    const label = spec === undefined || spec.role === "input" ? (fileFact ?? spec?.label ?? setting) : spec.label;
+
+    return { label, value, setting, note: ORIGIN_NOTES[origin] };
+  };
+
   return [
-    newick_dialect === undefined ? undefined : fact("Newick dialect", newick_dialect, newick_dialect.dialect),
+    newick_dialect === undefined ? undefined : fact(newick_dialect, newick_dialect.dialect),
     metadata_delimiter === undefined
       ? undefined
-      : fact(
-          "Delimiter",
-          metadata_delimiter,
-          DELIMITER_NAMES.get(metadata_delimiter.delimiter) ?? metadata_delimiter.delimiter,
-        ),
-    id_column === undefined ? undefined : fact("Sample names", id_column, `column ${id_column.column}`),
-    date_column === undefined ? undefined : fact("Dates", date_column, `column ${date_column.column}`),
-    date_format === undefined ? undefined : fact("Date format", date_format, dateFormatText(date_format)),
-    alphabet === undefined ? undefined : fact("Alphabet", alphabet, ALPHABET_NAMES[alphabet.alphabet]),
+      : fact(metadata_delimiter, DELIMITER_NAMES.get(metadata_delimiter.delimiter) ?? metadata_delimiter.delimiter),
+    id_column === undefined ? undefined : fact(id_column, `column ${id_column.column}`),
+    date_column === undefined ? undefined : fact(date_column, `column ${date_column.column}`),
+    date_format === undefined ? undefined : fact(date_format, dateFormatText(date_format)),
+    alphabet === undefined ? undefined : fact(alphabet, ALPHABET_NAMES[alphabet.alphabet]),
     sequence_length === undefined
       ? undefined
-      : fact("Sequence length", sequence_length, `${sequence_length.length.toLocaleString("en-US")} sites`),
-    partitions === undefined ? undefined : fact("Partitions", partitions, partitionsText(partitions.partitions.length)),
+      : fact(sequence_length, `${sequence_length.length.toLocaleString("en-US")} sites`, "Sequence length"),
+    partitions === undefined ? undefined : fact(partitions, partitionsText(partitions.partitions.length), "Partitions"),
   ].filter((entry) => entry !== undefined);
 }
 
@@ -73,22 +72,10 @@ export interface DetectedFact {
   note: string | undefined;
 }
 
-function fact(
-  label: string,
-  { origin, setting }: { origin: SettingOrigin; setting: string },
-  value: string,
-): DetectedFact {
-  return { label, value, setting, note: ORIGIN_NOTES[origin] };
-}
-
 function dateFormatText({ readings, read, rows }: DetectedDateFormat): string {
-  const forms = readings.map(readingText).join(", ");
+  const forms = readings.map((reading) => reading.text).join(", ");
 
   return forms === "" ? `${read} of ${rows} read` : `${read} of ${rows} read as ${forms}`;
-}
-
-function readingText(reading: DateReading): string {
-  return reading.form === "calendar" ? (reading.format ?? READING_TEXT.calendar) : READING_TEXT[reading.form];
 }
 
 function partitionsText(count: number): string {

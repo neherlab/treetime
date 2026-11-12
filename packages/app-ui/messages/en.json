@@ -64,5 +64,6 @@
   "docs_locale_en": "English",
   "docs_locale_de": "Deutsch",
   "settings_about": "About {label}",
-  "settings_command_line": "Command line"
+  "settings_command_line": "Command line",
+  "settings_command_line_left_out": "{flag} is left out for this value"
 }

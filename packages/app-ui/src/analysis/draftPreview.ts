@@ -1,6 +1,7 @@
-import type { InputFacts, PreviewRoot, RegressionStatistic } from "@neherlab/app-contracts";
+import type { AppCommand, InputFacts, PreviewRoot, RegressionStatistic, SparseConfig } from "@neherlab/app-contracts";
 
 import { formatRate, yearDateText } from "../format";
+import { commandSettings } from "../settings/catalog";
 import { baseName } from "../settings/inputs";
 
 const STATISTIC_DIGITS = 3;
@@ -70,4 +71,10 @@ function lengthText(min: number, max: number): string {
 
 function count(value: number, singular: string, plural = `${singular}s`): string {
   return `${value} ${value === 1 ? singular : plural}`;
+}
+
+export function previewSettings(command: AppCommand, config: SparseConfig): SparseConfig {
+  const read = new Set(commandSettings(command).preview_settings);
+
+  return Object.fromEntries(Object.entries(config).filter(([key]) => read.has(key)));
 }

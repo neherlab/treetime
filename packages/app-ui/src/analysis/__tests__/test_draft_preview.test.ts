@@ -1,6 +1,6 @@
 import type { InputFacts, RegressionStatistic } from "@neherlab/app-contracts";
 
-import { inputFactRows, statisticText } from "../draftPreview";
+import { inputFactRows, previewSettings, statisticText } from "../draftPreview";
 
 const FACTS: InputFacts = {
   tree: { tips: 20, internal_nodes: 17, polytomies: 1, unnamed_tips: 0, duplicate_node_names: [], tip_names: [] },
@@ -76,5 +76,21 @@ describe("regression statistic text", () => {
     ],
   ])("formats %#", (statistic, expected) => {
     expect(statisticText(statistic)).toBe(expected);
+  });
+});
+
+describe("settings of the clock preview request", () => {
+  test("an edit of a setting that the preview does not read leaves the request as it is", () => {
+    const base = { tree: "/runs/.inputs/a/tree.nwk", clock_filter: 3 };
+    const edited = { ...base, confidence: true, coalescent: "skyline" };
+
+    expect(previewSettings("timetree", edited)).toStrictEqual(previewSettings("timetree", base));
+  });
+
+  test("an edit of a setting that the preview reads changes the request", () => {
+    expect(previewSettings("timetree", { tree: "/runs/.inputs/a/tree.nwk", clock_filter: 2 })).toStrictEqual({
+      tree: "/runs/.inputs/a/tree.nwk",
+      clock_filter: 2,
+    });
   });
 });

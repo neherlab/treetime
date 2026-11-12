@@ -1,11 +1,4 @@
-import type {
-  ActiveChoice,
-  AppCommand,
-  EffectiveValue,
-  InputFacts,
-  RunCheck,
-  SparseConfig,
-} from "@neherlab/app-contracts";
+import type { AppCommand, CheckConfigResponse, InputFacts, SparseConfig } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@neherlab/design/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@neherlab/design/ui/popover";
@@ -24,7 +17,7 @@ import { type DetectedFact, detectedFacts } from "./detectedFacts";
 import { InputsSection } from "./InputsSection";
 import { MainSettings } from "./MainSettings";
 import { SettingControl } from "./SettingControl";
-import { useSettingFocus } from "./settingFocus";
+import { initialSettingFocus, useSettingFocus } from "./settingFocus";
 import { AllSettingsPanel } from "./SettingsPanel";
 
 const ANALYSES = COMMANDS.map(({ command, title }) => ({ value: command, label: title }));
@@ -32,23 +25,20 @@ const ANALYSES = COMMANDS.map(({ command, title }) => ({ value: command, label: 
 export function OptionsPanel({
   command,
   config,
-  checks,
-  reported,
+  check,
   checked,
   facts,
-  effective,
   menu,
 }: {
   command: AppCommand;
   config: SparseConfig;
-  checks: readonly RunCheck[] | undefined;
-  reported: readonly ActiveChoice[] | undefined;
+  check: CheckConfigResponse | undefined;
   checked: SparseConfig | undefined;
   facts: InputFacts | undefined;
-  effective: readonly EffectiveValue[] | undefined;
   menu: ReactNode;
 }) {
-  const changed = changedSpecs(commandSettings(command).settings, config).length;
+  const { settings } = commandSettings(command);
+  const changed = changedSpecs(settings, config).length;
 
   useSettingFocus();
 
@@ -57,16 +47,16 @@ export function OptionsPanel({
       <AnalysisSelector command={command} config={config} menu={menu} />
       <Section title="Data">
         <InputsSection command={command} facts={facts} />
-        {facts !== undefined && <DetectedFacts command={command} facts={detectedFacts(facts.detected)} />}
+        {facts !== undefined && <DetectedFacts command={command} facts={detectedFacts(facts.detected, settings)} />}
       </Section>
       <Section title="Main settings" hint={changed === 0 ? "All defaults" : `${changed} changed`}>
         <MainSettings
           command={command}
           config={config}
-          checks={checks}
-          reported={reported}
+          checks={check?.checks}
+          reported={check?.choices}
           checked={checked}
-          effective={effective}
+          effective={check?.effective}
         />
         <AllSettings command={command} config={config} />
       </Section>
@@ -115,7 +105,7 @@ function AnalysisSelector({ command, config, menu }: { command: AppCommand; conf
         <HoverCardContent side="bottom" align="end" className="grid w-72 gap-1.5">
           <span className="font-bold">{settings.title}</span>
           <span className="text-muted-foreground">{settings.description}</span>
-          <code className="text-muted-foreground font-mono text-xs">treetime {command}</code>
+          <code className="text-muted-foreground font-mono text-xs">{settings.command_line}</code>
         </HoverCardContent>
       </HoverCard>
       {menu}
@@ -171,7 +161,7 @@ function DetectedFactRow({ command, fact }: { command: AppCommand; fact: Detecte
             </PopoverTrigger>
             <PopoverContent align="end" className="grid w-80 gap-2">
               <span className="font-bold">{spec.label}</span>
-              <SettingControl command={command} spec={spec} label={spec.label} className="w-full" />
+              <SettingControl command={command} spec={spec} label={spec.label} scope="change" className="w-full" />
               <SettingHelp spec={spec} />
             </PopoverContent>
           </Popover>
@@ -196,7 +186,11 @@ function AllSettings({ command, config }: { command: AppCommand; config: SparseC
         <span className="text-muted-foreground">{total}</span>
       </Button>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-[min(100%,48rem)] gap-0 p-0 data-[side=right]:sm:max-w-3xl">
+        <SheetContent
+          side="right"
+          initialFocus={initialSettingFocus}
+          className="w-[min(100%,48rem)] gap-0 p-0 data-[side=right]:sm:max-w-3xl"
+        >
           <SheetHeader className="border-b">
             <SheetTitle>All settings</SheetTitle>
             <SheetDescription>{commandSettings(command).title}</SheetDescription>

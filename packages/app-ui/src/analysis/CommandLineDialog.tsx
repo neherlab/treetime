@@ -1,4 +1,4 @@
-import type { CodeLine, ConfigCode, UiCodeFormat } from "@neherlab/app-contracts";
+import type { CodeLine, ConfigCode, SettingCommandLine, UiCodeFormat } from "@neherlab/app-contracts";
 import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
 import { Button } from "@neherlab/design/ui/button";
 import { CopyButton } from "@neherlab/design/ui/copy-button";
@@ -22,6 +22,7 @@ export type CommandLineCode = { state: "loading" } | { state: "invalid"; message
 interface ConfigCodeReady {
   state: "ready";
   code: ConfigCode;
+  commandLines: SettingCommandLine[];
 }
 
 export function CommandLineDialog({

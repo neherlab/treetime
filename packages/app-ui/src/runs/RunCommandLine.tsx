@@ -58,6 +58,6 @@ export function useRunCode(record: RunRecord, enabled: boolean): CommandLineCode
   }
 
   return resolved.status === "valid"
-    ? { state: "ready", code: resolved.code }
+    ? { state: "ready", code: resolved.code, commandLines: resolved.command_lines }
     : { state: "invalid", message: [resolved.message, ...resolved.causes].join(": ") };
 }

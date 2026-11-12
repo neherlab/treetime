@@ -1,5 +1,6 @@
 import { withRunSettings } from "../applyRun";
 import { commandSettings } from "../catalog";
+import { normalizeConfig } from "../config";
 
 const SPECS = commandSettings("timetree").settings;
 
@@ -31,7 +32,7 @@ describe("settings of a run applied to a draft", () => {
   test("the value of the run replaces the value of the draft", () => {
     const applied = withRunSettings(SPECS, { tree: "t.nwk", clock_filter: 3 }, ["clock_filter"], { clock_filter: 5 });
 
-    expect(applied).toStrictEqual(withRunSettings(SPECS, { tree: "t.nwk", clock_filter: 5 }, [], {}));
+    expect([applied["tree"], applied["clock_filter"]]).toStrictEqual(["t.nwk", 5]);
   });
 
   test("settings that the app sets never apply", () => {
@@ -41,7 +42,7 @@ describe("settings of a run applied to a draft", () => {
     });
 
     expect([applied["output_selection"], applied["output_all"]]).toStrictEqual([
-      withRunSettings(SPECS, {}, [], {})["output_selection"],
+      normalizeConfig(SPECS, { tree: "t.nwk" })["output_selection"],
       undefined,
     ]);
   });

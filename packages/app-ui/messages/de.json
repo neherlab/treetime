@@ -64,5 +64,6 @@
   "docs_locale_en": "English",
   "docs_locale_de": "Deutsch",
   "settings_about": "Über {label}",
-  "settings_command_line": "Befehlszeile"
+  "settings_command_line": "Befehlszeile",
+  "settings_command_line_left_out": "{flag} entfällt bei diesem Wert"
 }

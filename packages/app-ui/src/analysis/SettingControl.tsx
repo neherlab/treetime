@@ -23,7 +23,7 @@ import Trash from "~icons/lucide/trash-2";
 import { baseName, pathList } from "../settings/inputs";
 import { isJsonObject, sameJson, withSetting } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import { settingFieldId } from "./fieldIds";
+import { type FieldScope, settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";
 import { PathPicker } from "./PathPicker";
@@ -35,12 +35,15 @@ const NO_EXTENSIONS: readonly string[] = [];
 
 const FREE_VALUE = "#value";
 
+const CHECKING_TEXT = "Checking…";
+
 const NO_FIELDS: RecordFieldSpec[] = [];
 
 interface ControlProps {
   command: AppCommand;
   spec: SettingSpec;
   label: string;
+  scope: FieldScope;
   className: string | undefined;
 }
 
@@ -79,28 +82,30 @@ export function SettingControl({
   command,
   spec,
   label,
+  scope,
   className,
 }: {
   command: AppCommand;
   spec: SettingSpec;
   label: string;
+  scope: FieldScope;
   className?: string | undefined;
 }) {
   if (spec.role === "input") {
-    return <PathControl command={command} spec={spec} label={label} className={className} />;
+    return <PathControl command={command} spec={spec} label={label} scope={scope} className={className} />;
   }
 
-  return <ValueControl command={command} spec={spec} label={label} className={className} />;
+  return <ValueControl command={command} spec={spec} label={label} scope={scope} className={className} />;
 }
 
-function PathControl({ command, spec, label, className }: ControlProps) {
+function PathControl({ command, spec, label, scope, className }: ControlProps) {
   const { value } = useSetting(spec);
   const paths = pathList(value);
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)}>
       <span
-        id={settingFieldId(spec.key)}
+        id={settingFieldId(spec.key, scope)}
         className="min-w-0 flex-1 truncate font-mono text-xs"
         title={paths.join("\n")}
       >
@@ -118,20 +123,23 @@ function PathControl({ command, spec, label, className }: ControlProps) {
   );
 }
 
-function ValueControl({ spec, label, className }: ControlProps) {
+function ValueControl({ spec, label, scope, className }: ControlProps) {
   const { value, set, unset, onBlur, invalid } = useSetting(spec);
-  const effective = use(WorkspaceContext)?.check?.effective.find((candidate) => candidate.key === spec.key)?.text;
+  const workspace = use(WorkspaceContext);
+  const effective = workspace?.check?.effective.find((candidate) => candidate.key === spec.key)?.text;
   const Editor = EDITORS[spec.kind];
 
   return (
     <Editor
-      id={settingFieldId(spec.key)}
+      id={settingFieldId(spec.key, scope)}
       label={label}
       setting={spec}
       value={value}
       set={set}
       unset={unset}
-      unsetLabel={effective ?? unsetText(spec)}
+      unsetLabel={
+        effective ?? (workspace !== undefined && workspace.check === undefined ? CHECKING_TEXT : unsetText(spec))
+      }
       onBlur={onBlur}
       onKeyDown={undefined}
       invalid={invalid}
