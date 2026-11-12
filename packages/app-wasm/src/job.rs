@@ -13,6 +13,7 @@ use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
+use treetime::progress::{LogEvent, LogLevel};
 use treetime_utils::error::report_to_string;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use wasm_bindgen::JsValue;
@@ -37,6 +38,12 @@ const RUN_THREAD_NAME: &str = "treetime-run";
 
 #[cfg(target_feature = "atomics")]
 const RUN_MESSAGE_CAPACITY: usize = 256;
+
+#[cfg(target_feature = "atomics")]
+const MODULE_KIND: &str = "threaded";
+
+#[cfg(not(target_feature = "atomics"))]
+const MODULE_KIND: &str = "single-threaded";
 
 #[cfg(not(target_feature = "atomics"))]
 thread_local! {
@@ -97,6 +104,7 @@ impl Job {
     EVENT_SINK.with_borrow_mut(|sink| *sink = Some(on_event));
     let outcome = compute(
       &self.job,
+      1,
       || Ok(()),
       |event| {
         EVENT_SINK.with_borrow(|sink| match sink {
@@ -196,6 +204,7 @@ fn open_job(job_json: &str, jobs: u32) -> Result<RunJob, Report> {
 fn compute_on_run_thread(job: &RunJob, jobs: usize, sender: &Sender<RunMessage>) {
   let outcome = compute(
     job,
+    jobs,
     || init_thread_pool(jobs).wrap_err_with(|| format!("When starting {jobs} threads for the run")),
     |event| send_run_message(sender, RunMessage::Event(event)),
   );
@@ -209,11 +218,23 @@ fn send_run_message(sender: &Sender<RunMessage>, message: RunMessage) {
   }
 }
 
+pub(crate) fn module_log(threads: usize) -> JobEvent {
+  let unit = if threads == 1 { "thread" } else { "threads" };
+  JobEvent::Log {
+    data: LogEvent {
+      level: LogLevel::Info,
+      message: format!("The run uses the {MODULE_KIND} WebAssembly module with {threads} {unit}"),
+    },
+  }
+}
+
 fn compute(
   job: &RunJob,
+  threads: usize,
   start: impl FnOnce() -> Result<(), Report>,
   emit: impl Fn(JobEvent) + Send + Sync,
 ) -> RunOutcome {
+  emit(module_log(threads));
   let cancel = CancelToken::default();
   match run_job_step(&job.id, &cancel, || {
     start()?;
