@@ -128,6 +128,8 @@ const CODE = {
   yaml_text: "",
   config_file: "",
   config_command: "",
+  methods: "",
+  citation: { text: "", short: "", doi: "", url: "" },
 };
 
 const mounted: Root[] = [];

@@ -584,6 +584,15 @@ export type ConfigCode = {
    * The command line that runs the saved YAML config.
    */
   config_command: string;
+  /**
+   * A methods paragraph for a publication: the analysis, the TreeTime version, and the key settings that differ from
+   * their defaults.
+   */
+  methods: string;
+  /**
+   * The publication to cite for TreeTime.
+   */
+  citation: Citation;
 };
 
 /**
@@ -604,6 +613,28 @@ export type CodeLine = {
  * What a line of a command line or a YAML config sets.
  */
 export type CodeLineKind = 'command' | 'input' | 'changed' | 'output' | 'comment';
+
+/**
+ * The publication to cite for TreeTime.
+ */
+export type Citation = {
+  /**
+   * Reference in text form.
+   */
+  text: string;
+  /**
+   * Reference in the form a sentence cites it, for example `Sagulenko et al. 2018`.
+   */
+  short: string;
+  /**
+   * DOI of the publication, for example `10.1093/ve/vex042`.
+   */
+  doi: string;
+  /**
+   * Link to the publication.
+   */
+  url: string;
+};
 
 /**
  * A finding about a configuration and its input files, before a run.
@@ -862,6 +893,10 @@ export type ClockResults = {
    */
   estimates: ClockEstimates;
   /**
+   * Statistics of the root-to-tip regression in display order; empty when the run wrote no clock model.
+   */
+  statistics: Array<RegressionStatistic>;
+  /**
    * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
    */
   root_to_tip?: RootToTip;
@@ -880,6 +915,10 @@ export type ClockEstimates = {
    */
   clock_rate_fixed: boolean;
   /**
+   * Root date that the regression line implies: the date at which it reaches zero divergence (x-intercept).
+   */
+  root_date?: YearDate;
+  /**
    * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
    */
   r?: number;
@@ -896,6 +935,46 @@ export type ClockEstimates = {
    */
   outliers: number;
 };
+
+/**
+ * One statistic of a root-to-tip regression, as Tempest lists them.
+ */
+export type RegressionStatistic = {
+  /**
+   * Which statistic this is.
+   */
+  statistic: RegressionStatisticKind;
+  /**
+   * Name of the statistic, for example `Correlation coefficient r`.
+   */
+  label: string;
+  /**
+   * What the statistic measures, in one or two sentences.
+   */
+  definition: string;
+  /**
+   * Unit of a numeric value; absent for a value without a unit.
+   */
+  unit?: string;
+  /**
+   * Value of the statistic.
+   */
+  value: StatisticValue;
+};
+
+/**
+ * A statistic of a root-to-tip regression.
+ */
+export type RegressionStatisticKind = 'clock-rate' | 'root-date' | 'correlation-coefficient' | 'r-squared' | 'residual-mean-square';
+
+/**
+ * Value of a regression statistic.
+ */
+export type StatisticValue = ({
+  kind: 'number';
+} & StatisticValueNumber) | ({
+  kind: 'date';
+} & StatisticValueDate);
 
 /**
  * The points and line of a root-to-tip regression, as TreeTime fitted it.
@@ -1284,6 +1363,16 @@ export type RunFile = {
    */
   path: string;
   /**
+   * Name to save the file under: the run's title, the start of its id, and the path, so that the files of different
+   * runs do not share a name, for example `ebola-100-time-tree-1a2b3c4d.timetree.nwk`.
+   */
+  download_name: string;
+  /**
+   * Short name of the file with its format, for example `Dated tree (Newick, branch lengths in years)`; the file name
+   * for files the output plan does not name.
+   */
+  label: string;
+  /**
    * Size in bytes.
    */
   size: number;
@@ -1295,6 +1384,11 @@ export type RunFile = {
    * What the file holds; empty for files the output plan does not name.
    */
   description: string;
+  /**
+   * Whether the file is one of the main formats of the command, which the Download menu offers. The list holds these
+   * files first, in menu order, then the other files by path.
+   */
+  main: boolean;
   /**
    * Alignment file the output belongs to, for an output written once per alignment file.
    */
@@ -1326,7 +1420,7 @@ export type RunResults = {
    */
   citation: Citation;
   /**
-   * Output files that could not be read.
+   * Output files, and the input tree of an `optimize` or `prune` run, that could not be read.
    */
   problems: Array<OutputProblem>;
 };
@@ -1582,6 +1676,11 @@ export type TimetreeResults = {
    */
   estimates?: TimetreeEstimates;
   /**
+   * Statistics of the root-to-tip regression of the final clock model in display order; empty when the run wrote no
+   * clock model.
+   */
+  statistics: Array<RegressionStatistic>;
+  /**
    * Samples and line of the final clock model; absent when the run wrote no clock regression table.
    */
   root_to_tip?: RootToTip;
@@ -1815,51 +1914,51 @@ export type RecurrentSite = {
 };
 
 /**
- * Summary of a tree an `optimize` or `prune` run wrote.
+ * The tree before and after an `optimize` or `prune` run.
  */
-export type TreeSummary = {
+export type TreeChange = {
+  /**
+   * Statistics of the input tree; absent when it cannot be read, and the problems of the results name the cause.
+   */
+  before?: TreeStatistics;
+  /**
+   * Statistics of the tree the run wrote; absent when the run wrote no Auspice tree.
+   */
+  after?: TreeStatistics;
+  /**
+   * Number of nucleotide mutations on all branches of the tree the run wrote.
+   */
+  mutations: number;
+};
+
+/**
+ * Size and shape of a tree.
+ */
+export type TreeStatistics = {
   /**
    * Number of samples.
    */
   samples: number;
   /**
-   * Number of internal nodes.
+   * Number of internal nodes, the root included.
    */
   internal_nodes: number;
   /**
-   * Number of nucleotide mutations on all branches.
+   * Number of internal nodes with more than two children.
    */
-  mutations: number;
+  polytomies: number;
   /**
-   * Sum of the branch lengths in the node data file.
+   * Sum of the branch lengths, in substitutions per site; absent when the tree has no branch lengths.
    */
   total_branch_length?: number;
 };
 
 /**
- * The publication to cite for TreeTime.
- */
-export type Citation = {
-  /**
-   * Reference in text form.
-   */
-  text: string;
-  /**
-   * DOI of the publication, for example `10.1093/ve/vex042`.
-   */
-  doi: string;
-  /**
-   * Link to the publication.
-   */
-  url: string;
-};
-
-/**
- * An output file of a run that could not be read.
+ * A file of a run that could not be read.
  */
 export type OutputProblem = {
   /**
-   * Path of the file relative to the run's `out/` folder.
+   * Path of the file: relative to the run's `out/` folder for an output file, as the run resolved it for an input.
    */
   path: string;
   /**
@@ -1889,6 +1988,11 @@ export type RunComparison = {
    */
   settings?: SettingsComparison;
   /**
+   * Changes of the root date and the clock rate, for a one-line summary; present when both runs are finished
+   * time-tree runs or finished clock runs, and at least one of the two estimates is known in both.
+   */
+  delta?: EstimateDelta;
+  /**
    * Estimates side by side; present when both runs are finished time-tree runs with a tree.
    */
   estimates?: EstimateComparison;
@@ -1915,6 +2019,25 @@ export type SettingsComparison = {
    * Whether both runs have the same configuration hash: the same settings on the same input contents.
    */
   same_config_hash: boolean;
+};
+
+/**
+ * Changes of the main estimates from the first run to the second.
+ */
+export type EstimateDelta = {
+  /**
+   * Root date of the second run minus the root date of the first, in days: the dated root of a time tree, or the
+   * x-intercept of the root-to-tip regression of a clock run.
+   */
+  root_date_days?: number;
+  /**
+   * Change of the clock rate, in percent of the first rate.
+   */
+  clock_rate_percent?: number;
+  /**
+   * The changes in one line, for example `Root date -46 d, clock rate -7.9 %`.
+   */
+  summary: string;
 };
 
 /**
@@ -5005,6 +5128,28 @@ export type RunConfigResponseInvalid = {
   status: 'invalid';
 };
 
+/**
+ * A number.
+ */
+export type StatisticValueNumber = {
+  /**
+   * The number.
+   */
+  value: number;
+  kind: 'number';
+};
+
+/**
+ * A date.
+ */
+export type StatisticValueDate = {
+  /**
+   * The date.
+   */
+  date: YearDate;
+  kind: 'date';
+};
+
 export type RunRecordTimetree = {
   /**
    * Identifier of the run, also the name of its folder.
@@ -5557,12 +5702,12 @@ export type CommandResultsAncestral = {
 
 export type CommandResultsOptimize = {
   command: 'optimize';
-  data: TreeSummary;
+  data: TreeChange;
 };
 
 export type CommandResultsPrune = {
   command: 'prune';
-  data: TreeSummary;
+  data: TreeChange;
 };
 
 /**

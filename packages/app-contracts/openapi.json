@@ -2378,6 +2378,14 @@
           "config_command": {
             "description": "The command line that runs the saved YAML config.",
             "type": "string"
+          },
+          "methods": {
+            "description": "A methods paragraph for a publication: the analysis, the TreeTime version, and the key settings that differ from\ntheir defaults.",
+            "type": "string"
+          },
+          "citation": {
+            "description": "The publication to cite for TreeTime.",
+            "$ref": "#/components/schemas/Citation"
           }
         },
         "required": [
@@ -2386,7 +2394,9 @@
           "yaml",
           "yaml_text",
           "config_file",
-          "config_command"
+          "config_command",
+          "methods",
+          "citation"
         ]
       },
       "CodeLine": {
@@ -2435,6 +2445,34 @@
             "type": "string",
             "const": "comment"
           }
+        ]
+      },
+      "Citation": {
+        "description": "The publication to cite for TreeTime.",
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "Reference in text form.",
+            "type": "string"
+          },
+          "short": {
+            "description": "Reference in the form a sentence cites it, for example `Sagulenko et al. 2018`.",
+            "type": "string"
+          },
+          "doi": {
+            "description": "DOI of the publication, for example `10.1093/ve/vex042`.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link to the publication.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "short",
+          "doi",
+          "url"
         ]
       },
       "RunCheck": {
@@ -2857,6 +2895,13 @@
             "description": "Estimates of the clock model.",
             "$ref": "#/components/schemas/ClockEstimates"
           },
+          "statistics": {
+            "description": "Statistics of the root-to-tip regression in display order; empty when the run wrote no clock model.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegressionStatistic"
+            }
+          },
           "root_to_tip": {
             "description": "Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.",
             "$ref": "#/components/schemas/RootToTip",
@@ -2864,7 +2909,8 @@
           }
         },
         "required": [
-          "estimates"
+          "estimates",
+          "statistics"
         ]
       },
       "ClockEstimates": {
@@ -2880,6 +2926,11 @@
           "clock_rate_fixed": {
             "description": "Whether the clock rate was fixed by the user instead of estimated.",
             "type": "boolean"
+          },
+          "root_date": {
+            "description": "Root date that the regression line implies: the date at which it reaches zero divergence (x-intercept).",
+            "$ref": "#/components/schemas/YearDate",
+            "x-unset": true
           },
           "r": {
             "description": "Correlation coefficient of the root-to-tip regression; absent for a fixed rate.",
@@ -2911,6 +2962,87 @@
           "dated_samples",
           "outliers"
         ]
+      },
+      "RegressionStatistic": {
+        "description": "One statistic of a root-to-tip regression, as Tempest lists them.",
+        "type": "object",
+        "properties": {
+          "statistic": {
+            "description": "Which statistic this is.",
+            "$ref": "#/components/schemas/RegressionStatisticKind"
+          },
+          "label": {
+            "description": "Name of the statistic, for example `Correlation coefficient r`.",
+            "type": "string"
+          },
+          "definition": {
+            "description": "What the statistic measures, in one or two sentences.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of a numeric value; absent for a value without a unit.",
+            "type": "string",
+            "x-unset": true
+          },
+          "value": {
+            "description": "Value of the statistic.",
+            "$ref": "#/components/schemas/StatisticValue"
+          }
+        },
+        "required": [
+          "statistic",
+          "label",
+          "definition",
+          "value"
+        ]
+      },
+      "RegressionStatisticKind": {
+        "description": "A statistic of a root-to-tip regression.",
+        "oneOf": [
+          {
+            "description": "Slope of the regression line.",
+            "type": "string",
+            "const": "clock-rate"
+          },
+          {
+            "description": "Date at which the regression line reaches zero divergence.",
+            "type": "string",
+            "const": "root-date"
+          },
+          {
+            "description": "Correlation coefficient of sampling date and divergence.",
+            "type": "string",
+            "const": "correlation-coefficient"
+          },
+          {
+            "description": "Square of the correlation coefficient.",
+            "type": "string",
+            "const": "r-squared"
+          },
+          {
+            "description": "Mean square of the divergence residuals.",
+            "type": "string",
+            "const": "residual-mean-square"
+          }
+        ]
+      },
+      "StatisticValue": {
+        "description": "Value of a regression statistic.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StatisticValueNumber"
+          },
+          {
+            "$ref": "#/components/schemas/StatisticValueDate"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "number": "#/components/schemas/StatisticValueNumber",
+            "date": "#/components/schemas/StatisticValueDate"
+          }
+        }
       },
       "RootToTip": {
         "description": "The points and line of a root-to-tip regression, as TreeTime fitted it.",
@@ -3545,6 +3677,14 @@
             "description": "Path relative to the run's `out/` folder, with `/` separators.",
             "type": "string"
           },
+          "download_name": {
+            "description": "Name to save the file under: the run's title, the start of its id, and the path, so that the files of different\nruns do not share a name, for example `ebola-100-time-tree-1a2b3c4d.timetree.nwk`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Short name of the file with its format, for example `Dated tree (Newick, branch lengths in years)`; the file name\nfor files the output plan does not name.",
+            "type": "string"
+          },
           "size": {
             "description": "Size in bytes.",
             "type": "integer",
@@ -3560,6 +3700,10 @@
             "description": "What the file holds; empty for files the output plan does not name.",
             "type": "string"
           },
+          "main": {
+            "description": "Whether the file is one of the main formats of the command, which the Download menu offers. The list holds these\nfiles first, in menu order, then the other files by path.",
+            "type": "boolean"
+          },
           "alignment": {
             "description": "Alignment file the output belongs to, for an output written once per alignment file.",
             "$ref": "#/components/schemas/OutputAlignment",
@@ -3568,8 +3712,11 @@
         },
         "required": [
           "path",
+          "download_name",
+          "label",
           "size",
-          "description"
+          "description",
+          "main"
         ]
       },
       "RunResults": {
@@ -3599,7 +3746,7 @@
             "$ref": "#/components/schemas/Citation"
           },
           "problems": {
-            "description": "Output files that could not be read.",
+            "description": "Output files, and the input tree of an `optimize` or `prune` run, that could not be read.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OutputProblem"
@@ -4015,6 +4162,13 @@
             "$ref": "#/components/schemas/TimetreeEstimates",
             "x-unset": true
           },
+          "statistics": {
+            "description": "Statistics of the root-to-tip regression of the final clock model in display order; empty when the run wrote no\nclock model.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegressionStatistic"
+            }
+          },
           "root_to_tip": {
             "description": "Samples and line of the final clock model; absent when the run wrote no clock regression table.",
             "$ref": "#/components/schemas/RootToTip",
@@ -4036,6 +4190,7 @@
           }
         },
         "required": [
+          "statistics",
           "iterations",
           "skyline"
         ]
@@ -4371,8 +4526,33 @@
           "branches"
         ]
       },
-      "TreeSummary": {
-        "description": "Summary of a tree an `optimize` or `prune` run wrote.",
+      "TreeChange": {
+        "description": "The tree before and after an `optimize` or `prune` run.",
+        "type": "object",
+        "properties": {
+          "before": {
+            "description": "Statistics of the input tree; absent when it cannot be read, and the problems of the results name the cause.",
+            "$ref": "#/components/schemas/TreeStatistics",
+            "x-unset": true
+          },
+          "after": {
+            "description": "Statistics of the tree the run wrote; absent when the run wrote no Auspice tree.",
+            "$ref": "#/components/schemas/TreeStatistics",
+            "x-unset": true
+          },
+          "mutations": {
+            "description": "Number of nucleotide mutations on all branches of the tree the run wrote.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "mutations"
+        ]
+      },
+      "TreeStatistics": {
+        "description": "Size and shape of a tree.",
         "type": "object",
         "properties": {
           "samples": {
@@ -4382,19 +4562,19 @@
             "minimum": 0
           },
           "internal_nodes": {
-            "description": "Number of internal nodes.",
+            "description": "Number of internal nodes, the root included.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
           },
-          "mutations": {
-            "description": "Number of nucleotide mutations on all branches.",
+          "polytomies": {
+            "description": "Number of internal nodes with more than two children.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
           },
           "total_branch_length": {
-            "description": "Sum of the branch lengths in the node data file.",
+            "description": "Sum of the branch lengths, in substitutions per site; absent when the tree has no branch lengths.",
             "type": "number",
             "format": "double",
             "x-unset": true
@@ -4403,38 +4583,15 @@
         "required": [
           "samples",
           "internal_nodes",
-          "mutations"
-        ]
-      },
-      "Citation": {
-        "description": "The publication to cite for TreeTime.",
-        "type": "object",
-        "properties": {
-          "text": {
-            "description": "Reference in text form.",
-            "type": "string"
-          },
-          "doi": {
-            "description": "DOI of the publication, for example `10.1093/ve/vex042`.",
-            "type": "string"
-          },
-          "url": {
-            "description": "Link to the publication.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text",
-          "doi",
-          "url"
+          "polytomies"
         ]
       },
       "OutputProblem": {
-        "description": "An output file of a run that could not be read.",
+        "description": "A file of a run that could not be read.",
         "type": "object",
         "properties": {
           "path": {
-            "description": "Path of the file relative to the run's `out/` folder.",
+            "description": "Path of the file: relative to the run's `out/` folder for an output file, as the run resolved it for an input.",
             "type": "string"
           },
           "message": {
@@ -4463,6 +4620,11 @@
           "settings": {
             "description": "Settings and inputs that differ; absent when the runs are different analyses.",
             "$ref": "#/components/schemas/SettingsComparison",
+            "x-unset": true
+          },
+          "delta": {
+            "description": "Changes of the root date and the clock rate, for a one-line summary; present when both runs are finished\ntime-tree runs or finished clock runs, and at least one of the two estimates is known in both.",
+            "$ref": "#/components/schemas/EstimateDelta",
             "x-unset": true
           },
           "estimates": {
@@ -4506,6 +4668,31 @@
           "differences",
           "compared",
           "same_config_hash"
+        ]
+      },
+      "EstimateDelta": {
+        "description": "Changes of the main estimates from the first run to the second.",
+        "type": "object",
+        "properties": {
+          "root_date_days": {
+            "description": "Root date of the second run minus the root date of the first, in days: the dated root of a time tree, or the\nx-intercept of the root-to-tip regression of a clock run.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "clock_rate_percent": {
+            "description": "Change of the clock rate, in percent of the first rate.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "summary": {
+            "description": "The changes in one line, for example `Root date -46 d, clock rate -7.9 %`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary"
         ]
       },
       "EstimateComparison": {
@@ -8562,6 +8749,43 @@
           "problems"
         ]
       },
+      "StatisticValueNumber": {
+        "description": "A number.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The number.",
+            "type": "number",
+            "format": "double"
+          },
+          "kind": {
+            "type": "string",
+            "const": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ]
+      },
+      "StatisticValueDate": {
+        "description": "A date.",
+        "type": "object",
+        "properties": {
+          "date": {
+            "description": "The date.",
+            "$ref": "#/components/schemas/YearDate"
+          },
+          "kind": {
+            "type": "string",
+            "const": "date"
+          }
+        },
+        "required": [
+          "kind",
+          "date"
+        ]
+      },
       "RunRecordTimetree": {
         "type": "object",
         "properties": {
@@ -9401,7 +9625,7 @@
             "const": "optimize"
           },
           "data": {
-            "$ref": "#/components/schemas/TreeSummary"
+            "$ref": "#/components/schemas/TreeChange"
           }
         },
         "required": [
@@ -9417,7 +9641,7 @@
             "const": "prune"
           },
           "data": {
-            "$ref": "#/components/schemas/TreeSummary"
+            "$ref": "#/components/schemas/TreeChange"
           }
         },
         "required": [

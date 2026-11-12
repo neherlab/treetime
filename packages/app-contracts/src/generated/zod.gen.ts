@@ -338,6 +338,16 @@ export const zCodeLine = z.object({
 });
 
 /**
+ * The publication to cite for TreeTime.
+ */
+export const zCitation = z.object({
+  text: z.string(),
+  short: z.string(),
+  doi: z.string(),
+  url: z.string()
+});
+
+/**
  * A command line and a YAML config that reproduce a configuration.
  */
 export const zConfigCode = z.object({
@@ -346,7 +356,9 @@ export const zConfigCode = z.object({
   yaml: z.array(zCodeLine),
   yaml_text: z.string(),
   config_file: z.string(),
-  config_command: z.string()
+  config_command: z.string(),
+  methods: z.string(),
+  citation: zCitation
 });
 
 /**
@@ -488,11 +500,23 @@ export const zClockPreviewRequest = z.strictObject({
 export const zClockEstimates = z.object({
   clock_rate: z.number().optional(),
   clock_rate_fixed: z.boolean(),
+  root_date: zYearDate.optional(),
   r: z.number().optional(),
   r_squared: z.number().optional(),
   dated_samples: z.int().gte(0),
   outliers: z.int().gte(0)
 });
+
+/**
+ * A statistic of a root-to-tip regression.
+ */
+export const zRegressionStatisticKind = z.union([
+  z.literal('clock-rate'),
+  z.literal('root-date'),
+  z.literal('correlation-coefficient'),
+  z.literal('r-squared'),
+  z.literal('residual-mean-square')
+]);
 
 /**
  * Where the date a clock regression used for a sample came from.
@@ -530,23 +554,6 @@ export const zClockLine = z.object({
 export const zRootToTip = z.object({
   points: z.array(zRootToTipPoint),
   line: zClockLine.optional()
-});
-
-/**
- * Results of a `clock` run.
- */
-export const zClockResults = z.object({
-  estimates: zClockEstimates,
-  root_to_tip: zRootToTip.optional()
-});
-
-/**
- * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
- */
-export const zClockPreview = z.object({
-  tips: z.int().gte(0),
-  tip_limit: z.int().gte(0),
-  clock: zClockResults.optional()
 });
 
 /**
@@ -749,9 +756,12 @@ export const zCancelRunResponse = z.object({
  */
 export const zRunFile = z.object({
   path: z.string(),
+  download_name: z.string(),
+  label: z.string(),
   size: z.int().gte(0),
   kind: zOutputSelection.optional(),
   description: z.string(),
+  main: z.boolean(),
   alignment: zOutputAlignment.optional()
 });
 
@@ -911,26 +921,26 @@ export const zAncestralResults = z.object({
 });
 
 /**
- * Summary of a tree an `optimize` or `prune` run wrote.
+ * Size and shape of a tree.
  */
-export const zTreeSummary = z.object({
+export const zTreeStatistics = z.object({
   samples: z.int().gte(0),
   internal_nodes: z.int().gte(0),
-  mutations: z.int().gte(0),
+  polytomies: z.int().gte(0),
   total_branch_length: z.number().optional()
 });
 
 /**
- * The publication to cite for TreeTime.
+ * The tree before and after an `optimize` or `prune` run.
  */
-export const zCitation = z.object({
-  text: z.string(),
-  doi: z.string(),
-  url: z.string()
+export const zTreeChange = z.object({
+  before: zTreeStatistics.optional(),
+  after: zTreeStatistics.optional(),
+  mutations: z.int().gte(0)
 });
 
 /**
- * An output file of a run that could not be read.
+ * A file of a run that could not be read.
  */
 export const zOutputProblem = z.object({
   path: z.string(),
@@ -941,6 +951,15 @@ export const zOutputProblem = z.object({
  * Auspice JSON of a run, with the color scales the app displays.
  */
 export const zAuspiceDocument = z.record(z.string(), z.unknown());
+
+/**
+ * Changes of the main estimates from the first run to the second.
+ */
+export const zEstimateDelta = z.object({
+  root_date_days: z.number().optional(),
+  clock_rate_percent: z.number().optional(),
+  summary: z.string()
+});
 
 /**
  * A difference between two time-tree runs that changes what their log likelihoods measure, so that their difference
@@ -2023,6 +2042,59 @@ export const zRunConfigResponse = z.discriminatedUnion('status', [
   zRunConfigResponseInvalid
 ]);
 
+/**
+ * A number.
+ */
+export const zStatisticValueNumber = z.object({
+  value: z.number(),
+  kind: z.literal('number')
+});
+
+/**
+ * A date.
+ */
+export const zStatisticValueDate = z.object({
+  date: zYearDate,
+  kind: z.literal('date')
+});
+
+/**
+ * Value of a regression statistic.
+ */
+export const zStatisticValue = z.discriminatedUnion('kind', [
+  zStatisticValueNumber,
+  zStatisticValueDate
+]);
+
+/**
+ * One statistic of a root-to-tip regression, as Tempest lists them.
+ */
+export const zRegressionStatistic = z.object({
+  statistic: zRegressionStatisticKind,
+  label: z.string(),
+  definition: z.string(),
+  unit: z.string().optional(),
+  value: zStatisticValue
+});
+
+/**
+ * Results of a `clock` run.
+ */
+export const zClockResults = z.object({
+  estimates: zClockEstimates,
+  statistics: z.array(zRegressionStatistic),
+  root_to_tip: zRootToTip.optional()
+});
+
+/**
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ */
+export const zClockPreview = z.object({
+  tips: z.int().gte(0),
+  tip_limit: z.int().gte(0),
+  clock: zClockResults.optional()
+});
+
 export const zRunRecordTimetree = z.object({
   id: zJobId,
   title: z.string(),
@@ -2215,12 +2287,12 @@ export const zCommandResultsAncestral = z.object({
 
 export const zCommandResultsOptimize = z.object({
   command: z.literal('optimize'),
-  data: zTreeSummary
+  data: zTreeChange
 });
 
 export const zCommandResultsPrune = z.object({
   command: z.literal('prune'),
-  data: zTreeSummary
+  data: zTreeChange
 });
 
 /**
@@ -2291,6 +2363,7 @@ export const zTimetreeEstimates = z.object({
  */
 export const zTimetreeResults = z.object({
   estimates: zTimetreeEstimates.optional(),
+  statistics: z.array(zRegressionStatistic),
   root_to_tip: zRootToTip.optional(),
   iterations: z.array(zIterationRow),
   skyline: z.array(zSkylineSegment)
@@ -2316,6 +2389,7 @@ export const zEstimateComparison = z.object({
 export const zRunComparison = z.object({
   same_analysis: z.boolean(),
   settings: zSettingsComparison.optional(),
+  delta: zEstimateDelta.optional(),
   estimates: zEstimateComparison.optional(),
   ancestors: zAncestorComparison.optional()
 });
