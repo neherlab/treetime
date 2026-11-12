@@ -8,19 +8,18 @@ import {
   useId,
   useRef,
   useState,
-  useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
   type RefObject,
 } from "react";
 
-import { MAIN_SCROLL_ID } from "../RootLayout";
 import { AuspicePanels } from "./AuspicePanels";
 import { AuspiceProviders } from "./AuspiceProviders";
 import { HideControlsButton, SidebarControls } from "./AuspiceSidebar";
 import type { FigureRuns } from "./downloads";
 import { isSidebarDocked, SIDEBAR_WIDTH, startPanelLayout } from "./layout";
 import { useNotificationToasts } from "./notifications";
+import { observeHeight, scrollAncestor } from "./scrollPane";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
@@ -74,7 +73,7 @@ function Viewer({
 }) {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const [measureViewer, viewerWidth] = useViewerWidth(store, viewerRef);
-  const visibleHeight = useVisibleHeight();
+  const visibleHeight = useVisibleHeight(viewerRef);
   const open = useAuspiceSelector(store, selectSidebarOpen);
   const docked = isSidebarDocked(viewerWidth);
   const { slideFrom, setOpen } = useSidebarToggle(store, docked);
@@ -264,28 +263,12 @@ function applyStartLayout(store: AuspiceStore, viewerWidth: number): void {
   }
 }
 
-function useVisibleHeight(): number {
-  return useSyncExternalStore(subscribeVisibleHeight, visibleHeight, visibleHeight);
-}
+function useVisibleHeight(viewerRef: RefObject<HTMLDivElement | null>): number {
+  const [height, setHeight] = useState(() => window.innerHeight);
 
-function subscribeVisibleHeight(onChange: () => void): () => void {
-  const scroll = document.getElementById(MAIN_SCROLL_ID);
+  useEffect(() => observeHeight(scrollAncestor(viewerRef.current), setHeight), [viewerRef]);
 
-  if (scroll === null) {
-    window.addEventListener("resize", onChange);
-
-    return () => window.removeEventListener("resize", onChange);
-  }
-
-  const observer = new ResizeObserver(onChange);
-
-  observer.observe(scroll);
-
-  return () => observer.disconnect();
-}
-
-function visibleHeight(): number {
-  return document.getElementById(MAIN_SCROLL_ID)?.clientHeight ?? window.innerHeight;
+  return height;
 }
 
 function useSidebarToggle(store: AuspiceStore, docked: boolean): SidebarToggle {
