@@ -15,4 +15,5 @@ pub mod regression;
 pub mod run_results;
 pub mod timetree;
 pub mod tree;
+pub mod tree_change;
 pub mod year_date;

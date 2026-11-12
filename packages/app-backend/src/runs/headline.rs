@@ -1,6 +1,7 @@
 use crate::json_float::JsonFloat;
 use crate::results::run_results::{CommandResults, results_of_record};
 use crate::results::year_date::YearDate;
+use crate::runs::input_store::InputStore;
 use crate::runs::record::RunRecord;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
@@ -8,8 +9,8 @@ use schemars::JsonSchema;
 use std::path::Path;
 use treetime_schema::skip_serializing_optionals;
 
-pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, Report> {
-  let results = results_of_record(record, out_dir)?;
+pub fn run_headline(record: &RunRecord, run_dir: &Path, store: &InputStore) -> Result<RunHeadline, Report> {
+  let results = results_of_record(record, run_dir, store)?;
   Ok(match results.results {
     CommandResults::Timetree(results) => results
       .estimates

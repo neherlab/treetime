@@ -9,8 +9,10 @@ mod tests {
   use crate::results::clock::{ClockLine, RootToTip};
   use crate::results::compare::{LikelihoodMismatch, compare_runs};
   use crate::results::models::{RunModel, RunModels};
+  use crate::results::outputs::OutputProblem;
   use crate::results::run_results::{CommandResults, RunResults, run_results};
   use crate::results::tree::ResultTree;
+  use crate::results::tree_change::{TreeChange, TreeStatistics};
   use crate::runs::headline::RunHeadline;
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
@@ -29,7 +31,7 @@ mod tests {
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
   use treetime_utils::io::json::{json_read_file, to_json_value};
-  use treetime_utils::{assert_error, vec_of_owned};
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq, vec_of_owned};
 
   #[test]
   fn test_run_results_show_the_tree_of_the_first_alignment_file() -> Result<(), Report> {
@@ -363,6 +365,69 @@ mod tests {
     let results = run_results(&runs, &id)?;
 
     assert_eq!((RunModels::default(), vec![]), (results.models, results.problems));
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_prune_run_describe_the_tree_before_and_after() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let inputs = tempdir()?;
+    let tree = inputs.path().join("tree.nwk");
+    fs::write(&tree, "((A:0.1,B:0.1):0.1,(C:0.2,D:0.3):0.05,E:0.3);\n")?;
+    let id = finished_run(&runs, AppCommand::Prune, json!({ "tree": tree, "remove": ["E"] }));
+
+    let CommandResults::Prune(change) = run_results(&runs, &id)?.results else {
+      panic!("a prune run has prune results");
+    };
+
+    let shape = |change: &TreeChange| {
+      [&change.before, &change.after].map(|statistics| {
+        statistics
+          .as_ref()
+          .map(|statistics| (statistics.samples, statistics.internal_nodes, statistics.polytomies))
+      })
+    };
+    let length = |statistics: &Option<TreeStatistics>| {
+      statistics
+        .as_ref()
+        .and_then(|statistics| statistics.total_branch_length)
+        .expect("both trees have branch lengths")
+    };
+    assert_eq!([Some((5, 3, 1)), Some((4, 3, 0))], shape(&change));
+    pretty_assert_ulps_eq!(1.15, length(&change.before), max_ulps = 4);
+    pretty_assert_ulps_eq!(0.85, length(&change.after), max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_prune_run_name_an_input_tree_that_is_gone() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let inputs = tempdir()?;
+    let tree = inputs.path().join("tree.nwk");
+    fs::write(&tree, "((A:0.1,B:0.1):0.1,C:0.3);\n")?;
+    let id = finished_run(&runs, AppCommand::Prune, json!({ "tree": tree, "remove": ["C"] }));
+    fs::remove_file(&tree)?;
+
+    let results = run_results(&runs, &id)?;
+
+    let CommandResults::Prune(change) = &results.results else {
+      panic!("a prune run has prune results");
+    };
+    assert_eq!(
+      (
+        None,
+        vec![OutputProblem {
+          path: tree.display().to_string(),
+          message: format!(
+            "When opening file '{}': No such file or directory (os error 2)",
+            tree.display()
+          ),
+        }]
+      ),
+      (change.before.clone(), results.problems)
+    );
     Ok(())
   }
 

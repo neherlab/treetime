@@ -348,7 +348,6 @@ impl RunEnd<'_> {
   fn record(&self, outcome: RunOutcome) -> TerminalEvent {
     let RunOutcome { terminal, warnings } = outcome;
     let duration = self.clock.elapsed().as_secs_f64();
-    let out_dir = self.run_dir.join(OUT_DIR);
     self.manager.finish(self.id, || {
       let finished = self.manager.modify(self.id, |record| {
         record.finished_at = Some(Utc::now());
@@ -358,7 +357,7 @@ impl RunEnd<'_> {
           TerminalEvent::Ok { result, .. } => {
             record.status = RunStatus::Ok;
             record.output_files = relative_outputs(result, self.run_dir, self.paths);
-            record.headline = run_headline(record, &out_dir).unwrap_or_else(|err| {
+            record.headline = run_headline(record, self.run_dir, self.manager.input_store()).unwrap_or_else(|err| {
               error!(
                 "When reading the headline results of run {}: {err:#}",
                 record.id.as_str()
