@@ -23,9 +23,12 @@ import { ownDraft } from "../store/draftRules";
 import { forgetRuns } from "../store/draftSchema";
 import { useRunDeletionStore } from "../store/runDeletion";
 import { useShellStore } from "../store/shell";
+import { onPageHide } from "./pageHide";
 import { removeRun } from "./removeRun";
 
 const UNDO_TIMEOUT_MS = 10_000;
+
+const CANCEL_WAIT_MS = 60_000;
 
 const ENDED: Readonly<Record<RunStatus, boolean>> = {
   created: false,
@@ -306,6 +309,7 @@ function useDeleteRuns(): (ids: readonly JobId[]) => void {
   const { client } = useApiContext();
   const navigate = useNavigate();
   const shownId = useParams({ strict: false, select: (params) => params.id });
+  const { data: list } = useApi((context) => runsList(context));
 
   return useCallback(
     (ids: readonly JobId[]) => {
@@ -326,31 +330,43 @@ function useDeleteRuns(): (ids: readonly JobId[]) => void {
         void navigate({ to: "/" });
       }
 
+      const titles = new Map((list?.runs ?? []).map((run) => [run.id, run.title]));
+
+      const commit = () => {
+        stopOnPageHide();
+        void commitDeletion(token, titles, async (id) => removeRun(client, id, AbortSignal.timeout(CANCEL_WAIT_MS)));
+      };
+
+      const stopOnPageHide = onPageHide(window, commit);
+
       const toastId = toast.add({
         title: ids.length === 1 ? "The run was deleted" : `${ids.length} runs were deleted`,
         timeout: UNDO_TIMEOUT_MS,
         actionProps: {
           children: "Undo",
           onClick: () => {
+            stopOnPageHide();
             undo(token);
             toast.close(toastId);
           },
         },
-        onClose: () => {
-          void commitDeletion(token, async (id) => removeRun(client, id));
-        },
+        onClose: commit,
       });
     },
-    [client, navigate, shownId],
+    [client, list, navigate, shownId],
   );
 }
 
-async function commitDeletion(token: symbol, remove: (id: JobId) => Promise<void>): Promise<void> {
+async function commitDeletion(
+  token: symbol,
+  titles: ReadonlyMap<JobId, string>,
+  remove: (id: JobId) => Promise<void>,
+): Promise<void> {
   const { removed, failed } = await useRunDeletionStore.getState().commit(token, remove);
   forgetDeletedRuns(removed);
 
   for (const { id, error } of failed) {
-    toast.add({ title: `The run ${id} cannot be deleted`, description: errorMessage(error) });
+    toast.add({ title: `${titles.get(id) ?? "The run"} cannot be deleted`, description: errorMessage(error) });
   }
 }
 

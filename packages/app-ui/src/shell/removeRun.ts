@@ -4,7 +4,7 @@ import { ApiError, runsCancel, runsDelete, type ApiClient } from "@neherlab/app-
 import { findRun } from "../analysis/pendingUpload";
 import { runEventStream } from "../api/events";
 
-export async function removeRun(client: ApiClient, id: JobId): Promise<void> {
+export async function removeRun(client: ApiClient, id: JobId, deadline: AbortSignal): Promise<void> {
   const record = await findRun(client, id);
 
   if (record === undefined) {
@@ -12,10 +12,20 @@ export async function removeRun(client: ApiClient, id: JobId): Promise<void> {
   }
 
   if (record.status === "running") {
-    await runsCancel({ client, path: { id }, throwOnError: true });
+    const { data: cancel } = await runsCancel({ client, path: { id }, throwOnError: true });
 
-    for await (const _event of runEventStream(client, id)) {
-      continue;
+    try {
+      for await (const _event of runEventStream(client, id, { from: cancel.from ?? 0, signal: deadline })) {
+        continue;
+      }
+    } catch (error: unknown) {
+      if (!deadline.aborted) {
+        throw error;
+      }
+    }
+
+    if (deadline.aborted) {
+      throw new Error(`${record.title} did not stop after the cancel request; delete it again once it has ended`);
     }
   }
 
