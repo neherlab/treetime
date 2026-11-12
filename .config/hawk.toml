@@ -23,7 +23,7 @@ reason = "the shipped treetime CLI is the primary product entry point"
 
 # Shipped HTTP server binary; second reachability root.
 [[production]]
-package = "app-server"
+package = "app-api"
 bin = "treetime-server"
 reason = "the shipped treetime-server binary is a product entry point"
 

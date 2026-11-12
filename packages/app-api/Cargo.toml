@@ -1,5 +1,5 @@
 [package]
-name = "app-server"
+name = "app-api"
 authors.workspace = true
 description.workspace = true
 documentation.workspace = true

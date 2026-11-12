@@ -13,7 +13,7 @@ version.workspace = true
 
 [dependencies]
 app-backend = { workspace = true }
-app-server = { workspace = true }
+app-api = { workspace = true }
 treetime-utils = { workspace = true }
 
 axum = { workspace = true }

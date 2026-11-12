@@ -155,6 +155,52 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "app-api"
+version = "1.0.0"
+dependencies = [
+ "aide",
+ "app-backend",
+ "app-commands",
+ "axum",
+ "clap",
+ "ctor",
+ "deser",
+ "deser-json",
+ "deser-path",
+ "deser-serde",
+ "deser-urlencoded",
+ "deser-value",
+ "eyre",
+ "headers",
+ "heck",
+ "indexmap",
+ "indoc",
+ "itertools",
+ "log",
+ "mime",
+ "percent-encoding",
+ "pretty_assertions",
+ "rayon",
+ "rstest",
+ "schemars",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "tikv-jemalloc-sys",
+ "tikv-jemallocator",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower",
+ "tower-http 0.7.1",
+ "treetime-charts",
+ "treetime-grid",
+ "treetime-schema",
+ "treetime-utils",
+ "zip",
+]
+
+[[package]]
 name = "app-backend"
 version = "1.0.0"
 dependencies = [
@@ -202,11 +248,11 @@ dependencies = [
 name = "app-cli"
 version = "1.0.0"
 dependencies = [
+ "app-api",
  "app-backend",
  "app-commands",
  "app-napi",
  "app-output",
- "app-server",
  "approx",
  "axum",
  "clap",
@@ -322,10 +368,10 @@ dependencies = [
 name = "app-napi"
 version = "1.0.0"
 dependencies = [
+ "app-api",
  "app-backend",
  "app-commands",
  "app-output",
- "app-server",
  "axum",
  "ctor",
  "eyre",
@@ -381,57 +427,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "app-server"
-version = "1.0.0"
-dependencies = [
- "aide",
- "app-backend",
- "app-commands",
- "axum",
- "clap",
- "ctor",
- "deser",
- "deser-json",
- "deser-path",
- "deser-serde",
- "deser-urlencoded",
- "deser-value",
- "eyre",
- "headers",
- "heck",
- "indexmap",
- "indoc",
- "itertools",
- "log",
- "mime",
- "percent-encoding",
- "pretty_assertions",
- "rayon",
- "rstest",
- "schemars",
- "serde_json",
- "strum",
- "tempfile",
- "tikv-jemalloc-sys",
- "tikv-jemallocator",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tower",
- "tower-http 0.7.1",
- "treetime-charts",
- "treetime-grid",
- "treetime-schema",
- "treetime-utils",
- "zip",
-]
-
-[[package]]
 name = "app-wasm"
 version = "1.0.0"
 dependencies = [
+ "app-api",
  "app-backend",
- "app-server",
  "axum",
  "console_log",
  "ctor",

@@ -1,4 +1,4 @@
-use app_server::routes::api_doc;
+use app_api::routes::api_doc;
 use ctor::ctor;
 use deser::adapters::As;
 use deser_serde::Serde;

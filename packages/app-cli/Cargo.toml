@@ -68,7 +68,7 @@ tikv-jemallocator = { workspace = true }
 
 [dev-dependencies]
 app-napi = { workspace = true }
-app-server = { workspace = true }
+app-api = { workspace = true }
 approx = { workspace = true }
 axum = { workspace = true }
 napi = { workspace = true }

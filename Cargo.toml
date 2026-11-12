@@ -27,7 +27,7 @@ members = [
   "packages/app-datasets",
   "packages/app-napi",
   "packages/app-output",
-  "packages/app-server",
+  "packages/app-api",
   "packages/app-wasm",
   "packages/treetime",
   "packages/treetime-analytical",
@@ -242,7 +242,7 @@ app-commands = { path = "packages/app-commands", default-features = false }
 app-datasets = { path = "packages/app-datasets" }
 app-napi = { path = "packages/app-napi" }
 app-output = { path = "packages/app-output" }
-app-server = { path = "packages/app-server" }
+app-api = { path = "packages/app-api" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
 treetime-charts = { path = "packages/treetime-charts" }
