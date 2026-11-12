@@ -5,7 +5,7 @@ use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::record::{RunRecord, RunStatus};
 use app_commands::command_config::CommandConfig;
-use chrono::{DateTime, Local, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::warn;
@@ -68,7 +68,7 @@ impl RunStore {
     let created_at = Utc::now();
     let record = RunRecord {
       id,
-      title: default_title(&created_at.with_timezone(&Local)),
+      title: default_title(&created_at),
       config,
       status: RunStatus::Created,
       pinned: false,

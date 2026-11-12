@@ -8,7 +8,7 @@ mod tests {
   use crate::runs::record::{CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
   use crate::runs::store::{RunStore, default_title};
   use app_commands::command::AppCommand;
-  use chrono::{Local, TimeDelta, Utc};
+  use chrono::{TimeDelta, Utc};
   use helpers::{GatedReader, accept, clock_config, create, event_types, terminal_status, timetree_config};
   use maplit::btreeset;
   use parking_lot::Mutex;
@@ -639,7 +639,7 @@ mod tests {
     assert_eq!(
       (
         vec!["inputs", "out", "run.json"],
-        default_title(&record.created_at.with_timezone(&Local))
+        default_title(&record.created_at)
       ),
       (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
     );
