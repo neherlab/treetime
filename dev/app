@@ -151,12 +151,13 @@ status() {
 
 up_web2() {
   resolve
-  rm -f -- "${state_dir}/web2.json"
   local url="http://127.0.0.1:${TREETIME_WEB2_PORT}/"
+  # The state file describes the server that answers now, so a rejected start leaves it to that server.
   if probe "${url}" 2>/dev/null; then
     printf 'A server already answers at %s; stop it before starting another (just status)\n' "${url}" >&2
     return 1
   fi
+  rm -f -- "${state_dir}/web2.json"
 
   pids=()
   # The server runs in its own process group, so stopping it reaches the children of bun too.
