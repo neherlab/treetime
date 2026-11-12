@@ -313,6 +313,7 @@ fn read_tree(path: &Path, dialect: NewickDialect) -> Result<(TreeFacts, Vec<Stri
     polytomies: internal.iter().filter(|node| node.outbound().len() > 2).count(),
     unnamed_tips: unnamed_tips.len(),
     duplicate_node_names: parsed.duplicate_names.clone(),
+    tip_names: named_tips.iter().sorted().dedup().cloned().collect(),
   };
   Ok((facts, named_tips))
 }
@@ -330,6 +331,8 @@ pub struct TreeFacts {
   pub unnamed_tips: usize,
   /// Node names that occur more than once, tips and internal nodes alike, sorted.
   pub duplicate_node_names: Vec<String>,
+  /// Names of the named tips, sorted, each once: the names that settings such as `outgroup` can name.
+  pub tip_names: Vec<String>,
 }
 
 fn read_sequence_names(path: &Path, number: usize) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {

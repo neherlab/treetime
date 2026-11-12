@@ -13,6 +13,7 @@ const ENTRIES: SettingSpec = {
   label: "Entries",
   flag: "--entries",
   group: "Input data",
+  purpose: "data",
   role: "setting",
   kind: "records",
   nullable: false,

@@ -1360,6 +1360,14 @@
             "description": "Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`\nstay as they are. Unset: relative paths resolve from the working directory of the back end.",
             "type": "string",
             "x-unset": true
+          },
+          "choices": {
+            "description": "The options that the form picked for the choices of the command. A picked option counts while the configuration\nhas every value that picking it writes, for example `outgroup` before the user names a tip; otherwise the\nconfiguration selects the option.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveChoice"
+            },
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -1488,6 +1496,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "tip_names": {
+            "description": "Names of the named tips, sorted, each once: the names that settings such as `outgroup` can name.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -1495,7 +1510,8 @@
           "internal_nodes",
           "polytomies",
           "unnamed_tips",
-          "duplicate_node_names"
+          "duplicate_node_names",
+          "tip_names"
         ]
       },
       "AlignmentFacts": {
@@ -1662,6 +1678,68 @@
           "tree",
           "metadata",
           "alignment"
+        ]
+      },
+      "ActiveChoice": {
+        "description": "The option of a choice that a configuration selects, or that the form picked.",
+        "type": "object",
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/ChoiceName"
+          },
+          "option": {
+            "$ref": "#/components/schemas/ChoiceOptionName"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "choice",
+          "option"
+        ]
+      },
+      "ChoiceName": {
+        "description": "A group of settings that the form shows as one choice.",
+        "oneOf": [
+          {
+            "description": "Estimate the clock rate, or fix it.",
+            "type": "string",
+            "const": "clock-rate"
+          },
+          {
+            "description": "Reroot the tree by a method, root it on an outgroup, or keep the input root.",
+            "type": "string",
+            "const": "root"
+          }
+        ]
+      },
+      "ChoiceOptionName": {
+        "description": "An option of a choice.",
+        "oneOf": [
+          {
+            "description": "Estimate the clock rate from the data.",
+            "type": "string",
+            "const": "estimate"
+          },
+          {
+            "description": "A fixed clock rate.",
+            "type": "string",
+            "const": "fixed"
+          },
+          {
+            "description": "Find the root that fits the molecular clock best.",
+            "type": "string",
+            "const": "reroot"
+          },
+          {
+            "description": "Root on the branch above the most recent common ancestor of named tips.",
+            "type": "string",
+            "const": "outgroup"
+          },
+          {
+            "description": "Keep the root of the input tree.",
+            "type": "string",
+            "const": "keep"
+          }
         ]
       },
       "CheckConfigResponse": {
@@ -1869,65 +1947,22 @@
           "key"
         ]
       },
-      "ActiveChoice": {
-        "description": "The option of a choice that a configuration selects.",
+      "EffectiveValue": {
+        "description": "The value that a run uses for a setting that the configuration leaves at its default.",
         "type": "object",
         "properties": {
-          "choice": {
-            "$ref": "#/components/schemas/ChoiceName"
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
           },
-          "option": {
-            "$ref": "#/components/schemas/ChoiceOptionName"
+          "text": {
+            "description": "The value as a short text, for example `Automatic: least-squares rerooting`.",
+            "type": "string"
           }
         },
         "required": [
-          "choice",
-          "option"
-        ]
-      },
-      "ChoiceName": {
-        "description": "A group of settings that the form shows as one choice.",
-        "oneOf": [
-          {
-            "description": "Estimate the clock rate, or fix it.",
-            "type": "string",
-            "const": "clock-rate"
-          },
-          {
-            "description": "Reroot the tree by a method, root it on an outgroup, or keep the input root.",
-            "type": "string",
-            "const": "root"
-          }
-        ]
-      },
-      "ChoiceOptionName": {
-        "description": "An option of a choice.",
-        "oneOf": [
-          {
-            "description": "Estimate the clock rate from the data.",
-            "type": "string",
-            "const": "estimate"
-          },
-          {
-            "description": "A fixed clock rate.",
-            "type": "string",
-            "const": "fixed"
-          },
-          {
-            "description": "Find the root that fits the molecular clock best.",
-            "type": "string",
-            "const": "reroot"
-          },
-          {
-            "description": "Root on the branch above the most recent common ancestor of named tips.",
-            "type": "string",
-            "const": "outgroup"
-          },
-          {
-            "description": "Keep the root of the input tree.",
-            "type": "string",
-            "const": "keep"
-          }
+          "key",
+          "text"
         ]
       },
       "ConfigProblem": {
@@ -4320,6 +4355,13 @@
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
           },
+          "choices": {
+            "description": "The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveChoice"
+            }
+          },
           "view": {
             "$ref": "#/components/schemas/UiSettingsView"
           },
@@ -4340,6 +4382,7 @@
           "command",
           "config",
           "sources",
+          "choices",
           "view",
           "search",
           "changed_only",
@@ -4368,6 +4411,11 @@
             "description": "The run the file came from: the run that received the upload, or the earlier run whose input the file is. The\nform drops the file when this run no longer exists, because the file may be stored in the folder of that run.",
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
+          },
+          "example": {
+            "description": "Path of the example file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`,\nfor the `example` origin: the form fetches the file again when the uploaded copy is gone.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "additionalProperties": false,
@@ -4380,12 +4428,17 @@
         "description": "Where an input file of the form came from.",
         "oneOf": [
           {
-            "description": "An example dataset.",
+            "description": "A file of an example dataset in the data folder of the back end.",
             "type": "string",
             "const": "dataset"
           },
           {
-            "description": "A file uploaded to the back end.",
+            "description": "A file of an example dataset, fetched from the example index and uploaded to TreeTime; `example` keeps its path.",
+            "type": "string",
+            "const": "example"
+          },
+          {
+            "description": "A file uploaded to TreeTime.",
             "type": "string",
             "const": "upload"
           },
@@ -4775,11 +4828,11 @@
               "type": "string"
             }
           },
-          "main_settings": {
-            "description": "Keys of the settings the form shows first, in the order it shows them.",
+          "main_rows": {
+            "description": "The settings the form shows first, in rows of settings that it edits together, in the order it shows them.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MainSettingRow"
             }
           },
           "choices": {
@@ -4804,7 +4857,7 @@
           "inputs",
           "uses_dates",
           "groups",
-          "main_settings",
+          "main_rows",
           "choices",
           "settings"
         ]
@@ -4870,6 +4923,135 @@
           }
         ]
       },
+      "MainSettingRow": {
+        "description": "One row of the main settings: one or more settings that the form shows and edits together.",
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "Name of the row, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Short line under the name, for example `Tree prior on node times`.",
+            "type": "string",
+            "x-unset": true
+          },
+          "settings": {
+            "description": "The settings of the row, in the order the row shows them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowSetting"
+            }
+          },
+          "control": {
+            "description": "The control that edits the settings.",
+            "$ref": "#/components/schemas/RowControl"
+          }
+        },
+        "required": [
+          "label",
+          "settings",
+          "control"
+        ]
+      },
+      "RowSetting": {
+        "description": "One setting of a row of the main settings.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the setting inside the row, for example `Rate` in the row `Clock rate`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ]
+      },
+      "RowControl": {
+        "description": "Control of a row of the main settings.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RowControlChoice"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlSwitches"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlCoalescent"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlClockFilter"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlSubstitutionModel"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlSetting"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "choice": "#/components/schemas/RowControlChoice",
+            "switches": "#/components/schemas/RowControlSwitches",
+            "coalescent": "#/components/schemas/RowControlCoalescent",
+            "clock-filter": "#/components/schemas/RowControlClockFilter",
+            "substitution-model": "#/components/schemas/RowControlSubstitutionModel",
+            "setting": "#/components/schemas/RowControlSetting"
+          }
+        }
+      },
+      "RowSwitch": {
+        "description": "A switch of a row of the main settings.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the setting the switch turns on or off.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text beside the switch.",
+            "type": "string"
+          },
+          "inverted": {
+            "description": "Whether the switch is on while the setting is off: the setting turns off a step that runs by default.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "text",
+          "inverted"
+        ]
+      },
+      "RowOption": {
+        "description": "An option of a row of the main settings.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The option, for example `skyline`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the option, for example `Skyline`.",
+            "type": "string"
+          },
+          "note": {
+            "description": "What the option does, as the form shows it while the option is picked.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ]
+      },
       "SettingChoice": {
         "description": "Settings that the form shows as one choice between options, for example the clock rate.",
         "type": "object",
@@ -4905,6 +5087,15 @@
           "option": {
             "$ref": "#/components/schemas/ChoiceOptionName"
           },
+          "label": {
+            "description": "Name of the option, for example `Fixed rate`.",
+            "type": "string"
+          },
+          "note": {
+            "description": "What the option does, as the form shows it while the option is picked.",
+            "type": "string",
+            "x-unset": true
+          },
           "patch": {
             "description": "Changes that picking the option makes: settings it writes, and settings it removes so that they take their\ndefaults.",
             "type": "array",
@@ -4922,6 +5113,7 @@
         },
         "required": [
           "option",
+          "label",
           "patch",
           "settings"
         ]
@@ -4945,6 +5137,10 @@
           "group": {
             "description": "Heading of the setting in `--help`.",
             "type": "string"
+          },
+          "purpose": {
+            "description": "What the setting is for, which places it in the form.",
+            "$ref": "#/components/schemas/SettingPurpose"
           },
           "role": {
             "description": "What the setting names: a file, or a value.",
@@ -5027,6 +5223,7 @@
           "label",
           "flag",
           "group",
+          "purpose",
           "role",
           "kind",
           "nullable",
@@ -5038,6 +5235,31 @@
           "conflicts",
           "help",
           "more"
+        ]
+      },
+      "SettingPurpose": {
+        "description": "What a setting is for.",
+        "oneOf": [
+          {
+            "description": "How the input files are read.",
+            "type": "string",
+            "const": "data"
+          },
+          {
+            "description": "A model, method, or parameter of the analysis.",
+            "type": "string",
+            "const": "analysis"
+          },
+          {
+            "description": "What the run writes, and in which format.",
+            "type": "string",
+            "const": "output"
+          },
+          {
+            "description": "The order of the tree in the outputs, and the random seed: settings that change no inferred value.",
+            "type": "string",
+            "const": "ordering"
+          }
         ]
       },
       "SettingRole": {
@@ -7254,6 +7476,13 @@
               "$ref": "#/components/schemas/ActiveChoice"
             }
           },
+          "effective": {
+            "description": "The value the run uses for each setting that the configuration leaves at its default, as a short text.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffectiveValue"
+            }
+          },
           "status": {
             "type": "string",
             "const": "valid"
@@ -7265,7 +7494,8 @@
           "config",
           "code",
           "checks",
-          "choices"
+          "choices",
+          "effective"
         ]
       },
       "CheckConfigResponseInvalid": {
@@ -8651,6 +8881,117 @@
         "required": [
           "state",
           "message"
+        ]
+      },
+      "RowControlChoice": {
+        "description": "A choice between options; the choice of the command with this name holds the options and their texts.",
+        "type": "object",
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/ChoiceName"
+          },
+          "kind": {
+            "type": "string",
+            "const": "choice"
+          }
+        },
+        "required": [
+          "kind",
+          "choice"
+        ]
+      },
+      "RowControlSwitches": {
+        "description": "Switches, one per setting.",
+        "type": "object",
+        "properties": {
+          "switches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowSwitch"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "switches"
+          }
+        },
+        "required": [
+          "kind",
+          "switches"
+        ]
+      },
+      "RowControlCoalescent": {
+        "description": "The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.",
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowOption"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "coalescent"
+          }
+        },
+        "required": [
+          "kind",
+          "options"
+        ]
+      },
+      "RowControlClockFilter": {
+        "description": "The clock filter threshold.",
+        "type": "object",
+        "properties": {
+          "off": {
+            "description": "Note while the threshold is 0.",
+            "type": "string"
+          },
+          "on": {
+            "description": "Note while the threshold is above 0.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "clock-filter"
+          }
+        },
+        "required": [
+          "kind",
+          "off",
+          "on"
+        ]
+      },
+      "RowControlSubstitutionModel": {
+        "description": "The substitution model and its parameters.",
+        "type": "object",
+        "properties": {
+          "parameters_example": {
+            "description": "Example of the parameters, as the form shows them in the empty field.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "substitution-model"
+          }
+        },
+        "required": [
+          "kind",
+          "parameters_example"
+        ]
+      },
+      "RowControlSetting": {
+        "description": "The control of the one setting of the row.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "setting"
+          }
+        },
+        "required": [
+          "kind"
         ]
       }
     }

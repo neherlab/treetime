@@ -28,6 +28,7 @@ mod tests {
         ("CoalescentPrior", "kind"),
         ("CommandResults", "command"),
         ("ExamplesDownload", "state"),
+        ("RowControl", "kind"),
         ("RunConfigResponse", "status"),
         ("RunEvent", "type"),
         ("RunModel", "kind"),

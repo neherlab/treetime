@@ -6,9 +6,15 @@ const CLOCK_RATE: SettingChoice = {
   choice: "clock-rate",
   keys: ["clock_rate", "clock_std_dev"],
   options: [
-    { option: "estimate", patch: [{ key: "clock_rate" }, { key: "clock_std_dev" }], settings: [] },
+    {
+      option: "estimate",
+      label: "Estimate from data",
+      patch: [{ key: "clock_rate" }, { key: "clock_std_dev" }],
+      settings: [],
+    },
     {
       option: "fixed",
+      label: "Fixed rate",
       patch: [{ key: "clock_rate", value: 0.001 }, { key: "clock_std_dev" }],
       settings: ["clock_rate", "clock_std_dev"],
     },

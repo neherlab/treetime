@@ -3,11 +3,12 @@ use crate::config::catalog::SettingSpec;
 use crate::run_checks::SettingPatch;
 use app_commands::command::AppCommand;
 use app_commands::json_value::JsonValue;
-use deser::Serialize;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 
 const CHOICES: &[ChoiceDef] = &[
@@ -17,11 +18,15 @@ const CHOICES: &[ChoiceDef] = &[
     options: &[
       OptionDef {
         name: ChoiceOptionName::Estimate,
+        label: "Estimate from data",
+        note: Some("Estimated by root-to-tip regression, then refined during dating."),
         set: &[],
         settings: &[],
       },
       OptionDef {
         name: ChoiceOptionName::Fixed,
+        label: "Fixed rate",
+        note: None,
         set: &[("clock_rate", PickedValue::Example)],
         settings: &["clock_rate", "clock_std_dev"],
       },
@@ -33,16 +38,22 @@ const CHOICES: &[ChoiceDef] = &[
     options: &[
       OptionDef {
         name: ChoiceOptionName::Reroot,
+        label: "Reroot",
+        note: None,
         set: &[("reroot", PickedValue::MethodUnlessDefault)],
         settings: &["reroot"],
       },
       OptionDef {
         name: ChoiceOptionName::Outgroup,
-        set: &[("outgroup", PickedValue::Example)],
+        label: "Outgroup",
+        note: Some("The root is placed on the branch above the most recent common ancestor of the named tips."),
+        set: &[],
         settings: &["outgroup"],
       },
       OptionDef {
         name: ChoiceOptionName::Keep,
+        label: "Keep root",
+        note: Some("The input root is kept; use this when the input tree is already rooted."),
         set: &[("keep_root", PickedValue::True)],
         settings: &[],
       },
@@ -58,45 +69,34 @@ pub fn setting_choices(command: AppCommand, settings: &[SettingSpec]) -> Result<
     .try_collect()
 }
 
-pub fn active_choices(command: AppCommand, settings: &[SettingSpec], config: &Map<String, Value>) -> Vec<ActiveChoice> {
-  let value = |key: &str| config.get(key).filter(|value| !value.is_null());
-  let flag = |key: &str| value(key).and_then(Value::as_bool).unwrap_or(false);
-  let listed = |key: &str| {
-    value(key)
-      .and_then(Value::as_array)
-      .is_some_and(|items| !items.is_empty())
-  };
-  CHOICES
+pub fn active_choices(
+  command: AppCommand,
+  choices: &[SettingChoice],
+  settings: &[SettingSpec],
+  config: &Map<String, Value>,
+  picked: &[ActiveChoice],
+) -> Vec<ActiveChoice> {
+  choices
     .iter()
-    .filter(|choice| choice.applies(settings))
     .map(|choice| ActiveChoice {
-      choice: choice.name,
-      option: match choice.name {
-        ChoiceName::ClockRate => {
-          if value("clock_rate").is_some() {
-            ChoiceOptionName::Fixed
-          } else {
-            ChoiceOptionName::Estimate
-          }
-        },
-        ChoiceName::Root => {
-          if flag("keep_root") {
-            ChoiceOptionName::Keep
-          } else if listed("outgroup") {
-            ChoiceOptionName::Outgroup
-          } else if value("reroot").is_some() || command.reroots_by_default() {
-            ChoiceOptionName::Reroot
-          } else {
-            ChoiceOptionName::Keep
-          }
-        },
-      },
+      choice: choice.choice,
+      option: picked
+        .iter()
+        .find(|active| active.choice == choice.choice)
+        .and_then(|active| choice.options.iter().find(|option| option.option == active.option))
+        .filter(|option| option.agrees(settings, config))
+        .map_or_else(
+          || selected_option(choice.choice, command, config),
+          |option| option.option,
+        ),
     })
     .collect()
 }
 
-/// The option of a choice that a configuration selects.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+/// The option of a choice that a configuration selects, or that the form picked.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct ActiveChoice {
   pub choice: ChoiceName,
   pub option: ChoiceOptionName,
@@ -137,7 +137,7 @@ pub struct SettingChoice {
 }
 
 /// A group of settings that the form shows as one choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum ChoiceName {
@@ -149,6 +149,8 @@ pub enum ChoiceName {
 
 struct OptionDef {
   name: ChoiceOptionName,
+  label: &'static str,
+  note: Option<&'static str>,
   set: &'static [(&'static str, PickedValue)],
   settings: &'static [&'static str],
 }
@@ -173,6 +175,8 @@ impl OptionDef {
       .collect::<Result<Vec<_>, Report>>()?;
     Ok(ChoiceOption {
       option: self.name,
+      label: self.label.to_owned(),
+      note: self.note.map(str::to_owned),
       patch,
       settings: self.settings.iter().map(|key| (*key).to_owned()).collect(),
     })
@@ -181,8 +185,14 @@ impl OptionDef {
 
 /// One option of a choice.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ChoiceOption {
   pub option: ChoiceOptionName,
+  /// Name of the option, for example `Fixed rate`.
+  pub label: String,
+  /// What the option does, as the form shows it while the option is picked.
+  pub note: Option<String>,
   /// Changes that picking the option makes: settings it writes, and settings it removes so that they take their
   /// defaults.
   pub patch: Vec<SettingPatch>,
@@ -190,8 +200,27 @@ pub struct ChoiceOption {
   pub settings: Vec<String>,
 }
 
+impl ChoiceOption {
+  fn agrees(&self, settings: &[SettingSpec], config: &Map<String, Value>) -> bool {
+    self.patch.iter().all(|patch| {
+      let expected = patch
+        .value
+        .as_ref()
+        .or_else(|| {
+          settings
+            .iter()
+            .find(|spec| spec.key == patch.key)
+            .and_then(|spec| spec.default_value.as_ref())
+        })
+        .map(|value| &value.0)
+        .filter(|value| !value.is_null());
+      expected == config.get(&patch.key).filter(|value| !value.is_null())
+    })
+  }
+}
+
 /// An option of a choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum ChoiceOptionName {
@@ -205,6 +234,36 @@ pub enum ChoiceOptionName {
   Outgroup,
   /// Keep the root of the input tree.
   Keep,
+}
+
+fn selected_option(choice: ChoiceName, command: AppCommand, config: &Map<String, Value>) -> ChoiceOptionName {
+  let value = |key: &str| config.get(key).filter(|value| !value.is_null());
+  let flag = |key: &str| value(key).and_then(Value::as_bool).unwrap_or(false);
+  let listed = |key: &str| {
+    value(key)
+      .and_then(Value::as_array)
+      .is_some_and(|items| !items.is_empty())
+  };
+  match choice {
+    ChoiceName::ClockRate => {
+      if value("clock_rate").is_some() {
+        ChoiceOptionName::Fixed
+      } else {
+        ChoiceOptionName::Estimate
+      }
+    },
+    ChoiceName::Root => {
+      if flag("keep_root") {
+        ChoiceOptionName::Keep
+      } else if listed("outgroup") {
+        ChoiceOptionName::Outgroup
+      } else if value("reroot").is_some() || command.reroots_by_default() {
+        ChoiceOptionName::Reroot
+      } else {
+        ChoiceOptionName::Keep
+      }
+    },
+  }
 }
 
 enum PickedValue {

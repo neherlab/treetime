@@ -1,7 +1,7 @@
-import type { AppCommand, JobId, SparseConfig, UiDraft, UiDraftSource } from "@neherlab/app-contracts";
+import type { ActiveChoice, AppCommand, JobId, SparseConfig, UiDraft, UiDraftSource } from "@neherlab/app-contracts";
 import { create } from "zustand";
 
-import { freshDraft } from "./draftSchema";
+import { freshDraft, withPickedChoice } from "./draftSchema";
 
 interface DraftState {
   draft: UiDraft;
@@ -14,6 +14,7 @@ interface DraftActions {
   load: (draft: UiDraft) => void;
   update: (changes: Partial<Pick<UiDraft, "view" | "search" | "changed_only" | "code_format">>) => void;
   setConfig: (config: SparseConfig) => void;
+  pickChoice: (picked: ActiveChoice) => void;
   setSource: (key: string, source: UiDraftSource | undefined) => void;
   assignInputs: (changes: Pick<UiDraft, "config" | "sources">, keys: readonly string[]) => void;
   claimSelections: (keys: readonly string[], selection: symbol) => void;
@@ -36,6 +37,9 @@ export const useDraftStore = create<DraftState & DraftActions>()((set) => ({
   },
   setConfig: (config) => {
     set(({ draft }) => ({ draft: { ...draft, config } }));
+  },
+  pickChoice: (picked) => {
+    set(({ draft }) => ({ draft: { ...draft, choices: withPickedChoice(draft.choices, picked) } }));
   },
   setSource: (key, source) => {
     set(({ draft, selections }) => {

@@ -1,3 +1,4 @@
+use crate::config::choices::ActiveChoice;
 use crate::job::JobId;
 use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
@@ -147,6 +148,10 @@ pub struct UiDraft {
   /// The run that holds the uploaded input files of the form.
   pub upload_run_id: Option<JobId>,
 
+  /// The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.
+  #[deser(default)]
+  pub choices: Vec<ActiveChoice>,
+
   pub view: UiSettingsView,
 
   /// Text of the settings search field.
@@ -173,6 +178,9 @@ pub struct UiDraftSource {
   /// The run the file came from: the run that received the upload, or the earlier run whose input the file is. The
   /// form drops the file when this run no longer exists, because the file may be stored in the folder of that run.
   pub run_id: Option<JobId>,
+  /// Path of the example file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`,
+  /// for the `example` origin: the form fetches the file again when the uploaded copy is gone.
+  pub example: Option<String>,
 }
 
 /// Where an input file of the form came from.
@@ -180,9 +188,11 @@ pub struct UiDraftSource {
 #[schemars(rename_all = "lowercase")]
 #[deser(rename_all = "lowercase")]
 pub enum UiDraftOrigin {
-  /// An example dataset.
+  /// A file of an example dataset in the data folder of the back end.
   Dataset,
-  /// A file uploaded to the back end.
+  /// A file of an example dataset, fetched from the example index and uploaded to TreeTime; `example` keeps its path.
+  Example,
+  /// A file uploaded to TreeTime.
   Upload,
   /// A file on the computer that runs TreeTime.
   Local,

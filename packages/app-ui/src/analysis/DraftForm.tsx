@@ -50,13 +50,19 @@ export function DraftForm({ command }: { command: AppCommand }) {
     { enabled: factsRequest !== null, placeholderData: keepPreviousData, staleTime: 30_000 },
   );
 
+  const choices = useDraftStore((state) => state.draft.choices);
+
   const { data: check, isPlaceholderData: checkPending } = useApi(
     (context) => {
       const text = JSON.stringify(settled);
+      const picked = choices ?? [];
 
       return configCheck({
         ...context,
-        body: facts === undefined ? { command, text } : { command, text, input_facts: facts },
+        body:
+          facts === undefined
+            ? { command, text, choices: picked }
+            : { command, text, choices: picked, input_facts: facts },
       });
     },
     { placeholderData: keepPreviousData, staleTime: Infinity },

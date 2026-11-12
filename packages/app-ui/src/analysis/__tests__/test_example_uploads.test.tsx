@@ -490,6 +490,7 @@ function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected:
     code: CODE,
     checks: [],
     choices: [],
+    effective: [],
   };
 }
 

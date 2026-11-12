@@ -33,6 +33,7 @@ mod tests {
         polytomies: 15,
         unnamed_tips: 0,
         duplicate_node_names: vec![],
+        tip_names: facts.tree.as_ref().unwrap().tip_names.clone(),
       }),
       facts.tree
     );

@@ -1,4 +1,4 @@
-import type { AppCommand, JobId, UiDraft } from "@neherlab/app-contracts";
+import type { ActiveChoice, AppCommand, JobId, UiDraft } from "@neherlab/app-contracts";
 
 import { commandSettings } from "../settings/catalog";
 import { defaultConfig, resetValue } from "../settings/config";
@@ -9,11 +9,16 @@ export function freshDraft(command: AppCommand): UiDraft {
     command,
     config: defaultConfig(commandSettings(command).settings),
     sources: {},
+    choices: [],
     view: "main",
     search: "",
     changed_only: false,
     code_format: "cli",
   };
+}
+
+export function withPickedChoice(choices: readonly ActiveChoice[] | undefined, picked: ActiveChoice): ActiveChoice[] {
+  return [...(choices ?? []).filter((active) => active.choice !== picked.choice), picked];
 }
 
 export function referencedRuns(draft: UiDraft): JobId[] {

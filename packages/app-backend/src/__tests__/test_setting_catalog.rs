@@ -3,15 +3,18 @@ mod tests {
   use crate::check_inputs::{InputKind, InputNeed, InputSlot};
   use crate::command::offered_commands;
   use crate::config::catalog::{
-    ListItemKind, SettingKind, SettingOption, SettingRole, SettingSpec, command_settings, setting_catalog,
+    ListItemKind, SettingKind, SettingOption, SettingPurpose, SettingRole, SettingSpec, command_settings,
+    setting_catalog,
   };
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
   use helpers::spec;
   use itertools::Itertools;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
+  use std::collections::BTreeMap;
   use treetime_utils::{o, vec_of_owned};
 
   #[test]
@@ -80,6 +83,46 @@ mod tests {
   }
 
   #[test]
+  fn test_setting_catalog_timetree_purposes() {
+    let counts = command_settings(AppCommand::Timetree)
+      .unwrap()
+      .settings
+      .iter()
+      .counts_by(|spec| spec.purpose);
+    assert_eq!(
+      btreemap! {
+        SettingPurpose::Data => 13,
+        SettingPurpose::Analysis => 33,
+        SettingPurpose::Output => 22,
+        SettingPurpose::Ordering => 5,
+      },
+      counts.into_iter().collect::<BTreeMap<_, _>>()
+    );
+  }
+
+  #[rstest]
+  #[case::input_data(    ("Input data",       SettingRole::Input),  SettingPurpose::Data)]
+  #[case::output(        ("Output",           SettingRole::Setting), SettingPurpose::Output)]
+  #[case::output_path(   ("Output",           SettingRole::Output), SettingPurpose::Output)]
+  #[case::tree_ordering( ("Tree ordering",    SettingRole::Input),  SettingPurpose::Ordering)]
+  #[case::seed(          ("Reproducibility",  SettingRole::Setting), SettingPurpose::Ordering)]
+  #[case::clock_input(   ("Molecular clock",  SettingRole::Input),  SettingPurpose::Analysis)]
+  #[case::rooting(       ("Rooting",          SettingRole::Setting), SettingPurpose::Analysis)]
+  #[trace]
+  fn test_setting_catalog_purpose_follows_heading_and_role(
+    #[case] (heading, role): (&str, SettingRole),
+    #[case] expected: SettingPurpose,
+  ) {
+    let actual = offered_commands()
+      .flat_map(|command| command_settings(command).unwrap().settings)
+      .filter(|spec| spec.group == heading && spec.role == role)
+      .map(|spec| spec.purpose)
+      .unique()
+      .collect_vec();
+    assert_eq!(vec![expected], actual);
+  }
+
+  #[test]
   fn test_setting_catalog_has_every_leaf_of_the_config_once() {
     for command in offered_commands() {
       let keys = command_settings(command)
@@ -102,6 +145,7 @@ mod tests {
         label: o!("Clock rate"),
         flag: o!("--clock-rate"),
         group: o!("Molecular clock"),
+        purpose: SettingPurpose::Analysis,
         role: SettingRole::Setting,
         kind: SettingKind::Number,
         nullable: true,
@@ -129,6 +173,7 @@ mod tests {
         label: o!("Coalescent prior"),
         flag: o!("--coalescent"),
         group: o!("Coalescent prior"),
+        purpose: SettingPurpose::Analysis,
         role: SettingRole::Setting,
         kind: SettingKind::EnumOrText,
         nullable: true,

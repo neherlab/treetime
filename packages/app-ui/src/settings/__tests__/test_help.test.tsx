@@ -13,6 +13,7 @@ const TREE_DIALECT: SettingSpec = {
   label: "Newick dialect",
   flag: "--newick-dialect",
   group: "Input data",
+  purpose: "data",
   role: "setting",
   kind: "text",
   nullable: false,

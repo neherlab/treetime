@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputProblem};
+  use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOptionName};
   use crate::run_checks::{
     CheckContext, CheckFix, CheckLevel, ConfigRejection, RunCheck, SettingPatch, rejection_messages, run_checks,
   };
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
-  use helpers::{alignment, checks, config, dates, facts_with_tree, metadata, problem, texts};
+  use helpers::{alignment, checks, checks_picked, config, dates, facts_with_tree, metadata, problem, texts};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -101,7 +102,7 @@ mod tests {
       settings: &[],
     };
     assert_eq!(
-      vec!["invalid --collapse-short: the value is negative"],
+      vec!["invalid collapse short: the value is negative"],
       texts(&checks(AppCommand::Prune, Some(&config), Some(rejection), None))
     );
   }
@@ -466,7 +467,9 @@ mod tests {
       vec!["invalid configuration: could not parse config"],
       texts(&run_checks(&CheckContext {
         command: AppCommand::Prune,
+        settings: &[],
         config: None,
+        choices: &[],
         rejection: Some(rejection),
         facts: None,
       }))
@@ -534,9 +537,7 @@ mod tests {
       &json!({ "tree": "t.nwk", "metadata": "m.tsv", "sequence_length": 1000, "partition": [{ "name": "all" }] }),
     );
     assert_eq!(
-      vec![
-        "--partition needs --alignment: each entry takes sites of an --alignment file, but the run has no --alignment file"
-      ],
+      vec!["Partition needs alignment: each entry takes sites of an alignment file, but the run has no alignment file"],
       texts(&checks(AppCommand::Timetree, Some(&config), None, None))
     );
   }
@@ -623,10 +624,65 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::picked_without_tips(  Some(ChoiceOptionName::Outgroup), json!([]),                &["Name at least one outgroup tip."])]
+  #[case::reroot_without_tips(  Some(ChoiceOptionName::Reroot),   json!([]),                &[])]
+  #[case::no_pick_without_tips( None,                             json!([]),                &[])]
+  #[case::tips_in_the_tree(     Some(ChoiceOptionName::Outgroup), json!(["tip1", "tip3"]),  &[])]
+  #[case::tips_not_in_the_tree( None,                             json!(["tip1", "x", "y"]), &["The tree has no tip named x, y."])]
+  #[trace]
+  fn test_run_checks_outgroup(#[case] picked: Option<ChoiceOptionName>, #[case] outgroup: Value, #[case] expected: &[&str]) {
+    let config = config(AppCommand::Timetree, &json!({ "tree": "t.nwk", "metadata": "m.tsv", "outgroup": outgroup }));
+    let choices = picked.map(|option| ActiveChoice { choice: ChoiceName::Root, option }).into_iter().collect::<Vec<_>>();
+    let found = checks_picked(AppCommand::Timetree, Some(&config), None, Some(&facts_with_tree(3)), &choices);
+    assert_eq!(expected.to_vec(), texts(&found));
+  }
+
+  #[test]
+  fn test_run_checks_outgroup_without_tree_facts_checks_no_names() {
+    let config = config(
+      AppCommand::Timetree,
+      &json!({ "tree": "t.nwk", "metadata": "m.tsv", "outgroup": ["x"] }),
+    );
+    assert_eq!(
+      Vec::<&str>::new(),
+      texts(&checks(AppCommand::Timetree, Some(&config), None, None))
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::flag_first(
+    "--sequence-length is required without an alignment: the time inference needs the sequence length",
+    "Sequence length is required without an alignment: the time inference needs the sequence length",
+  )]
+  #[case::flags_with_values(
+    "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input",
+    "Branch length mode \"marginal\" requires an alignment: add alignment or use branch length mode \"input\"",
+  )]
+  #[case::unknown_flag(
+    "--no-such-flag is not a setting of the command",
+    "--no-such-flag is not a setting of the command",
+  )]
+  #[trace]
+  fn test_run_checks_rejection_names_settings_by_label(#[case] message: &str, #[case] expected: &str) {
+    let config = config(AppCommand::Timetree, &json!({ "tree": "t.nwk", "metadata": "m.tsv" }));
+    let rejection = ConfigRejection {
+      message,
+      causes: &[],
+      problems: &[],
+      settings: &[],
+    };
+    assert_eq!(vec![expected], texts(&checks(AppCommand::Timetree, Some(&config), Some(rejection), None)));
+  }
+
   mod helpers {
     use crate::check_inputs::{AlignmentFacts, InputFacts, TreeFacts};
     use crate::check_inputs::{DateFacts, MetadataFacts};
     use crate::command::AppCommandExt;
+    use crate::config::catalog::{SettingSpec, command_settings};
+    use crate::config::choices::ActiveChoice;
     use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, run_checks};
     use app_commands::command::AppCommand;
     use app_commands::config::source::ConfigProblem;
@@ -644,12 +700,32 @@ mod tests {
       rejection: Option<ConfigRejection<'_>>,
       facts: Option<&InputFacts>,
     ) -> Vec<RunCheck> {
+      checks_picked(command, config, rejection, facts, &[])
+    }
+
+    pub(super) fn checks_picked(
+      command: AppCommand,
+      config: Option<&Map<String, Value>>,
+      rejection: Option<ConfigRejection<'_>>,
+      facts: Option<&InputFacts>,
+      choices: &[ActiveChoice],
+    ) -> Vec<RunCheck> {
       run_checks(&CheckContext {
         command,
+        settings: &settings_of(command),
         config,
+        choices,
         rejection,
         facts,
       })
+    }
+
+    fn settings_of(command: AppCommand) -> Vec<SettingSpec> {
+      if command.in_apps() {
+        command_settings(command).unwrap().settings
+      } else {
+        vec![]
+      }
     }
 
     pub(super) fn texts(checks: &[RunCheck]) -> Vec<&str> {
@@ -664,6 +740,7 @@ mod tests {
           polytomies: 0,
           unnamed_tips: 0,
           duplicate_node_names: vec![],
+          tip_names: (1..=tips).map(|tip| format!("tip{tip}")).collect(),
         }),
         ..InputFacts::default()
       }

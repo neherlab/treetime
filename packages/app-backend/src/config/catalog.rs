@@ -2,6 +2,7 @@ use crate::check_inputs::InputSlot;
 use crate::command::{AppCommandExt, ensure_in_apps, offered_commands};
 use crate::config::choices::{SettingChoice, setting_choices};
 use crate::config::labels::setting_label;
+use crate::config::rows::{MainSettingRow, main_setting_rows};
 use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::setting_arg;
 use app_commands::config::cli_rules::setting_conflicts;
@@ -16,6 +17,14 @@ use serde_json::{Map, Value};
 use treetime_schema::UNSET_KEY;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::{make_error, make_report};
+
+const PURPOSES: [(PurposeRule, SettingPurpose); 5] = [
+  (PurposeRule::Heading("Input data"), SettingPurpose::Data),
+  (PurposeRule::Heading("Output"), SettingPurpose::Output),
+  (PurposeRule::Role(SettingRole::Output), SettingPurpose::Output),
+  (PurposeRule::Heading("Tree ordering"), SettingPurpose::Ordering),
+  (PurposeRule::Heading("Reproducibility"), SettingPurpose::Ordering),
+];
 
 pub fn setting_catalog() -> Result<SettingCatalog, Report> {
   Ok(SettingCatalog {
@@ -77,6 +86,7 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     })
     .collect();
   let settings = settings.into_iter().map(|(_, _, spec)| spec).collect_vec();
+  let choices = setting_choices(command, &settings)?;
   Ok(CommandSettings {
     command,
     title: command.title().to_owned(),
@@ -84,8 +94,8 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     inputs,
     uses_dates: command.uses_dates(),
     groups,
-    main_settings: command.main_settings().iter().map(|key| (*key).to_owned()).collect(),
-    choices: setting_choices(command, &settings)?,
+    main_rows: main_setting_rows(command, command.main_settings(), &settings, &choices)?,
+    choices,
     settings,
   })
 }
@@ -112,8 +122,8 @@ pub struct CommandSettings {
   pub uses_dates: bool,
   /// Setting groups, in the order `treetime <command> --help` lists their headings.
   pub groups: Vec<String>,
-  /// Keys of the settings the form shows first, in the order it shows them.
-  pub main_settings: Vec<String>,
+  /// The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
+  pub main_rows: Vec<MainSettingRow>,
   /// Settings that the form shows as one choice between options.
   pub choices: Vec<SettingChoice>,
   /// Every setting of the command, by group, in the order `--help` lists them.
@@ -141,11 +151,13 @@ fn setting_spec(
   let value = value_spec(schema, property, &key)?;
   let base = deref(schema, property)?;
 
+  let role = SettingRole::from(setting.path_role);
   Ok(SettingSpec {
     label: setting_label(&key),
     flag: format!("--{long}"),
     group: group.to_owned(),
-    role: setting.path_role.into(),
+    purpose: SettingPurpose::of(group, role),
+    role,
     kind: value.kind,
     nullable: value.nullable,
     options: value.options,
@@ -192,6 +204,8 @@ pub struct SettingSpec {
   pub flag: String,
   /// Heading of the setting in `--help`.
   pub group: String,
+  /// What the setting is for, which places it in the form.
+  pub purpose: SettingPurpose,
   /// What the setting names: a file, or a value.
   pub role: SettingRole,
   /// Form of the value, which selects the control that edits it.
@@ -237,6 +251,38 @@ pub enum SettingRole {
   InputTemplate,
   /// Path of an output file.
   Output,
+}
+
+/// What a setting is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum SettingPurpose {
+  /// How the input files are read.
+  Data,
+  /// A model, method, or parameter of the analysis.
+  Analysis,
+  /// What the run writes, and in which format.
+  Output,
+  /// The order of the tree in the outputs, and the random seed: settings that change no inferred value.
+  Ordering,
+}
+
+impl SettingPurpose {
+  fn of(heading: &str, role: SettingRole) -> Self {
+    PURPOSES
+      .iter()
+      .find(|(rule, _)| match rule {
+        PurposeRule::Heading(known) => *known == heading,
+        PurposeRule::Role(known) => *known == role,
+      })
+      .map_or(Self::Analysis, |(_, purpose)| *purpose)
+  }
+}
+
+enum PurposeRule {
+  Heading(&'static str),
+  Role(SettingRole),
 }
 
 impl From<Option<PathRole>> for SettingRole {

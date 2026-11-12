@@ -199,13 +199,14 @@ const SETTINGS: CommandSettings = {
   ],
   uses_dates: true,
   groups: ["Input data", "Molecular clock"],
-  main_settings: [],
+  main_rows: [],
   choices: [],
   settings: [TREE, CLOCK_RATE, CLOCK_FILTER],
 };
 
 function spec(fields: Pick<SettingSpec, "key" | "label" | "flag" | "group"> & Partial<SettingSpec>): SettingSpec {
   return {
+    purpose: "analysis",
     role: "setting",
     kind: "number",
     nullable: true,

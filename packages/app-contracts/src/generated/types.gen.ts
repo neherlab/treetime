@@ -65,6 +65,12 @@ export type CheckConfigRequest = {
    * stay as they are. Unset: relative paths resolve from the working directory of the back end.
    */
   folder?: string;
+  /**
+   * The options that the form picked for the choices of the command. A picked option counts while the configuration
+   * has every value that picking it writes, for example `outgroup` before the user names a tip; otherwise the
+   * configuration selects the option.
+   */
+  choices?: Array<ActiveChoice>;
 };
 
 /**
@@ -136,6 +142,10 @@ export type TreeFacts = {
    * Node names that occur more than once, tips and internal nodes alike, sorted.
    */
   duplicate_node_names: Array<string>;
+  /**
+   * Names of the named tips, sorted, each once: the names that settings such as `outgroup` can name.
+   */
+  tip_names: Array<string>;
 };
 
 /**
@@ -242,6 +252,24 @@ export type InputProblem = {
  * Kind of input file.
  */
 export type InputKind = 'tree' | 'metadata' | 'alignment';
+
+/**
+ * The option of a choice that a configuration selects, or that the form picked.
+ */
+export type ActiveChoice = {
+  choice: ChoiceName;
+  option: ChoiceOptionName;
+};
+
+/**
+ * A group of settings that the form shows as one choice.
+ */
+export type ChoiceName = 'clock-rate' | 'root';
+
+/**
+ * An option of a choice.
+ */
+export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'outgroup' | 'keep';
 
 /**
  * Outcome of checking a configuration without running it.
@@ -361,22 +389,18 @@ export type SettingPatch = {
 };
 
 /**
- * The option of a choice that a configuration selects.
+ * The value that a run uses for a setting that the configuration leaves at its default.
  */
-export type ActiveChoice = {
-  choice: ChoiceName;
-  option: ChoiceOptionName;
+export type EffectiveValue = {
+  /**
+   * Key of the setting.
+   */
+  key: string;
+  /**
+   * The value as a short text, for example `Automatic: least-squares rerooting`.
+   */
+  text: string;
 };
-
-/**
- * A group of settings that the form shows as one choice.
- */
-export type ChoiceName = 'clock-rate' | 'root';
-
-/**
- * An option of a choice.
- */
-export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'outgroup' | 'keep';
 
 /**
  * One problem found in a configuration.
@@ -1904,6 +1928,10 @@ export type UiDraft = {
    * The run that holds the uploaded input files of the form.
    */
   upload_run_id?: JobId;
+  /**
+   * The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.
+   */
+  choices: Array<ActiveChoice>;
   view: UiSettingsView;
   /**
    * Text of the settings search field.
@@ -1934,12 +1962,17 @@ export type UiDraftSource = {
    * form drops the file when this run no longer exists, because the file may be stored in the folder of that run.
    */
   run_id?: JobId;
+  /**
+   * Path of the example file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`,
+   * for the `example` origin: the form fetches the file again when the uploaded copy is gone.
+   */
+  example?: string;
 };
 
 /**
  * Where an input file of the form came from.
  */
-export type UiDraftOrigin = 'dataset' | 'upload' | 'local' | 'run' | 'config';
+export type UiDraftOrigin = 'dataset' | 'example' | 'upload' | 'local' | 'run' | 'config';
 
 /**
  * Which settings the form shows.
@@ -2198,9 +2231,9 @@ export type CommandSettings = {
    */
   groups: Array<string>;
   /**
-   * Keys of the settings the form shows first, in the order it shows them.
+   * The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
    */
-  main_settings: Array<string>;
+  main_rows: Array<MainSettingRow>;
   /**
    * Settings that the form shows as one choice between options.
    */
@@ -2247,6 +2280,95 @@ export type InputSlot = {
 export type InputNeed = 'required' | 'recommended' | 'optional';
 
 /**
+ * One row of the main settings: one or more settings that the form shows and edits together.
+ */
+export type MainSettingRow = {
+  /**
+   * Name of the row, for example `Coalescent prior`.
+   */
+  label: string;
+  /**
+   * Short line under the name, for example `Tree prior on node times`.
+   */
+  description?: string;
+  /**
+   * The settings of the row, in the order the row shows them.
+   */
+  settings: Array<RowSetting>;
+  /**
+   * The control that edits the settings.
+   */
+  control: RowControl;
+};
+
+/**
+ * One setting of a row of the main settings.
+ */
+export type RowSetting = {
+  /**
+   * Key of the setting.
+   */
+  key: string;
+  /**
+   * Name of the setting inside the row, for example `Rate` in the row `Clock rate`.
+   */
+  label: string;
+};
+
+/**
+ * Control of a row of the main settings.
+ */
+export type RowControl = ({
+  kind: 'choice';
+} & RowControlChoice) | ({
+  kind: 'switches';
+} & RowControlSwitches) | ({
+  kind: 'coalescent';
+} & RowControlCoalescent) | ({
+  kind: 'clock-filter';
+} & RowControlClockFilter) | ({
+  kind: 'substitution-model';
+} & RowControlSubstitutionModel) | ({
+  kind: 'setting';
+} & RowControlSetting);
+
+/**
+ * A switch of a row of the main settings.
+ */
+export type RowSwitch = {
+  /**
+   * Key of the setting the switch turns on or off.
+   */
+  key: string;
+  /**
+   * Text beside the switch.
+   */
+  text: string;
+  /**
+   * Whether the switch is on while the setting is off: the setting turns off a step that runs by default.
+   */
+  inverted: boolean;
+};
+
+/**
+ * An option of a row of the main settings.
+ */
+export type RowOption = {
+  /**
+   * The option, for example `skyline`.
+   */
+  value: string;
+  /**
+   * Name of the option, for example `Skyline`.
+   */
+  label: string;
+  /**
+   * What the option does, as the form shows it while the option is picked.
+   */
+  note?: string;
+};
+
+/**
  * Settings that the form shows as one choice between options, for example the clock rate.
  */
 export type SettingChoice = {
@@ -2266,6 +2388,14 @@ export type SettingChoice = {
  */
 export type ChoiceOption = {
   option: ChoiceOptionName;
+  /**
+   * Name of the option, for example `Fixed rate`.
+   */
+  label: string;
+  /**
+   * What the option does, as the form shows it while the option is picked.
+   */
+  note?: string;
   /**
    * Changes that picking the option makes: settings it writes, and settings it removes so that they take their
    * defaults.
@@ -2297,6 +2427,10 @@ export type SettingSpec = {
    * Heading of the setting in `--help`.
    */
   group: string;
+  /**
+   * What the setting is for, which places it in the form.
+   */
+  purpose: SettingPurpose;
   /**
    * What the setting names: a file, or a value.
    */
@@ -2356,6 +2490,11 @@ export type SettingSpec = {
    */
   more: string;
 };
+
+/**
+ * What a setting is for.
+ */
+export type SettingPurpose = 'data' | 'analysis' | 'output' | 'ordering';
 
 /**
  * What a setting names.
@@ -4266,6 +4405,10 @@ export type CheckConfigResponseValid = {
    * The option of each choice of the command that the configuration selects.
    */
   choices: Array<ActiveChoice>;
+  /**
+   * The value the run uses for each setting that the configuration leaves at its default, as a short text.
+   */
+  effective: Array<EffectiveValue>;
   status: 'valid';
 };
 
@@ -5085,6 +5228,63 @@ export type ExamplesDownloadFailed = {
    */
   message: string;
   state: 'failed';
+};
+
+/**
+ * A choice between options; the choice of the command with this name holds the options and their texts.
+ */
+export type RowControlChoice = {
+  choice: ChoiceName;
+  kind: 'choice';
+};
+
+/**
+ * Switches, one per setting.
+ */
+export type RowControlSwitches = {
+  switches: Array<RowSwitch>;
+  kind: 'switches';
+};
+
+/**
+ * The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.
+ */
+export type RowControlCoalescent = {
+  options: Array<RowOption>;
+  kind: 'coalescent';
+};
+
+/**
+ * The clock filter threshold.
+ */
+export type RowControlClockFilter = {
+  /**
+   * Note while the threshold is 0.
+   */
+  off: string;
+  /**
+   * Note while the threshold is above 0.
+   */
+  on: string;
+  kind: 'clock-filter';
+};
+
+/**
+ * The substitution model and its parameters.
+ */
+export type RowControlSubstitutionModel = {
+  /**
+   * Example of the parameters, as the form shows them in the empty field.
+   */
+  parameters_example: string;
+  kind: 'substitution-model';
+};
+
+/**
+ * The control of the one setting of the row.
+ */
+export type RowControlSetting = {
+  kind: 'setting';
 };
 
 export type VersionData = {

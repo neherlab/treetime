@@ -62,7 +62,8 @@ export const zTreeFacts = z.object({
   internal_nodes: z.int().gte(0),
   polytomies: z.int().gte(0),
   unnamed_tips: z.int().gte(0),
-  duplicate_node_names: z.array(z.string())
+  duplicate_node_names: z.array(z.string()),
+  tip_names: z.array(z.string())
 });
 
 /**
@@ -129,6 +130,33 @@ export const zInputFacts = z.object({
 });
 
 /**
+ * A group of settings that the form shows as one choice.
+ */
+export const zChoiceName = z.union([
+  z.literal('clock-rate'),
+  z.literal('root')
+]);
+
+/**
+ * An option of a choice.
+ */
+export const zChoiceOptionName = z.union([
+  z.literal('estimate'),
+  z.literal('fixed'),
+  z.literal('reroot'),
+  z.literal('outgroup'),
+  z.literal('keep')
+]);
+
+/**
+ * The option of a choice that a configuration selects, or that the form picked.
+ */
+export const zActiveChoice = z.strictObject({
+  choice: zChoiceName,
+  option: zChoiceOptionName
+});
+
+/**
  * Request to check a configuration.
  */
 export const zCheckConfigRequest = z.strictObject({
@@ -137,7 +165,8 @@ export const zCheckConfigRequest = z.strictObject({
   inputs: zSparseConfig.optional().default({}),
   replace_inputs: zSparseConfig.optional().default({}),
   input_facts: zInputFacts.optional(),
-  folder: z.string().optional()
+  folder: z.string().optional(),
+  choices: z.array(zActiveChoice).optional().default([])
 });
 
 /**
@@ -208,30 +237,11 @@ export const zRunCheck = z.object({
 });
 
 /**
- * A group of settings that the form shows as one choice.
+ * The value that a run uses for a setting that the configuration leaves at its default.
  */
-export const zChoiceName = z.union([
-  z.literal('clock-rate'),
-  z.literal('root')
-]);
-
-/**
- * An option of a choice.
- */
-export const zChoiceOptionName = z.union([
-  z.literal('estimate'),
-  z.literal('fixed'),
-  z.literal('reroot'),
-  z.literal('outgroup'),
-  z.literal('keep')
-]);
-
-/**
- * The option of a choice that a configuration selects.
- */
-export const zActiveChoice = z.object({
-  choice: zChoiceName,
-  option: zChoiceOptionName
+export const zEffectiveValue = z.object({
+  key: z.string(),
+  text: z.string()
 });
 
 /**
@@ -876,6 +886,7 @@ export const zUiTheme = z.union([
  */
 export const zUiDraftOrigin = z.union([
   z.literal('dataset'),
+  z.literal('example'),
   z.literal('upload'),
   z.literal('local'),
   z.literal('run'),
@@ -889,7 +900,8 @@ export const zUiDraftSource = z.strictObject({
   label: z.string(),
   origin: zUiDraftOrigin,
   size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
-  run_id: zJobId.optional()
+  run_id: zJobId.optional(),
+  example: z.string().optional()
 });
 
 /**
@@ -917,6 +929,7 @@ export const zUiDraft = z.strictObject({
   sources: z.record(z.string(), zUiDraftSource),
   from_run_id: zJobId.optional(),
   upload_run_id: zJobId.optional(),
+  choices: z.array(zActiveChoice),
   view: zUiSettingsView,
   search: z.string(),
   changed_only: z.boolean(),
@@ -1070,10 +1083,38 @@ export const zInputSlot = z.object({
 });
 
 /**
+ * One setting of a row of the main settings.
+ */
+export const zRowSetting = z.object({
+  key: z.string(),
+  label: z.string()
+});
+
+/**
+ * A switch of a row of the main settings.
+ */
+export const zRowSwitch = z.object({
+  key: z.string(),
+  text: z.string(),
+  inverted: z.boolean()
+});
+
+/**
+ * An option of a row of the main settings.
+ */
+export const zRowOption = z.object({
+  value: z.string(),
+  label: z.string(),
+  note: z.string().optional()
+});
+
+/**
  * One option of a choice.
  */
 export const zChoiceOption = z.object({
   option: zChoiceOptionName,
+  label: z.string(),
+  note: z.string().optional(),
   patch: z.array(zSettingPatch),
   settings: z.array(z.string())
 });
@@ -1086,6 +1127,16 @@ export const zSettingChoice = z.object({
   keys: z.array(z.string()),
   options: z.array(zChoiceOption)
 });
+
+/**
+ * What a setting is for.
+ */
+export const zSettingPurpose = z.union([
+  z.literal('data'),
+  z.literal('analysis'),
+  z.literal('output'),
+  z.literal('ordering')
+]);
 
 /**
  * What a setting names.
@@ -1153,6 +1204,7 @@ export const zSettingSpec = z.object({
   label: z.string(),
   flag: z.string(),
   group: z.string(),
+  purpose: zSettingPurpose,
   role: zSettingRole,
   kind: zSettingKind,
   nullable: z.boolean(),
@@ -1167,28 +1219,6 @@ export const zSettingSpec = z.object({
   conflicts: z.array(z.string()),
   help: z.string(),
   more: z.string()
-});
-
-/**
- * Settings of one command.
- */
-export const zCommandSettings = z.object({
-  command: zAppCommand,
-  title: z.string(),
-  description: z.string(),
-  inputs: z.array(zInputSlot),
-  uses_dates: z.boolean(),
-  groups: z.array(z.string()),
-  main_settings: z.array(z.string()),
-  choices: z.array(zSettingChoice),
-  settings: z.array(zSettingSpec)
-});
-
-/**
- * Settings of every command the app runs, as the settings form shows them.
- */
-export const zSettingCatalog = z.object({
-  commands: z.array(zCommandSettings)
 });
 
 export const zGtrModelName = z.union([
@@ -1734,6 +1764,7 @@ export const zCheckConfigResponseValid = z.object({
   code: zConfigCode,
   checks: z.array(zRunCheck),
   choices: z.array(zActiveChoice),
+  effective: z.array(zEffectiveValue),
   status: z.literal('valid')
 });
 
@@ -2322,6 +2353,98 @@ export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventExamplesDownload,
   zAppEventResync
 ]);
+
+/**
+ * A choice between options; the choice of the command with this name holds the options and their texts.
+ */
+export const zRowControlChoice = z.object({
+  choice: zChoiceName,
+  kind: z.literal('choice')
+});
+
+/**
+ * Switches, one per setting.
+ */
+export const zRowControlSwitches = z.object({
+  switches: z.array(zRowSwitch),
+  kind: z.literal('switches')
+});
+
+/**
+ * The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.
+ */
+export const zRowControlCoalescent = z.object({
+  options: z.array(zRowOption),
+  kind: z.literal('coalescent')
+});
+
+/**
+ * The clock filter threshold.
+ */
+export const zRowControlClockFilter = z.object({
+  off: z.string(),
+  on: z.string(),
+  kind: z.literal('clock-filter')
+});
+
+/**
+ * The substitution model and its parameters.
+ */
+export const zRowControlSubstitutionModel = z.object({
+  parameters_example: z.string(),
+  kind: z.literal('substitution-model')
+});
+
+/**
+ * The control of the one setting of the row.
+ */
+export const zRowControlSetting = z.object({
+  kind: z.literal('setting')
+});
+
+/**
+ * Control of a row of the main settings.
+ */
+export const zRowControl = z.discriminatedUnion('kind', [
+  zRowControlChoice,
+  zRowControlSwitches,
+  zRowControlCoalescent,
+  zRowControlClockFilter,
+  zRowControlSubstitutionModel,
+  zRowControlSetting
+]);
+
+/**
+ * One row of the main settings: one or more settings that the form shows and edits together.
+ */
+export const zMainSettingRow = z.object({
+  label: z.string(),
+  description: z.string().optional(),
+  settings: z.array(zRowSetting),
+  control: zRowControl
+});
+
+/**
+ * Settings of one command.
+ */
+export const zCommandSettings = z.object({
+  command: zAppCommand,
+  title: z.string(),
+  description: z.string(),
+  inputs: z.array(zInputSlot),
+  uses_dates: z.boolean(),
+  groups: z.array(z.string()),
+  main_rows: z.array(zMainSettingRow),
+  choices: z.array(zSettingChoice),
+  settings: z.array(zSettingSpec)
+});
+
+/**
+ * Settings of every command the app runs, as the settings form shows them.
+ */
+export const zSettingCatalog = z.object({
+  commands: z.array(zCommandSettings)
+});
 
 export const zVersionResponse = zVersionInfo;
 

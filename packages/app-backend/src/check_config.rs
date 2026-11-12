@@ -1,8 +1,9 @@
 use crate::check_inputs::InputFacts;
 use crate::command::AppCommandExt;
-use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
+use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
 use crate::config::choices::{ActiveChoice, active_choices};
 use crate::config::code::{ConfigCode, config_code};
+use crate::config::effective::{EffectiveValue, effective_values};
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
 use app_commands::command::AppCommand;
 use app_commands::commands::shared::argument_error::ArgumentError;
@@ -33,20 +34,21 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     .unwrap_or(request.command);
   let facts = request.input_facts.as_ref();
   let source = ConfigSource::new(SOURCE_NAME, request.text.as_str());
-  let settings = match command_settings(command) {
-    Ok(settings) => settings.settings,
-    Err(report) => return invalid(command, &report, None, &[], facts),
+  let catalog = match command_settings(command) {
+    Ok(catalog) => catalog,
+    Err(report) => return invalid(command, &report, None, None, facts, &request.choices),
   };
+  let settings = &catalog.settings;
   let prepared = parse_config_document(&source, &request.text).and_then(|document| {
-    let (text, document) = with_replaced_inputs(&settings, &request.text, document, &request.replace_inputs)?;
+    let (text, document) = with_replaced_inputs(settings, &request.text, document, &request.replace_inputs)?;
     let mut text_keys = top_level_keys(&document);
     text_keys.retain(|key| !request.replace_inputs.contains_key(key));
-    let (text, document) = with_inputs(&settings, &text, document, &request.inputs)?;
+    let (text, document) = with_inputs(settings, &text, document, &request.inputs)?;
     Ok((text, text_keys, command.config_over_defaults(&document)?))
   });
   let (text, text_keys, config) = match prepared {
     Ok(prepared) => prepared,
-    Err(report) => return invalid(command, &report, None, &settings, facts),
+    Err(report) => return invalid(command, &report, None, Some(&catalog), facts, &request.choices),
   };
   let resolved = command.prepare_text(SOURCE_NAME, &text).and_then(|prepared| {
     let mut config = prepared.config;
@@ -54,22 +56,29 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
       resolve_text_paths(command, &mut config, folder, &text_keys)?;
     }
     command.remove_output_paths(&mut config)?;
-    Ok((config_code(command, &config)?, config))
+    let effective = effective_values(command, settings, &config)?;
+    Ok((config_code(command, &config)?, effective, config))
   });
   match resolved {
-    Ok((code, config)) => CheckConfigResponse::Valid {
-      command,
-      choices: active_choices(command, &settings, &config),
-      checks: run_checks(&CheckContext {
+    Ok((code, effective, config)) => {
+      let choices = active_choices(command, &catalog.choices, settings, &config, &request.choices);
+      CheckConfigResponse::Valid {
         command,
-        config: Some(&config),
-        rejection: None,
-        facts,
-      }),
-      config: SparseConfig(config),
-      code,
+        checks: run_checks(&CheckContext {
+          command,
+          settings,
+          config: Some(&config),
+          choices: &choices,
+          rejection: None,
+          facts,
+        }),
+        choices,
+        effective,
+        config: SparseConfig(config),
+        code,
+      }
     },
-    Err(report) => invalid(command, &report, Some(&config), &settings, facts),
+    Err(report) => invalid(command, &report, Some(&config), Some(&catalog), facts, &request.choices),
   }
 }
 
@@ -105,14 +114,21 @@ pub struct CheckConfigRequest {
   #[schemars(default)]
   #[deser(default)]
   pub folder: Option<PathBuf>,
+  /// The options that the form picked for the choices of the command. A picked option counts while the configuration
+  /// has every value that picking it writes, for example `outgroup` before the user names a tip; otherwise the
+  /// configuration selects the option.
+  #[schemars(default, transform = field_default::<Vec<ActiveChoice>>)]
+  #[deser(default)]
+  pub choices: Vec<ActiveChoice>,
 }
 
 fn invalid(
   command: AppCommand,
   report: &Report,
   config: Option<&Map<String, Value>>,
-  settings: &[SettingSpec],
+  catalog: Option<&CommandSettings>,
   facts: Option<&InputFacts>,
+  picked: &[ActiveChoice],
 ) -> CheckConfigResponse {
   let invalid = report.downcast_ref::<InvalidConfig>();
   let ReportChain { message, causes } = ReportChain::of(report);
@@ -128,17 +144,21 @@ fn invalid(
     settings: argument_settings,
   };
   let messages = rejection_messages(&rejection, false);
+  let choices = config
+    .zip(catalog)
+    .map(|(config, catalog)| active_choices(command, &catalog.choices, &catalog.settings, config, picked))
+    .unwrap_or_default();
   let checks = run_checks(&CheckContext {
     command,
+    settings: catalog.map(|catalog| catalog.settings.as_slice()).unwrap_or_default(),
     config,
+    choices: &choices,
     rejection: Some(rejection),
     facts,
   });
   CheckConfigResponse::Invalid {
     command,
-    choices: config
-      .map(|config| active_choices(command, settings, config))
-      .unwrap_or_default(),
+    choices,
     rendered: invalid.map(|invalid| invalid.rendered.clone()),
     messages,
     checks,
@@ -167,6 +187,8 @@ pub enum CheckConfigResponse {
     checks: Vec<RunCheck>,
     /// The option of each choice of the command that the configuration selects.
     choices: Vec<ActiveChoice>,
+    /// The value the run uses for each setting that the configuration leaves at its default, as a short text.
+    effective: Vec<EffectiveValue>,
   },
   /// The configuration is rejected.
   Invalid {
