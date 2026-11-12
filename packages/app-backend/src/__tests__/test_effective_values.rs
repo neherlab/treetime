@@ -2,11 +2,13 @@
 mod tests {
   use crate::__tests__::test_check_config::tests::helpers::fresh_draft;
   use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
+  use crate::config::effective::EffectiveValue;
   use app_commands::command::AppCommand;
   use app_commands::json_value::SparseConfig;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
+  use treetime_utils::o;
 
   #[rustfmt::skip]
   #[rstest]
@@ -51,6 +53,31 @@ mod tests {
     assert_eq!(Vec::<(String, String)>::new(), keys);
   }
 
+  #[test]
+  fn test_effective_values_without_inputs() {
+    let response = check_config(&request(AppCommand::Timetree, &json!({})));
+    let CheckConfigResponse::Invalid { effective, .. } = response else {
+      panic!("expected a config without inputs to be invalid, got {response:?}");
+    };
+    let reroot = effective
+      .into_iter()
+      .find(|value| value.key == "reroot")
+      .map(|value| value.text);
+    assert_eq!(Some(o!("Automatic: least-squares rerooting")), reroot);
+  }
+
+  #[test]
+  fn test_effective_values_of_unparsed_text_are_empty() {
+    let response = check_config(&CheckConfigRequest {
+      text: o!("tree: [unclosed"),
+      ..request(AppCommand::Timetree, &json!({}))
+    });
+    let CheckConfigResponse::Invalid { effective, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(Vec::<EffectiveValue>::new(), effective);
+  }
+
   fn effective_text(command: AppCommand, settings: &Value, key: &str) -> Option<String> {
     effective(command, settings)
       .into_iter()
@@ -61,18 +88,22 @@ mod tests {
   fn effective(command: AppCommand, settings: &Value) -> Vec<(String, String)> {
     let mut draft = fresh_draft(command);
     draft.extend(settings.as_object().unwrap().clone());
-    let response = check_config(&CheckConfigRequest {
+    let response = check_config(&request(command, &Value::Object(draft)));
+    let CheckConfigResponse::Valid { effective, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    effective.into_iter().map(|value| (value.key, value.text)).collect()
+  }
+
+  fn request(command: AppCommand, config: &Value) -> CheckConfigRequest {
+    CheckConfigRequest {
       command,
-      text: serde_json::to_string(&draft).unwrap(),
+      text: serde_json::to_string(config).unwrap(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
-    });
-    let CheckConfigResponse::Valid { effective, .. } = response else {
-      panic!("expected a valid config, got {response:?}");
-    };
-    effective.into_iter().map(|value| (value.key, value.text)).collect()
+    }
   }
 }

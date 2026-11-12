@@ -36,7 +36,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
   let source = ConfigSource::new(SOURCE_NAME, request.text.as_str());
   let catalog = match command_settings(command) {
     Ok(catalog) => catalog,
-    Err(report) => return invalid(command, &report, None, None, facts, &request.choices),
+    Err(report) => return invalid(command, &report, None, None, facts, &request.choices, vec![]),
   };
   let settings = &catalog.settings;
   let prepared = parse_config_document(&source, &request.text).and_then(|document| {
@@ -44,11 +44,13 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     let mut text_keys = top_level_keys(&document);
     text_keys.retain(|key| !request.replace_inputs.contains_key(key));
     let (text, document) = with_inputs(settings, &text, document, &request.inputs)?;
-    Ok((text, text_keys, command.config_over_defaults(&document)?))
+    let config = command.config_over_defaults(&document)?;
+    let effective = effective_values(command, settings, &config)?;
+    Ok((text, text_keys, config, effective))
   });
-  let (text, text_keys, config) = match prepared {
+  let (text, text_keys, config, effective) = match prepared {
     Ok(prepared) => prepared,
-    Err(report) => return invalid(command, &report, None, Some(&catalog), facts, &request.choices),
+    Err(report) => return invalid(command, &report, None, Some(&catalog), facts, &request.choices, vec![]),
   };
   let resolved = command.prepare_text(SOURCE_NAME, &text).and_then(|prepared| {
     let mut config = prepared.config;
@@ -56,11 +58,10 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
       resolve_text_paths(command, &mut config, folder, &text_keys)?;
     }
     command.remove_output_paths(&mut config)?;
-    let effective = effective_values(command, settings, &config)?;
-    Ok((config_code(command, &config)?, effective, config))
+    Ok((config_code(command, &config)?, config))
   });
   match resolved {
-    Ok((code, effective, config)) => {
+    Ok((code, config)) => {
       let choices = active_choices(command, &catalog.choices, settings, &config, &request.choices);
       CheckConfigResponse::Valid {
         command,
@@ -78,7 +79,15 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
         code,
       }
     },
-    Err(report) => invalid(command, &report, Some(&config), Some(&catalog), facts, &request.choices),
+    Err(report) => invalid(
+      command,
+      &report,
+      Some(&config),
+      Some(&catalog),
+      facts,
+      &request.choices,
+      effective,
+    ),
   }
 }
 
@@ -129,6 +138,7 @@ fn invalid(
   catalog: Option<&CommandSettings>,
   facts: Option<&InputFacts>,
   picked: &[ActiveChoice],
+  effective: Vec<EffectiveValue>,
 ) -> CheckConfigResponse {
   let invalid = report.downcast_ref::<InvalidConfig>();
   let ReportChain { message, causes } = ReportChain::of(report);
@@ -159,6 +169,7 @@ fn invalid(
   CheckConfigResponse::Invalid {
     command,
     choices,
+    effective,
     rendered: invalid.map(|invalid| invalid.rendered.clone()),
     messages,
     checks,
@@ -209,6 +220,9 @@ pub enum CheckConfigResponse {
     /// The option of each choice of the command that the configuration selects, when the configuration could be
     /// merged over the defaults.
     choices: Vec<ActiveChoice>,
+    /// The value the run uses for each setting that the configuration leaves at its default, as a short text, when the
+    /// configuration could be merged over the defaults.
+    effective: Vec<EffectiveValue>,
   },
 }
 
