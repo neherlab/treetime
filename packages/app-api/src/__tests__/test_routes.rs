@@ -590,6 +590,25 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_stored_inputs_lists_the_uploads_of_a_deleted_run() {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let config = test.upload_data(&id, json!({ "tree": "zika/20/tree.nwk" })).await;
+    let body = json!({ "paths": [config["tree"], "/elsewhere/tree.nwk"] });
+    let before = request(&test, "POST", "/api/stored-inputs", Some(body.clone())).await;
+    let (deleted, _) = request(&test, "DELETE", &format!("/api/runs/{id}"), None).await;
+    let after = request(&test, "POST", "/api/stored-inputs", Some(body)).await;
+    assert_eq!(
+      (
+        (200, json!({ "missing": [] })),
+        200,
+        (200, json!({ "missing": [config["tree"]] }))
+      ),
+      (before, deleted, after)
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_clock_preview_computes_the_regression_of_uploaded_inputs() {
     let test = app();
     let id = create_deferred(&test).await;

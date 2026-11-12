@@ -13,6 +13,7 @@ use crate::run_config::{RunConfigRequest, RunConfigResponse, run_config};
 use crate::run_limits::RunLimits;
 use crate::runs::errors::invalid;
 use crate::runs::files::RunFile;
+use crate::runs::input_store::{StoredInputs, StoredInputsRequest};
 use crate::runs::inputs::{InputHashes, draft_inputs};
 use crate::runs::manager::{ConfigHook, RunManager};
 use crate::runs::record::{
@@ -107,6 +108,12 @@ impl AppService {
       .try_collect()
       .map_err(|err: Report| invalid(format!("{err:#}")))?;
     Ok(file_kinds(&FileKindsRequest { files }))
+  }
+
+  pub fn stored_inputs(&self, request: &StoredInputsRequest) -> StoredInputs {
+    StoredInputs {
+      missing: self.runs.input_store().missing(&request.paths),
+    }
   }
 
   pub fn clock_preview(&self, request: ClockPreviewRequest) -> Result<ClockPreview, Report> {

@@ -133,6 +133,14 @@ impl InputStore {
     Ok(())
   }
 
+  pub fn missing(&self, paths: &[PathBuf]) -> Vec<PathBuf> {
+    paths
+      .iter()
+      .filter(|path| self.key_of(path).is_some_and(|key| !self.path(&key).is_file()))
+      .cloned()
+      .collect()
+  }
+
   pub fn remove(&self, key: &StoredInput) -> Result<(), Report> {
     let path = self.path(key);
     match fs::remove_file(&path) {
@@ -200,6 +208,23 @@ impl InputStore {
       _ => Ok(()),
     }
   }
+}
+
+/// Input paths, for example those of a form, to look up in the store of uploaded inputs.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
+pub struct StoredInputsRequest {
+  /// Paths of the input files, as the form holds them.
+  pub paths: Vec<PathBuf>,
+}
+
+/// The inputs of a request that the store of uploaded inputs no longer holds.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct StoredInputs {
+  /// Paths of the request that name a stored input whose file is gone, because no run references its contents any
+  /// more, in the order of the request. Paths outside the store, such as files on the computer, are not listed.
+  pub missing: Vec<PathBuf>,
 }
 
 /// Key of a file in the input store: the SHA-256 of its contents and its file name.

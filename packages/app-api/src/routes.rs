@@ -26,6 +26,7 @@ use app_backend::run_config::{RunConfigRequest, RunConfigResponse};
 use app_backend::runs::app_events::AppEvent;
 use app_backend::runs::events::RunEvent;
 use app_backend::runs::files::RunFile;
+use app_backend::runs::input_store::{StoredInputs, StoredInputsRequest};
 use app_backend::runs::manager::{UploadAllowance, UploadedInput};
 use app_backend::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
@@ -194,6 +195,15 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         op.id("fileRoles").description(
           "What the app does with each file that the user opened, from the first bytes of the file and before any \
            upload: import it as a run package, load it as a configuration, or read it as an input.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/stored-inputs",
+      post_with(stored_inputs, |op| {
+        op.id("storedInputs").description(
+          "The input paths of a request whose stored copies are gone, because no run references their contents any \
+           more.",
         )
       }),
     )
@@ -415,6 +425,15 @@ async fn file_kinds(
 
 async fn opened_file_roles(ApiJson(request): ApiJson<FileHeadsRequest>) -> Result<ApiJson<FileRoles>, AppError> {
   run_blocking(move || Ok(file_roles(&request))).await.map(ApiJson)
+}
+
+async fn stored_inputs(
+  State(state): State<Arc<AppState>>,
+  ApiJson(request): ApiJson<StoredInputsRequest>,
+) -> Result<ApiJson<StoredInputs>, AppError> {
+  call(&state, move |service| Ok(service.stored_inputs(&request)))
+    .await
+    .map(ApiJson)
 }
 
 async fn clock_preview(
