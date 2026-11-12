@@ -21,11 +21,25 @@ describe("a value with its spread", () => {
   test.each([
     { value: 7.6123e-4, spread: 4.1e-5, expected: { value: "7.6e-4", spread: "± 4.1e-5" } },
     { value: 7.6123e-4, spread: 4.1e-6, expected: { value: "7.61e-4", spread: "± 4.1e-6" } },
-    { value: 7.6123e-4, spread: 2e-3, expected: { value: "7.6e-4", spread: "± 0.0020" } },
-    { value: 1.234_567_89e-3, spread: 1e-12, expected: { value: "0.00123457", spread: "± 1.0e-12" } },
+    { value: 7.6123e-4, spread: 2e-3, expected: { value: "7.6e-4", spread: "± 2.0e-3" } },
+    { value: 1.234_567_89e-3, spread: 1e-12, expected: { value: "1.23457e-3", spread: "± 1.0e-12" } },
+    { value: 9.9e-4, spread: 1e-5, expected: { value: "9.9e-4", spread: "± 1.0e-5" } },
+    { value: 1.234e-3, spread: 1e-5, expected: { value: "1.23e-3", spread: "± 1.0e-5" } },
     { value: 7.6123e-4, spread: undefined, expected: { value: "7.61e-4", spread: undefined } },
     { value: 7.6123e-4, spread: 0, expected: { value: "7.61e-4", spread: undefined } },
-  ])("$value with spread $spread reads $expected.value $expected.spread", ({ value, spread, expected }) => {
+  ])(
+    "a rate $value with spread $spread reads $expected.value $expected.spread in scientific notation",
+    ({ value, spread, expected }) => {
+      expect(valueWithSpread(value, spread, "scientific")).toStrictEqual(expected);
+    },
+  );
+
+  test.each([
+    { value: 12.345, spread: 0.5, expected: { value: "12.3", spread: "± 0.50" } },
+    { value: 12.345, spread: 1e-4, expected: { value: "12.3450", spread: "± 0.00010" } },
+    { value: 12_345, spread: 10, expected: { value: "1.235e4", spread: "± 1.0e1" } },
+    { value: 2e-4, spread: 3e-2, expected: { value: "2.0e-4", spread: "± 3.0e-2" } },
+  ])("$value with spread $spread shares the notation of the value", ({ value, spread, expected }) => {
     expect(valueWithSpread(value, spread)).toStrictEqual(expected);
   });
 });

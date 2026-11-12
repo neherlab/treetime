@@ -19,23 +19,27 @@ export interface ValueWithSpread {
   spread: string | undefined;
 }
 
-export function formatSignificant(value: number, digits: number): string {
+export type Notation = "auto" | "plain" | "scientific";
+
+export function formatSignificant(value: number, digits: number, notation: Notation = "auto"): string {
   if (value === 0 || !Number.isFinite(value)) {
     return String(value);
   }
 
-  const exponent = decimalExponent(value);
-
-  if (exponent < PLAIN_EXPONENTS.lowest || exponent >= PLAIN_EXPONENTS.end) {
+  if (notation === "scientific" || (notation === "auto" && !isPlain(value))) {
     return value.toExponential(digits - 1).replace("e+", "e");
   }
 
-  return value.toFixed(Math.max(0, digits - 1 - exponent));
+  return value.toFixed(Math.max(0, digits - 1 - decimalExponent(value)));
 }
 
-export function valueWithSpread(value: number, spread: number | undefined): ValueWithSpread {
+export function valueWithSpread(
+  value: number,
+  spread: number | undefined,
+  notation: Notation = "auto",
+): ValueWithSpread {
   if (spread === undefined || !Number.isFinite(spread) || spread <= 0 || value === 0 || !Number.isFinite(value)) {
-    return { value: formatSignificant(value, DEFAULT_DIGITS), spread: undefined };
+    return { value: formatSignificant(value, DEFAULT_DIGITS, notation), spread: undefined };
   }
 
   const digits = Math.min(
@@ -43,7 +47,12 @@ export function valueWithSpread(value: number, spread: number | undefined): Valu
     Math.max(VALUE_DIGITS.fewest, decimalExponent(value) - decimalExponent(spread) + 1),
   );
 
-  return { value: formatSignificant(value, digits), spread: `± ${formatSignificant(spread, SPREAD_DIGITS)}` };
+  const shared: Notation = notation === "auto" ? (isPlain(value) ? "plain" : "scientific") : notation;
+
+  return {
+    value: formatSignificant(value, digits, shared),
+    spread: `± ${formatSignificant(spread, SPREAD_DIGITS, shared)}`,
+  };
 }
 
 export function statisticText(statistic: RegressionStatistic): string {
@@ -56,6 +65,12 @@ export function statisticText(statistic: RegressionStatistic): string {
   const number = formatSignificant(value.value, STATISTIC_DIGITS);
 
   return statistic.unit === undefined ? number : `${number} ${statistic.unit}`;
+}
+
+function isPlain(value: number): boolean {
+  const exponent = decimalExponent(value);
+
+  return exponent >= PLAIN_EXPONENTS.lowest && exponent < PLAIN_EXPONENTS.end;
 }
 
 function decimalExponent(value: number): number {
