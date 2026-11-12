@@ -1,4 +1,10 @@
-import { type RunFile, errorMessage, type RunRecord, type Citation } from "@neherlab/app-contracts";
+import {
+  type RunFile,
+  errorMessage,
+  type RunRecord,
+  type Citation,
+  type OutputSelection,
+} from "@neherlab/app-contracts";
 import { runsFiles } from "@neherlab/app-contracts/client";
 import { Alert, AlertDescription } from "@neherlab/design/ui/alert";
 import { Button } from "@neherlab/design/ui/button";
@@ -90,18 +96,16 @@ function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; 
   const save = useSaveRunOutput();
 
   const download = useCallback(async () => {
-    await save(
-      { id: runId, path: file.path, name: file.path.split("/").at(-1) ?? file.path },
-      "The file cannot be downloaded",
-    );
-  }, [file.path, runId, save]);
+    await save({ id: runId, path: file.path, name: file.download_name }, "The file cannot be downloaded");
+  }, [file.download_name, file.path, runId, save]);
 
   const onDownload = useCallback(() => void download(), [download]);
 
   return (
     <TableRow>
-      <TableCell>
-        <code className="font-mono text-xs">{file.path}</code>
+      <TableCell className="whitespace-normal">
+        <span className={file.main ? "font-bold" : undefined}>{file.label}</span>
+        {file.label !== file.path && <code className="text-muted-foreground block font-mono text-xs">{file.path}</code>}
       </TableCell>
       {perAlignment && (
         <TableCell className="text-xs">
@@ -115,7 +119,7 @@ function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; 
       <TableCell className="text-muted-foreground text-xs whitespace-normal">{file.description}</TableCell>
       <TableCell className="text-right text-xs">{formatBytes(file.size)}</TableCell>
       <TableCell className="text-right">
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Download ${file.path}`} onClick={onDownload}>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Download ${file.label}`} onClick={onDownload}>
           <Download aria-hidden />
         </Button>
       </TableCell>
@@ -144,5 +148,40 @@ export function useSaveRunOutput() {
       }
     },
     [client, host, toasts],
+  );
+}
+
+export function OutputDownload({
+  runId,
+  kind,
+  children,
+}: {
+  runId: string;
+  kind: OutputSelection;
+  children: React.ReactNode;
+}) {
+  const save = useSaveRunOutput();
+
+  const { data: files } = useApi((context) => runsFiles({ ...context, path: { id: runId } }), {
+    staleTime: Infinity,
+  });
+
+  const file = files?.find((candidate) => candidate.kind === kind);
+
+  const onDownload = useCallback(() => {
+    if (file !== undefined) {
+      void save({ id: runId, path: file.path, name: file.download_name }, "The file cannot be downloaded");
+    }
+  }, [file, runId, save]);
+
+  if (file === undefined) {
+    return null;
+  }
+
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={onDownload} title={file.label}>
+      <Download aria-hidden />
+      {children}
+    </Button>
   );
 }
