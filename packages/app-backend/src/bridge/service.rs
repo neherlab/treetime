@@ -149,9 +149,9 @@ impl AppService {
   }
 
   pub fn cancel_run(&self, id: &JobId) -> Result<CancelRunResponse, Report> {
-    let cancelled = self.runs.cancel(id)?;
+    let response = self.runs.cancel_request(id)?;
     self.executor.cancel(id);
-    Ok(CancelRunResponse { cancelled })
+    Ok(response)
   }
 
   pub fn run_files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {

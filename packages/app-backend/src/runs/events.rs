@@ -75,6 +75,10 @@ impl EventLog {
     }
   }
 
+  pub fn next_seq(&self) -> Result<u64, Report> {
+    Ok(u64::try_from(self.state.lock().events.len())?)
+  }
+
   pub fn is_closed(&self) -> bool {
     self.state.lock().closed
   }

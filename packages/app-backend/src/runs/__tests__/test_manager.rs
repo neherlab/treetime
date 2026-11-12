@@ -6,7 +6,9 @@ mod tests {
   use crate::runs::events::{RunEvent, read_events};
   use crate::runs::input_store::StoredInput;
   use crate::runs::manager::RunManager;
-  use crate::runs::record::{CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
+  use crate::runs::record::{
+    CancelRunResponse, CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest,
+  };
   use crate::runs::store::{NewRun, RunStore};
   use app_commands::command::AppCommand;
   use chrono::{TimeDelta, Utc};
@@ -198,6 +200,28 @@ mod tests {
     assert_error!(
       runs.start(&created.id, &request, accept()).map(|_| ()),
       "the command `mugration` is available in the command-line tool only"
+    );
+  }
+
+  #[test]
+  fn test_manager_cancel_request_names_the_event_to_wait_from() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, clock_config());
+    let first = runs.cancel_request(&created.id).unwrap();
+    let events = read_events(&runs.store().events_path(&created.id), 0).unwrap();
+    assert_eq!(
+      (
+        CancelRunResponse {
+          cancelled: true,
+          from: events.last().map(|event| event.seq),
+        },
+        CancelRunResponse {
+          cancelled: false,
+          from: None,
+        }
+      ),
+      (first, runs.cancel_request(&created.id).unwrap())
     );
   }
 

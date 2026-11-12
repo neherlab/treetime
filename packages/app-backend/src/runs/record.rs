@@ -308,10 +308,15 @@ pub struct StartRunRequest {
 }
 
 /// Answer to a cancellation request.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct CancelRunResponse {
   /// Whether cancellation was requested; the run ends with a `cancelled` terminal event.
   pub cancelled: bool,
+  /// Sequence number from which to read the run's events to wait for its terminal event; absent when nothing was
+  /// cancelled.
+  pub from: Option<u64>,
 }
 
 /// Where to save an output file of a run, or its run package.

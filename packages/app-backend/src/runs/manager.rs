@@ -14,6 +14,7 @@ use crate::runs::lifecycle::StartedRun;
 use crate::runs::package::{RunPackage, export_run};
 use crate::runs::package_import::PackageImport;
 use crate::runs::record::{
+  CancelRunResponse,
   CreateRunRequest, InputSet, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
   UpdateRunRequest,
 };
@@ -217,15 +218,26 @@ impl RunManager {
   }
 
   pub fn cancel(&self, id: &JobId) -> Result<bool, Report> {
+    self.cancel_request(id).map(|response| response.cancelled)
+  }
+
+  pub fn cancel_request(&self, id: &JobId) -> Result<CancelRunResponse, Report> {
     let mut active = self.active.lock();
     if let Some(run) = active.get(id)
       && run.is_started()
     {
+      let from = run.events.next_seq()?;
       run.token.cancel();
-      return Ok(true);
+      return Ok(CancelRunResponse {
+        cancelled: true,
+        from: Some(from),
+      });
     }
     let Some(inputs) = self.run_inputs(id)? else {
-      return Ok(false);
+      return Ok(CancelRunResponse {
+        cancelled: false,
+        from: None,
+      });
     };
     let Some(_inputs) = inputs.idle() else {
       return Err(upload_in_progress(id, &inputs, "cancel"));
@@ -234,7 +246,7 @@ impl RunManager {
       Some(run) => run,
       None => Arc::new(ActiveRun::open(&self.store.events_path(id))?),
     };
-    run.events.append(JobEvent::Terminal {
+    let terminal = run.events.append(JobEvent::Terminal {
       data: TerminalEvent::Cancelled { job_id: id.clone() },
     })?;
     self.modify(id, |record| {
@@ -245,7 +257,10 @@ impl RunManager {
     })?;
     self.inputs.lock().remove(id);
     self.remove_unreferenced_inputs()?;
-    Ok(true)
+    Ok(CancelRunResponse {
+      cancelled: true,
+      from: Some(terminal.seq),
+    })
   }
 
   pub fn delete(&self, id: &JobId) -> Result<(), Report> {
