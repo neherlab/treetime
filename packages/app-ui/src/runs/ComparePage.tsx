@@ -260,9 +260,7 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
       <TableCell className="whitespace-normal">
         {spec?.label ?? difference.key} <code className="text-muted-foreground font-mono text-xs">{spec?.flag}</code>
         {difference.kind === "input" && (
-          <span className="text-muted-foreground block text-xs">
-            {difference.same_content ? "Same file contents" : "Different file contents"}
-          </span>
+          <span className="text-muted-foreground block text-xs">Different file contents</span>
         )}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">

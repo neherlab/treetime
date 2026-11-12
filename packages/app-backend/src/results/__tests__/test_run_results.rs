@@ -2,18 +2,19 @@
 mod tests {
   use crate::__tests__::test_support::tests::sparse;
   use crate::command::OutputAlignment;
+  use crate::config::catalog::SettingPurpose;
   use crate::json_float::JsonFloat;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
-  use crate::results::compare::compare_runs;
+  use crate::results::compare::{LikelihoodMismatch, compare_runs};
   use crate::results::models::{RunModel, RunModels};
   use crate::results::run_results::{CommandResults, RunResults, run_results};
   use crate::results::tree::ResultTree;
   use crate::runs::headline::RunHeadline;
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
-  use crate::runs::setting_differences::SettingDifference;
+  use crate::runs::setting_differences::{DifferenceValues, SettingDifference};
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
   use app_output::output_plan::OutputSelection;
@@ -442,15 +443,21 @@ mod tests {
     let estimates = comparison.estimates.expect("both runs are time trees");
     let ancestors = comparison.ancestors.expect("both runs are time trees");
     assert_eq!(
-      (true, true),
-      (settings.differences.is_empty(), settings.same_config_hash)
+      (true, true, true),
+      (
+        comparison.same_analysis,
+        settings.differences.is_empty(),
+        settings.same_config_hash
+      )
     );
     assert_eq!(
-      (Some(0.0), Some(0.0), 0, ancestors.ancestors, true),
+      (Some(0.0), Some(0.0), 0, Some(0.0), vec![], ancestors.ancestors, true),
       (
         estimates.root_shift_days,
         estimates.clock_rate_change_percent,
         estimates.excluded_samples_change,
+        estimates.log_likelihood_change,
+        estimates.log_likelihood_mismatches,
         ancestors.shifts.len(),
         ancestors.shifts.iter().all(|shift| shift.shift_days == 0.0)
       )
@@ -471,15 +478,45 @@ mod tests {
 
     assert_eq!(
       (
-        vec![SettingDifference::Setting {
+        vec![SettingDifference {
           key: o!("clock_rate"),
-          first: None,
-          second: Some(JsonValue(json!(1e-3))),
+          label: o!("Clock rate"),
+          group: o!("Molecular clock"),
+          purpose: SettingPurpose::Analysis,
+          values: DifferenceValues::Setting {
+            first: None,
+            second: Some(JsonValue(json!(1e-3))),
+          },
         }],
         false,
         true,
       ),
       (settings.differences, settings.same_config_hash, settings.compared > 1)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_compare_runs_with_different_coalescent_priors_leaves_out_the_log_likelihood_change() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let first = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
+    let mut optimized = timetree_config(None);
+    optimized["coalescent"] = json!("opt");
+    let second = finished_run(&runs, AppCommand::Timetree, optimized);
+
+    let estimates = compare_runs(&runs, &first, &second)?
+      .estimates
+      .expect("both runs are time trees");
+
+    assert_eq!(
+      (true, None),
+      (
+        estimates
+          .log_likelihood_mismatches
+          .contains(&LikelihoodMismatch::CoalescentPrior),
+        estimates.log_likelihood_change
+      )
     );
     Ok(())
   }
@@ -498,8 +535,13 @@ mod tests {
     let comparison = compare_runs(&runs, &timetree, &clock)?;
 
     assert_eq!(
-      (None, None, None),
-      (comparison.settings, comparison.estimates, comparison.ancestors)
+      (false, None, None, None),
+      (
+        comparison.same_analysis,
+        comparison.settings,
+        comparison.estimates,
+        comparison.ancestors
+      )
     );
     Ok(())
   }

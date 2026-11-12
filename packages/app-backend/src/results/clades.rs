@@ -10,7 +10,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime_graph::clades::{CladeNode, TipIds, clade_keys, first_node_by_key};
 use treetime_schema::skip_serializing_optionals;
@@ -30,6 +30,13 @@ pub fn matched_ancestors(first: &ResultTree, second: &ResultTree) -> Vec<(usize,
     })
     .sorted()
     .collect()
+}
+
+pub fn same_topology(first: &ResultTree, second: &ResultTree) -> bool {
+  let mut ids = TipIds::default();
+  let first_keys: BTreeSet<Vec<usize>> = result_clade_keys(first, &mut ids).into_iter().collect();
+  let second_keys: BTreeSet<Vec<usize>> = result_clade_keys(second, &mut ids).into_iter().collect();
+  first_keys == second_keys
 }
 
 pub fn clade_in_runs(manager: &RunManager, request: &CladeRequest) -> Result<CladeInRuns, Report> {

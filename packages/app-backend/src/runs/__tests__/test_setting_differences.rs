@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::runs::setting_differences::{SettingDifference, setting_differences};
+  use crate::config::catalog::{SettingPurpose, command_settings};
+  use crate::runs::setting_differences::{ComparedConfig, DifferenceValues, SettingDifference, setting_differences};
+  use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
-  use helpers::{input, record};
+  use helpers::{differences, input, unread};
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use std::path::PathBuf;
@@ -10,153 +12,209 @@ mod tests {
   use treetime_utils::o;
 
   #[test]
-  fn test_setting_differences_of_identical_runs_are_empty() {
-    let first = record(&json!({ "clock_rate": 0.001 }), vec![input("tree", "t.nwk", "aa")]);
-    let second = record(&json!({ "clock_rate": 0.001 }), vec![input("tree", "t.nwk", "aa")]);
+  fn test_setting_differences_of_identical_configurations_are_empty() {
     assert_eq!(
       Vec::<SettingDifference>::new(),
-      setting_differences(&first, &second).unwrap()
+      differences(
+        (&json!({ "clock_rate": 0.001 }), &[input("tree", "t.nwk", "aa")]),
+        (&json!({ "clock_rate": 0.001 }), &[input("tree", "t.nwk", "aa")]),
+      )
     );
   }
 
   #[test]
-  fn test_setting_differences_lists_changed_values_in_catalog_order() {
-    let first = record(&json!({ "clock_rate": 0.001, "max_iter": 2 }), vec![]);
-    let second = record(&json!({ "clock_rate": 0.002, "max_iter": 5 }), vec![]);
+  fn test_setting_differences_list_changed_values_with_their_labels_in_catalog_order() {
     assert_eq!(
       vec![
-        SettingDifference::Setting {
+        SettingDifference {
           key: o!("clock_rate"),
-          first: Some(JsonValue(json!(0.001))),
-          second: Some(JsonValue(json!(0.002))),
+          label: o!("Clock rate"),
+          group: o!("Molecular clock"),
+          purpose: SettingPurpose::Analysis,
+          values: DifferenceValues::Setting {
+            first: None,
+            second: Some(JsonValue(json!(0.002))),
+          },
         },
-        SettingDifference::Setting {
+        SettingDifference {
           key: o!("max_iter"),
-          first: Some(JsonValue(json!(2))),
-          second: Some(JsonValue(json!(5))),
+          label: o!("Iterations"),
+          group: o!("Branch lengths"),
+          purpose: SettingPurpose::Analysis,
+          values: DifferenceValues::Setting {
+            first: Some(JsonValue(json!(2))),
+            second: Some(JsonValue(json!(5))),
+          },
         },
       ],
-      setting_differences(&first, &second).unwrap()
+      differences(
+        (&json!({ "max_iter": 2 }), &[]),
+        (&json!({ "clock_rate": 0.002, "max_iter": 5 }), &[]),
+      )
     );
   }
 
   #[test]
-  fn test_setting_differences_moved_input_with_the_same_contents() {
-    let first = record(&json!({}), vec![input("tree", "a/t.nwk", "aa")]);
-    let second = record(&json!({}), vec![input("tree", "b/t.nwk", "aa")]);
-    assert_eq!(
-      vec![SettingDifference::Input {
-        key: o!("tree"),
-        first: vec![PathBuf::from("a/t.nwk")],
-        second: vec![PathBuf::from("b/t.nwk")],
-        same_content: true,
-      }],
-      setting_differences(&first, &second).unwrap()
-    );
-  }
-
-  #[test]
-  fn test_setting_differences_changed_input_contents_at_the_same_path() {
-    let first = record(&json!({}), vec![input("metadata", "m.tsv", "aa")]);
-    let second = record(&json!({}), vec![input("metadata", "m.tsv", "bb")]);
-    assert_eq!(
-      vec![SettingDifference::Input {
-        key: o!("metadata"),
-        first: vec![PathBuf::from("m.tsv")],
-        second: vec![PathBuf::from("m.tsv")],
-        same_content: false,
-      }],
-      setting_differences(&first, &second).unwrap()
-    );
-  }
-
-  #[test]
-  fn test_setting_differences_input_order_of_the_same_files_changes_paths_only() {
+  fn test_setting_differences_compare_inputs_by_content_and_not_by_path() {
     let files = [input("alignment", "a.fasta", "aa"), input("alignment", "b.fasta", "bb")];
-    let first = record(&json!({}), files.to_vec());
-    let second = record(&json!({}), files.iter().rev().cloned().collect());
-    assert_eq!(
-      vec![SettingDifference::Input {
-        key: o!("alignment"),
-        first: vec![PathBuf::from("a.fasta"), PathBuf::from("b.fasta")],
-        second: vec![PathBuf::from("b.fasta"), PathBuf::from("a.fasta")],
-        same_content: true,
-      }],
-      setting_differences(&first, &second).unwrap()
-    );
-  }
-
-  #[test]
-  fn test_setting_differences_ignore_output_paths() {
-    let first = record(&json!({ "output_all": "out", "output_tracelog": "a.csv" }), vec![]);
-    let second = record(
-      &json!({ "output_all": "elsewhere", "output_tracelog": "b.csv" }),
-      vec![],
-    );
+    let reordered = [
+      input("alignment", "elsewhere/b.fasta", "bb"),
+      input("alignment", "inputs/a.fasta", "aa"),
+    ];
     assert_eq!(
       Vec::<SettingDifference>::new(),
-      setting_differences(&first, &second).unwrap()
+      differences((&json!({}), &files), (&json!({}), &reordered))
     );
   }
 
   #[test]
-  fn test_setting_differences_serialize_with_kind_tag() {
-    let difference = SettingDifference::Input {
+  fn test_setting_differences_list_inputs_with_changed_contents() {
+    assert_eq!(
+      vec![SettingDifference {
+        key: o!("metadata"),
+        label: o!("Metadata"),
+        group: o!("Input data"),
+        purpose: SettingPurpose::Data,
+        values: DifferenceValues::Input {
+          first: vec![PathBuf::from("m.tsv")],
+          second: vec![PathBuf::from("m.tsv")],
+        },
+      }],
+      differences(
+        (&json!({}), &[input("metadata", "m.tsv", "aa")]),
+        (&json!({}), &[input("metadata", "m.tsv", "bb")]),
+      )
+    );
+  }
+
+  #[test]
+  fn test_setting_differences_count_an_unreadable_input_as_changed() {
+    assert_eq!(
+      vec![o!("tree")],
+      differences(
+        (&json!({}), &[input("tree", "t.nwk", "aa")]),
+        (&json!({}), &[unread("tree", "t.nwk")]),
+      )
+      .into_iter()
+      .map(|difference| difference.key)
+      .collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_setting_differences_ignore_the_settings_that_the_app_sets_for_every_run() {
+    assert_eq!(
+      Vec::<SettingDifference>::new(),
+      differences(
+        (
+          &json!({ "output_all": "out", "output_tracelog": "a.csv", "output_selection": ["auspice", "tracelog"] }),
+          &[],
+        ),
+        (&json!({ "output_all": "elsewhere", "output_tracelog": "b.csv" }), &[]),
+      )
+    );
+  }
+
+  #[test]
+  fn test_setting_differences_serialize_flat_with_a_kind_tag() {
+    let difference = SettingDifference {
       key: o!("tree"),
-      first: vec![PathBuf::from("a.nwk")],
-      second: vec![PathBuf::from("b.nwk")],
-      same_content: false,
+      label: o!("Tree"),
+      group: o!("Input data"),
+      purpose: SettingPurpose::Data,
+      values: DifferenceValues::Input {
+        first: vec![PathBuf::from("a.nwk")],
+        second: vec![PathBuf::from("b.nwk")],
+      },
     };
     assert_eq!(
-      json!({ "kind": "input", "key": "tree", "first": ["a.nwk"], "second": ["b.nwk"], "same_content": false }),
+      json!({
+        "key": "tree",
+        "label": "Tree",
+        "group": "Input data",
+        "purpose": "data",
+        "kind": "input",
+        "first": ["a.nwk"],
+        "second": ["b.nwk"],
+      }),
       to_json_value(&difference).unwrap()
+    );
+  }
+
+  #[test]
+  fn test_setting_differences_of_an_unset_setting_omit_its_value() {
+    let catalog = command_settings(AppCommand::Timetree).unwrap();
+    let first = json!({ "coalescent": "skyline" });
+    let second = json!({ "coalescent": null });
+    assert_eq!(
+      json!([{
+        "key": "coalescent",
+        "label": "Coalescent prior",
+        "group": "Coalescent prior",
+        "purpose": "analysis",
+        "kind": "setting",
+        "first": "skyline",
+      }]),
+      to_json_value(&setting_differences(
+        &catalog,
+        &ComparedConfig {
+          settings: first.as_object().unwrap(),
+          inputs: &[],
+        },
+        &ComparedConfig {
+          settings: second.as_object().unwrap(),
+          inputs: &[],
+        },
+      ))
+      .unwrap()
     );
   }
 
   mod helpers {
     use crate::command::config_from_settings;
-    use crate::job::JobId;
-    use crate::runs::headline::RunHeadline;
-    use crate::runs::record::{RunInput, RunRecord, RunStatus};
+    use crate::config::catalog::command_settings;
+    use crate::runs::setting_differences::{ComparedConfig, ComparedInput, SettingDifference, setting_differences};
     use app_commands::command::AppCommand;
-    use chrono::DateTime;
     use serde_json::Value;
     use std::path::PathBuf;
 
-    pub(super) fn record(settings: &Value, inputs: Vec<RunInput>) -> RunRecord {
-      let id = JobId::random();
-      RunRecord {
-        group_id: id.clone(),
-        id,
-        title: "run".to_owned(),
-        config: config_from_settings(AppCommand::Timetree, settings).unwrap(),
-        status: RunStatus::Ok,
-        pinned: false,
-        source_run_id: None,
-        size: 0,
-        seed: None,
-        created_at: DateTime::UNIX_EPOCH,
-        started_at: None,
-        finished_at: None,
-        duration_seconds: None,
-        treetime_version: "1.0.0".to_owned(),
-        inputs,
-        uploads: vec![],
-        config_hash: None,
-        changed_settings: vec![],
-        headline: RunHeadline::default(),
-        output_files: vec![],
-        warnings: vec![],
-        error: None,
+    pub(super) fn differences(
+      (first, first_inputs): (&Value, &[ComparedInput]),
+      (second, second_inputs): (&Value, &[ComparedInput]),
+    ) -> Vec<SettingDifference> {
+      let catalog = command_settings(AppCommand::Timetree).unwrap();
+      let resolved = |settings: &Value| {
+        config_from_settings(AppCommand::Timetree, settings)
+          .unwrap()
+          .settings()
+          .unwrap()
+      };
+      setting_differences(
+        &catalog,
+        &ComparedConfig {
+          settings: &resolved(first),
+          inputs: first_inputs,
+        },
+        &ComparedConfig {
+          settings: &resolved(second),
+          inputs: second_inputs,
+        },
+      )
+    }
+
+    pub(super) fn input(setting: &str, path: &str, sha256: &str) -> ComparedInput {
+      ComparedInput {
+        setting: setting.to_owned(),
+        path: PathBuf::from(path),
+        sha256: Some(sha256.to_owned()),
       }
     }
 
-    pub(super) fn input(setting: &str, path: &str, sha256: &str) -> RunInput {
-      RunInput {
+    pub(super) fn unread(setting: &str, path: &str) -> ComparedInput {
+      ComparedInput {
         setting: setting.to_owned(),
         path: PathBuf::from(path),
-        size: 1,
-        sha256: sha256.to_owned(),
+        sha256: None,
       }
     }
   }
