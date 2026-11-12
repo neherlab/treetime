@@ -1,3 +1,7 @@
+---
+organism: "Dengue virus"
+---
+
 # `dengue/20`
 
 Subsample of `dengue/500` (20 sequences).

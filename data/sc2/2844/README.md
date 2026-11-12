@@ -1,3 +1,7 @@
+---
+organism: "SARS-CoV-2"
+---
+
 # `sc2/2844`
 
 2504 SARS-CoV-2 genomes sampled from 2019-12-26 to 2022-07-12, aligned to Wuhan-Hu-1 (29903 nt), from 96 countries of 6 regions.

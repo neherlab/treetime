@@ -1,3 +1,7 @@
+---
+organism: "Ebola virus"
+---
+
 # `ebola/362`
 
 Ebola virus genomes of the 2014-2016 West African epidemic, the Ebola example of TreeTime 0.x.

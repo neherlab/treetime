@@ -171,6 +171,22 @@ def compute_hash(path: Path) -> str:
     return hashlib.md5(path.read_bytes()).hexdigest()[:12]  # noqa: S324
 
 
+def front_matter(readme: Path) -> str:
+    """Front matter of a README (organism and segment), with its fences and a blank line after it."""
+    lines = readme.read_text().splitlines(keepends=True)
+    if not lines or lines[0].rstrip() != "---":
+        msg = f"{readme} does not start with a front matter line ---"
+        raise ValueError(msg)
+    end = next(
+        (number for number, line in enumerate(lines[1:], 1) if line.rstrip() == "---"),
+        None,
+    )
+    if end is None:
+        msg = f"the front matter of {readme} has no closing line ---"
+        raise ValueError(msg)
+    return "".join(lines[: end + 1]) + "\n"
+
+
 def generate_readme(spec: SubsampleSpec, config: DatasetConfig, data_dir: Path) -> str:
     """Generate README documenting reproducible derivation."""
     source_dir = data_dir / spec.source
@@ -183,7 +199,7 @@ def generate_readme(spec: SubsampleSpec, config: DatasetConfig, data_dir: Path) 
     dates = [e[1] for e in entries]
     date_min, date_max = min(dates), max(dates)
 
-    return f"""# `{spec.target}`
+    return front_matter(source_dir / "README.md") + f"""# `{spec.target}`
 
 Subsample of `{spec.source}` ({spec.count} sequences).
 

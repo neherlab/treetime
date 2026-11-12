@@ -1,3 +1,8 @@
+---
+organism: "Lassa virus"
+segment: "L"
+---
+
 # `lassa/L/20`
 
 Subsample of `lassa/L/50` (20 sequences).
