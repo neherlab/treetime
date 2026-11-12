@@ -1,58 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_routes::tests::helpers::{app, create_deferred, request, wait_for_status};
+  use crate::__tests__::test_routes::tests::helpers::{app, request, wait_for_status};
   use helpers::{archive_entries, finished_run, get, header_of};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
   use serde_json::json;
   use std::fs;
   use treetime_charts::convert::{svg_to_pdf, svg_to_png};
   use zip::CompressionMethod;
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::results(    "/api/runs/ID/results")]
-  #[case::auspice(    "/api/runs/ID/auspice")]
-  #[case::comparison( "/api/runs/ID/compare/ID")]
-  #[trace]
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_downloads_finished_results_revalidate_with_their_etag(#[case] template: &str) {
-    let (test, id) = finished_run().await;
-    let path = template.replace("ID", &id);
-    let first = get(&test, &path, &[]).await;
-    let etag = header_of(&first, "etag").unwrap();
-    let second = get(&test, &path, &[("if-none-match", &etag)]).await;
-    let other = get(&test, &path, &[("if-none-match", "W/\"0000000000000000\"")]).await;
-    let body = axum::body::to_bytes(second.into_body(), usize::MAX).await.unwrap();
-    assert_eq!(
-      (
-        (200, true, Some("private, no-cache".to_owned())),
-        (304, true),
-        200
-      ),
-      (
-        (
-          first.status().as_u16(),
-          etag.starts_with("W/\""),
-          header_of(&first, "cache-control")
-        ),
-        (304, body.is_empty()),
-        other.status().as_u16()
-      )
-    );
-  }
-
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_downloads_results_of_an_unfinished_run_have_no_etag() {
-    let (test, _) = finished_run().await;
-    let id = create_deferred(&test).await;
-    let response = get(&test, &format!("/api/runs/{id}/results"), &[]).await;
-    assert_eq!(
-      (None, Some("no-store".to_owned())),
-      (header_of(&response, "etag"), header_of(&response, "cache-control"))
-    );
-  }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_downloads_run_file_serves_byte_ranges_as_an_attachment() {

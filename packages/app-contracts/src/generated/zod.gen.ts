@@ -2,20 +2,12 @@
 
 import * as z from 'zod';
 
-/**
- * Liveness of the server.
- */
-export const zHealthStatus = z.object({
-  status: z.string(),
-  version: z.string()
-});
-
 export const zVersionInfo = z.object({
   version: z.string()
 });
 
 /**
- * Class of a back-end error. The web server answers each class with its own HTTP status.
+ * Class of a back-end error. The API routes answer each class with its own HTTP status.
  */
 export const zErrorCode = z.union([
   z.literal('not_found'),
@@ -23,13 +15,11 @@ export const zErrorCode = z.union([
   z.literal('conflict'),
   z.literal('invalid_request'),
   z.literal('method_not_allowed'),
-  z.literal('forbidden'),
-  z.literal('timeout'),
   z.literal('internal_error')
 ]);
 
 /**
- * Error of a back-end operation, as the web server and the desktop back end report it.
+ * Error of a back-end operation, as the API routes report it.
  */
 export const zErrorResponse = z.object({
   code: zErrorCode,
@@ -2251,8 +2241,8 @@ export const zAppEventRunUpdated = z.object({
 });
 
 /**
- * The stream cannot continue after the requested event, because the server no longer keeps that event or the
- * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+ * The stream cannot continue after the requested event, because the back end no longer keeps that event or the
+ * event belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
  */
 export const zAppEventResync = z.object({
@@ -2332,11 +2322,6 @@ export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventExamplesDownload,
   zAppEventResync
 ]);
-
-/**
- * Liveness of the server.
- */
-export const zHealthResponse = zHealthStatus;
 
 export const zVersionResponse = zVersionInfo;
 

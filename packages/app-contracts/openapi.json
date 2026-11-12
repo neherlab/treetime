@@ -13,60 +13,6 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/health": {
-      "get": {
-        "description": "Liveness of the server and the version of TreeTime it runs.",
-        "operationId": "health",
-        "responses": {
-          "default": {
-            "description": "The error, with its causes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Liveness of the server.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthStatus"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/openapi.json": {
-      "get": {
-        "description": "This OpenAPI document.",
-        "operationId": "openapi",
-        "responses": {
-          "default": {
-            "description": "The error, with its causes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": true
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/version": {
       "get": {
         "description": "Version of TreeTime.",
@@ -587,9 +533,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -631,9 +574,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -686,9 +626,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -787,7 +724,7 @@
     },
     "/api/events": {
       "get": {
-        "description": "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.",
+        "description": "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` event instead.",
         "operationId": "events",
         "parameters": [
           {
@@ -997,7 +934,7 @@
             }
           },
           "413": {
-            "description": "The inputs of the run exceed the upload limit of the server",
+            "description": "The inputs of the run exceed the upload limit",
             "content": {
               "application/json": {
                 "schema": {
@@ -1320,24 +1257,6 @@
   },
   "components": {
     "schemas": {
-      "HealthStatus": {
-        "description": "Liveness of the server.",
-        "type": "object",
-        "properties": {
-          "status": {
-            "description": "Always `ok`.",
-            "type": "string"
-          },
-          "version": {
-            "description": "Version of TreeTime.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "status",
-          "version"
-        ]
-      },
       "VersionInfo": {
         "type": "object",
         "properties": {
@@ -1350,7 +1269,7 @@
         ]
       },
       "ErrorResponse": {
-        "description": "Error of a back-end operation, as the web server and the desktop back end report it.",
+        "description": "Error of a back-end operation, as the API routes report it.",
         "type": "object",
         "properties": {
           "code": {
@@ -1376,7 +1295,7 @@
         ]
       },
       "ErrorCode": {
-        "description": "Class of a back-end error. The web server answers each class with its own HTTP status.",
+        "description": "Class of a back-end error. The API routes answer each class with its own HTTP status.",
         "oneOf": [
           {
             "description": "The run or file does not exist.",
@@ -1402,16 +1321,6 @@
             "description": "The path exists, but not for the request's method.",
             "type": "string",
             "const": "method_not_allowed"
-          },
-          {
-            "description": "The server does not answer requests for the host the request names.",
-            "type": "string",
-            "const": "forbidden"
-          },
-          {
-            "description": "The server did not finish the request in time.",
-            "type": "string",
-            "const": "timeout"
           },
           {
             "description": "The back end failed.",
@@ -4476,7 +4385,7 @@
             "const": "dataset"
           },
           {
-            "description": "A file uploaded to the server.",
+            "description": "A file uploaded to the back end.",
             "type": "string",
             "const": "upload"
           },
@@ -8524,7 +8433,7 @@
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8562,7 +8471,7 @@
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8600,7 +8509,7 @@
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8634,11 +8543,11 @@
         ]
       },
       "AppEventResync": {
-        "description": "The stream cannot continue after the requested event, because the server no longer keeps that event or the\nevent belongs to a previous server. Every path in `stale` must be read again; the stream continues with the\nevents after this one.",
+        "description": "The stream cannot continue after the requested event, because the back end no longer keeps that event or the\nevent belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the\nevents after this one.",
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0

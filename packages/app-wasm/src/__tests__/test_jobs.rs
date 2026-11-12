@@ -189,14 +189,12 @@ mod tests {
 
   mod helpers {
     use super::{JobExecutor, PathBuf, PortExchange, Router, web_router};
-    use app_backend::bridge::executor::RunExecutor;
     use app_api::port::port_request;
-    use app_api::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
+    use app_backend::bridge::executor::RunExecutor;
     use serde_json::{Value, json};
     use std::fs;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
-    use tokio_util::sync::CancellationToken;
 
     pub(super) struct StartedRun {
       pub router: Router,
@@ -211,17 +209,7 @@ mod tests {
       let runs_dir = tempdir().unwrap();
       let jobs = Arc::new(JobExecutor::default());
       let executor: Arc<dyn RunExecutor> = Arc::<JobExecutor>::clone(&jobs);
-      let router = web_router(
-        ServerConfig {
-          runs_dir: runs_dir.path().to_owned(),
-          max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-          max_grid_points: None,
-          shutdown: CancellationToken::new(),
-          settings: None,
-        },
-        executor,
-      )
-      .unwrap();
+      let router = web_router(runs_dir.path(), executor).unwrap();
       let body = json!({ "command": "ancestral", "config": {}, "defer_start": true });
       let (status, record) = send(&router, "POST", "/api/runs", Some(body)).await;
       assert_eq!(200, status, "{record}");

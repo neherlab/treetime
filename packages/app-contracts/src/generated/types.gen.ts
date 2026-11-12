@@ -4,26 +4,12 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}` | (string & {});
 };
 
-/**
- * Liveness of the server.
- */
-export type HealthStatus = {
-  /**
-   * Always `ok`.
-   */
-  status: string;
-  /**
-   * Version of TreeTime.
-   */
-  version: string;
-};
-
 export type VersionInfo = {
   version: string;
 };
 
 /**
- * Error of a back-end operation, as the web server and the desktop back end report it.
+ * Error of a back-end operation, as the API routes report it.
  */
 export type ErrorResponse = {
   /**
@@ -41,9 +27,9 @@ export type ErrorResponse = {
 };
 
 /**
- * Class of a back-end error. The web server answers each class with its own HTTP status.
+ * Class of a back-end error. The API routes answer each class with its own HTTP status.
  */
-export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'forbidden' | 'timeout' | 'internal_error';
+export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'internal_error';
 
 /**
  * Request to check a configuration.
@@ -4965,7 +4951,7 @@ export type TerminalEventInterrupted = {
 export type AppEventRunCreated = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -4990,7 +4976,7 @@ export type AppEventRunCreated = {
 export type AppEventRunUpdated = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -5015,7 +5001,7 @@ export type AppEventRunUpdated = {
 export type AppEventExamplesDownload = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -5035,14 +5021,14 @@ export type AppEventExamplesDownload = {
 };
 
 /**
- * The stream cannot continue after the requested event, because the server no longer keeps that event or the
- * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+ * The stream cannot continue after the requested event, because the back end no longer keeps that event or the
+ * event belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
  */
 export type AppEventResync = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -5099,51 +5085,6 @@ export type ExamplesDownloadFailed = {
    */
   message: string;
   state: 'failed';
-};
-
-export type HealthData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/health';
-};
-
-export type HealthErrors = {
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type HealthError = HealthErrors[keyof HealthErrors];
-
-export type HealthResponses = {
-  /**
-   * Liveness of the server.
-   */
-  200: HealthStatus;
-};
-
-export type HealthResponse = HealthResponses[keyof HealthResponses];
-
-export type OpenapiData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/openapi.json';
-};
-
-export type OpenapiErrors = {
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type OpenapiError = OpenapiErrors[keyof OpenapiErrors];
-
-export type OpenapiResponses = {
-  200: unknown;
 };
 
 export type VersionData = {
@@ -5767,7 +5708,7 @@ export type RunsUploadInputData = {
 
 export type RunsUploadInputErrors = {
   /**
-   * The inputs of the run exceed the upload limit of the server
+   * The inputs of the run exceed the upload limit
    */
   413: ErrorResponse;
   /**

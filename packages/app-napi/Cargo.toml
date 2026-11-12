@@ -21,9 +21,9 @@ doctest = false
 ignored = ["strum"]
 
 [dependencies]
+app-api = { workspace = true }
 app-backend = { workspace = true }
 app-commands = { workspace = true, features = ["clap"] }
-app-api = { workspace = true }
 treetime-utils = { workspace = true }
 
 axum = { workspace = true }
@@ -35,7 +35,6 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
 tower = { workspace = true }
 
 [build-dependencies]

@@ -21,12 +21,6 @@ package = "app-cli"
 bin = "treetime"
 reason = "the shipped treetime CLI is the primary product entry point"
 
-# Shipped HTTP server binary; second reachability root.
-[[production]]
-package = "app-api"
-bin = "treetime-server"
-reason = "the shipped treetime-server binary is a product entry point"
-
 # Record intentional exceptions here, one table per item, e.g.:
 #
 # [[override]]
@@ -35,8 +29,3 @@ reason = "the shipped treetime-server binary is a product entry point"
 # item = "some::intentional::api"
 # level = "expect"
 # reason = "part of the stable library API consumed by an external crate"
-
-[[exclude]]
-crate = "app_server"
-module = "contract"
-reason = "OpenAPI schema declarations consumed by the generated TypeScript client, not by Rust code"

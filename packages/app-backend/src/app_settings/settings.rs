@@ -182,7 +182,7 @@ pub struct UiDraftSource {
 pub enum UiDraftOrigin {
   /// An example dataset.
   Dataset,
-  /// A file uploaded to the server.
+  /// A file uploaded to the back end.
   Upload,
   /// A file on the computer that runs TreeTime.
   Local,

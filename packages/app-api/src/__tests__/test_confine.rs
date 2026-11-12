@@ -46,7 +46,7 @@ mod tests {
     let mut config = json!({ "tree": "Cargo.toml" });
     assert_error!(
       policy.confine(AppCommand::Prune, &mut config),
-      "input `Cargo.toml` of setting `tree` is outside the directories the server reads inputs from"
+      "input `Cargo.toml` of setting `tree` is outside the directories the back end reads inputs from"
     );
   }
 
@@ -59,7 +59,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Prune, &mut config),
       format!(
-        "input `{}` of setting `tree` is outside the directories the server reads inputs from",
+        "input `{}` of setting `tree` is outside the directories the back end reads inputs from",
         tree.display()
       )
     );
@@ -78,7 +78,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Optimize, &mut config),
       format!(
-        "input `{}` of setting `tree` is outside the directories the server reads inputs from",
+        "input `{}` of setting `tree` is outside the directories the back end reads inputs from",
         escape.display()
       )
     );
@@ -93,7 +93,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Clock, &mut config),
       format!(
-        "input `{}` of setting `metadata` is outside the directories the server reads inputs from",
+        "input `{}` of setting `metadata` is outside the directories the back end reads inputs from",
         secret.display()
       )
     );
@@ -109,7 +109,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Prune, &mut config),
       format!(
-        "input `{}` of setting `tree` is outside the directories the server reads inputs from",
+        "input `{}` of setting `tree` is outside the directories the back end reads inputs from",
         link.display()
       )
     );
@@ -125,7 +125,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Ancestral, &mut config),
       format!(
-        "input `{}` of setting `alignment` is outside the directories the server reads inputs from",
+        "input `{}` of setting `alignment` is outside the directories the back end reads inputs from",
         secret.display()
       )
     );
@@ -192,7 +192,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Ancestral, &mut config),
       format!(
-        "input `{}/sub/{escape}.nwk` of setting `translations` is outside the directories the server reads inputs from",
+        "input `{}/sub/{escape}.nwk` of setting `translations` is outside the directories the back end reads inputs from",
         root.display()
       )
     );
@@ -226,7 +226,7 @@ mod tests {
     assert_error!(
       policy.confine(AppCommand::Ancestral, &mut config),
       format!(
-        "input `{}` of setting `translations` is outside the directories the server reads inputs from",
+        "input `{}` of setting `translations` is outside the directories the back end reads inputs from",
         current_dir().unwrap().join("src/lib.rs").display()
       )
     );

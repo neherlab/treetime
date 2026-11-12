@@ -10,8 +10,6 @@ mod openapi;
 pub mod port;
 pub mod routes;
 pub mod state;
-#[cfg(not(target_family = "wasm"))]
-pub mod web;
 
 #[cfg(test)]
 mod tests {

@@ -110,7 +110,7 @@ pub type AppSubscriber = Box<dyn FnMut(&AppEvent) -> bool + Send>;
 #[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct AppEvent {
   /// Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-  /// restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+  /// restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
   /// the event.
   pub seq: u64,
   /// Time the event was recorded.
@@ -181,8 +181,8 @@ pub enum AppChange {
     /// The download after the change.
     download: ExamplesDownload,
   },
-  /// The stream cannot continue after the requested event, because the server no longer keeps that event or the
-  /// event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+  /// The stream cannot continue after the requested event, because the back end no longer keeps that event or the
+  /// event belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the
   /// events after this one.
   Resync,
 }

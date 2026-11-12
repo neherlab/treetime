@@ -1,4 +1,7 @@
 use crate::port::{PortHeader, PortReply, PortRequest};
+use app_api::error::error_response;
+use app_api::routes::{LocalRouters, local_api_routers};
+use app_api::state::{LocalSettings, RouterConfig};
 use app_backend::app_paths::{AppFolderEnv, AppFolderPath, AppPaths};
 use app_backend::app_settings::store::AppSettingsStore;
 use app_backend::app_settings::workspace::{OpenedRuns, open_runs_folder};
@@ -8,9 +11,6 @@ use app_backend::bridge::service::{AppService, Unconfined};
 use app_backend::examples_download::ExampleDownloads;
 use app_backend::run_limits::RunLimits;
 use app_commands::examples_download::examples_url;
-use app_api::error::error_response;
-use app_api::routes::{LocalRouters, local_api_routers};
-use app_api::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
 use axum::Router;
 use axum::body::to_bytes;
 use axum::response::Response;
@@ -25,7 +25,6 @@ use strum_macros::EnumString;
 use tokio::runtime::{Builder, Runtime};
 use tokio::task::AbortHandle;
 use tokio_stream::StreamExt as _;
-use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
 use treetime_utils::make_internal_report;
 
@@ -62,17 +61,12 @@ impl DesktopService {
     ));
     let routers = local_api_routers(
       app,
-      ServerConfig {
-        runs_dir: paths.runs.path.clone(),
-        max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-        max_grid_points: None,
-        shutdown: CancellationToken::new(),
-        settings: Some(LocalSettings {
-          store,
-          paths,
-          runs_error,
-          examples: Arc::new(ExampleDownloads::new(examples_url(), &examples)),
-        }),
+      RouterConfig::default(),
+      LocalSettings {
+        store,
+        paths,
+        runs_error,
+        examples: Arc::new(ExampleDownloads::new(examples_url(), &examples)),
       },
     )?;
     let runtime = Builder::new_multi_thread()

@@ -16,9 +16,6 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use tokio_stream::{Stream, StreamExt as _};
 
-#[cfg(not(target_family = "wasm"))]
-use axum::response::sse::KeepAlive;
-
 const JSON: &str = "application/json";
 const EVENT_STREAM: &str = "text/event-stream";
 const OCTET_STREAM: &str = "application/octet-stream";
@@ -90,10 +87,7 @@ impl<T: 'static> TypedSse<T> {
 
 impl<T> IntoResponse for TypedSse<T> {
   fn into_response(self) -> Response {
-    let sse = Sse::new(self.events.map(Ok::<_, Infallible>));
-    #[cfg(not(target_family = "wasm"))]
-    let sse = sse.keep_alive(KeepAlive::default());
-    sse.into_response()
+    Sse::new(self.events.map(Ok::<_, Infallible>)).into_response()
   }
 }
 

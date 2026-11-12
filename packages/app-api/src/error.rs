@@ -49,8 +49,6 @@ fn http_status(code: ErrorCode) -> StatusCode {
     ErrorCode::Conflict => StatusCode::CONFLICT,
     ErrorCode::InvalidRequest => StatusCode::BAD_REQUEST,
     ErrorCode::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
-    ErrorCode::Forbidden => StatusCode::FORBIDDEN,
-    ErrorCode::Timeout => StatusCode::REQUEST_TIMEOUT,
     ErrorCode::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
   }
 }

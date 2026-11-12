@@ -182,29 +182,22 @@ mod tests {
   #[case::workspace_update(  "PUT", "/api/workspace")]
   #[trace]
   #[tokio::test]
-  async fn test_app_settings_routes_are_absent_from_a_server_without_local_settings(
+  async fn test_app_settings_routes_are_absent_from_the_public_router(
     #[case] method: &str,
     #[case] uri: &str,
   ) {
-    let server = app();
-    let (status, error) = request(&server, method, uri, Some(json!({}))).await;
+    let public = app();
+    let (status, error) = request(&public, method, uri, Some(json!({}))).await;
     assert_eq!((404, json!("not_found")), (status, error["code"].clone()));
   }
 
   mod helpers {
+    use crate::__tests__::test_routes::tests::helpers::{TestApp, local_routers};
+    use app_backend::app_paths::AppFolderEnv;
     use app_backend::examples_download::ExampleDownloads;
+    use tempfile::{TempDir, tempdir};
 
     const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
-
-    use crate::__tests__::test_routes::tests::helpers::TestApp;
-    use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
-    use crate::web::{WebOptions, create_router};
-    use app_backend::app_paths::{AppFolderEnv, AppPaths};
-    use app_backend::app_settings::settings::AppPathSettings;
-    use app_backend::app_settings::store::AppSettingsStore;
-    use std::sync::Arc;
-    use tempfile::{TempDir, tempdir};
-    use tokio_util::sync::CancellationToken;
 
     pub(super) struct LocalApp {
       pub app: TestApp,
@@ -218,30 +211,13 @@ mod tests {
     pub(super) fn local_app_with(env: &AppFolderEnv) -> LocalApp {
       let dir = tempdir().unwrap();
       let runs_dir = tempdir().unwrap();
-      let paths = AppPaths::resolve(
+      let router = local_routers(
         dir.path(),
+        runs_dir.path(),
         env,
-        &AppPathSettings {
-          runs: Some(runs_dir.path().to_path_buf()),
-          ..AppPathSettings::default()
-        },
-      );
-      let router = create_router(
-        ServerConfig {
-          runs_dir: paths.runs.path.clone(),
-          max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-          max_grid_points: None,
-          shutdown: CancellationToken::new(),
-          settings: Some(LocalSettings {
-            store: Arc::new(AppSettingsStore::open(dir.path()).unwrap()),
-            paths,
-            runs_error: None,
-            examples: Arc::new(ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples"))),
-          }),
-        },
-        &WebOptions::default(),
+        ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples")),
       )
-      .unwrap();
+      .renderer;
       LocalApp {
         app: TestApp { router, runs_dir },
         dir,

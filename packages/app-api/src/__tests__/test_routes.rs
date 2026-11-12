@@ -166,7 +166,7 @@ pub(crate) mod tests {
     let events = events_of(&test, &id, "").await;
     assert_eq!(
       json!(format!(
-        "input `{}` of setting `tree` is outside the directories the server reads inputs from",
+        "input `{}` of setting `tree` is outside the directories the back end reads inputs from",
         tree.display()
       )),
       events.last().unwrap().data["data"]["message"]
@@ -533,7 +533,7 @@ pub(crate) mod tests {
     assert_eq!(
       (
         400,
-        json!("input `../../Cargo.toml` of setting `tree` is outside the directories the server reads inputs from")
+        json!("input `../../Cargo.toml` of setting `tree` is outside the directories the back end reads inputs from")
       ),
       (status, body["message"].clone())
     );
@@ -668,8 +668,13 @@ pub(crate) mod tests {
   }
 
   pub(crate) mod helpers {
-    use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
-    use crate::web::{WebOptions, create_router};
+    use crate::routes::{LocalRouters, api_router, local_api_routers};
+    use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, RouterConfig, confined_service};
+    use app_backend::app_paths::{AppFolderEnv, AppPaths};
+    use app_backend::app_settings::settings::AppPathSettings;
+    use app_backend::app_settings::store::AppSettingsStore;
+    use app_backend::bridge::executor::ThreadExecutor;
+    use app_backend::examples_download::ExampleDownloads;
     use axum::Router;
     use axum::body::{Body, BodyDataStream};
     use axum::http::Request;
@@ -678,14 +683,13 @@ pub(crate) mod tests {
     use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
     use serde_json::{Map, Value, json};
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::str;
+    use std::sync::Arc;
     use std::time::Duration;
     use tempfile::{TempDir, tempdir};
     use tokio_stream::StreamExt;
-    use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
-    use treetime_grid::MaxGridPoints;
 
     pub(crate) struct SseEvent {
       pub id: Option<String>,
@@ -786,41 +790,38 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn app_with_upload_limit(max_upload_size: usize) -> TestApp {
-      app_with(max_upload_size, &CancellationToken::new(), &WebOptions::default())
-    }
-
-    pub(crate) fn app_with(max_upload_size: usize, shutdown: &CancellationToken, options: &WebOptions) -> TestApp {
-      app_from(max_upload_size, None, shutdown, options)
-    }
-
-    pub(crate) fn app_with_grid_limit(max_grid_points: MaxGridPoints) -> TestApp {
-      app_from(
-        DEFAULT_MAX_UPLOAD_SIZE,
-        Some(max_grid_points),
-        &CancellationToken::new(),
-        &WebOptions::default(),
-      )
-    }
-
-    fn app_from(
-      max_upload_size: usize,
-      max_grid_points: Option<MaxGridPoints>,
-      shutdown: &CancellationToken,
-      options: &WebOptions,
-    ) -> TestApp {
       let runs_dir = tempdir().unwrap();
-      let router = create_router(
-        ServerConfig {
-          runs_dir: runs_dir.path().to_path_buf(),
-          max_upload_size,
-          max_grid_points,
-          shutdown: shutdown.clone(),
-          settings: None,
-        },
-        options,
-      )
-      .unwrap();
+      let service = confined_service(runs_dir.path(), Arc::new(ThreadExecutor)).unwrap();
+      let (router, _) = api_router(service, RouterConfig { max_upload_size }).unwrap();
       TestApp { router, runs_dir }
+    }
+
+    pub(crate) fn local_routers(
+      settings_dir: &Path,
+      runs_dir: &Path,
+      env: &AppFolderEnv,
+      examples: ExampleDownloads,
+    ) -> LocalRouters {
+      let paths = AppPaths::resolve(
+        settings_dir,
+        env,
+        &AppPathSettings {
+          runs: Some(runs_dir.to_path_buf()),
+          ..AppPathSettings::default()
+        },
+      );
+      let service = confined_service(&paths.runs.path, Arc::new(ThreadExecutor)).unwrap();
+      local_api_routers(
+        service,
+        RouterConfig::default(),
+        LocalSettings {
+          store: Arc::new(AppSettingsStore::open(settings_dir).unwrap()),
+          paths,
+          runs_error: None,
+          examples: Arc::new(examples),
+        },
+      )
+      .unwrap()
     }
 
     pub(crate) fn data_dir() -> PathBuf {

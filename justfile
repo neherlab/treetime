@@ -77,11 +77,12 @@ dylint_over_baseline := dylint_target_dir / "mordant/over-baseline.txt"
 
 # Library crates whose public API is an external boundary, skipped by both
 # unused-public-code checks (hawk and pub-unused-report): the shared utility and
-# file-format libraries publish a complete API for reuse, and the `#[napi]`
+# file-format libraries publish a complete API for reuse, the `#[napi]`
 # surface of the Node addon and the `#[wasm_bindgen]` surface of the WebAssembly
-# back end are consumed by JavaScript. The test-infrastructure crates serve only
+# back end are consumed by JavaScript, and the API routers of `app-api` serve
+# those two back ends. The test-infrastructure crates serve only
 # test targets, which neither check counts as users.
-public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi app_wasm treetime_validation treetime_analytical treetime_simulation"
+public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_api app_napi app_wasm treetime_validation treetime_analytical treetime_simulation"
 
 # Cargo with the seven-day minimum publish age of new dependency releases. The
 # setting is unstable in the pinned Rust (stable from 1.100), so the dependency

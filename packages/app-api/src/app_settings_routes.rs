@@ -183,7 +183,6 @@ where
 fn local_settings(state: &AppState) -> Result<LocalSettings, AppError> {
   Ok(
     state
-      .config
       .settings
       .clone()
       .ok_or_else(|| make_internal_report!("the app settings routes were added without app settings"))?,

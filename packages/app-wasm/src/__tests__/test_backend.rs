@@ -2,16 +2,13 @@
 mod tests {
   use crate::backend::{header_list, web_router};
   use crate::exchange::PortExchange;
-  use app_backend::bridge::executor::ThreadExecutor;
   use app_api::port::port_request;
-  use app_api::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
-  use helpers::{config, fetch_json};
+  use app_backend::bridge::executor::ThreadExecutor;
+  use helpers::fetch_json;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
-  use std::path::PathBuf;
   use std::sync::Arc;
   use tempfile::tempdir;
-  use tokio_util::sync::CancellationToken;
   use treetime_schema::version_info;
   use treetime_utils::io::json::to_json_value;
   use treetime_utils::{assert_error, o, vec_of_owned};
@@ -19,7 +16,7 @@ mod tests {
   #[tokio::test]
   async fn test_backend_router_answers_the_public_api() {
     let runs = tempdir().unwrap();
-    let router = web_router(config(runs.path().to_owned()), Arc::new(ThreadExecutor)).unwrap();
+    let router = web_router(runs.path(), Arc::new(ThreadExecutor)).unwrap();
     let expected = (200, to_json_value(&version_info()).unwrap());
     assert_eq!(
       expected,
@@ -34,7 +31,7 @@ mod tests {
   #[tokio::test]
   async fn test_backend_router_has_no_routes_of_a_local_app() {
     let runs = tempdir().unwrap();
-    let router = web_router(config(runs.path().to_owned()), Arc::new(ThreadExecutor)).unwrap();
+    let router = web_router(runs.path(), Arc::new(ThreadExecutor)).unwrap();
     let (status, body) = fetch_json(PortExchange::start(
       router,
       port_request("GET", "/api/app-settings", vec![], None),
@@ -59,17 +56,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::{CancellationToken, DEFAULT_MAX_UPLOAD_SIZE, PathBuf, PortExchange, ServerConfig, Value};
-
-    pub(super) fn config(runs_dir: PathBuf) -> ServerConfig {
-      ServerConfig {
-        runs_dir,
-        max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-        max_grid_points: None,
-        shutdown: CancellationToken::new(),
-        settings: None,
-      }
-    }
+    use super::{PortExchange, Value};
 
     pub(super) async fn fetch_json(exchange: PortExchange) -> (u16, Value) {
       let head = exchange.head().await.unwrap();

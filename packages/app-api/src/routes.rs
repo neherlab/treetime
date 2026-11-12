@@ -1,16 +1,13 @@
 use crate::api::blocking::{read_body_blocking, run_blocking};
-use crate::api::cache::{Revalidated, finished_runs_tag, is_unchanged};
 use crate::api::download::{serve_run_file, stream_run_archive};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, TypedSse, ZipAttachment};
-#[cfg(not(target_family = "wasm"))]
-use crate::api::timeout::with_request_timeout;
 use crate::app_settings_routes::{app_settings_routes, host_routes};
 use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, remove_cli_only_commands};
-use crate::state::{AppState, ServerConfig};
+use crate::state::{AppState, LocalSettings, RouterConfig};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{delete_with, get_with, post_with, put_with};
 use aide::openapi::{Contact, Info, License, OpenApi};
@@ -36,43 +33,37 @@ use axum::Router;
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, Uri, header};
 use axum::response::Response;
-use deser::{Deserialize, Serialize};
+use deser::Deserialize;
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
 use serde_json::Value;
 use std::any::Any;
-use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
-use std::process;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
-use treetime_schema::{VersionInfo, version_info};
+use treetime_schema::VersionInfo;
 
 const LAST_EVENT_ID: &str = "last-event-id";
 
-const HEALTH_STATUS: &str = "ok";
-
 pub(crate) const NO_STORE: &str = "no-store";
 
-pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Router, OpenApi), Report> {
-  let scope = if config.settings.is_some() {
-    RouteScope::Renderer
-  } else {
-    RouteScope::Public
-  };
-  let (routes, api) = build_api(scope, &draft2020_settings())?;
-  let state = app_state(service, config, &api)?;
+pub fn api_router(service: Arc<AppService>, config: RouterConfig) -> Result<(Router, OpenApi), Report> {
+  let (routes, api) = build_api(RouteScope::Public, &draft2020_settings())?;
+  let state = app_state(service, config, None);
   Ok((finish_router(routes, state), api))
 }
 
-pub fn local_api_routers(service: Arc<AppService>, config: ServerConfig) -> Result<LocalRouters, Report> {
-  let (host, api) = build_api(RouteScope::Host, &draft2020_settings())?;
+pub fn local_api_routers(
+  service: Arc<AppService>,
+  config: RouterConfig,
+  settings: LocalSettings,
+) -> Result<LocalRouters, Report> {
+  let (host, _) = build_api(RouteScope::Host, &draft2020_settings())?;
   let (renderer, _) = build_api(RouteScope::Renderer, &draft2020_settings())?;
-  let state = app_state(service, config, &api)?;
+  let state = app_state(service, config, Some(settings));
   Ok(LocalRouters {
     host: finish_router(host, Arc::clone(&state)),
     renderer: finish_router(renderer, state),
@@ -93,14 +84,13 @@ pub struct LocalRouters {
   pub renderer: Router,
 }
 
-fn app_state(service: Arc<AppService>, config: ServerConfig, api: &OpenApi) -> Result<Arc<AppState>, Report> {
-  Ok(Arc::new(AppState {
+fn app_state(service: Arc<AppService>, config: RouterConfig, settings: Option<LocalSettings>) -> Arc<AppState> {
+  Arc::new(AppState {
     config,
+    settings,
     runs: Arc::clone(service.runs()),
     service,
-    openapi: serde_json::to_value(api)?,
-    instance: instance_id()?,
-  }))
+  })
 }
 
 fn finish_router(routes: Router<Arc<AppState>>, state: Arc<AppState>) -> Router {
@@ -158,38 +148,7 @@ enum RouteScope {
 }
 
 fn api_routes() -> ApiRouter<Arc<AppState>> {
-  let routes = timed_routes();
-  #[cfg(not(target_family = "wasm"))]
-  let routes = with_request_timeout(routes);
-  routes.api_route(
-    "/api/runs/{id}/inputs/{name}",
-    put_with(runs_upload_input, |op| {
-      op.id("runsUploadInput")
-        .description(
-          "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
-           for it in the run's configuration.",
-        )
-        .response_with::<413, AppError, _>(|response| {
-          response.description("The inputs of the run exceed the upload limit of the server")
-        })
-    })
-    .layer(DefaultBodyLimit::disable()),
-  )
-}
-
-fn timed_routes() -> ApiRouter<Arc<AppState>> {
   ApiRouter::new()
-    .api_route(
-      "/api/health",
-      get_with(health, |op| {
-        op.id("health")
-          .description("Liveness of the server and the version of TreeTime it runs.")
-      }),
-    )
-    .api_route(
-      "/api/openapi.json",
-      get_with(openapi, |op| op.id("openapi").description("This OpenAPI document.")),
-    )
     .api_route(
       "/api/version",
       get_with(version, |op| op.id("version").description("Version of TreeTime.")),
@@ -306,8 +265,8 @@ fn timed_routes() -> ApiRouter<Arc<AppState>> {
         op.id("events").description(
           "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, \
            either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now \
-           on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server \
-           no longer keeps that event or the event is from a previous server, the stream starts with a `resync` \
+           on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end \
+           no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` \
            event instead.",
         )
       }),
@@ -326,26 +285,20 @@ fn timed_routes() -> ApiRouter<Arc<AppState>> {
           .description("Zip archive of the run's `out/` folder.")
       }),
     )
-}
-
-async fn health() -> ApiJson<HealthStatus> {
-  ApiJson(HealthStatus {
-    status: HEALTH_STATUS.to_owned(),
-    version: version_info().version.to_owned(),
-  })
-}
-
-/// Liveness of the server.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-struct HealthStatus {
-  /// Always `ok`.
-  status: String,
-  /// Version of TreeTime.
-  version: String,
-}
-
-async fn openapi(State(state): State<Arc<AppState>>) -> axum::Json<Value> {
-  axum::Json(state.openapi.clone())
+    .api_route(
+      "/api/runs/{id}/inputs/{name}",
+      put_with(runs_upload_input, |op| {
+        op.id("runsUploadInput")
+          .description(
+            "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
+             for it in the run's configuration.",
+          )
+          .response_with::<413, AppError, _>(|response| {
+            response.description("The inputs of the run exceed the upload limit")
+          })
+      })
+      .layer(DefaultBodyLimit::disable()),
+    )
 }
 
 async fn version(State(state): State<Arc<AppState>>) -> Result<ApiJson<VersionInfo>, AppError> {
@@ -436,34 +389,24 @@ async fn runs_files(
 async fn runs_results(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-  headers: HeaderMap,
-) -> Result<Revalidated<ApiJson<RunResults>>, AppError> {
-  revalidated(&state, &headers, vec![id.clone()], move |service| {
-    service.run_results(&id)
-  })
-  .await
+) -> Result<ApiJson<RunResults>, AppError> {
+  call(&state, move |service| service.run_results(&id)).await.map(ApiJson)
 }
 
 async fn runs_auspice(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-  headers: HeaderMap,
-) -> Result<Revalidated<ApiJson<AuspiceDocument>>, AppError> {
-  revalidated(&state, &headers, vec![id.clone()], move |service| {
-    service.run_auspice(&id)
-  })
-  .await
+) -> Result<ApiJson<AuspiceDocument>, AppError> {
+  call(&state, move |service| service.run_auspice(&id)).await.map(ApiJson)
 }
 
 async fn runs_compare(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPairPath { id, other }): ApiPath<RunPairPath>,
-  headers: HeaderMap,
-) -> Result<Revalidated<ApiJson<RunComparison>>, AppError> {
-  revalidated(&state, &headers, vec![id.clone(), other.clone()], move |service| {
-    service.compare_runs(&id, &other)
-  })
-  .await
+) -> Result<ApiJson<RunComparison>, AppError> {
+  call(&state, move |service| service.compare_runs(&id, &other))
+    .await
+    .map(ApiJson)
 }
 
 /// Path of two runs.
@@ -617,32 +560,6 @@ pub(crate) struct RunPath {
   pub(crate) id: JobId,
 }
 
-async fn revalidated<T, F>(
-  state: &AppState,
-  headers: &HeaderMap,
-  ids: Vec<JobId>,
-  operation: F,
-) -> Result<Revalidated<ApiJson<T>>, AppError>
-where
-  T: Send + 'static,
-  F: FnOnce(&AppService) -> Result<T, Report> + Send + 'static,
-{
-  let instance = state.instance;
-  let tag = call(state, move |service| {
-    let records = ids
-      .iter()
-      .map(|id| service.runs().get(id))
-      .try_collect::<_, Vec<_>, _>()?;
-    finished_runs_tag(instance, &records)
-  })
-  .await?;
-  if let Some(tag) = tag.clone().filter(|tag| is_unchanged(headers, Some(tag))) {
-    return Ok(Revalidated::Unchanged(tag));
-  }
-  let value = call(state, operation).await?;
-  Ok(Revalidated::Fresh(tag, ApiJson(value)))
-}
-
 async fn call<T, F>(state: &AppState, operation: F) -> Result<T, AppError>
 where
   T: Send + 'static,
@@ -661,14 +578,4 @@ async fn method_not_allowed(method: Method, uri: Uri) -> Response {
     ErrorCode::MethodNotAllowed,
     format!("the API path `{}` does not accept `{method}` requests", uri.path()),
   )
-}
-
-fn instance_id() -> Result<u64, Report> {
-  let mut hasher = DefaultHasher::new();
-  SystemTime::now()
-    .duration_since(UNIX_EPOCH)?
-    .as_nanos()
-    .hash(&mut hasher);
-  process::id().hash(&mut hasher);
-  Ok(hasher.finish())
 }

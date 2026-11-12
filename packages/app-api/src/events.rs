@@ -6,11 +6,8 @@ use app_backend::runs::app_events::AppEvent;
 use app_backend::runs::events::RunEvent;
 use axum::response::sse::Event;
 use deser::Serialize;
-use std::convert;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_stream::{Stream, StreamExt as _};
-use tokio_util::sync::CancellationToken;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[expect(
@@ -24,8 +21,7 @@ pub(crate) fn run_events_sse(state: &AppState, id: &JobId, from: u64) -> Result<
     from,
     Box::new(move |event: &RunEvent| tx.send(event.clone()).is_ok()),
   )?;
-  let events = until_shutdown(UnboundedReceiverStream::new(rx), state.config.shutdown.clone());
-  Ok(TypedSse::new(events, run_sse_event))
+  Ok(TypedSse::new(UnboundedReceiverStream::new(rx), run_sse_event))
 }
 
 #[expect(
@@ -38,22 +34,7 @@ pub(crate) fn app_events_sse(state: &AppState, from: Option<u64>) -> TypedSse<Ap
     .runs
     .app_events()
     .subscribe(from, Box::new(move |event: &AppEvent| tx.send(event.clone()).is_ok()));
-  let events = until_shutdown(UnboundedReceiverStream::new(rx), state.config.shutdown.clone());
-  TypedSse::new(events, app_sse_event)
-}
-
-fn until_shutdown<T: Send + 'static>(
-  items: impl Stream<Item = T> + Send + 'static,
-  shutdown: CancellationToken,
-) -> impl Stream<Item = T> + Send + 'static {
-  let stop = tokio_stream::once(())
-    .then(move |()| shutdown.clone().cancelled_owned())
-    .map(|()| None);
-  items
-    .map(Some)
-    .chain(tokio_stream::once(None))
-    .merge(stop)
-    .map_while(convert::identity)
+  TypedSse::new(UnboundedReceiverStream::new(rx), app_sse_event)
 }
 
 fn run_sse_event(event: &RunEvent) -> Event {

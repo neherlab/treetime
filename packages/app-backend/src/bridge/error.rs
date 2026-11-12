@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use std::any::Any;
 use treetime_utils::error::{ReportChain, panic_message};
 
-/// Error of a back-end operation, as the web server and the desktop back end report it.
+/// Error of a back-end operation, as the API routes report it.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ErrorResponse {
   /// Class of the error.
@@ -36,7 +36,7 @@ impl ErrorResponse {
   }
 }
 
-/// Class of a back-end error. The web server answers each class with its own HTTP status.
+/// Class of a back-end error. The API routes answer each class with its own HTTP status.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "snake_case")]
 #[deser(rename_all = "snake_case")]
@@ -51,10 +51,6 @@ pub enum ErrorCode {
   InvalidRequest,
   /// The path exists, but not for the request's method.
   MethodNotAllowed,
-  /// The server does not answer requests for the host the request names.
-  Forbidden,
-  /// The server did not finish the request in time.
-  Timeout,
   /// The back end failed.
   InternalError,
 }

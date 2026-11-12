@@ -6,10 +6,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
 
-  const OPEN_SCHEMAS_ALLOWED: &[&str] = &[
-    "#/components/schemas/AuspiceDocument",
-    "#/paths/~1api~1openapi.json/get/responses/200/content/application~1json/schema",
-  ];
+  const OPEN_SCHEMAS_ALLOWED: &[&str] = &["#/components/schemas/AuspiceDocument"];
 
   #[test]
   fn test_openapi_contract_no_schema_is_open() {

@@ -12,9 +12,6 @@
 [app_output]
 "reimplemented_helper:packages/app-output/src/__tests__/test_tree_output.rs" = 4
 
-[app_server]
-"parallel_vecs:packages/app-server/src/commands/timetree.rs" = 1
-
 [treetime]
 "bare_bool_args:packages/treetime/src/mugration/__tests__/test_run.rs" = 1
 "derived_field:packages/treetime/src/optimize/pipeline.rs" = 1

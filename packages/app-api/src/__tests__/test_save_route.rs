@@ -125,11 +125,11 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_save_route_is_absent_from_a_server_without_local_settings() {
-    let server = app();
+  async fn test_save_route_is_absent_from_the_public_router() {
+    let public = app();
     let target = tempdir().unwrap();
     let (status, error) = request(
-      &server,
+      &public,
       "POST",
       "/api/runs/missing/save",
       Some(json!({ "destination": target.path().join("run.zip") })),
@@ -153,22 +153,15 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_routes::tests::helpers::{TestApp, events_of, local_routers};
+    use crate::routes::LocalRouters;
+    use app_backend::app_paths::AppFolderEnv;
     use app_backend::examples_download::ExampleDownloads;
-
-    const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
-
-    use crate::__tests__::test_routes::tests::helpers::{TestApp, events_of};
-    use crate::routes::{LocalRouters, local_api_routers};
-    use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig, server_service};
-    use app_backend::app_paths::{AppFolderEnv, AppPaths};
-    use app_backend::app_settings::settings::AppPathSettings;
-    use app_backend::app_settings::store::AppSettingsStore;
-    use app_backend::bridge::executor::ThreadExecutor;
     use axum::Router;
     use serde_json::json;
-    use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
-    use tokio_util::sync::CancellationToken;
+
+    const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
 
     pub(super) struct LocalApp {
       pub app: TestApp,
@@ -198,27 +191,12 @@ mod tests {
     fn local_app(router: impl FnOnce(LocalRouters) -> Router) -> LocalApp {
       let dir = tempdir().unwrap();
       let runs_dir = tempdir().unwrap();
-      let paths = AppPaths::resolve(
+      let routers = local_routers(
         dir.path(),
+        runs_dir.path(),
         &AppFolderEnv::default(),
-        &AppPathSettings {
-          runs: Some(runs_dir.path().to_path_buf()),
-          ..AppPathSettings::default()
-        },
+        ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples")),
       );
-      let config = ServerConfig {
-        runs_dir: paths.runs.path.clone(),
-        max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-        max_grid_points: None,
-        shutdown: CancellationToken::new(),
-        settings: Some(LocalSettings {
-          store: Arc::new(AppSettingsStore::open(dir.path()).unwrap()),
-          paths,
-          runs_error: None,
-          examples: Arc::new(ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples"))),
-        }),
-      };
-      let routers = local_api_routers(server_service(&config, Arc::new(ThreadExecutor)).unwrap(), config).unwrap();
       LocalApp {
         app: TestApp {
           router: router(routers),
