@@ -16,7 +16,7 @@ use app_backend::bridge::service::AppService;
 use app_backend::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_backend::check_inputs::{CheckInputsRequest, InputFacts};
 use app_backend::clock_preview::{ClockPreview, ClockPreviewRequest};
-use app_backend::file_kinds::{FileKinds, FileKindsRequest};
+use app_backend::file_kinds::{FileHeadsRequest, FileKinds, FileKindsRequest, FileRoles, file_roles};
 use app_backend::job::JobId;
 use app_backend::results::auspice::AuspiceDocument;
 use app_backend::results::clades::{CladeInRuns, CladeRequest};
@@ -185,6 +185,15 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         op.id("fileKinds").description(
           "The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with \
            the readers the commands use, or `unknown` with the reason.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/file-roles",
+      post_with(opened_file_roles, |op| {
+        op.id("fileRoles").description(
+          "What the app does with each file that the user opened, from the first bytes of the file and before any \
+           upload: import it as a run package, load it as a configuration, or read it as an input.",
         )
       }),
     )
@@ -402,6 +411,10 @@ async fn file_kinds(
   call(&state, move |service| service.file_kinds(&request))
     .await
     .map(ApiJson)
+}
+
+async fn opened_file_roles(ApiJson(request): ApiJson<FileHeadsRequest>) -> Result<ApiJson<FileRoles>, AppError> {
+  run_blocking(move || Ok(file_roles(&request))).await.map(ApiJson)
 }
 
 async fn clock_preview(

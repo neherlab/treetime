@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::file_kinds::{DetectedFile, FileKind, FileKindsRequest, file_kinds};
+  use crate::file_kinds::{
+    DetectedFile, FileHead, FileHeadsRequest, FileKind, FileKindsRequest, FileRole, file_kinds, file_roles,
+  };
   use app_commands::command::AppCommand;
   use app_datasets::schema_directive;
   use helpers::{PackageWriter, kind_of, run_package, zip_with};
@@ -173,6 +175,29 @@ mod tests {
         .map(|file| (file.path, file.kind))
         .collect::<Vec<_>>()
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::local_file_header(   "PK\u{3}\u{4}\u{14}\u{0}",                  false, FileRole::RunPackage)]
+  #[case::empty_archive(       "PK\u{5}\u{6}",                              true,  FileRole::RunPackage)]
+  #[case::configuration(       "method_anc: marginal\ntree: tree.nwk\n",      true,  FileRole::Configuration)]
+  #[case::cut_configuration(   "method_anc: marginal\ntree: tree.nwk\n",      false, FileRole::Input)]
+  #[case::cli_only_config(     "attribute: country\nstates: states.tsv\n",    true,  FileRole::Input)]
+  #[case::alignment(           ">A\nACGT\n>B\nACGA\n",                       true,  FileRole::Input)]
+  #[case::tree(                "((A:1,B:1):1,C:1);\n",                         true,  FileRole::Input)]
+  #[case::metadata(            "strain\tdate\nA\t2020-01-01\n",               true,  FileRole::Input)]
+  #[case::auspice_json(        "{\"version\": \"v2\", \"tree\": {}}",         true,  FileRole::Input)]
+  #[trace]
+  fn test_file_roles_tell_packages_and_configurations_from_inputs_by_their_first_bytes(
+    #[case] head: &str,
+    #[case] complete: bool,
+    #[case] expected: FileRole,
+  ) {
+    let roles = file_roles(&FileHeadsRequest {
+      files: vec![FileHead { head: o!(head), complete }],
+    });
+    assert_eq!(vec![expected], roles.files);
   }
 
   mod helpers {

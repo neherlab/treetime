@@ -551,6 +551,26 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_file_roles_sort_opened_files_before_any_upload() {
+    let test = app();
+    let (status, roles) = request(
+      &test,
+      "POST",
+      "/api/file-roles",
+      Some(json!({ "files": [
+        { "head": "PK\u{3}\u{4}", "complete": false },
+        { "head": "tree: tree.nwk\nclock_filter: 4\n", "complete": true },
+        { "head": ">A\nACGT\n", "complete": true },
+      ] })),
+    )
+    .await;
+    assert_eq!(
+      (200, json!({ "files": ["run-package", "configuration", "input"] })),
+      (status, roles)
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_file_kinds_rejects_paths_outside_the_run_uploads() {
     let test = app();
     let (status, body) = request(

@@ -42,6 +42,12 @@ pub fn file_kinds(request: &FileKindsRequest) -> FileKinds {
   }
 }
 
+pub fn file_roles(request: &FileHeadsRequest) -> FileRoles {
+  FileRoles {
+    files: request.files.iter().map(file_role).collect(),
+  }
+}
+
 /// Files to identify by their content, for example files that the user dropped without naming the input they fill.
 #[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(deny_unknown_fields)]
@@ -72,6 +78,47 @@ pub struct DetectedFile {
   pub commands: Vec<AppCommand>,
   /// Why no reader reads the file, for an `unknown` file.
   pub reason: Option<String>,
+}
+
+/// The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+/// any upload.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
+pub struct FileHeadsRequest {
+  /// One entry per file.
+  pub files: Vec<FileHead>,
+}
+
+/// The first bytes of one file.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
+pub struct FileHead {
+  /// The first bytes of the file as text, with each byte sequence that is not UTF-8 replaced.
+  pub head: String,
+  /// Whether `head` holds the whole file.
+  pub complete: bool,
+}
+
+/// What TreeTime does with each file of a request, in the order of the request.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+pub struct FileRoles {
+  /// One entry per file of the request.
+  pub files: Vec<FileRole>,
+}
+
+/// What TreeTime does with a file that the user opened.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum FileRole {
+  /// A zip archive, imported as a run package; the import reads and checks the whole package.
+  RunPackage,
+  /// A configuration of an analysis that the app runs, loaded into the form.
+  Configuration,
+  /// Any other file, read as an input of the analysis.
+  Input,
 }
 
 /// Kind of a file.
@@ -115,6 +162,19 @@ impl FileKind {
       Self::RunPackage => RUN_PACKAGE_EXTENSIONS.to_vec(),
       Self::Unknown => vec![],
     }
+  }
+}
+
+fn file_role(file: &FileHead) -> FileRole {
+  if ZIP_SIGNATURES
+    .iter()
+    .any(|signature| file.head.as_bytes().starts_with(signature))
+  {
+    FileRole::RunPackage
+  } else if file.complete && configuration_text_commands(&file.head).is_ok() {
+    FileRole::Configuration
+  } else {
+    FileRole::Input
   }
 }
 
@@ -255,7 +315,11 @@ fn configuration_commands(path: &Path) -> Result<Vec<AppCommand>, Report> {
       .wrap_err("When reading the file as text")?;
     Ok(text)
   })?;
-  if let Some(name) = text_schema_command(&text) {
+  configuration_text_commands(&text)
+}
+
+fn configuration_text_commands(text: &str) -> Result<Vec<AppCommand>, Report> {
+  if let Some(name) = text_schema_command(text) {
     let command = AppCommand::iter()
       .find(|command| <&str>::from(*command) == name)
       .ok_or_else(|| make_report!("the schema directive names `{name}`, which is not a command of TreeTime"))?;
@@ -264,7 +328,7 @@ fn configuration_commands(path: &Path) -> Result<Vec<AppCommand>, Report> {
     }
     return Ok(vec![command]);
   }
-  let Value::Object(settings) = yaml_value_read_str(&text)? else {
+  let Value::Object(settings) = yaml_value_read_str(text)? else {
     return make_error!("the document is not a mapping of settings");
   };
   let keys: BTreeSet<&str> = settings.keys().map(String::as_str).collect();
