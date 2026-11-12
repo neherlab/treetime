@@ -5,7 +5,7 @@ import { Kbd } from "@neherlab/design/ui/kbd";
 import { Spinner } from "@neherlab/design/ui/spinner";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { Link } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { use, useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import CircleAlert from "~icons/lucide/circle-alert";
 import CircleCheck from "~icons/lucide/circle-check";
@@ -15,7 +15,10 @@ import OctagonX from "~icons/lucide/octagon-x";
 import Play from "~icons/lucide/play";
 
 import { RUN_HOTKEY } from "../hotkeys";
+import { commandSettings } from "../settings/catalog";
+import { useDraftStore } from "../store/draft";
 import { toFormValue, type FormConfig } from "./formValues";
+import { WorkspaceContext } from "./workspaceContext";
 
 const LEVEL_ICON: Record<CheckLevel, React.ReactNode> = {
   block: <OctagonX aria-label="Blocks the run" className="text-destructive size-4" />,
@@ -70,7 +73,7 @@ export function RunFooter({
         <CollapsibleContent>
           <ul className="grid max-h-56 gap-1.5 overflow-y-auto overscroll-contain">
             {findings.map((check) => (
-              <CheckItem key={check.id} check={check} />
+              <CheckItem key={check.id} check={check} locate />
             ))}
           </ul>
         </CollapsibleContent>
@@ -136,9 +139,16 @@ function CheckSummary({ checking, first }: { checking: boolean; first: RunCheck 
   );
 }
 
-export function CheckItem({ check }: { check: RunCheck }) {
+export function CheckItem({ check, locate = false }: { check: RunCheck; locate?: boolean }) {
   const { setValue } = useFormContext<FormConfig>();
+  const command = use(WorkspaceContext)?.command;
   const fix = check.fix ?? null;
+  const [first] = check.settings;
+
+  const target =
+    locate && command !== undefined && first !== undefined
+      ? commandSettings(command).settings.find((spec) => spec.key === first)
+      : undefined;
 
   const apply = useCallback(() => {
     for (const setting of fix?.patch ?? []) {
@@ -149,15 +159,31 @@ export function CheckItem({ check }: { check: RunCheck }) {
     }
   }, [fix, setValue]);
 
+  const show = useCallback(() => {
+    if (target !== undefined) {
+      useDraftStore.getState().focusSetting(target.key);
+    }
+  }, [target]);
+
   return (
     <li className="grid grid-cols-[1.125rem_1fr] items-start gap-1.5">
       <span className="mt-0.5">{LEVEL_ICON[check.level]}</span>
       <span>{check.text}</span>
-      {fix !== null && (
-        <Button type="button" variant="outline" size="sm" className="col-start-2 justify-self-start" onClick={apply}>
-          {fix.label}
-        </Button>
+      {(fix !== null || target !== undefined) && (
+        <div className="col-start-2 flex flex-wrap items-center gap-1.5">
+          {fix !== null && (
+            <Button type="button" variant="outline" size="sm" onClick={apply}>
+              {fix.label}
+            </Button>
+          )}
+          {target !== undefined && (
+            <Button type="button" variant="ghost" size="sm" onClick={show}>
+              Show {target.label}
+            </Button>
+          )}
+        </div>
       )}
     </li>
   );
 }
+

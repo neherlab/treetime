@@ -12,5 +12,6 @@ export function blankDraftState(command: AppCommand) {
     selections: {},
     uploadRunCreation: undefined,
     busyRuns: [],
+    focus: undefined,
   };
 }

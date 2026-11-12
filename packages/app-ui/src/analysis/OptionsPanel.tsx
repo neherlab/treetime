@@ -24,6 +24,7 @@ import { type DetectedFact, detectedFacts } from "./detectedFacts";
 import { InputsSection } from "./InputsSection";
 import { MainSettings } from "./MainSettings";
 import { SettingControl } from "./SettingControl";
+import { useSettingFocus } from "./settingFocus";
 import { AllSettingsPanel } from "./SettingsPanel";
 
 const ANALYSES = COMMANDS.map(({ command, title }) => ({ value: command, label: title }));
@@ -46,6 +47,8 @@ export function OptionsPanel({
   effective: readonly EffectiveValue[] | undefined;
 }) {
   const changed = changedSpecs(commandSettings(command).settings, config).length;
+
+  useSettingFocus();
 
   return (
     <div className="grid gap-5 px-4 pt-3 pb-5">

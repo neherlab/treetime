@@ -24,6 +24,12 @@ interface DraftState {
   selections: Readonly<Record<string, symbol>>;
   uploadRunCreation: Promise<JobId> | undefined;
   busyRuns: readonly JobId[];
+  focus: SettingFocus | undefined;
+}
+
+export interface SettingFocus {
+  key: string;
+  token: symbol;
 }
 
 interface DraftActions {
@@ -44,6 +50,8 @@ interface DraftActions {
   leaveRun: () => void;
   discard: (reason: Exclude<DiscardReason, "replaced" | "revert">, command: AppCommand) => void;
   revertToRun: (runId: JobId, options: UiDraft) => void;
+  focusSetting: (key: string) => void;
+  clearFocus: (token: symbol) => void;
   undoDiscard: (token: symbol, shownRunId: JobId | undefined) => void;
   dropUndo: (token: symbol) => void;
   queueExamples: (examples: readonly QueuedExample[]) => void;
@@ -62,6 +70,7 @@ export const useDraftStore = create<Store>()((set) => ({
   selections: {},
   uploadRunCreation: undefined,
   busyRuns: [],
+  focus: undefined,
   load: (draft) => {
     set((state) => ({
       ...edited(state, withoutAbandonedUpload(draft, 0)),
@@ -202,6 +211,12 @@ export const useDraftStore = create<Store>()((set) => ({
       selections: {},
       uploadRunCreation: undefined,
     }));
+  },
+  focusSetting: (key) => {
+    set({ focus: { key, token: Symbol(key) } });
+  },
+  clearFocus: (token) => {
+    set((state) => (state.focus?.token === token ? { focus: undefined } : {}));
   },
   undoDiscard: (token, shownRunId) => {
     set((state) => {

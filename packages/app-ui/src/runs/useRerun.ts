@@ -20,6 +20,12 @@ export function useRerun(record: RunRecord): () => void {
 
       load(runOptionsDraft(record, settings, viewing?.parked ?? draft));
       await navigate({ to: "/new" });
+
+      const [named] = record.error?.settings ?? [];
+
+      if (named !== undefined) {
+        useDraftStore.getState().focusSetting(named);
+      }
     } catch (error: unknown) {
       toasts.add({ title: "The settings of the run cannot be loaded", description: errorMessage(error) });
     }
