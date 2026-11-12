@@ -10,6 +10,7 @@ import Upload from "~icons/lucide/upload";
 
 import { headlineText } from "../format";
 import { useHost } from "../host-context";
+import { withListKeys } from "../results/listKeys";
 import { commandSettings } from "../settings/catalog";
 import { groupRuns, newestRun, type RunGroup } from "../shell/runList";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
@@ -113,8 +114,8 @@ function DropZone() {
           </AlertTitle>
           <AlertDescription>
             <ul className="grid gap-0.5">
-              {unplaced.map(({ name, reason }) => (
-                <li key={name}>
+              {withListKeys(unplaced, ({ name }) => name).map(({ key, item: { name, reason } }) => (
+                <li key={key}>
                   <span className="font-mono text-xs">{name}</span>: {reason}
                 </li>
               ))}

@@ -3,6 +3,8 @@ import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import TriangleAlert from "~icons/lucide/triangle-alert";
 
+import { withListKeys } from "../results/listKeys";
+
 export type WarnedEstimate = "samples";
 
 const WARNED_ESTIMATES: Readonly<Record<RunWarningKind, WarnedEstimate | undefined>> = {
@@ -35,8 +37,8 @@ export function RunWarnings({ warnings }: { warnings: readonly RunWarning[] }) {
       </div>
       <CollapsibleContent>
         <ul className="bg-warning/5 border-warning/30 grid gap-2 rounded-md border px-3 py-2 text-sm">
-          {warnings.map((warning) => (
-            <li key={warning.message} className="grid gap-1">
+          {withListKeys(warnings, (warning) => warning.message).map(({ key, item: warning }) => (
+            <li key={key} className="grid gap-1">
               <p>{warning.message}</p>
               {warning.names.length > 0 && <WarningNames names={warning.names} />}
             </li>
@@ -57,8 +59,8 @@ export function WarningNames({ names }: { names: readonly string[] }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <ul className="bg-muted/50 max-h-48 overflow-auto rounded-md border px-3 py-2 font-mono text-xs">
-          {names.map((name) => (
-            <li key={name}>{name}</li>
+          {withListKeys(names, (name) => name).map(({ key, item: name }) => (
+            <li key={key}>{name}</li>
           ))}
         </ul>
       </CollapsibleContent>
