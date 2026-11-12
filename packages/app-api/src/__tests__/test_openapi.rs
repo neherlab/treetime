@@ -34,6 +34,7 @@ mod tests {
         ("RunModel", "kind"),
         ("RunRecord", "command"),
         ("SettingDifference", "kind"),
+        ("StatisticValue", "kind"),
         ("TerminalEvent", "status"),
         ("UiDraftOrigin", "kind"),
       ],

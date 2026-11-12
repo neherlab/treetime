@@ -11,6 +11,7 @@ pub mod models;
 pub mod mugration;
 pub mod mutations;
 pub mod outputs;
+pub mod regression;
 pub mod run_results;
 pub mod timetree;
 pub mod tree;

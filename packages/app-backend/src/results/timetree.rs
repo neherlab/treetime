@@ -1,5 +1,6 @@
 use crate::json_float::JsonFloat;
-use crate::results::clock::{RootToTip, has_fixed_rate, root_to_tip};
+use crate::results::clock::{RootToTip, has_fixed_rate, root_to_tip, statistics};
+use crate::results::regression::RegressionStatistic;
 use crate::results::tree::{DateInterval, ResultTree};
 use crate::results::year_date::YearDate;
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
@@ -16,11 +17,13 @@ use util_augur_node_data_json::AugurNodeDataJsonClock;
 const INTERVAL_EDGE_FRACTION: f64 = 0.05;
 
 pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetreeArgsRaw) -> TimetreeResults {
+  let root_to_tip = outputs
+    .clock_rows
+    .map(|rows| root_to_tip(outputs.tree, outputs.clock_model, rows));
   TimetreeResults {
     estimates: outputs.tree.map(|tree| timetree_estimates(tree, outputs, config)),
-    root_to_tip: outputs
-      .clock_rows
-      .map(|rows| root_to_tip(outputs.tree, outputs.clock_model, rows)),
+    statistics: statistics(outputs.clock_model, root_to_tip.as_ref()),
+    root_to_tip,
     iterations: outputs
       .trace
       .iter()
@@ -62,6 +65,9 @@ pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetree
 pub struct TimetreeResults {
   /// Estimates of the time tree; absent when the run wrote no Auspice tree.
   pub estimates: Option<TimetreeEstimates>,
+  /// Statistics of the root-to-tip regression of the final clock model in display order; empty when the run wrote no
+  /// clock model.
+  pub statistics: Vec<RegressionStatistic>,
   /// Samples and line of the final clock model; absent when the run wrote no clock regression table.
   pub root_to_tip: Option<RootToTip>,
   /// Convergence values of every iteration, from the tracelog.
