@@ -618,22 +618,12 @@ fixtures-check:
 prebuilt-libs-check:
     dev/prebuilt-libs-check
 
-# Start the web and API dev servers in the foreground until Ctrl-C
-[group("app")]
-up: _js
-    dev/app up
-
-# Build the web app and the API server for production and serve both from one port until Ctrl-C
-[group("app")]
-serve: _js
-    dev/app serve
-
-# Probe the dev servers; exits non-zero when one is absent or built from another commit
+# Probe the web2 dev server; exits non-zero when it is absent or started from another commit
 [group("app")]
 health:
     dev/app health
 
-# Resolved ports and URLs of this checkout, and what each dev server was built from
+# Resolved ports and URLs of this checkout, and what the web2 dev server was started from
 [group("app")]
 status:
     dev/app status
@@ -672,11 +662,6 @@ desktop: _js (build-napi "dev")
 [group("app")]
 desktop-prod: build-desktop
     TREETIME_PROJECT_ROOT="${PWD}" node packages/app-desktop/node_modules/electron/cli.js packages/app-desktop --enable-logging
-
-# Production build of the web app
-[group("app")]
-build-web: _js
-    bun run --silent build:web
 
 # Production build of the web2 app, with the WebAssembly back end of the dist profile; both modules compile at the same time
 [group("app")]

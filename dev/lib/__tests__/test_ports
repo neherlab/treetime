@@ -87,8 +87,8 @@ test_ports_slot_with_a_listener_is_skipped() {
 }
 
 test_ports_port_of_slot_lays_out_the_block() {
-  assert_eq "14000 14007 14010 14997" \
-    "$(port_of_slot 0 0) $(port_of_slot 0 7) $(port_of_slot 1 0) $(port_of_slot 99 7)"
+  assert_eq "14000 14004 14010 14994" \
+    "$(port_of_slot 0 0) $(port_of_slot 0 4) $(port_of_slot 1 0) $(port_of_slot 99 4)"
 }
 
 without_listeners() {
