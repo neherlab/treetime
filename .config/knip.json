@@ -29,10 +29,6 @@
         "@inlang/plugin-m-function-matcher"
       ]
     },
-    "packages/app-web": {
-      "entry": ["index.html!"],
-      "project": ["src/**/*.{ts,tsx,css}!"]
-    },
     "packages/app-web2": {
       "entry": ["index.html!", "src/backend/worker.ts!"],
       "project": ["src/**/*.{ts,tsx,css}!"]

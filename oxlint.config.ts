@@ -7,7 +7,6 @@ import { openApiEnums } from "./dev/lints/oxlint/rules/no-contract-enum-copy.ts"
 const WEB_SCOPES = [
   "packages/app-docs/src/**",
   "packages/app-ui/src/**",
-  "packages/app-web/src/**",
   "packages/app-web2/src/**",
   "packages/app-desktop/renderer/**",
   "packages/design/src/**",
@@ -29,7 +28,7 @@ export default projectConfig({
     "packages/app-wasm/pkg",
   ],
 
-  tailwind: { cwd: "packages/app-web", entryPoint: "src/index.css" },
+  tailwind: { cwd: "packages/app-web2", entryPoint: "src/index.css" },
 
   tailwindScopes: [
     {
@@ -98,7 +97,6 @@ export default projectConfig({
     { files: ["packages/app-desktop/renderer/**"], dir: "app-desktop", web: true, allow: APP_SCOPE },
     { files: ["packages/app-docs/src/**"], dir: "app-docs", web: true, allow: [] },
     { files: ["packages/app-ui/src/**"], dir: "app-ui", web: true, allow: APP_SCOPE },
-    { files: ["packages/app-web/src/**"], dir: "app-web", web: true, allow: APP_SCOPE },
     { files: ["packages/app-web2/src/**"], dir: "app-web2", web: true, allow: APP_SCOPE },
     { files: ["packages/design/src/**"], dir: "design", web: true, allow: APP_SCOPE },
   ],
@@ -166,7 +164,7 @@ export default projectConfig({
   contracts: {
     package: "@neherlab/app-contracts",
     enums: openApiEnums(readFileSync(join(import.meta.dirname, "packages/app-contracts/openapi.json"), "utf8")),
-    files: ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-web2/src/**", "packages/app-desktop/**"],
+    files: ["packages/app-ui/src/**", "packages/app-web2/src/**", "packages/app-desktop/**"],
   },
 
   overrides: [
@@ -210,7 +208,6 @@ export default projectConfig({
         "packages/app-docs/src/layouts/DocsLayout.astro",
         "packages/app-ui/src/App.tsx",
         "packages/design/src/fonts.ts",
-        "packages/app-web/src/main.tsx",
         "packages/app-web2/src/main.tsx",
         "packages/app-desktop/renderer/main.tsx",
       ],
