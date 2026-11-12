@@ -1,5 +1,10 @@
 use crate::command::AppCommandExt;
+use crate::input_detection::{
+  DateForm, DateReading, DetectedSettings, ReadDates, ReadInputs, ReadMetadata, detected_settings,
+};
+use crate::results::year_date::YearDate;
 use app_commands::command::AppCommand;
+use app_commands::commands::shared::alphabet::AlphabetNameCli;
 use app_commands::commands::shared::dates_input::date_parser_options;
 use app_commands::commands::shared::tree_input::TreeDialectArg;
 use app_commands::json_value::SparseConfig;
@@ -7,10 +12,12 @@ use chrono::Datelike;
 use deser::adapters::DisplayFromStr;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
+use std::cmp::Reverse;
 use std::collections::BTreeSet;
+use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 use treetime::alphabet::alphabet::Alphabet;
@@ -21,11 +28,13 @@ use treetime_io::nwk::NewickDialect;
 use treetime_io::tree::{TREE_EXTENSIONS, tree_read_file};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::options::DateParserOptions;
-use treetime_utils::datetime::parse_date::parse_date;
+use treetime_utils::datetime::parse_date::{DATE_FORMATS, parse_date_with_format};
 use treetime_utils::io::compression::COMPRESSION_EXTENSIONS;
 use treetime_utils::io::json::from_json_value;
 
 const ROUND_DAYS: [u32; 2] = [1, 15];
+
+const NUMERIC_DATE_YEARS: RangeInclusive<f64> = 1000.0..=3000.0;
 
 /// An input file of a command, as the form asks for it.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
@@ -83,6 +92,8 @@ pub enum InputNeed {
 }
 
 pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> {
+  let command = request.command;
+  let config = &request.config.0;
   let request = InputSettings::of(request.command, &request.config)?;
   let mut facts = InputFacts::default();
   let mut problem = |input: InputKind, alignment: Option<usize>, report: &Report| {
@@ -104,13 +115,15 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     None
   });
 
+  let alphabet_name = request.alphabet.unwrap_or_default();
+  let alphabet = Alphabet::new(alphabet_name.into())?;
   let alignments = request
     .alignment
     .iter()
     .enumerate()
     .filter_map(|(index, path)| {
       let number = index + 1;
-      match read_sequence_names(path, number) {
+      match read_sequence_names(path, number, &alphabet) {
         Ok(read) => Some(read),
         Err(report) => {
           problem(InputKind::Alignment, Some(number), &report);
@@ -149,13 +162,34 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
       None
     });
 
-  let (metadata, metadata_names, date_problem) = match metadata {
-    Some(read) => (Some(read.facts), Some(read.names), read.date_problem),
-    None => (None, None, None),
+  let (metadata, metadata_names, date_problem, read_metadata) = match metadata {
+    Some(read) => (Some(read.facts), Some(read.names), read.date_problem, Some(read.read)),
+    None => (None, None, None, None),
   };
   if let Some(report) = date_problem {
     problem(InputKind::Metadata, None, &report);
   }
+
+  let alignment_lengths = (!alignments.is_empty()
+    && alignments.len() == request.alignment.len()
+    && alignments
+      .iter()
+      .all(|(alignment, _)| alignment.min_length == alignment.max_length))
+  .then(|| {
+    alignments
+      .iter()
+      .map(|(alignment, _)| alignment.max_length)
+      .collect_vec()
+  });
+  facts.detected = detected_settings(&ReadInputs {
+    command,
+    config,
+    newick_dialect: tree.as_ref().map(|_| newick_dialect),
+    metadata: read_metadata,
+    alphabet: (!alignments.is_empty()).then_some(alphabet_name),
+    alignment_lengths,
+    sequence_length: request.sequence_length,
+  })?;
 
   let tips = tree.as_ref().map(|(_, tips)| tips);
   facts.alignments = alignments
@@ -196,6 +230,8 @@ struct InputSettings {
   metadata_delimiters: Vec<char>,
   date_column: Option<String>,
   date_format: Option<String>,
+  alphabet: Option<AlphabetNameCli>,
+  sequence_length: Option<usize>,
 }
 
 impl InputSettings {
@@ -228,6 +264,9 @@ pub struct InputFacts {
   pub metadata: Option<MetadataFacts>,
   /// Tree tips without a metadata row; present when both the tree and the metadata could be read.
   pub tips_without_metadata: Option<Vec<String>>,
+  /// What the readers used or found for each setting of how the input files are read, with the key of the setting
+  /// that overrides it.
+  pub detected: DetectedSettings,
   /// Inputs that could not be read, with the reason.
   pub problems: Vec<InputProblem>,
 }
@@ -335,8 +374,12 @@ pub struct TreeFacts {
   pub tip_names: Vec<String>,
 }
 
-fn read_sequence_names(path: &Path, number: usize) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
-  let records = fasta_read_file(path, &Alphabet::default())?;
+fn read_sequence_names(
+  path: &Path,
+  number: usize,
+  alphabet: &Alphabet,
+) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
+  let records = fasta_read_file(path, alphabet)?;
   let names = records.iter().map(|record| record.seq_name.clone()).collect_vec();
   let lengths = records
     .iter()
@@ -403,13 +446,21 @@ pub(crate) fn metadata_summary(table: MetadataTable, date_options: &DateParserOp
   } else {
     (None, None)
   };
+  let (dates, readings) = dates.unzip();
+  let date_column = table.date_column.ok();
   MetadataRead {
     names: table.rows.iter().map(|row| row.name.clone()).collect(),
+    read: ReadMetadata {
+      delimiter: table.delimiter,
+      id_column: table.id_column.clone(),
+      date_column: date_column.clone(),
+      dates: readings,
+    },
     facts: MetadataFacts {
       rows: table.rows.len(),
       columns: table.columns,
       id_column: table.id_column,
-      date_column: table.date_column.ok(),
+      date_column,
       dates,
     },
     date_problem,
@@ -419,11 +470,12 @@ pub(crate) fn metadata_summary(table: MetadataTable, date_options: &DateParserOp
 pub(crate) struct MetadataRead {
   pub(crate) facts: MetadataFacts,
   pub(crate) names: BTreeSet<String>,
+  pub(crate) read: ReadMetadata,
   pub(crate) date_problem: Option<Report>,
 }
 
 /// Facts about a metadata table.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct MetadataFacts {
@@ -443,22 +495,29 @@ pub struct MetadataFacts {
   dylint_lib = "custom",
   expect(
     result_defaulted,
-    reason = "a date that does not parse as a calendar day has no day of month to count"
+    reason = "a calendar date that the date parser read parses again in the format it matched"
   )
 )]
-fn date_facts(dates: &[(String, Option<DateConstraint>)], options: &DateParserOptions) -> DateFacts {
-  let exact_days = dates
-    .iter()
-    .filter_map(|(_, date)| {
-      let date = date.as_ref()?;
-      if !matches!(date.value, DateValue::Exact(_)) || date.raw.parse::<f64>().is_ok() {
-        return None;
-      }
-      parse_date(&date.raw, options).ok().map(|parsed| parsed.day())
+fn date_facts(dates: &[(String, Option<DateConstraint>)], options: &DateParserOptions) -> (DateFacts, ReadDates) {
+  let read = dates.iter().filter_map(|(_, date)| date.as_ref()).collect_vec();
+  let forms = read.iter().map(|date| date_reading(date, options)).collect_vec();
+  let exact_days = izip!(&read, &forms)
+    .filter_map(|(date, (form, format))| {
+      let format = format.as_deref().filter(|_| *form == DateForm::Calendar)?;
+      parse_date_with_format(&date.raw, format, options)
+        .ok()
+        .map(|parsed| parsed.day())
     })
     .collect_vec();
-  DateFacts {
-    readable: dates.iter().filter(|(_, date)| date.is_some()).count(),
+  let readings = forms
+    .into_iter()
+    .counts()
+    .into_iter()
+    .map(|((form, format), count)| DateReading { form, format, count })
+    .sorted_by_key(|reading| (Reverse(reading.count), reading.form, reading.format.clone()))
+    .collect_vec();
+  let facts = DateFacts {
+    readable: read.len(),
     unreadable: dates
       .iter()
       .filter(|(_, date)| date.is_none())
@@ -466,11 +525,61 @@ fn date_facts(dates: &[(String, Option<DateConstraint>)], options: &DateParserOp
       .collect(),
     exact_days: exact_days.len(),
     on_day_1_or_15: exact_days.iter().filter(|day| ROUND_DAYS.contains(day)).count(),
+    span: date_span(&read),
+  };
+  let summary = ReadDates {
+    readings,
+    read: read.len(),
+    rows: dates.len(),
+  };
+  (facts, summary)
+}
+
+fn date_reading(date: &DateConstraint, options: &DateParserOptions) -> (DateForm, Option<String>) {
+  match date.value {
+    DateValue::Exact(_) => {
+      let numeric = date.raw.parse::<f64>().ok().filter(|value| value.is_finite());
+      match (numeric, calendar_format(&date.raw, options)) {
+        (Some(value), _) if NUMERIC_DATE_YEARS.contains(&value) => (DateForm::Numeric, None),
+        (_, Some(format)) => (DateForm::Calendar, Some(format)),
+        (_, None) => (DateForm::Numeric, None),
+      }
+    },
+    DateValue::Uncertain(_) => (DateForm::Uncertain, None),
+    DateValue::Range(_) => (DateForm::Range, None),
   }
 }
 
+fn calendar_format(raw: &str, options: &DateParserOptions) -> Option<String> {
+  options
+    .date_format
+    .iter()
+    .map(String::as_str)
+    .chain(DATE_FORMATS.iter().copied())
+    .find(|format| parse_date_with_format(raw, format, options).is_ok())
+    .map(str::to_owned)
+}
+
+fn date_span(dates: &[&DateConstraint]) -> Option<DateSpan> {
+  let bounds = dates
+    .iter()
+    .map(|date| match date.value {
+      DateValue::Exact(exact) => (exact.value, exact.value),
+      DateValue::Uncertain(range) | DateValue::Range(range) => (range.start, range.end),
+    })
+    .collect_vec();
+  let earliest = bounds.iter().map(|(earliest, _)| *earliest).reduce(f64::min)?;
+  let latest = bounds.iter().map(|(_, latest)| *latest).reduce(f64::max)?;
+  Some(DateSpan {
+    earliest: YearDate::new(earliest),
+    latest: YearDate::new(latest),
+  })
+}
+
 /// Facts about the sampling dates of a metadata table.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct DateFacts {
   /// Samples with a date the date parser reads.
   pub readable: usize,
@@ -480,6 +589,18 @@ pub struct DateFacts {
   pub exact_days: usize,
   /// Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
   pub on_day_1_or_15: usize,
+  /// Earliest and latest sampling date that the parser read; a date range counts with its first and its last day.
+  /// Absent when no date could be read.
+  pub span: Option<DateSpan>,
+}
+
+/// The earliest and the latest of a set of dates.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+pub struct DateSpan {
+  /// The earliest date.
+  pub earliest: YearDate,
+  /// The latest date.
+  pub latest: YearDate,
 }
 
 fn missing(tips: &[String], names: &BTreeSet<String>) -> Vec<String> {

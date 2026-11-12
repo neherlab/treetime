@@ -1,12 +1,18 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{
-    AlignmentFacts, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_summary,
+    AlignmentFacts, DateFacts, DateSpan, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_summary,
   };
   use crate::command::AppCommandExt;
+  use crate::input_detection::{
+    DateForm, DateReading, DetectedAlphabet, DetectedDateFormat, DetectedDelimiter, DetectedDialect, DetectedLength,
+    DetectedPartitions, DetectedSettings, PartitionFacts, SettingOrigin,
+  };
+  use crate::results::year_date::YearDate;
   use app_commands::command::AppCommand;
+  use app_commands::commands::shared::alphabet::AlphabetNameCli;
   use app_commands::config::properties::setting_properties;
-  use helpers::{data, request};
+  use helpers::{data, detected, reading, request, span};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -18,6 +24,7 @@ mod tests {
   use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
   use treetime_io::dates_csv::metadata_read;
   use treetime_utils::datetime::options::DateParserOptions;
+  use treetime_utils::o;
 
   #[test]
   fn test_check_inputs_zika_86_tree_facts() {
@@ -51,6 +58,14 @@ mod tests {
     ))
     .unwrap();
     let alignment = facts.alignments[0].clone();
+    let dates = facts.metadata.as_ref().unwrap().dates.clone().unwrap();
+    assert_eq!(
+      Some((o!("2013-10-25"), o!("2016-07-01"))),
+      dates
+        .span
+        .as_ref()
+        .map(|span| (span.earliest.date.clone().unwrap(), span.latest.date.clone().unwrap()))
+    );
     assert_eq!(
       (
         Some(MetadataFacts {
@@ -68,6 +83,7 @@ mod tests {
             unreadable: vec![],
             exact_days: 86,
             on_day_1_or_15: 54,
+            span: dates.span,
           }),
         }),
         vec![AlignmentFacts {
@@ -120,6 +136,10 @@ mod tests {
           unreadable: vec!["C".to_owned()],
           exact_days: 3,
           on_day_1_or_15: 2,
+          span: Some(DateSpan {
+            earliest: YearDate::new(2020.0 + 0.5 / 366.0),
+            latest: YearDate::new(2020.0 + 74.5 / 366.0),
+          }),
         }),
         (3, 4),
       ),
@@ -354,8 +374,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::without_format(json!(null),         DateFacts { readable: 0, unreadable: vec!["A".to_owned()], exact_days: 0, on_day_1_or_15: 0 })]
-  #[case::with_format(   json!("%d %b %Y"),   DateFacts { readable: 1, unreadable: vec![],               exact_days: 1, on_day_1_or_15: 1 })]
+  #[case::without_format(json!(null),         DateFacts { readable: 0, unreadable: vec!["A".to_owned()], exact_days: 0, on_day_1_or_15: 0, span: None })]
+  #[case::with_format(   json!("%d %b %Y"),   DateFacts { readable: 1, unreadable: vec![],               exact_days: 1, on_day_1_or_15: 1, span: Some(span(2016.0 + 166.5 / 366.0)) })]
   #[trace]
   fn test_check_inputs_reads_dates_in_the_configured_date_format(
     #[case] date_format: serde_json::Value,
@@ -398,8 +418,235 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::iso_dates(              "zika/20",     ("name",      vec![reading(DateForm::Calendar,  Some("%Y-%m-%d"), 20)],                                                  20, 20), 10807)]
+  #[case::numeric_dates(          "ebola/20",    ("name",      vec![reading(DateForm::Numeric,   None,             20)],                                                  20, 20), 19006)]
+  #[case::numeric_dates_missing(  "flu/h3n2/20", ("name",      vec![reading(DateForm::Numeric,   None,             19)],                                                  19, 19), 1407)]
+  #[case::iso_and_uncertain(      "lassa/L/20",  ("accession", vec![reading(DateForm::Calendar,  Some("%Y-%m-%d"), 19), reading(DateForm::Uncertain, None, 1)],           20, 20), 7889)]
+  #[case::uncertain_dates(        "tb/20",       ("strain",    vec![reading(DateForm::Uncertain, None,             20)],                                                  20, 20), 216)]
+  #[case::mostly_uncertain(       "dengue/20",   ("strain",    vec![reading(DateForm::Uncertain, None,             16), reading(DateForm::Calendar, Some("%Y-%m-%d"), 4)],  20, 20), 10723)]
+  #[trace]
+  fn test_check_inputs_detects_the_data_settings_of_example_datasets(
+    #[case] dataset: &str,
+    #[case] (id_column, readings, read, rows): (&str, Vec<DateReading>, usize, usize),
+    #[case] length: usize,
+  ) {
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({
+        "tree": data(&format!("{dataset}/tree.nwk")),
+        "metadata": data(&format!("{dataset}/metadata.tsv")),
+        "alignment": [data(&format!("{dataset}/aln.fasta.xz"))],
+      }),
+    ))
+    .unwrap();
+    assert_eq!(
+      DetectedSettings {
+        newick_dialect: Some(DetectedDialect {
+          dialect: o!("classic,beast"),
+          origin: SettingOrigin::Default,
+          setting: o!("newick_dialect"),
+        }),
+        metadata_delimiter: Some(DetectedDelimiter {
+          delimiter: o!("\t"),
+          origin: SettingOrigin::Detected,
+          setting: o!("metadata_delimiters"),
+        }),
+        id_column: Some(detected(id_column, SettingOrigin::Detected, "metadata_id_columns")),
+        date_column: Some(detected("date", SettingOrigin::Detected, "date_column")),
+        date_format: Some(DetectedDateFormat {
+          readings,
+          read,
+          rows,
+          origin: SettingOrigin::Detected,
+          setting: o!("date_format"),
+        }),
+        alphabet: Some(DetectedAlphabet {
+          alphabet: AlphabetNameCli::Nuc,
+          origin: SettingOrigin::Default,
+          setting: o!("alphabet"),
+        }),
+        sequence_length: Some(DetectedLength {
+          length,
+          origin: SettingOrigin::Detected,
+          setting: o!("alignment"),
+        }),
+        partitions: Some(DetectedPartitions {
+          partitions: vec![PartitionFacts {
+            label: o!("partition 1"),
+            alignment: 1,
+            sites: length,
+            model: o!("infer"),
+          }],
+          origin: SettingOrigin::Default,
+          setting: o!("partition"),
+        }),
+      },
+      facts.detected
+    );
+  }
+
+  #[test]
+  fn test_check_inputs_detected_settings_name_the_settings_that_set_them() {
+    let dir = tempdir().unwrap();
+    let tree = dir.path().join("tree.nwk");
+    let metadata = dir.path().join("metadata.txt");
+    let aln = dir.path().join("aln.fasta");
+    fs::write(&tree, "((A:1,B:1):1,C:1);\n").unwrap();
+    fs::write(
+      &metadata,
+      "id;country;sampled\nA;usa;15 Jun 2016\nB;peru;2016.5\nC;chile;2016-06-15\n",
+    )
+    .unwrap();
+    fs::write(&aln, ">A\nMKVL\n>B\nMKVI\n>C\nMRVL\n").unwrap();
+
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({
+        "tree": tree,
+        "metadata": metadata,
+        "alignment": [aln],
+        "newick_dialect": "classic,nhx",
+        "metadata_delimiters": [";"],
+        "metadata_id_columns": ["id"],
+        "date_column": "sampled",
+        "date_format": "%d %b %Y",
+        "alphabet": "aa",
+        "partition": [{ "name": "start", "sites": ["1-2"] }, { "name": "end" }],
+      }),
+    ))
+    .unwrap();
+
+    assert_eq!(
+      (
+        vec![],
+        DetectedSettings {
+          newick_dialect: Some(DetectedDialect {
+            dialect: o!("classic,nhx"),
+            origin: SettingOrigin::Setting,
+            setting: o!("newick_dialect"),
+          }),
+          metadata_delimiter: Some(DetectedDelimiter {
+            delimiter: o!(";"),
+            origin: SettingOrigin::Setting,
+            setting: o!("metadata_delimiters"),
+          }),
+          id_column: Some(detected("id", SettingOrigin::Setting, "metadata_id_columns")),
+          date_column: Some(detected("sampled", SettingOrigin::Setting, "date_column")),
+          date_format: Some(DetectedDateFormat {
+            readings: vec![
+              reading(DateForm::Numeric, None, 1),
+              reading(DateForm::Calendar, Some("%Y-%m-%d"), 1),
+              reading(DateForm::Calendar, Some("%d %b %Y"), 1),
+            ],
+            read: 3,
+            rows: 3,
+            origin: SettingOrigin::Setting,
+            setting: o!("date_format"),
+          }),
+          alphabet: Some(DetectedAlphabet {
+            alphabet: AlphabetNameCli::Aa,
+            origin: SettingOrigin::Setting,
+            setting: o!("alphabet"),
+          }),
+          sequence_length: Some(DetectedLength {
+            length: 4,
+            origin: SettingOrigin::Detected,
+            setting: o!("alignment"),
+          }),
+          partitions: Some(DetectedPartitions {
+            partitions: vec![
+              PartitionFacts {
+                label: o!("partition 1 'start'"),
+                alignment: 1,
+                sites: 2,
+                model: o!("infer"),
+              },
+              PartitionFacts {
+                label: o!("partition 2 'end'"),
+                alignment: 1,
+                sites: 2,
+                model: o!("infer"),
+              },
+            ],
+            origin: SettingOrigin::Setting,
+            setting: o!("partition"),
+          }),
+        },
+      ),
+      (
+        facts
+          .problems
+          .iter()
+          .map(|problem| problem.message.clone())
+          .collect::<Vec<_>>(),
+        facts.detected
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_inputs_sequence_length_without_alignment_comes_from_its_setting() {
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({ "tree": data("zika/20/tree.nwk"), "sequence_length": 10807 }),
+    ))
+    .unwrap();
+    assert_eq!(
+      (
+        Some(DetectedLength {
+          length: 10807,
+          origin: SettingOrigin::Setting,
+          setting: o!("sequence_length"),
+        }),
+        None,
+        None,
+      ),
+      (
+        facts.detected.sequence_length,
+        facts.detected.alphabet,
+        facts.detected.partitions
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_inputs_detects_only_the_settings_of_the_command() {
+    let facts = check_inputs(&request(
+      AppCommand::Clock,
+      json!({ "tree": data("zika/20/tree.nwk"), "metadata": data("zika/20/metadata.tsv") }),
+    ))
+    .unwrap();
+    assert_eq!(
+      (true, true, true, None, None, None),
+      (
+        facts.detected.newick_dialect.is_some(),
+        facts.detected.id_column.is_some(),
+        facts.detected.date_format.is_some(),
+        facts.detected.alphabet,
+        facts.detected.sequence_length,
+        facts.detected.partitions,
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_inputs_unaligned_sequences_have_no_sequence_length() {
+    let dir = tempdir().unwrap();
+    let aln = dir.path().join("aln.fasta");
+    fs::write(&aln, ">A\nACGT\n>B\nACG\n").unwrap();
+    let facts = check_inputs(&request(AppCommand::Ancestral, json!({ "alignment": [aln] }))).unwrap();
+    assert_eq!(
+      (None, None),
+      (facts.detected.sequence_length, facts.detected.partitions)
+    );
+  }
+
   mod helpers {
-    use crate::check_inputs::CheckInputsRequest;
+    use crate::check_inputs::{CheckInputsRequest, DateSpan};
+    use crate::input_detection::{DateForm, DateReading, DetectedColumn, SettingOrigin};
+    use crate::results::year_date::YearDate;
     use app_commands::command::AppCommand;
     use app_commands::json_value::SparseConfig;
     use serde_json::Value;
@@ -407,6 +654,29 @@ mod tests {
 
     pub(super) fn data(path: &str) -> PathBuf {
       Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data").join(path)
+    }
+
+    pub(super) fn span(year: f64) -> DateSpan {
+      DateSpan {
+        earliest: YearDate::new(year),
+        latest: YearDate::new(year),
+      }
+    }
+
+    pub(super) fn reading(form: DateForm, format: Option<&str>, count: usize) -> DateReading {
+      DateReading {
+        form,
+        format: format.map(str::to_owned),
+        count,
+      }
+    }
+
+    pub(super) fn detected(column: &str, origin: SettingOrigin, setting: &str) -> DetectedColumn {
+      DetectedColumn {
+        column: column.to_owned(),
+        origin,
+        setting: setting.to_owned(),
+      }
     }
 
     pub(super) fn request(command: AppCommand, config: Value) -> CheckInputsRequest {

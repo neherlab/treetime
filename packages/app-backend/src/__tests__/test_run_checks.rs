@@ -782,6 +782,7 @@ mod tests {
         unreadable,
         exact_days,
         on_day_1_or_15,
+        span: None,
       }
     }
   }
