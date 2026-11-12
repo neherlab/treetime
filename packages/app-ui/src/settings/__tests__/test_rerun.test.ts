@@ -72,6 +72,16 @@ describe("edit and run again", () => {
     expect(draft.config["allow_negative_rate"]).toStrictEqual(DEFAULT_CLOCK_CONFIG["allow_negative_rate"]);
   });
 
+  test("keeps the seed that a time tree run drew, so the new run repeats its random step", () => {
+    const record: RunRecord = { ...RECORD, command: "timetree", seed: 4_242, changed_settings: [] };
+
+    expect(rerunDraft(record, { tree: "/runs/.inputs/a/tree.nwk" }).config["seed"]).toBe(4_242);
+  });
+
+  test("leaves the seed out for a command without a random step", () => {
+    expect(rerunDraft({ ...RECORD, seed: 4_242 }, SETTINGS).config["seed"]).toBeUndefined();
+  });
+
   test("the original record is not changed", () => {
     const before = JSON.stringify(RECORD);
     rerunDraft(RECORD, SETTINGS);
