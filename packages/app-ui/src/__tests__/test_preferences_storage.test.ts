@@ -25,6 +25,14 @@ describe("preferences storage browser", () => {
     await expect(tab.reload().load()).resolves.toStrictEqual({ sidebar_width: 420, draft });
   });
 
+  test("the width of the options panel loads back in a new tab", async () => {
+    const browser = new Browser();
+
+    await browser.tab().save({ options_width: 512, draft });
+
+    await expect(browser.tab().load()).resolves.toStrictEqual({ options_width: 512 });
+  });
+
   test("the theme is not stored, because next-themes stores it and keeps the tabs in step", async () => {
     const browser = new Browser();
 

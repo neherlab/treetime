@@ -1,47 +1,29 @@
 import type { JobId, RunRecord, SparseConfig } from "@neherlab/app-contracts";
-import { runsGet, runsSettings } from "@neherlab/app-contracts/client";
 import { useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { useApi } from "../api/hooks";
-import { LoadingState } from "../components/PageShell";
 import { useDraftStore } from "../store/draft";
 import { ownDraft, runOptionsDraft } from "../store/draftRules";
 import { DraftForm } from "./DraftForm";
+import { useShownRunSettings } from "./shownRun";
 
 export function WorkspaceRoute() {
   const { id: shownRunId } = useParams({ strict: false });
   const pending = useShownRunOptions(shownRunId);
   const command = useDraftStore((state) => state.draft.command);
-  const epoch = useDraftStore((state) => state.epoch);
 
-  if (pending) {
-    return <LoadingState text="Loading the options of the run" />;
-  }
-
-  return <DraftForm key={`${command}:${epoch}:${shownRunId ?? "new"}`} command={command} shownRunId={shownRunId} />;
+  return <DraftForm command={command} shownRunId={shownRunId} pending={pending} />;
 }
 
 function useShownRunOptions(shownRunId: JobId | undefined): boolean {
-  const enabled = shownRunId !== undefined;
-  const id = shownRunId ?? "";
-
-  const { data: record, error: recordError } = useApi((context) => runsGet({ ...context, path: { id } }), {
-    enabled,
-  });
-
-  const { data: settings, error: settingsError } = useApi((context) => runsSettings({ ...context, path: { id } }), {
-    enabled,
-    staleTime: Infinity,
-  });
-
+  const { record, settings } = useShownRunSettings(shownRunId);
   const lastShown = useDraftStore((state) => state.lastShown);
 
   useEffect(() => {
-    showRunOptions(shownRunId, record, settings);
-  }, [record, settings, shownRunId]);
+    showRunOptions(shownRunId, record.data, settings.data);
+  }, [record.data, settings.data, shownRunId]);
 
-  return enabled && lastShown !== shownRunId && recordError === null && settingsError === null;
+  return shownRunId !== undefined && lastShown !== shownRunId && record.error === null && settings.error === null;
 }
 
 function showRunOptions(
@@ -62,6 +44,10 @@ function showRunOptions(
   }
 
   const options = runOptionsDraft(record, settings, ownDraft(store));
+
+  if (options === undefined) {
+    return;
+  }
 
   if (store.lastShown === shownRunId) {
     store.refreshView(shownRunId, options);

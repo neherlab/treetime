@@ -11,6 +11,8 @@ import {
 } from "@neherlab/design/ui/dropdown-menu";
 import { Kbd } from "@neherlab/design/ui/kbd";
 import { toast } from "@neherlab/design/ui/toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
+import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { DateTime } from "luxon";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -50,16 +52,23 @@ export function OptionsMenu({ command, onCommandLine }: { command: AppCommand; o
     <>
       <input {...getInputProps()} aria-label="YAML config to load" />
       <DropdownMenu>
-        <DropdownMenuTrigger
-          render={<Button type="button" variant="ghost" size="icon-sm" />}
-          aria-label="More options actions"
-        >
-          <Ellipsis aria-hidden />
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <DropdownMenuTrigger
+                render={<Button type="button" variant="ghost" size="icon-sm" />}
+                aria-label="More options actions"
+              />
+            }
+          >
+            <Ellipsis aria-hidden />
+          </TooltipTrigger>
+          <TooltipContent>More options actions</TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuItem onClick={onCommandLine} className="justify-between">
             Command line
-            <Kbd>{COMMAND_LINE_HOTKEY}</Kbd>
+            <Kbd>{formatForDisplay(COMMAND_LINE_HOTKEY)}</Kbd>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={openApply}>Apply settings from a run...</DropdownMenuItem>

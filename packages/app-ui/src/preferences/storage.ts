@@ -95,8 +95,18 @@ class BrowserPreferencesStorage implements PreferencesStorage {
   }
 }
 
-function sharedPreferences({ sidebar_width: sidebarWidth }: UiSettings): UiSettings {
-  return sidebarWidth === undefined ? {} : { sidebar_width: sidebarWidth };
+function sharedPreferences({ sidebar_width: sidebarWidth, options_width: optionsWidth }: UiSettings): UiSettings {
+  const shared: UiSettings = {};
+
+  if (sidebarWidth !== undefined) {
+    shared.sidebar_width = sidebarWidth;
+  }
+
+  if (optionsWidth !== undefined) {
+    shared.options_width = optionsWidth;
+  }
+
+  return shared;
 }
 
 function assertUiSettings(value: unknown): asserts value is UiSettings {

@@ -19,7 +19,8 @@ import { commandSettings } from "../settings/catalog";
 import { useDraftStore } from "../store/draft";
 import type { DuplicateRun } from "./duplicateRun";
 import { toFormValue, type FormConfig } from "./formValues";
-import { WorkspaceContext } from "./workspaceContext";
+import { RUN_BLOCK_TEXT } from "./runAction";
+import { useWorkspace, WorkspaceContext } from "./workspaceContext";
 
 const LEVEL_ICON: Record<CheckLevel, React.ReactNode> = {
   block: <OctagonX aria-label="Blocks the run" className="text-destructive size-4" />,
@@ -31,27 +32,18 @@ export function RunFooter({
   checks,
   duplicate,
   verb,
-  onRun,
 }: {
   checks: readonly RunCheck[] | undefined;
   duplicate: DuplicateRun | undefined;
   verb: string;
-  onRun: () => void;
 }) {
-  const { isSubmitting, isValid, errors } = useFormState<FormConfig>();
+  const { errors } = useFormState<FormConfig>();
+  const { run, runBlock } = useWorkspace();
   const formError = errors.root?.message;
-  const checking = checks === undefined;
-  const blocking = checks?.some((check) => check.level === "block") ?? false;
+  const checking = runBlock === "checking";
   const findings = checks ?? [];
   const first = findings.find((check) => check.level === "block") ?? findings.at(0);
-
-  const reason = checking
-    ? "Checking the settings"
-    : blocking
-      ? "Resolve the blocking checks first"
-      : isValid
-        ? `Run with ${formatForDisplay(RUN_HOTKEY)}`
-        : "Correct the settings marked as invalid first";
+  const reason = runBlock === undefined ? `Run with ${formatForDisplay(RUN_HOTKEY)}` : RUN_BLOCK_TEXT[runBlock];
 
   return (
     <div className="grid gap-2">
@@ -80,20 +72,14 @@ export function RunFooter({
         </CollapsibleContent>
       </Collapsible>
       {duplicate !== undefined && <DuplicateRunNotice duplicate={duplicate} />}
-      <Button
-        type="button"
-        size="lg"
-        className="w-full"
-        disabled={checking || blocking || !isValid || isSubmitting}
-        onClick={onRun}
-      >
-        {isSubmitting ? <Spinner /> : <Play aria-hidden />}
+      <Button type="button" size="lg" className="w-full" disabled={runBlock !== undefined} onClick={run}>
+        {runBlock === "starting" ? <Spinner /> : <Play aria-hidden />}
         {duplicate === undefined ? verb : `${verb} again`}
         <Kbd className="bg-primary-foreground/15 text-primary-foreground group-disabled/button:bg-foreground/10 group-disabled/button:text-muted-foreground ml-auto">
           {formatForDisplay(RUN_HOTKEY)}
         </Kbd>
       </Button>
-      {(checking || blocking || !isValid) && <p className="text-muted-foreground text-center text-xs">{reason}</p>}
+      {runBlock !== undefined && <p className="text-muted-foreground text-center text-xs">{reason}</p>}
     </div>
   );
 }

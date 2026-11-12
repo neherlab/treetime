@@ -4,4 +4,4 @@ export const PALETTE_HOTKEY: Hotkey = "Mod+K";
 
 export const RUN_HOTKEY: Hotkey = "Mod+Enter";
 
-export const COMMAND_LINE_HOTKEY: Hotkey = "C";
+export const COMMAND_LINE_HOTKEY: Hotkey = "Mod+Shift+X";

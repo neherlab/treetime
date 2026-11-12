@@ -1,50 +1,42 @@
-import type { JobId } from "@neherlab/app-contracts";
-import { runsGet, runsSettings } from "@neherlab/app-contracts/client";
+import { errorMessage, type JobId } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
 import { useCallback, useMemo } from "react";
 import Play from "~icons/lucide/play";
 import Undo from "~icons/lucide/undo-2";
 
-import { useApi } from "../api/hooks";
-import { commandSettings } from "../settings/catalog";
 import { useDraftStore } from "../store/draft";
 import { ownDraft, runOptionsDraft } from "../store/draftRules";
+import { RUN_BLOCK_TEXT } from "./runAction";
+import { useShownRunSettings } from "./shownRun";
 import { staleRun, staleText } from "./staleRun";
 import { useWorkspace } from "./workspaceContext";
 
 export function StaleBar({ shownRunId }: { shownRunId: JobId }) {
-  const { command, check, run } = useWorkspace();
+  const { check, run, runBlock } = useWorkspace();
   const edited = useDraftStore((state) => state.viewing === undefined);
-
-  const { data: record } = useApi((context) => runsGet({ ...context, path: { id: shownRunId } }));
-
-  const { data: settings } = useApi((context) => runsSettings({ ...context, path: { id: shownRunId } }), {
-    staleTime: Infinity,
-  });
+  const { record, settings } = useShownRunSettings(shownRunId);
 
   const stale = useMemo(
-    () =>
-      staleRun({
-        shownRunId,
-        runCommand: record?.command,
-        edited,
-        check,
-        specs: commandSettings(command).settings,
-      }),
-    [check, command, edited, record?.command, shownRunId],
+    () => staleRun({ shownRunId, runCommand: record.data?.command, edited, check }),
+    [check, edited, record.data?.command, shownRunId],
   );
 
-  const revert = useCallback(() => {
-    if (record === undefined || settings === undefined) {
-      return;
-    }
+  const revertible = record.data?.prepared === true && settings.data !== undefined;
 
+  const revert = useCallback(() => {
     const store = useDraftStore.getState();
 
-    store.revertToRun(shownRunId, runOptionsDraft(record, settings, ownDraft(store)));
-  }, [record, settings, shownRunId]);
+    const options =
+      record.data === undefined || settings.data === undefined
+        ? undefined
+        : runOptionsDraft(record.data, settings.data, ownDraft(store));
 
-  const blocked = check?.status === "invalid" || (check?.checks.some((finding) => finding.level === "block") ?? true);
+    if (options !== undefined) {
+      store.revertToRun(shownRunId, options);
+    }
+  }, [record.data, settings.data, shownRunId]);
+
+  const loadError = record.error ?? settings.error;
 
   if (!stale.stale) {
     return null;
@@ -59,16 +51,30 @@ export function StaleBar({ shownRunId }: { shownRunId: JobId }) {
           variant="ghost"
           size="sm"
           onClick={revert}
-          disabled={record === undefined || settings === undefined}
+          disabled={!revertible}
+          title={
+            loadError === null ? undefined : `The settings of the run cannot be loaded: ${errorMessage(loadError)}`
+          }
         >
           <Undo aria-hidden />
           Revert to this run&apos;s settings
         </Button>
-        <Button type="button" size="sm" onClick={run} disabled={blocked}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={run}
+          disabled={runBlock !== undefined}
+          title={runBlock === undefined ? undefined : RUN_BLOCK_TEXT[runBlock]}
+        >
           <Play aria-hidden />
           Run
         </Button>
       </div>
+      {loadError !== null && (
+        <p role="alert" className="text-destructive basis-full text-xs">
+          The settings of the run cannot be loaded: {errorMessage(loadError)}
+        </p>
+      )}
     </div>
   );
 }

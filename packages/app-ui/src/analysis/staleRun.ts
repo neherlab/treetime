@@ -1,8 +1,8 @@
-import type { AppCommand, CheckConfigResponse, JobId, SettingSpec } from "@neherlab/app-contracts";
+import type { AppCommand, CheckConfigResponse, JobId } from "@neherlab/app-contracts";
 
 const ANALYSIS_CHANGE = "Analysis";
 
-export function staleRun({ shownRunId, runCommand, edited, check, specs }: StaleRunInput): StaleRun {
+export function staleRun({ shownRunId, runCommand, edited, check }: StaleRunInput): StaleRun {
   if (shownRunId === undefined || runCommand === undefined || check === undefined) {
     return FRESH;
   }
@@ -15,11 +15,7 @@ export function staleRun({ shownRunId, runCommand, edited, check, specs }: Stale
     return edited ? { stale: true, changes: [] } : FRESH;
   }
 
-  const appSet = new Set(specs.filter((spec) => spec.set_by_app).map((spec) => spec.key));
-
-  const changes = (check.run_differences ?? [])
-    .filter((difference) => !appSet.has(difference.key))
-    .map((difference) => difference.label);
+  const changes = (check.run_differences ?? []).map((difference) => difference.label);
 
   return changes.length === 0 ? FRESH : { stale: true, changes };
 }
@@ -39,7 +35,6 @@ export interface StaleRunInput {
   runCommand: AppCommand | undefined;
   edited: boolean;
   check: CheckConfigResponse | undefined;
-  specs: readonly SettingSpec[];
 }
 
 export type StaleRun = { stale: false } | { stale: true; changes: readonly string[] };

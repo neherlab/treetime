@@ -1,13 +1,17 @@
 import { useMediaQuery } from "@mantine/hooks";
 import { Button } from "@neherlab/design/ui/button";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@neherlab/design/ui/resizable";
+import { type PanelSize, ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@neherlab/design/ui/resizable";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@neherlab/design/ui/sheet";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import SlidersHorizontal from "~icons/lucide/sliders-horizontal";
+
+import { usePreferencesStore } from "../store/preferences";
 
 export const WORKSPACE_MAIN_ID = "workspace-main";
 
 const PHONE_QUERY = "(max-width: 1023px)";
+
+const DEFAULT_OPTIONS_WIDTH = "26rem";
 
 export function WorkspaceLayout({
   title,
@@ -26,7 +30,7 @@ export function WorkspaceLayout({
   aboveMain?: ReactNode;
   main: ReactNode;
 }) {
-  const phone = useMediaQuery(PHONE_QUERY);
+  const phone = useMediaQuery(PHONE_QUERY, false, { getInitialValueInEffect: false });
   const [sheetOpen, setSheetOpen] = useState(false);
   const openSheet = useCallback(() => setSheetOpen(true), []);
 
@@ -81,24 +85,44 @@ export function WorkspaceLayout({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {header}
-      <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
-        <ResizablePanel
-          id="options"
-          defaultSize="26rem"
-          minSize="20rem"
-          maxSize="50%"
-          groupResizeBehavior="preserve-pixel-size"
-        >
-          <aside aria-label="Options" className="flex h-full min-h-0 flex-col">
-            <div className="@container min-h-0 flex-1 overflow-y-auto overscroll-contain">{panel}</div>
-            <div className="border-t px-4 py-3">{footer}</div>
-          </aside>
-        </ResizablePanel>
-        <ResizableHandle aria-label="Width of the options" />
-        <ResizablePanel id="main" minSize="20rem">
-          {mainArea}
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      <OptionsSplit panel={panel} footer={footer} main={mainArea} />
     </div>
+  );
+}
+
+function OptionsSplit({ panel, footer, main }: { panel: ReactNode; footer: ReactNode; main: ReactNode }) {
+  const [savedWidth] = useState(() => usePreferencesStore.getState().preferences.options_width);
+  const width = useRef<number | undefined>(undefined);
+
+  const onResize = useCallback((size: PanelSize) => {
+    width.current = Math.round(size.inPixels);
+  }, []);
+
+  const onLayoutChanged = useCallback(() => {
+    if (width.current !== undefined && width.current !== usePreferencesStore.getState().preferences.options_width) {
+      usePreferencesStore.getState().setOptionsWidth(width.current);
+    }
+  }, []);
+
+  return (
+    <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1" onLayoutChanged={onLayoutChanged}>
+      <ResizablePanel
+        id="options"
+        defaultSize={savedWidth ?? DEFAULT_OPTIONS_WIDTH}
+        minSize="20rem"
+        maxSize="50%"
+        groupResizeBehavior="preserve-pixel-size"
+        onResize={onResize}
+      >
+        <aside aria-label="Options" className="flex h-full min-h-0 flex-col">
+          <div className="@container min-h-0 flex-1 overflow-y-auto overscroll-contain">{panel}</div>
+          <div className="border-t px-4 py-3">{footer}</div>
+        </aside>
+      </ResizablePanel>
+      <ResizableHandle aria-label="Width of the options" />
+      <ResizablePanel id="main" minSize="20rem">
+        {main}
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

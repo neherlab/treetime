@@ -1,15 +1,8 @@
-import type { CheckConfigResponse, JobId, RunSummary, SettingSpec } from "@neherlab/app-contracts";
+import type { CheckConfigResponse, JobId, RunSummary } from "@neherlab/app-contracts";
 
 import { changesText, staleRun } from "./staleRun";
 
-export function variantSummary({
-  fromRunId,
-  shownRunId,
-  viewing,
-  source,
-  check,
-  specs,
-}: VariantInput): string | undefined {
+export function variantSummary({ fromRunId, shownRunId, viewing, source, check }: VariantInput): string | undefined {
   if (viewing || fromRunId === undefined) {
     return undefined;
   }
@@ -22,7 +15,7 @@ export function variantSummary({
     return `Variant of ${name}`;
   }
 
-  const stale = staleRun({ shownRunId: fromRunId, runCommand: source.command, edited: true, check, specs });
+  const stale = staleRun({ shownRunId: fromRunId, runCommand: source.command, edited: true, check });
 
   if (!stale.stale) {
     return `Variant of ${name}. No settings changed yet.`;
@@ -37,5 +30,4 @@ export interface VariantInput {
   viewing: boolean;
   source: Pick<RunSummary, "title" | "command"> | undefined;
   check: CheckConfigResponse | undefined;
-  specs: readonly SettingSpec[];
 }

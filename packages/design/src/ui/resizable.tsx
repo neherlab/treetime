@@ -1,5 +1,13 @@
 import { cn } from "cn";
-import { Group, type GroupProps, Panel, type PanelProps, Separator, type SeparatorProps } from "react-resizable-panels";
+import {
+  Group,
+  type GroupProps,
+  Panel,
+  type PanelProps,
+  type PanelSize,
+  Separator,
+  type SeparatorProps,
+} from "react-resizable-panels";
 
 function ResizablePanelGroup({ className, ...props }: GroupProps) {
   return (
@@ -28,4 +36,4 @@ function ResizableHandle({ className, ...props }: SeparatorProps) {
   );
 }
 
-export { ResizableHandle, ResizablePanel, ResizablePanelGroup };
+export { type PanelSize, ResizableHandle, ResizablePanel, ResizablePanelGroup };

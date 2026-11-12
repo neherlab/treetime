@@ -1,5 +1,7 @@
-import type { AppCommand, CheckConfigResponse, InputFacts, JobId, SparseConfig } from "@neherlab/app-contracts";
+import type { AppCommand, CheckConfigResponse, InputFacts, SparseConfig } from "@neherlab/app-contracts";
 import { createContext, use } from "react";
+
+import type { RunBlock } from "./runAction";
 
 export const WorkspaceContext = createContext<WorkspaceView | undefined>(undefined);
 
@@ -15,10 +17,10 @@ export function useWorkspace(): WorkspaceView {
 
 export interface WorkspaceView {
   command: AppCommand;
-  shownRunId: JobId | undefined;
-  readOnly: boolean;
   settled: SparseConfig;
   facts: InputFacts | undefined;
   check: CheckConfigResponse | undefined;
+  checkPending: boolean;
   run: () => void;
+  runBlock: RunBlock | undefined;
 }
