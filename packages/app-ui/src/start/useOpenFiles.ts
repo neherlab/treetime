@@ -1,5 +1,5 @@
-import { errorMessage, type UiDraftSource } from "@neherlab/app-contracts";
-import { fileKinds } from "@neherlab/app-contracts/client";
+import { type DetectedFile, errorMessage, type UiDraftSource } from "@neherlab/app-contracts";
+import { type ApiClient, fileKinds, fileRoles } from "@neherlab/app-contracts/client";
 import { toast } from "@neherlab/design/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
@@ -15,6 +15,7 @@ import { commandSwitchNote } from "../settings/commands";
 import { folderName } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { type Placement, placeFiles } from "./filePlacement";
+import { detectedFiles, fileHead, type RoledFile, withRoles } from "./openedFiles";
 import { useImportRun } from "./useImportRun";
 
 export interface OpenedFiles {
@@ -59,32 +60,35 @@ export function useOpenFiles(): (files: readonly File[]) => Promise<OpenedFiles>
         return { unplaced: [] };
       }
 
-      const { command } = useDraftStore.getState().draft;
-      const runId = host === null ? await uploadRun(command) : undefined;
-      const upload = runId === undefined ? undefined : { runId, stored: await uploadFiles(runId, files, []) };
-
-      const stored: StoredFile[] =
-        upload?.stored ??
-        files.map((file) => ({ name: file.name, path: host?.pathForFile(file) ?? file.name, size: file.size }));
-
-      const { data: kinds } = await fileKinds({
+      const { data: roles } = await fileRoles({
         client,
-        body: { files: stored.map((file) => file.path) },
+        body: { files: await Promise.all(files.map(fileHead)) },
         throwOnError: true,
       });
 
+      const opened = withRoles(files, roles.files);
+      const inputs = opened.filter(({ role }) => role === "input");
+      const { command } = useDraftStore.getState().draft;
+      const runId = host === null && inputs.length > 0 ? await uploadRun(command) : undefined;
+
+      const read = await readInputs(client, inputs, (files) =>
+        runId === undefined
+          ? files.map((file) => ({ name: file.name, path: host?.pathForFile(file) ?? file.name, size: file.size }))
+          : uploadFiles(runId, files, []),
+      );
+
       const settings = commandSettings(command);
-      const placement = placeFiles(kinds.files, settings.inputs, settings.title);
+      const placement = placeFiles(detectedFiles(opened, read.kinds), settings.inputs, settings.title);
       const placed = new Set(placement.inputs.flatMap((input) => input.files));
 
-      if (upload !== undefined) {
+      if (runId !== undefined) {
         release(
-          upload.runId,
-          upload.stored.flatMap((file, index) => (placed.has(index) ? [] : [file.path])),
+          runId,
+          inputs.flatMap(({ index }) => (placed.has(index) ? [] : (read.stored.get(index)?.path ?? []))),
         );
       }
 
-      const assigned = assignPlacedInputs(placement, stored, runId, release);
+      const assigned = assignPlacedInputs(placement, read.stored, runId, release);
 
       for (const index of placement.configs) {
         const file = files[index];
@@ -118,9 +122,34 @@ export function useOpenFiles(): (files: readonly File[]) => Promise<OpenedFiles>
   );
 }
 
+interface ReadInputs {
+  stored: ReadonlyMap<number, StoredFile | undefined>;
+  kinds: DetectedFile[];
+}
+
+async function readInputs(
+  client: ApiClient,
+  inputs: ReadonlyArray<RoledFile<File>>,
+  store: (files: readonly File[]) => StoredFile[] | Promise<StoredFile[]>,
+): Promise<ReadInputs> {
+  if (inputs.length === 0) {
+    return { stored: new Map(), kinds: [] };
+  }
+
+  const stored = await store(inputs.map(({ file }) => file));
+
+  const { data: kinds } = await fileKinds({
+    client,
+    body: { files: stored.map((file) => file.path) },
+    throwOnError: true,
+  });
+
+  return { stored: new Map(inputs.map(({ index }, position) => [index, stored[position]])), kinds: kinds.files };
+}
+
 function assignPlacedInputs(
   placement: Placement,
-  stored: readonly StoredFile[],
+  stored: ReadonlyMap<number, StoredFile | undefined>,
   runId: string | undefined,
   release: (runId: string, paths: readonly string[]) => void,
 ): boolean {
@@ -131,7 +160,7 @@ function assignPlacedInputs(
   if (runId !== undefined && useDraftStore.getState().draft.upload_run_id !== runId) {
     release(
       runId,
-      placement.inputs.flatMap((input) => input.files.flatMap((index) => stored[index]?.path ?? [])),
+      placement.inputs.flatMap((input) => input.files.flatMap((index) => stored.get(index)?.path ?? [])),
     );
 
     return false;
@@ -141,7 +170,7 @@ function assignPlacedInputs(
     runId === undefined ? { origin: { kind: "local" } } : { origin: { kind: "upload" }, run_id: runId };
 
   const inputs: DraftInput[] = placement.inputs.flatMap((input) => {
-    const chosen = input.files.flatMap((index) => stored[index] ?? []);
+    const chosen = input.files.flatMap((index) => stored.get(index) ?? []);
     const value = storedValue(chosen, input.list);
 
     return value === undefined ? [] : [{ key: input.key, value, source: { ...storedSource(chosen), ...origin } }];
