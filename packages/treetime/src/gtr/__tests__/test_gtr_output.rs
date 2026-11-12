@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{
-    AlignmentModel, GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel, TraitModel, jc69,
+    AlignmentModel, GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel, TraitModel,
+    gtr_markdown, jc69,
   };
   use eyre::Report;
+  use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_value_read_str, json_write_str};
@@ -25,6 +27,29 @@ mod tests {
     assert_eq!(parsed["n_states"], 4);
     assert_eq!(parsed["model_name"], "jc69");
     assert_eq!(parsed["model_type"], "named");
+    Ok(())
+  }
+
+  #[test]
+  fn test_gtr_markdown_writes_the_frequencies_and_rates_as_tables_with_the_states() -> Result<(), Report> {
+    let gtr = jc69(JC69Params::default())?;
+
+    let actual = gtr_markdown(&gtr, GtrModelName::JC69, &vec_of_owned!["A", "C", "G", "T"]);
+
+    let expected = indoc! {"
+      GTR model initialized: JC69, mu = 1.0000
+
+      | pi | A | C | G | T |
+      |---|---:|---:|---:|---:|
+      | | 0.2500 | 0.2500 | 0.2500 | 0.2500 |
+
+      | W | A | C | G | T |
+      |---|---:|---:|---:|---:|
+      | A | 0.0000 | 1.3333 | 1.3333 | 1.3333 |
+      | C | 1.3333 | 0.0000 | 1.3333 | 1.3333 |
+      | G | 1.3333 | 1.3333 | 0.0000 | 1.3333 |
+      | T | 1.3333 | 1.3333 | 1.3333 | 0.0000 |"};
+    assert_eq!(expected, actual);
     Ok(())
   }
 

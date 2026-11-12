@@ -5,7 +5,8 @@ use crate::progress_info;
 use crate::{make_error, make_internal_error};
 use bon::bon;
 use deser::{Deserialize, Serialize};
-use eyre::{Report, WrapErr};
+use eyre::Report;
+use itertools::{Itertools, izip};
 use ndarray::{Array1, Array2, array};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
@@ -13,13 +14,43 @@ use std::path::PathBuf;
 use strum_macros::Display;
 use treetime_utils::adapters::{Array2Rows, ArrayVec};
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) -> Result<(), Report> {
-  let output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-  let json = json_write_str(&output, JsonPretty(true)).wrap_err("When writing the GTR model as JSON")?;
-  progress_info!(log, "GTR model initialized:\n{json}");
+pub(crate) fn log_gtr(
+  gtr: &GTR,
+  model_name: GtrModelName,
+  alphabet: AlphabetName,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let states = model_states(&Alphabet::new(alphabet)?, gtr)?;
+  let text = gtr_markdown(gtr, model_name, &states);
+  progress_info!(log, "{text}");
   Ok(())
+}
+
+pub(crate) fn gtr_markdown(gtr: &GTR, model_name: GtrModelName, states: &[String]) -> String {
+  let columns = states.join(" | ");
+  let rule = format!("|---|{}", "---:|".repeat(states.len()));
+  let pi = gtr.pi().iter().map(|value| table_number(*value)).join(" | ");
+  let w = izip!(states, gtr.W().rows())
+    .map(|(state, row)| {
+      format!(
+        "| {state} | {} |",
+        row.iter().map(|value| table_number(*value)).join(" | ")
+      )
+    })
+    .join("\n");
+  let mu = table_number(gtr.mu());
+  format!(
+    "GTR model initialized: {model_name}, mu = {mu}\n\n| pi | {columns} |\n{rule}\n| | {pi} |\n\n| W | {columns} |\n{rule}\n{w}"
+  )
+}
+
+fn table_number(value: f64) -> String {
+  if value == 0.0 || (1e-3..1e4).contains(&value.abs()) {
+    format!("{value:.4}")
+  } else {
+    format!("{value:.4e}")
+  }
 }
 
 pub fn model_states(alphabet: &Alphabet, gtr: &GTR) -> Result<Vec<String>, Report> {
