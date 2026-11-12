@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_routes::tests::helpers::{app, request, wait_for_status};
+  use crate::__tests__::test_routes::tests::helpers::{app, body_json, request, wait_for_status};
+  use axum::body::Body;
+  use axum::http::Request;
   use helpers::{archive_entries, finished_run, get, header_of};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -40,28 +42,88 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_downloads_archive_streams_stored_entries_of_every_output_file() {
+  async fn test_downloads_package_streams_stored_entries_of_the_run_folder_and_its_inputs() {
     let (test, id) = finished_run().await;
     let (_, files) = request(&test, "GET", &format!("/api/runs/{id}/files"), None).await;
-    let expected = files
-      .as_array()
-      .unwrap()
-      .iter()
-      .map(|file| {
-        (
-          format!("{id}/{}", file["path"].as_str().unwrap()),
-          CompressionMethod::Stored,
-        )
-      })
-      .sorted_by_key(|(name, _)| name.clone())
-      .collect_vec();
-    let response = get(&test, &format!("/api/runs/{id}/archive"), &[]).await;
-    let content_type = header_of(&response, "content-type");
+    let expected = [
+      "run.json",
+      "run.yaml",
+      "command.sh",
+      "events.jsonl",
+      "inputs/aln.fasta.xz",
+      "inputs/metadata.tsv",
+      "inputs/tree.nwk",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .chain(
+      files
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|file| format!("out/{}", file["path"].as_str().unwrap())),
+    )
+    .map(|name| (format!("treetime-{id}/{name}"), CompressionMethod::Stored))
+    .sorted_by_key(|(name, _)| name.clone())
+    .collect_vec();
+    let response = get(&test, &format!("/api/runs/{id}/package"), &[]).await;
+    let headers = (
+      header_of(&response, "content-type"),
+      header_of(&response, "content-disposition"),
+    );
     let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
     assert_eq!(
-      (Some("application/zip".to_owned()), expected),
-      (content_type, archive_entries(body.to_vec()))
+      (
+        (
+          Some("application/zip".to_owned()),
+          Some(format!(
+            "attachment; filename=\"treetime-{id}.zip\"; filename*=UTF-8''treetime%2D{id}%2Ezip"
+          ))
+        ),
+        expected
+      ),
+      (headers, archive_entries(body.to_vec()))
     );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_downloads_import_of_a_package_creates_a_run_with_the_same_results() {
+    let (test, id) = finished_run().await;
+    let response = get(&test, &format!("/api/runs/{id}/package"), &[]).await;
+    let package = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+    let response = test
+      .send(
+        Request::post("/api/runs/import")
+          .header("content-type", "application/octet-stream")
+          .body(Body::from(package))
+          .unwrap(),
+      )
+      .await;
+    let (status, imported) = body_json(response).await;
+    let imported_id = imported["id"].as_str().unwrap();
+    let (_, results) = request(&test, "GET", &format!("/api/runs/{id}/results"), None).await;
+    let (_, imported_results) = request(&test, "GET", &format!("/api/runs/{imported_id}/results"), None).await;
+
+    assert_eq!(
+      (200, json!("ok"), true, results),
+      (status, imported["status"].clone(), imported_id != id, imported_results)
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_downloads_import_of_a_file_that_is_not_a_zip_archive_is_an_invalid_request() {
+    let test = app();
+    let response = test
+      .send(
+        Request::post("/api/runs/import")
+          .header("content-type", "application/octet-stream")
+          .body(Body::from("not a zip archive"))
+          .unwrap(),
+      )
+      .await;
+    let (status, body) = body_json(response).await;
+    assert_eq!((400, json!("invalid_request")), (status, body["code"].clone()));
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -95,9 +157,9 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_downloads_archive_of_an_unknown_run_is_not_found() {
+  async fn test_downloads_package_of_an_unknown_run_is_not_found() {
     let test = app();
-    let (status, body) = request(&test, "GET", "/api/runs/0123456789abcdef0123456789abcdef/archive", None).await;
+    let (status, body) = request(&test, "GET", "/api/runs/0123456789abcdef0123456789abcdef/package", None).await;
     assert_eq!((404, "not_found"), (status, body["code"].as_str().unwrap()));
   }
 

@@ -968,10 +968,10 @@
         }
       }
     },
-    "/api/runs/{id}/archive": {
+    "/api/runs/{id}/package": {
       "get": {
-        "description": "Zip archive of the run's `out/` folder.",
-        "operationId": "runsArchive",
+        "description": "Run package of a run that has ended: a zip archive with one folder `treetime-<id>/` that holds `run.json`, `events.jsonl`, the input files in `inputs/`, the output files in `out/`, the YAML config `run.yaml`, and `command.sh`, which runs `run.yaml` with the command-line tool. Every path in `run.json` and `run.yaml` is relative to the folder.",
+        "operationId": "runsPackage",
         "parameters": [
           {
             "in": "path",
@@ -1003,6 +1003,45 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/import": {
+      "post": {
+        "description": "Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists.",
+        "operationId": "runsImport",
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
                 }
               }
             }
@@ -1362,7 +1401,7 @@
     },
     "/api/runs/{id}/save": {
       "post": {
-        "description": "Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.",
+        "description": "Write an output file of a run, or its run package, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.",
         "operationId": "runsSave",
         "parameters": [
           {
@@ -1378,7 +1417,7 @@
           }
         ],
         "requestBody": {
-          "description": "Where to save an output file of a run, or the archive of all its outputs.",
+          "description": "Where to save an output file of a run, or its run package.",
           "content": {
             "application/json": {
               "schema": {
@@ -3185,7 +3224,7 @@
             "type": "string"
           },
           "path": {
-            "description": "Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file, the\nabsolute path for a file read from elsewhere.",
+            "description": "Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;\n`inputs/<setting>/...` for a file that a path template of an imported run names, kept in the run's folder; the\nabsolute path for a file read from elsewhere.",
             "type": "string"
           },
           "size": {
@@ -5516,11 +5555,11 @@
         "additionalProperties": false
       },
       "SaveRunRequest": {
-        "description": "Where to save an output file of a run, or the archive of all its outputs.",
+        "description": "Where to save an output file of a run, or its run package.",
         "type": "object",
         "properties": {
           "path": {
-            "description": "Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.",
+            "description": "Path of the file relative to the run's `out/` folder. Unset: the run package, a zip archive that recreates the\nrun in the app and reproduces it with the command-line tool.",
             "type": "string",
             "x-unset": true
           },

@@ -94,7 +94,7 @@ async function checkAncestralRun(): Promise<void> {
   const record = parse(zRunRecord, await call("GET", `/api/runs/${created.id}`));
   const files = parse(zRunsFilesResponse, await call("GET", `/api/runs/${created.id}/files`));
   const newick = await call("GET", `/api/runs/${created.id}/file?path=ancestral.nwk`);
-  const archive = await call("GET", `/api/runs/${created.id}/archive`);
+  const runPackage = await call("GET", `/api/runs/${created.id}/package`);
 
   assert.deepEqual(
     [
@@ -108,8 +108,8 @@ async function checkAncestralRun(): Promise<void> {
       files.some((file) => file.path === "ancestral.sequences.fasta"),
       newick.status,
       text(newick).slice(0, 1),
-      archive.status,
-      text(archive).slice(0, ZIP_SIGNATURE.length),
+      runPackage.status,
+      text(runPackage).slice(0, ZIP_SIGNATURE.length),
     ],
     [
       200,

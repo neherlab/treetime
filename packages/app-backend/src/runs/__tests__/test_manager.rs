@@ -527,7 +527,7 @@ mod tests {
   }
 
   #[test]
-  fn test_manager_cancel_before_start_drops_the_input_lock_and_later_uploads_are_rejected() {
+  fn test_manager_cancel_before_start_drops_the_input_lock_and_its_uploads_and_later_uploads_are_rejected() {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
@@ -545,12 +545,17 @@ mod tests {
         Some(format!(
           "run `{}` has already started; inputs can be uploaded only before the run starts",
           created.id.as_str()
-        ))
+        )),
+        (0, 0),
       ),
       (
         cancelled,
         runs.inputs.lock().len(),
-        late.err().map(|err| err.to_string())
+        late.err().map(|err| err.to_string()),
+        (
+          runs.get(&created.id).unwrap().uploads.len(),
+          runs.input_store().keys().unwrap().len()
+        ),
       )
     );
   }
@@ -673,7 +678,6 @@ mod tests {
         format!("file path `{escape}` must name a file inside the run's output folder")
       );
     }
-    assert_eq!(runs.store().out_dir(&created.id), runs.out_dir(&created.id).unwrap());
   }
 
   #[test]

@@ -290,7 +290,7 @@ pub(crate) mod tests {
 
     let response = test
       .send(
-        axum::http::Request::get(format!("/api/runs/{id}/archive"))
+        axum::http::Request::get(format!("/api/runs/{id}/package"))
           .body(axum::body::Body::empty())
           .unwrap(),
       )

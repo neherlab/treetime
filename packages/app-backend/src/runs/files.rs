@@ -4,18 +4,12 @@ use app_output::output_plan::OutputSelection;
 use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use parking_lot::Mutex;
 use schemars::JsonSchema;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::fs::{self, File};
-use std::io::{self, Read, Seek, Write};
-use std::mem;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
-use std::sync::Arc;
 use treetime_schema::skip_serializing_optionals;
-use zip::CompressionMethod;
-use zip::ZipWriter;
-use zip::write::{SimpleFileOptions, StreamWriter};
 
 pub const RUN_DOWNLOAD_CHUNK_SIZE: usize = 1024 * 1024;
 
@@ -87,96 +81,6 @@ pub fn run_file_destination(out_dir: &Path, relative: &str) -> Result<PathBuf, R
   Ok(out_dir.join(inside_path(relative)?))
 }
 
-pub fn write_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write + Seek) -> Result<(), Report> {
-  let mut zip = ZipWriter::new(writer);
-  let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-  for path in walk_files(out_dir)? {
-    let name = format!("{folder_name}/{}", relative_name(path.strip_prefix(out_dir)?));
-    zip
-      .start_file(name, options)
-      .wrap_err_with(|| format!("When adding '{}' to the archive", path.display()))?;
-    let mut file = File::open(&path).wrap_err_with(|| format!("When opening '{}'", path.display()))?;
-    io::copy(&mut file, &mut zip).wrap_err_with(|| format!("When archiving '{}'", path.display()))?;
-  }
-  zip.finish().wrap_err("When finishing the archive")?;
-  Ok(())
-}
-
-pub fn stream_run_zip(out_dir: &Path, folder_name: &str, mut writer: impl Write) -> Result<(), Report> {
-  for chunk in RunZipChunks::new(out_dir, folder_name)? {
-    writer.write_all(&chunk?).wrap_err("When writing the archive")?;
-  }
-  Ok(())
-}
-
-pub struct RunZipChunks {
-  zip: Option<ZipWriter<StreamWriter<SharedBuffer>>>,
-  buffer: SharedBuffer,
-  pending: VecDeque<(PathBuf, String)>,
-  current: Option<FileChunks>,
-}
-
-impl RunZipChunks {
-  pub fn new(out_dir: &Path, folder_name: &str) -> Result<Self, Report> {
-    let pending = walk_files(out_dir)?
-      .into_iter()
-      .map(|path| {
-        let name = format!("{folder_name}/{}", relative_name(path.strip_prefix(out_dir)?));
-        Ok((path, name))
-      })
-      .collect::<Result<_, Report>>()?;
-    let buffer = SharedBuffer::default();
-    Ok(Self {
-      zip: Some(ZipWriter::new_stream(buffer.clone())),
-      buffer,
-      pending,
-      current: None,
-    })
-  }
-
-  fn advance(&mut self) -> Result<Option<Vec<u8>>, Report> {
-    loop {
-      let written = self.buffer.take();
-      if !written.is_empty() {
-        return Ok(Some(written));
-      }
-      let Some(zip) = self.zip.as_mut() else {
-        return Ok(None);
-      };
-      if let Some(file) = self.current.as_mut() {
-        match file.next() {
-          Some(block) => zip.write_all(&block?).wrap_err("When writing the archive")?,
-          None => self.current = None,
-        }
-      } else if let Some((path, name)) = self.pending.pop_front() {
-        zip
-          .start_file(
-            name,
-            SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
-          )
-          .wrap_err_with(|| format!("When adding '{}' to the archive", path.display()))?;
-        self.current = Some(FileChunks::open(&path)?);
-      } else if let Some(zip) = self.zip.take() {
-        zip.finish().wrap_err("When finishing the archive")?;
-      }
-    }
-  }
-}
-
-impl Iterator for RunZipChunks {
-  type Item = Result<Vec<u8>, Report>;
-
-  fn next(&mut self) -> Option<Self::Item> {
-    let chunk = self.advance().transpose();
-    if chunk.as_ref().is_some_and(Result::is_err) {
-      self.zip = None;
-      self.current = None;
-      self.buffer.take();
-    }
-    chunk
-  }
-}
-
 pub struct FileChunks {
   file: File,
   path: PathBuf,
@@ -207,26 +111,6 @@ impl Iterator for FileChunks {
   }
 }
 
-#[derive(Clone, Default)]
-struct SharedBuffer(Arc<Mutex<Vec<u8>>>);
-
-impl SharedBuffer {
-  fn take(&self) -> Vec<u8> {
-    mem::take(&mut *self.0.lock())
-  }
-}
-
-impl Write for SharedBuffer {
-  fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-    self.0.lock().extend_from_slice(bytes);
-    Ok(bytes.len())
-  }
-
-  fn flush(&mut self) -> io::Result<()> {
-    Ok(())
-  }
-}
-
 fn inside_path(relative: &str) -> Result<&Path, Report> {
   let requested = Path::new(relative);
   let escapes = requested
@@ -240,7 +124,7 @@ fn inside_path(relative: &str) -> Result<&Path, Report> {
   Ok(requested)
 }
 
-fn walk_files(dir: &Path) -> Result<Vec<PathBuf>, Report> {
+pub fn walk_files(dir: &Path) -> Result<Vec<PathBuf>, Report> {
   let mut files = vec![];
   if !dir.is_dir() {
     return Ok(files);
@@ -259,7 +143,7 @@ fn walk_files(dir: &Path) -> Result<Vec<PathBuf>, Report> {
   Ok(files.into_iter().sorted().collect())
 }
 
-fn relative_name(path: &Path) -> String {
+pub fn relative_name(path: &Path) -> String {
   path
     .components()
     .map(|component| component.as_os_str().to_string_lossy().into_owned())

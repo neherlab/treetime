@@ -8,6 +8,7 @@ use app_commands::command_config::CommandConfig;
 use app_commands::json_value::SparseConfig;
 use chrono::{DateTime, Utc};
 use deser::{Deserialize, Serialize};
+use itertools::Itertools;
 use schemars::JsonSchema;
 use std::path::{Component, PathBuf};
 use strum_macros::Display;
@@ -105,7 +106,8 @@ impl RunRecord {
 pub struct RunInput {
   /// Dot-separated key path of the setting that names the file.
   pub setting: String,
-  /// Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file, the
+  /// Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;
+  /// `inputs/<setting>/...` for a file that a path template of an imported run names, kept in the run's folder; the
   /// absolute path for a file read from elsewhere.
   pub path: PathBuf,
   /// Size of the file in bytes.
@@ -116,12 +118,19 @@ pub struct RunInput {
 
 impl RunInput {
   pub fn stored(&self) -> Option<StoredInput> {
-    let mut components = self.path.components();
-    let is_upload = components.next() == Some(Component::Normal(INPUTS_DIR.as_ref()));
-    let name = self.path.file_name()?.to_str()?;
-    is_upload.then(|| StoredInput {
+    let components = self.path.components().collect_vec();
+    let name = match components.as_slice() {
+      [Component::Normal(dir), Component::Normal(name)] if *dir == INPUTS_DIR => name,
+      [
+        Component::Normal(dir),
+        Component::Normal(number),
+        Component::Normal(name),
+      ] if *dir == INPUTS_DIR && number.to_str().is_some_and(is_number) => name,
+      _ => return None,
+    };
+    Some(StoredInput {
       sha256: self.sha256.clone(),
-      name: name.to_owned(),
+      name: name.to_str()?.to_owned(),
     })
   }
 }
@@ -201,6 +210,12 @@ pub enum RunStatus {
   Interrupted,
 }
 
+impl RunStatus {
+  pub fn has_ended(self) -> bool {
+    !matches!(self, Self::Created | Self::Running)
+  }
+}
+
 /// Request to create a run.
 #[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -250,13 +265,14 @@ pub struct CancelRunResponse {
   pub cancelled: bool,
 }
 
-/// Where to save an output file of a run, or the archive of all its outputs.
+/// Where to save an output file of a run, or its run package.
 #[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct SaveRunRequest {
-  /// Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
+  /// Path of the file relative to the run's `out/` folder. Unset: the run package, a zip archive that recreates the
+  /// run in the app and reproduces it with the command-line tool.
   #[schemars(default)]
   #[deser(default)]
   pub path: Option<String>,
@@ -278,4 +294,8 @@ pub struct UpdateRunRequest {
   #[schemars(default)]
   #[deser(default)]
   pub pinned: Option<bool>,
+}
+
+fn is_number(text: &str) -> bool {
+  !text.is_empty() && text.chars().all(|c| c.is_ascii_digit())
 }

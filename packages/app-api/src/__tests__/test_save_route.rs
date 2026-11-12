@@ -30,7 +30,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_save_route_writes_the_archive_of_all_outputs_without_a_path() {
+  async fn test_save_route_writes_the_run_package_without_a_path() {
     let host = local_host();
     let id = finished_run(&host.app).await;
     let target = tempdir().unwrap();
@@ -45,7 +45,7 @@ mod tests {
     let mut archive = ZipArchive::new(Cursor::new(fs::read(&destination).unwrap())).unwrap();
     let mut tree = String::new();
     archive
-      .by_name(&format!("{id}/ancestral.nwk"))
+      .by_name(&format!("treetime-{id}/out/ancestral.nwk"))
       .unwrap()
       .read_to_string(&mut tree)
       .unwrap();

@@ -9,10 +9,9 @@ use log::warn;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::path::{Path, PathBuf};
 
-#[cfg(not(target_family = "wasm"))]
-use app_backend::runs::files::stream_run_zip;
 #[cfg(target_family = "wasm")]
-use app_backend::runs::files::{FileChunks, RunZipChunks};
+use app_backend::runs::files::FileChunks;
+use app_backend::runs::package::RunPackage;
 #[cfg(target_family = "wasm")]
 use std::convert::Infallible;
 #[cfg(target_family = "wasm")]
@@ -27,7 +26,7 @@ use tower::ServiceExt as _;
 use tower_http::services::ServeFile;
 
 #[cfg(not(target_family = "wasm"))]
-const ARCHIVE_BUFFER_SIZE: usize = 64 * 1024;
+const PACKAGE_BUFFER_SIZE: usize = 64 * 1024;
 
 const CONTENT_TYPES: &[(&str, &str)] = &[
   ("json", "application/json"),
@@ -59,10 +58,10 @@ pub(crate) async fn serve_run_file(path: PathBuf, request: Request) -> Result<Fi
   Ok(FileContent(response))
 }
 
-pub(crate) fn stream_run_archive(out_dir: &Path, name: &str) -> Result<ZipAttachment, AppError> {
+pub(crate) fn stream_run_package(package: RunPackage) -> Result<ZipAttachment, AppError> {
   Ok(ZipAttachment {
-    disposition: attachment(&format!("treetime-{name}.zip"))?,
-    body: archive_body(out_dir, name),
+    disposition: attachment(&package.file_name())?,
+    body: package_body(package),
   })
 }
 
@@ -85,43 +84,35 @@ fn file_response(path: &Path, _request: Request) -> Ready<Result<Response, AppEr
   dylint_lib = "custom",
   expect(
     spawn_handle_dropped,
-    reason = "the archive task logs its error and ends the body stream, which the client sees as a cut download"
+    reason = "the package task logs its error and ends the body stream, which the client sees as a cut download"
   )
 )]
-fn archive_body(out_dir: &Path, folder: &str) -> Body {
-  let (reader, writer) = tokio::io::duplex(ARCHIVE_BUFFER_SIZE);
+fn package_body(package: RunPackage) -> Body {
+  let (reader, writer) = tokio::io::duplex(PACKAGE_BUFFER_SIZE);
   let bridge = SyncIoBridge::new(writer);
-  let out_dir = out_dir.to_owned();
-  let folder = folder.to_owned();
+  let folder = package.folder().to_owned();
   tokio::task::spawn_blocking(move || {
-    if let Err(report) = stream_run_zip(&out_dir, &folder, bridge) {
-      warn_archive_ended(&folder, &report);
+    if let Err(report) = package.stream(bridge) {
+      warn_package_ended(&folder, &report);
     }
   });
   Body::from_stream(ReaderStream::new(reader))
 }
 
 #[cfg(target_family = "wasm")]
-fn archive_body(out_dir: &Path, folder: &str) -> Body {
-  let chunks = match RunZipChunks::new(out_dir, folder) {
-    Ok(chunks) => chunks,
-    Err(report) => {
-      warn_archive_ended(folder, &report);
-      return Body::empty();
-    },
-  };
-  let folder = folder.to_owned();
-  Body::from_stream(iter(chunks.map_while(move |chunk| match chunk {
+fn package_body(package: RunPackage) -> Body {
+  let folder = package.folder().to_owned();
+  Body::from_stream(iter(package.chunks().map_while(move |chunk| match chunk {
     Ok(bytes) => Some(Ok::<_, Infallible>(bytes)),
     Err(report) => {
-      warn_archive_ended(&folder, &report);
+      warn_package_ended(&folder, &report);
       None
     },
   })))
 }
 
-fn warn_archive_ended(folder: &str, report: &Report) {
-  warn!("The archive of run '{folder}' ended early: {report:#}");
+fn warn_package_ended(folder: &str, report: &Report) {
+  warn!("The run package '{folder}' ended early: {report:#}");
 }
 
 fn content_type(path: &Path) -> HeaderValue {

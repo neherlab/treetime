@@ -1102,7 +1102,8 @@ export type RunInput = {
    */
   setting: string;
   /**
-   * Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file, the
+   * Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;
+   * `inputs/<setting>/...` for a file that a path template of an imported run names, kept in the run's folder; the
    * absolute path for a file read from elsewhere.
    */
   path: string;
@@ -2597,11 +2598,12 @@ export type WorkspaceUpdate = {
 };
 
 /**
- * Where to save an output file of a run, or the archive of all its outputs.
+ * Where to save an output file of a run, or its run package.
  */
 export type SaveRunRequest = {
   /**
-   * Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
+   * Path of the file relative to the run's `out/` folder. Unset: the run package, a zip archive that recreates the
+   * run in the app and reproduces it with the command-line tool.
    */
   path?: string;
   /**
@@ -6580,7 +6582,7 @@ export type RunsFileResponses = {
 
 export type RunsFileResponse = RunsFileResponses[keyof RunsFileResponses];
 
-export type RunsArchiveData = {
+export type RunsPackageData = {
   body?: never;
   path: {
     /**
@@ -6589,26 +6591,54 @@ export type RunsArchiveData = {
     id: JobId;
   };
   query?: never;
-  url: '/api/runs/{id}/archive';
+  url: '/api/runs/{id}/package';
 };
 
-export type RunsArchiveErrors = {
+export type RunsPackageErrors = {
   /**
    * The error, with its causes
    */
   default: ErrorResponse;
 };
 
-export type RunsArchiveError = RunsArchiveErrors[keyof RunsArchiveErrors];
+export type RunsPackageError = RunsPackageErrors[keyof RunsPackageErrors];
 
-export type RunsArchiveResponses = {
+export type RunsPackageResponses = {
   /**
    * Zip archive
    */
   200: Blob | File;
 };
 
-export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
+export type RunsPackageResponse = RunsPackageResponses[keyof RunsPackageResponses];
+
+export type RunsImportData = {
+  body: Blob | File;
+  path?: never;
+  query?: never;
+  url: '/api/runs/import';
+};
+
+export type RunsImportErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsImportError = RunsImportErrors[keyof RunsImportErrors];
+
+export type RunsImportResponses = {
+  /**
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
+   */
+  200: RunRecord;
+};
+
+export type RunsImportResponse = RunsImportResponses[keyof RunsImportResponses];
 
 export type RunsUploadInputData = {
   body: Blob | File;
@@ -6873,7 +6903,7 @@ export type WorkspaceUpdateResponse = WorkspaceUpdateResponses[keyof WorkspaceUp
 
 export type RunsSaveData = {
   /**
-   * Where to save an output file of a run, or the archive of all its outputs.
+   * Where to save an output file of a run, or its run package.
    */
   body: SaveRunRequest;
   path: {

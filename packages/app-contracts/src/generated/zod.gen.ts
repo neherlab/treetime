@@ -1203,7 +1203,7 @@ export const zWorkspaceUpdate = z.strictObject({
 });
 
 /**
- * Where to save an output file of a run, or the archive of all its outputs.
+ * Where to save an output file of a run, or its run package.
  */
 export const zSaveRunRequest = z.strictObject({
   path: z.string().optional(),
@@ -2953,14 +2953,24 @@ export const zRunsFileQuery = z.object({
  */
 export const zRunsFileResponse = z.instanceof(Blob);
 
-export const zRunsArchivePath = z.object({
+export const zRunsPackagePath = z.object({
   id: zJobId
 });
 
 /**
  * Zip archive
  */
-export const zRunsArchiveResponse = z.instanceof(Blob);
+export const zRunsPackageResponse = z.instanceof(Blob);
+
+export const zRunsImportBody = z.instanceof(Blob);
+
+/**
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
+ */
+export const zRunsImportResponse = zRunRecord;
 
 export const zRunsUploadInputBody = z.instanceof(Blob);
 
@@ -3038,7 +3048,7 @@ export const zWorkspaceUpdateBody = zWorkspaceUpdate;
 export const zWorkspaceUpdateResponse = zAppSettings;
 
 /**
- * Where to save an output file of a run, or the archive of all its outputs.
+ * Where to save an output file of a run, or its run package.
  */
 export const zRunsSaveBody = zSaveRunRequest;
 

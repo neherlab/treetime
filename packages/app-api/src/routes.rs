@@ -1,5 +1,5 @@
 use crate::api::blocking::{read_body_blocking, run_blocking};
-use crate::api::download::{serve_run_file, stream_run_archive};
+use crate::api::download::{serve_run_file, stream_run_package};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, TypedSse, ZipAttachment};
@@ -315,11 +315,27 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       }),
     )
     .api_route(
-      "/api/runs/{id}/archive",
-      get_with(runs_archive, |op| {
-        op.id("runsArchive")
-          .description("Zip archive of the run's `out/` folder.")
+      "/api/runs/{id}/package",
+      get_with(runs_package, |op| {
+        op.id("runsPackage").description(
+          "Run package of a run that has ended: a zip archive with one folder `treetime-<id>/` that holds `run.json`, \
+           `events.jsonl`, the input files in `inputs/`, the output files in `out/`, the YAML config `run.yaml`, and \
+           `command.sh`, which runs `run.yaml` with the command-line tool. Every path in `run.json` and `run.yaml` is \
+           relative to the folder.",
+        )
       }),
+    )
+    .api_route(
+      "/api/runs/import",
+      post_with(runs_import, |op| {
+        op.id("runsImport").description(
+          "Create a run from a run package. The package must hold a run that has ended, every path in it must be \
+           relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every \
+           output file that `run.json` lists must be present. The run keeps the id of the package unless a run with \
+           that id exists.",
+        )
+      })
+      .layer(DefaultBodyLimit::disable()),
     )
     .api_route(
       "/api/runs/{id}/inputs/{name}",
@@ -613,13 +629,21 @@ struct FileQuery {
   path: String,
 }
 
-async fn runs_archive(
+async fn runs_package(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
 ) -> Result<ZipAttachment, AppError> {
-  let name = id.as_str().to_owned();
-  let out_dir = call(&state, move |service| service.runs().out_dir(&id)).await?;
-  stream_run_archive(&out_dir, &name)
+  let package = call(&state, move |service| service.runs().package(&id)).await?;
+  stream_run_package(package)
+}
+
+async fn runs_import(
+  State(state): State<Arc<AppState>>,
+  OctetStream(body): OctetStream,
+) -> Result<ApiJson<RunRecord>, AppError> {
+  let runs = Arc::clone(&state.runs);
+  let record = read_body_blocking(body, move |reader| runs.import(reader)).await?;
+  Ok(ApiJson(record))
 }
 
 /// Path of a run.

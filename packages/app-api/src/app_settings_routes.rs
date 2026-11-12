@@ -20,7 +20,7 @@ pub(crate) fn host_routes() -> ApiRouter<Arc<AppState>> {
     "/api/runs/{id}/save",
     post_with(runs_save, |op| {
       op.id("runsSave").description(
-        "Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the \
+        "Write an output file of a run, or its run package, to an absolute path. Only the \
          process that hosts a local app reaches this path; its windows do not.",
       )
     }),

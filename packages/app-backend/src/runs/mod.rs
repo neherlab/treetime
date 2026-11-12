@@ -10,6 +10,8 @@ pub mod input_store;
 pub mod inputs;
 pub mod lifecycle;
 pub mod manager;
+pub mod package;
+pub mod package_import;
 pub mod record;
 pub mod run_paths;
 pub mod setting_differences;

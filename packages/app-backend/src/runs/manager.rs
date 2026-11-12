@@ -4,9 +4,11 @@ use crate::job::{CancelToken, JobEvent, JobId, TerminalEvent};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
-use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
-use crate::runs::input_store::{InputStore, StoredInput, validate_upload_name};
+use crate::runs::files::{RunFile, list_run_files, resolve_run_file};
+use crate::runs::input_store::{InputStore, StoredInput, StoredUpload, validate_upload_name};
 use crate::runs::lifecycle::StartedRun;
+use crate::runs::package::{RunPackage, export_run};
+use crate::runs::package_import::import_run;
 use crate::runs::record::{
   CreateRunRequest, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
   UpdateRunRequest,
@@ -56,6 +58,9 @@ impl RunManager {
     store
       .remove_unstarted(Utc::now() - UNSTARTED_RUN_LIFETIME)
       .wrap_err("When removing runs that were created for uploads and never started")?;
+    store
+      .remove_staged()
+      .wrap_err("When removing the run packages that a previous process left unfinished")?;
     let input_store = store.input_store();
     input_store
       .remove_partial_uploads()
@@ -226,9 +231,11 @@ impl RunManager {
     self.modify(id, |record| {
       record.status = RunStatus::Cancelled;
       record.finished_at = Some(Utc::now());
+      record.uploads.clear();
       Ok(())
     })?;
     self.inputs.lock().remove(id);
+    self.remove_unreferenced_inputs()?;
     Ok(true)
   }
 
@@ -422,11 +429,6 @@ impl RunManager {
     resolve_run_file(&self.store.out_dir(id), relative)
   }
 
-  pub fn out_dir(&self, id: &JobId) -> Result<PathBuf, Report> {
-    self.store.read(id)?;
-    Ok(self.store.out_dir(id))
-  }
-
   pub fn save_file(&self, id: &JobId, relative: &str, destination: &Path) -> Result<(), Report> {
     let source = self.file_path(id, relative)?;
     write_atomically(destination, |file| {
@@ -436,9 +438,49 @@ impl RunManager {
     })
   }
 
-  pub fn save_archive(&self, id: &JobId, destination: &Path) -> Result<(), Report> {
-    let out_dir = self.out_dir(id)?;
-    write_atomically(destination, |file| write_run_zip(&out_dir, id.as_str(), file))
+  pub fn package(&self, id: &JobId) -> Result<RunPackage, Report> {
+    export_run(self, id)
+  }
+
+  pub fn save_package(&self, id: &JobId, destination: &Path) -> Result<(), Report> {
+    let package = self.package(id)?;
+    write_atomically(destination, |file| package.write(file))
+  }
+
+  pub fn import(&self, body: &mut dyn Read) -> Result<RunRecord, Report> {
+    import_run(self, body)
+  }
+
+  pub fn publish_import(
+    &self,
+    mut record: RunRecord,
+    staged: &Path,
+    uploads: Vec<StoredUpload>,
+  ) -> Result<RunRecord, Report> {
+    let published = {
+      let _records = self.records.lock();
+      if self.store.contains(&record.id) {
+        let id = JobId::random();
+        if record.group_id == record.id {
+          record.group_id = id.clone();
+        }
+        record.id = id;
+      }
+      uploads
+        .into_iter()
+        .try_for_each(|upload| self.input_store.commit(upload).map(|_| ()))
+        .and_then(|()| self.store.publish(staged, &record))
+    };
+    if let Err(report) = published {
+      self.remove_unreferenced_inputs()?;
+      return Err(report);
+    }
+    let record = self.with_size(record)?;
+    self.app_events.append(
+      AppChange::RunCreated { run: record.summary() },
+      run_stale_paths(&record.id),
+    );
+    Ok(record)
   }
 
   pub fn save(&self, id: &JobId, request: &SaveRunRequest) -> Result<(), Report> {
@@ -450,7 +492,7 @@ impl RunManager {
     }
     match &request.path {
       Some(relative) => self.save_file(id, relative, &request.destination),
-      None => self.save_archive(id, &request.destination),
+      None => self.save_package(id, &request.destination),
     }
   }
 

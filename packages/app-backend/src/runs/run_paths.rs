@@ -141,7 +141,7 @@ struct StoredPath {
   size: usize,
 }
 
-fn map_path_values(
+pub fn map_path_values(
   command: AppCommand,
   settings: &mut Map<String, Value>,
   mut map: impl FnMut(&Path) -> PathBuf,
@@ -171,7 +171,7 @@ fn map_strings(value: &mut Value, map: &mut impl FnMut(&Path) -> PathBuf) {
   }
 }
 
-fn path_strings(value: &Value) -> Vec<&str> {
+pub fn path_strings(value: &Value) -> Vec<&str> {
   match value {
     Value::String(path) if !path.is_empty() => vec![path.as_str()],
     Value::Array(items) => items.iter().flat_map(path_strings).collect(),

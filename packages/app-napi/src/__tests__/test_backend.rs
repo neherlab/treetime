@@ -112,7 +112,7 @@ mod tests {
   }
 
   #[test]
-  fn test_backend_host_port_saves_a_run_file_and_the_archive_to_chosen_paths() {
+  fn test_backend_host_port_saves_a_run_file_and_the_run_package_to_chosen_paths() {
     let root = tempdir().unwrap();
     let target = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
@@ -143,13 +143,58 @@ mod tests {
         (200, Value::Null),
         (200, Value::Null),
         fetch_bytes(&service, &format!("/api/runs/{id}/file?path=ancestral.nwk")),
-        archive_contents(fetch_bytes(&service, &format!("/api/runs/{id}/archive")))
+        archive_contents(fetch_bytes(&service, &format!("/api/runs/{id}/package")))
       ),
       (
         saved_file,
         saved_archive,
         fs::read(&file).unwrap(),
         archive_contents(fs::read(&archive).unwrap())
+      )
+    );
+  }
+
+  #[test]
+  fn test_backend_imports_the_run_package_of_another_desktop_with_its_inputs_and_results() {
+    let (first_root, second_root) = (tempdir().unwrap(), tempdir().unwrap());
+    let first = DesktopService::open(first_root.path(), &AppFolderEnv::default()).unwrap();
+    let (_, record) = fetch_json(&first, "POST", "/api/runs", Some(&ancestral_request(false)));
+    let id = record["id"].as_str().unwrap().to_owned();
+    wait_for_terminal(&first, &id);
+    let package = fetch_bytes(&first, &format!("/api/runs/{id}/package"));
+    let second = DesktopService::open(second_root.path(), &AppFolderEnv::default()).unwrap();
+
+    let imported = fetch(
+      &second,
+      PortScope::Renderer,
+      "POST",
+      "/api/runs/import",
+      vec![(o!("content-type"), o!("application/octet-stream"))],
+      Some(package),
+    );
+
+    let imported: Value = serde_json::from_slice(&imported.body).unwrap();
+    let (_, results) = fetch_json(&first, "GET", &format!("/api/runs/{id}/results"), None);
+    let (_, imported_results) = fetch_json(&second, "GET", &format!("/api/runs/{id}/results"), None);
+    assert_eq!(
+      (
+        json!(id),
+        vec![json!("inputs/aln.fasta.xz"), json!("inputs/tree.nwk")],
+        results
+      ),
+      (
+        imported["id"].clone(),
+        {
+          let mut paths = imported["inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|input| input["path"].clone())
+            .collect::<Vec<_>>();
+          paths.sort_by_key(ToString::to_string);
+          paths
+        },
+        imported_results
       )
     );
   }

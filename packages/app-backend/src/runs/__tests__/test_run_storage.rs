@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
   use crate::__tests__::test_support::tests::{sparse, unconfined};
   use crate::config::code::config_code;
   use crate::results::run_results::run_results;
@@ -239,7 +239,7 @@ mod tests {
     );
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use crate::__tests__::test_support::tests::{sparse, unconfined};
     use crate::job::JobId;
     use crate::runs::manager::RunManager;
@@ -251,9 +251,9 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
 
-    pub(super) const ZIKA: &str = "zika/20";
+    pub(crate) const ZIKA: &str = "zika/20";
 
-    pub(super) fn run_with_uploads(
+    pub(crate) fn run_with_uploads(
       runs: &Arc<RunManager>,
       command: AppCommand,
       dataset: &str,
@@ -287,7 +287,7 @@ mod tests {
       runs.upload_input(id, name, &[], &mut &bytes[..], 1 << 24).unwrap().path
     }
 
-    pub(super) fn start_from(runs: &Arc<RunManager>, settings: &SparseConfig, source: Option<&JobId>) -> RunRecord {
+    pub(crate) fn start_from(runs: &Arc<RunManager>, settings: &SparseConfig, source: Option<&JobId>) -> RunRecord {
       let created = runs
         .create(&CreateRunRequest {
           command: AppCommand::Clock,
@@ -303,7 +303,7 @@ mod tests {
       runs.get(&created.id).unwrap()
     }
 
-    pub(super) fn settings(record: &RunRecord) -> Map<String, Value> {
+    pub(crate) fn settings(record: &RunRecord) -> Map<String, Value> {
       record.config.settings().unwrap()
     }
   }

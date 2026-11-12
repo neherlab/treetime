@@ -1,6 +1,6 @@
 use crate::atomic_write::write_atomically;
 use crate::job::{JobEvent, JobId, TerminalEvent};
-use crate::runs::errors::not_found;
+use crate::runs::errors::{conflict, not_found};
 use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::input_store::InputStore;
@@ -16,13 +16,15 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use tempfile::TempDir;
 use treetime_schema::version_info;
 use treetime_utils::error::report_to_string;
 use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
-const RUN_FILE: &str = "run.json";
-const EVENTS_FILE: &str = "events.jsonl";
+pub const RUN_FILE: &str = "run.json";
+pub const EVENTS_FILE: &str = "events.jsonl";
+const STAGING_DIR: &str = ".staging";
 const DEFAULT_TITLE_FORMAT: &str = "Run %Y-%m-%d %H:%M";
 
 #[derive(Clone, Debug)]
@@ -102,12 +104,38 @@ impl RunStore {
   }
 
   pub fn write(&self, record: &RunRecord) -> Result<(), Report> {
-    let path = self.run_dir(&record.id).join(RUN_FILE);
-    let text = format!("{}\n", json_write_str(record, JsonPretty(true))?);
-    write_atomically(&path, |file| {
-      file.write_all(text.as_bytes()).wrap_err("When writing the text")
-    })
-    .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))
+    write_record(&self.run_dir(&record.id), record)
+  }
+
+  pub fn contains(&self, id: &JobId) -> bool {
+    self.run_dir(id).exists()
+  }
+
+  pub fn staging_dir(&self) -> Result<TempDir, Report> {
+    let staging = self.root.join(STAGING_DIR);
+    fs::create_dir_all(&staging).wrap_err_with(|| format!("When creating the folder '{}'", staging.display()))?;
+    tempfile::Builder::new()
+      .tempdir_in(&staging)
+      .wrap_err_with(|| format!("When creating a folder in '{}'", staging.display()))
+  }
+
+  pub fn publish(&self, staged: &Path, record: &RunRecord) -> Result<(), Report> {
+    write_record(staged, record)?;
+    let dir = self.run_dir(&record.id);
+    if dir.exists() {
+      return Err(conflict(format!("a run with id `{}` exists", record.id.as_str())));
+    }
+    fs::rename(staged, &dir).wrap_err_with(|| format!("When moving the run folder to '{}'", dir.display()))
+  }
+
+  pub fn remove_staged(&self) -> Result<(), Report> {
+    let staging = self.root.join(STAGING_DIR);
+    match fs::remove_dir_all(&staging) {
+      Err(err) if err.kind() != io::ErrorKind::NotFound => {
+        Err(Report::new(err).wrap_err(format!("When removing the folder '{}'", staging.display())))
+      },
+      _ => Ok(()),
+    }
   }
 
   pub fn list(&self) -> Result<Vec<RunRecord>, Report> {
@@ -202,6 +230,10 @@ pub struct NewRun {
   pub source_run_id: Option<JobId>,
 }
 
+pub fn record_text(record: &RunRecord) -> Result<String, Report> {
+  Ok(format!("{}\n", json_write_str(record, JsonPretty(true))?))
+}
+
 pub fn default_title<Tz: TimeZone>(created_at: &DateTime<Tz>) -> String
 where
   Tz::Offset: Display,
@@ -215,6 +247,15 @@ where
 )]
 fn create_new_dir(dir: &Path) -> io::Result<()> {
   fs::create_dir(dir)
+}
+
+fn write_record(dir: &Path, record: &RunRecord) -> Result<(), Report> {
+  let path = dir.join(RUN_FILE);
+  let text = record_text(record)?;
+  write_atomically(&path, |file| {
+    file.write_all(text.as_bytes()).wrap_err("When writing the text")
+  })
+  .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))
 }
 
 fn read_record(path: &Path, id: &JobId) -> Result<RunRecord, Report> {

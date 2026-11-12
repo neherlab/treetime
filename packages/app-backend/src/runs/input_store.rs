@@ -175,6 +175,10 @@ impl StoredUpload {
   pub fn size(&self) -> usize {
     self.size
   }
+
+  pub fn sha256(&self) -> &str {
+    &self.key.sha256
+  }
 }
 
 pub fn validate_upload_name(name: &str) -> Result<(), Report> {
