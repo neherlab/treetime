@@ -6,7 +6,8 @@ use crate::runs::record::RunInput;
 use crate::runs::setting_differences::{DifferenceValues, SettingDifference};
 use app_commands::json_value::JsonValue;
 use itertools::Itertools;
-use serde_json::Value;
+use serde_json::{Map, Value};
+use std::path::Path;
 
 const NAMED_CHANGES: usize = 3;
 
@@ -36,11 +37,25 @@ pub fn run_name(dataset: Option<&str>, catalog: &CommandSettings, differences: &
 }
 
 pub fn dataset_label(example: Option<&str>, inputs: &[RunInput]) -> Option<String> {
+  let tree = inputs
+    .iter()
+    .find(|input| input.setting == InputKind::Tree.setting())
+    .map(|input| input.path.as_path());
+  label_of(example, tree)
+}
+
+pub fn draft_dataset_label(example: Option<&str>, config: Option<&Map<String, Value>>) -> Option<String> {
+  let tree = config
+    .and_then(|config| config.get(InputKind::Tree.setting()))
+    .and_then(Value::as_str)
+    .map(Path::new);
+  label_of(example, tree)
+}
+
+fn label_of(example: Option<&str>, tree: Option<&Path>) -> Option<String> {
   example.map(ToOwned::to_owned).or_else(|| {
-    inputs
-      .iter()
-      .find(|input| input.setting == InputKind::Tree.setting())
-      .and_then(|input| input.path.file_name())
+    tree
+      .and_then(Path::file_name)
       .map(|name| name.to_string_lossy().into_owned())
   })
 }
@@ -63,7 +78,7 @@ fn option_label<'a>(catalog: &'a CommandSettings, key: &str, value: &str) -> Opt
     .iter()
     .filter(|row| row.settings.first().is_some_and(|setting| setting.key == key))
     .find_map(|row| match &row.control {
-      RowControl::Coalescent { options } => options
+      RowControl::Coalescent { options, .. } => options
         .iter()
         .find(|option| option.value == value)
         .map(|option| option.label.as_str()),

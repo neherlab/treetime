@@ -3,6 +3,7 @@ use crate::job::JobId;
 use crate::runs::downloads::{config_name, log_name, package_name};
 use crate::runs::headline::RunHeadline;
 use crate::runs::input_store::StoredInput;
+use crate::runs::run_name::dataset_label;
 use crate::runs::run_paths::INPUTS_DIR;
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
@@ -35,6 +36,8 @@ pub struct RunRecord {
   pub renamed: bool,
   /// Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
   pub example: Option<String>,
+  /// Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+  pub dataset: Option<String>,
   /// Command of the run and its configuration, with every default filled in. After the run starts, the configuration
   /// also holds the outputs the run layer adds and the seed the run used.
   #[schemars(flatten)]
@@ -42,6 +45,10 @@ pub struct RunRecord {
   pub config: CommandConfig,
   /// State of the run.
   pub status: RunStatus,
+  /// Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+  /// seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+  /// request, and the settings of the run are not those that it computes with.
+  pub prepared: bool,
   /// Whether the run is pinned in run lists.
   pub pinned: bool,
   /// Run whose settings this run started from, such as the source of a variant. The source may have been deleted
@@ -97,6 +104,7 @@ impl RunRecord {
     RunSummary {
       id: self.id.clone(),
       title: self.title.clone(),
+      dataset: dataset_label(self.example.as_deref(), &self.inputs),
       command: self.config.command(),
       status: self.status,
       pinned: self.pinned,
@@ -190,6 +198,9 @@ pub struct RunSummary {
   pub id: JobId,
   /// Title of the run.
   pub title: String,
+  /// Name of the dataset of the run: the example name, for example `ebola/100`, else the file name of the tree input;
+  /// absent for a run without either.
+  pub dataset: Option<String>,
   /// Command the run executes.
   pub command: AppCommand,
   /// State of the run.

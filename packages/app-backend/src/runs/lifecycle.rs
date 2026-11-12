@@ -153,11 +153,14 @@ impl StartedRun {
         })
         .collect_vec();
       let group_id = derivation_group(&manager, &record, &inputs)?;
-      let title = run_title(&manager, &record, &prepared.config, &inputs, &hook)?;
+      let example = run_example(&manager, &record, &inputs)?;
+      let title = run_title(&manager, &record, example.as_deref(), &prepared.config, &inputs, &hook)?;
       manager.modify(&id, |record| {
         if !record.renamed {
           record.title = title;
         }
+        record.example = example;
+        record.prepared = true;
         record.config = resolved;
         record.changed_settings = prepared
           .changed_settings
@@ -448,9 +451,30 @@ fn derivation_group(manager: &RunManager, record: &RunRecord, inputs: &[RunInput
   )
 }
 
+fn run_example(manager: &RunManager, record: &RunRecord, inputs: &[RunInput]) -> Result<Option<String>, Report> {
+  if record.example.is_some() {
+    return Ok(record.example.clone());
+  }
+  let Some(source) = record
+    .source_run_id
+    .as_ref()
+    .filter(|source| manager.store().contains(source))
+  else {
+    return Ok(None);
+  };
+  let source = manager.store().read(source)?;
+  let digests = input_digests(inputs);
+  Ok(
+    source
+      .example
+      .filter(|_| !digests.is_empty() && input_digests(&source.inputs) == digests),
+  )
+}
+
 fn run_title(
   manager: &RunManager,
   record: &RunRecord,
+  example: Option<&str>,
   config: &Map<String, Value>,
   inputs: &[RunInput],
   hook: &ConfigHook,
@@ -485,7 +509,7 @@ fn run_title(
       inputs: &compared_inputs(inputs),
     },
   );
-  let dataset = dataset_label(record.example.as_deref(), inputs);
+  let dataset = dataset_label(example, inputs);
   Ok(run_name(dataset.as_deref(), &catalog, &differences))
 }
 

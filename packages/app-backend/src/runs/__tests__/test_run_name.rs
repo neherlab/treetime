@@ -41,6 +41,46 @@ mod tests {
   }
 
   #[test]
+  fn test_run_name_a_variant_with_the_inputs_of_its_source_keeps_the_example() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let source = prepared(&runs, zika(&json!({})), Some("zika/20"), None);
+    let variant = prepared(&runs, zika(&json!({ "confidence": true })), None, Some(&source.id));
+    assert_eq!(
+      (Some("zika/20"), "zika/20, time tree: confidence", Some("zika/20")),
+      (
+        variant.example.as_deref(),
+        variant.title.as_str(),
+        variant.dataset.as_deref()
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_name_a_variant_with_other_inputs_names_its_tree_file() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let source = prepared(&runs, zika(&json!({})), Some("zika/20"), None);
+    let mut config = zika(&json!({}));
+    config["alignment"] = json!([]);
+    config["sequence_length"] = json!(10_000);
+    let variant = prepared(&runs, config, None, Some(&source.id));
+    assert_eq!(
+      (None, "tree.nwk"),
+      (variant.example.as_deref(), variant.summary().dataset.unwrap().as_str())
+    );
+  }
+
+  #[test]
+  fn test_run_name_a_run_is_prepared_after_its_start_only() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = helpers::create(&runs, zika(&json!({})), None, None);
+    let started = helpers::start(&runs, &created.id);
+    assert_eq!((false, true), (created.prepared, started.prepared));
+  }
+
+  #[test]
   fn test_run_name_names_three_changes_and_counts_the_others() {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();

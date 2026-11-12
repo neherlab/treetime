@@ -599,6 +599,7 @@ impl RunManager {
       .flat_map(stored_references)
       .fold(BTreeMap::new(), count_reference);
     record.size = self.size_of(&record, &references)?;
+    record.dataset = dataset_label(record.example.as_deref(), &record.inputs);
     Ok(record)
   }
 
@@ -611,6 +612,7 @@ impl RunManager {
       .into_iter()
       .map(|mut record| {
         record.size = self.size_of(&record, &references)?;
+        record.dataset = dataset_label(record.example.as_deref(), &record.inputs);
         Ok(record)
       })
       .collect()

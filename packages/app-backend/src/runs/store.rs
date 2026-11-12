@@ -5,6 +5,7 @@ use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::input_store::InputStore;
 use crate::runs::record::{InputSet, RunInput, RunRecord, RunStatus};
+use crate::runs::run_name::dataset_label;
 use crate::runs::run_paths::OUT_DIR;
 use app_commands::command_config::CommandConfig;
 use chrono::{DateTime, Utc};
@@ -77,9 +78,11 @@ impl RunStore {
       id,
       title,
       renamed: false,
+      dataset: dataset_label(example.as_deref(), &inputs),
       example,
       config,
       status: RunStatus::Created,
+      prepared: false,
       pinned: false,
       source_run_id,
       size: 0,
