@@ -1,8 +1,8 @@
 use crate::runs::errors::invalid;
 use crate::runs::input_store::{InputStore, StoredInput};
-use crate::runs::record::RunInput;
+use crate::runs::record::{InputSet, RunInput, RunRecord};
 use app_commands::command::AppCommand;
-use app_commands::config::properties::setting_properties;
+use app_commands::config::properties::{PathRole, setting_properties};
 use eyre::Report;
 use itertools::Itertools;
 use serde_json::{Map, Value};
@@ -13,38 +13,56 @@ pub const INPUTS_DIR: &str = "inputs";
 
 pub const OUT_DIR: &str = "out";
 
-pub fn resolve_settings(
-  command: AppCommand,
-  settings: &Map<String, Value>,
-  inputs: &[RunInput],
-  run_dir: &Path,
-  store: &InputStore,
-) -> Result<Map<String, Value>, Report> {
-  let mut settings = settings.clone();
-  map_path_values(command, &mut settings, |path| {
-    resolve_path(path, inputs, run_dir, store)
+pub fn resolve_settings(record: &RunRecord, run_dir: &Path, store: &InputStore) -> Result<Map<String, Value>, Report> {
+  let mut settings = record.config.settings()?;
+  map_path_values(record.config.command(), &mut settings, |path| {
+    resolve_path(path, record, run_dir, store)
   })?;
   Ok(settings)
 }
 
-pub fn resolve_path(path: &Path, inputs: &[RunInput], run_dir: &Path, store: &InputStore) -> PathBuf {
+pub fn resolve_path(path: &Path, record: &RunRecord, run_dir: &Path, store: &InputStore) -> PathBuf {
   if path.is_absolute() {
     return path.to_path_buf();
   }
-  inputs
+  if let Some(key) = record
+    .inputs
     .iter()
     .find(|input| input.path == path)
-    .and_then(|input| input.stored())
-    .map_or_else(|| run_dir.join(path), |key| store.path(&key))
+    .and_then(RunInput::stored)
+  {
+    return store.path(&key);
+  }
+  record
+    .input_sets
+    .iter()
+    .find_map(|set| {
+      path
+        .strip_prefix(&set.folder)
+        .ok()
+        .map(|rest| store.set_dir(&set.sha256).join(rest))
+    })
+    .unwrap_or_else(|| run_dir.join(path))
 }
 
 pub struct PortablePaths {
   run_dir: Option<PathBuf>,
+  store: InputStore,
   stored: BTreeMap<PathBuf, StoredPath>,
+  sets: BTreeMap<String, PathBuf>,
 }
 
 impl PortablePaths {
   pub fn of_settings(command: AppCommand, settings: &Map<String, Value>, store: &InputStore) -> Result<Self, Report> {
+    let mut sets = BTreeMap::new();
+    for property in setting_properties(command.config_schema().as_value())? {
+      if property.path_role == Some(PathRole::InputTemplate)
+        && let Some(Value::String(template)) = settings.get(&property.key)
+        && let Some((sha256, _)) = store.set_of(Path::new(template))
+      {
+        sets.insert(sha256, Path::new(INPUTS_DIR).join(&property.key));
+      }
+    }
     let mut found: Vec<(PathBuf, StoredInput)> = vec![];
     let mut settings = settings.clone();
     map_path_values(command, &mut settings, |path| {
@@ -85,7 +103,12 @@ impl PortablePaths {
         ))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
-    Ok(Self { run_dir: None, stored })
+    Ok(Self {
+      run_dir: None,
+      store: store.clone(),
+      stored,
+      sets,
+    })
   }
 
   #[must_use]
@@ -100,11 +123,27 @@ impl PortablePaths {
     if let Some(stored) = self.stored.get(path) {
       return stored.portable.clone();
     }
+    if let Some((sha256, rest)) = self.store.set_of(path)
+      && let Some(folder) = self.sets.get(&sha256)
+    {
+      return folder.join(rest);
+    }
     self
       .run_dir
       .as_ref()
       .and_then(|run_dir| path.strip_prefix(run_dir).ok())
       .map_or_else(|| path.to_path_buf(), Path::to_path_buf)
+  }
+
+  pub fn input_sets(&self) -> Vec<InputSet> {
+    self
+      .sets
+      .iter()
+      .map(|(sha256, folder)| InputSet {
+        folder: folder.clone(),
+        sha256: sha256.clone(),
+      })
+      .collect()
   }
 
   pub fn apply(&self, command: AppCommand, settings: &mut Map<String, Value>) -> Result<(), Report> {

@@ -1,51 +1,57 @@
 use crate::error::AppError;
 use app_backend::runs::manager::{InputUpload, UploadedInput};
+use app_backend::runs::package_import::PackageImport;
+use app_backend::runs::record::RunRecord;
 use axum::body::Body;
 use eyre::Report;
-use std::io::Read;
 use tokio_stream::StreamExt as _;
 
 #[cfg(target_family = "wasm")]
-use axum::body::to_bytes;
-#[cfg(target_family = "wasm")]
 use std::future::{Ready, ready};
-#[cfg(not(target_family = "wasm"))]
-use std::io;
-#[cfg(not(target_family = "wasm"))]
-use tokio_util::io::{StreamReader, SyncIoBridge};
 
-pub(crate) async fn upload_body(body: Body, mut upload: InputUpload) -> Result<UploadedInput, AppError> {
+pub(crate) async fn receive_body<S: BodySink>(body: Body, mut sink: S) -> Result<S::Output, AppError> {
   let mut chunks = body.into_data_stream();
   while let Some(chunk) = chunks.next().await {
     let chunk = chunk?;
-    upload = run_blocking(move || {
-      upload.write(&chunk)?;
-      Ok(upload)
+    sink = run_blocking(move || {
+      sink.write(&chunk)?;
+      Ok(sink)
     })
     .await?;
   }
-  run_blocking(move || upload.finish()).await
+  run_blocking(move || sink.finish()).await
 }
 
-#[cfg(not(target_family = "wasm"))]
-pub(crate) async fn read_body_blocking<T, F>(body: Body, work: F) -> Result<T, AppError>
-where
-  T: Send + 'static,
-  F: FnOnce(&mut dyn Read) -> Result<T, Report> + Send + 'static,
-{
-  let stream = body.into_data_stream().map(|chunk| chunk.map_err(io::Error::other));
-  let mut reader = SyncIoBridge::new(StreamReader::new(stream));
-  run_blocking(move || work(&mut reader)).await
+pub(crate) trait BodySink: Send + 'static {
+  type Output: Send + 'static;
+
+  fn write(&mut self, chunk: &[u8]) -> Result<(), Report>;
+
+  fn finish(self) -> Result<Self::Output, Report>;
 }
 
-#[cfg(target_family = "wasm")]
-pub(crate) async fn read_body_blocking<T, F>(body: Body, work: F) -> Result<T, AppError>
-where
-  T: Send + 'static,
-  F: FnOnce(&mut dyn Read) -> Result<T, Report> + Send + 'static,
-{
-  let bytes = to_bytes(body, usize::MAX).await?;
-  run_blocking(move || work(&mut bytes.as_ref())).await
+impl BodySink for InputUpload {
+  type Output = UploadedInput;
+
+  fn write(&mut self, chunk: &[u8]) -> Result<(), Report> {
+    Self::write(self, chunk)
+  }
+
+  fn finish(self) -> Result<UploadedInput, Report> {
+    Self::finish(self)
+  }
+}
+
+impl BodySink for PackageImport {
+  type Output = RunRecord;
+
+  fn write(&mut self, chunk: &[u8]) -> Result<(), Report> {
+    Self::write(self, chunk)
+  }
+
+  fn finish(self) -> Result<RunRecord, Report> {
+    Self::finish(self)
+  }
 }
 
 #[cfg(not(target_family = "wasm"))]

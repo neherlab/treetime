@@ -3,7 +3,7 @@ mod tests {
   use crate::file_kinds::{DetectedFile, FileKind, FileKindsRequest, file_kinds};
   use app_commands::command::AppCommand;
   use app_datasets::schema_directive;
-  use helpers::{kind_of, run_package, zip_with};
+  use helpers::{PackageWriter, kind_of, run_package, zip_with};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -84,11 +84,15 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_file_kinds_reads_a_run_package_whatever_its_name() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::written_to_a_file(PackageWriter::File)]
+  #[case::streamed(         PackageWriter::Stream)]
+  #[trace]
+  fn test_file_kinds_reads_a_run_package_of_the_package_writers_whatever_its_name(#[case] writer: PackageWriter) {
     let dir = tempdir().unwrap();
     let path = dir.path().join("download.bin");
-    fs::write(&path, run_package()).unwrap();
+    fs::write(&path, run_package(writer)).unwrap();
     assert_eq!(
       DetectedFile {
         path: path.clone(),
@@ -102,8 +106,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::zip_without_record(   &[("out/tree.nwk", "(A,B);")], "The file is a zip archive but not a run package: When reading `run.json` of the archive: specified file not found in archive")]
-  #[case::zip_with_other_json(  &[("run.json", "{\"id\": 1}")],  "The file is a zip archive but not a run package: When reading `run.json` as the record of a run: When parsing JSON: Unexpected: unexpected unsigned integer, expected string at line 1 column 8 (path: id)")]
+  #[case::zip_without_record(   &[("out/tree.nwk", "(A,B);")], "The file is not a run package: it holds no `run.json`")]
+  #[case::zip_with_other_json(  &[("run.json", "{\"id\": 1}")],  "`run.json` of the run package is not a run record: When parsing JSON: Unexpected: unexpected unsigned integer, expected string at line 1 column 8 (path: id)")]
+  #[case::record_in_two_folders(&[("a/run.json", "{}"), ("b/run.json", "{}")], "The file is not a run package: it holds no `run.json`")]
   #[trace]
   fn test_file_kinds_rejects_a_zip_archive_without_a_run_record(#[case] entries: &[(&str, &str)], #[case] reason: &str) {
     let dir = tempdir().unwrap();
@@ -171,13 +176,12 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_support::tests::sparse;
+    use crate::__tests__::test_support::tests::{sparse, unconfined};
     use crate::file_kinds::{DetectedFile, FileKindsRequest, file_kinds};
     use crate::runs::manager::RunManager;
-    use crate::runs::record::CreateRunRequest;
+    use crate::runs::record::{CreateRunRequest, StartRunRequest};
     use app_commands::command::AppCommand;
     use serde_json::json;
-    use std::fs;
     use std::io::{Cursor, Write};
     use std::path::Path;
     use tempfile::tempdir;
@@ -191,20 +195,42 @@ mod tests {
       kinds.files.remove(0)
     }
 
-    pub(super) fn run_package() -> Vec<u8> {
+    #[derive(Clone, Copy, Debug)]
+    pub(super) enum PackageWriter {
+      File,
+      Stream,
+    }
+
+    pub(super) fn run_package(writer: PackageWriter) -> Vec<u8> {
       let root = tempdir().unwrap();
       let runs = RunManager::open(root.path()).unwrap();
-      let record = runs
+      let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
+      let created = runs
         .create(&CreateRunRequest {
           command: AppCommand::Clock,
-          config: sparse(json!({ "tree": "tree.nwk", "metadata": "metadata.tsv" })),
+          config: sparse(json!({ "tree": data.join("tree.nwk"), "metadata": data.join("metadata.tsv") })),
           defer_start: true,
           source_run_id: None,
           example: None,
         })
         .unwrap();
-      let run_json = fs::read_to_string(root.path().join(record.id.as_str()).join("run.json")).unwrap();
-      zip_with(&[("run.json", &run_json), ("out/clock.json", "{}")])
+      runs
+        .start(&created.id, &StartRunRequest::default(), unconfined())
+        .unwrap()
+        .run();
+      let package = runs.package(&created.id).unwrap();
+      match writer {
+        PackageWriter::File => {
+          let mut written = Cursor::new(vec![]);
+          package.write(&mut written).unwrap();
+          written.into_inner()
+        },
+        PackageWriter::Stream => {
+          let mut streamed = vec![];
+          package.stream(&mut streamed).unwrap();
+          streamed
+        },
+      }
     }
 
     pub(super) fn zip_with(entries: &[(&str, &str)]) -> Vec<u8> {

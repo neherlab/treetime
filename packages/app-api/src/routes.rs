@@ -1,4 +1,4 @@
-use crate::api::blocking::{read_body_blocking, run_blocking, upload_body};
+use crate::api::blocking::{receive_body, run_blocking};
 use crate::api::download::{serve_run_file, stream_run_package};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
@@ -340,8 +340,11 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
           "Create a run from a run package. The package must hold a run that has ended, every path in it must be \
            relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every \
            output file that `run.json` lists must be present. The run keeps the id of the package unless a run with \
-           that id exists.",
+           that id exists. The package, as uploaded and unpacked, must fit in the upload limit.",
         )
+        .response_with::<413, AppError, _>(|response| {
+          response.description("The run package exceeds the upload limit")
+        })
       })
       .layer(DefaultBodyLimit::disable()),
     )
@@ -573,7 +576,7 @@ async fn runs_upload_input(
   let limit = state.config.max_upload_size;
   let replaces = replaces.into_iter().map(PathBuf::from).collect_vec();
   let upload = run_blocking(move || runs.begin_upload(&id, &name, &replaces, limit)).await?;
-  Ok(ApiJson(upload_body(body, upload).await?))
+  Ok(ApiJson(receive_body(body, upload).await?))
 }
 
 async fn runs_upload_allowance(
@@ -660,8 +663,9 @@ async fn runs_import(
   OctetStream(body): OctetStream,
 ) -> Result<ApiJson<RunRecord>, AppError> {
   let runs = Arc::clone(&state.runs);
-  let record = read_body_blocking(body, move |reader| runs.import(reader)).await?;
-  Ok(ApiJson(record))
+  let limit = state.config.max_upload_size;
+  let import = run_blocking(move || runs.begin_import(limit)).await?;
+  Ok(ApiJson(receive_body(body, import).await?))
 }
 
 /// Path of a run.

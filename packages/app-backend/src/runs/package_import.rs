@@ -1,41 +1,106 @@
-use crate::runs::errors::invalid;
-use crate::runs::input_store::StoredUpload;
-use crate::runs::inputs::file_sha256;
+use crate::runs::errors::{PackageTooLarge, invalid};
+use crate::runs::input_store::{StoredUpload, format_size, set_sha256};
+use crate::runs::inputs::hex_digest;
 use crate::runs::manager::RunManager;
-use crate::runs::record::{RunInput, RunRecord};
+use crate::runs::package_reader::{PackageFile, PackageReader, is_inside, outside_package};
+use crate::runs::record::{InputSet, RunInput, RunRecord};
 use crate::runs::run_paths::{INPUTS_DIR, OUT_DIR, map_path_values};
-use crate::runs::store::{EVENTS_FILE, RUN_FILE};
+use crate::runs::store::EVENTS_FILE;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use std::collections::BTreeSet;
+use sha2::{Digest, Sha256};
 use std::fs::{self, File};
-use std::io::{self, Read, Seek};
-use std::path::{Component, Path};
-use treetime_utils::io::json::json_read_str;
-use zip::ZipArchive;
+use std::io::{Seek, Write};
+use std::path::Path;
+use std::sync::Arc;
+use tempfile::TempDir;
+use treetime_utils::make_internal_report;
 
 const PACKAGE_FILE: &str = "package.zip";
 
 const STAGED_RUN_DIR: &str = "run";
 
-pub fn import_run(manager: &RunManager, body: &mut dyn Read) -> Result<RunRecord, Report> {
-  let staging = manager.store().staging_dir()?;
-  let mut archive = receive(body, &staging.path().join(PACKAGE_FILE))?;
-  let entries = PackageEntries::of(&mut archive)?;
-  let record = read_record(&mut archive, &entries)?;
+const STAGED_SETS_DIR: &str = "sets";
+
+pub struct PackageImport {
+  runs: Arc<RunManager>,
+  staging: TempDir,
+  file: File,
+  size: usize,
+  limit: usize,
+}
+
+impl PackageImport {
+  pub fn begin(runs: Arc<RunManager>, limit: usize) -> Result<Self, Report> {
+    let staging = runs.store().staging_dir()?;
+    let path = staging.path().join(PACKAGE_FILE);
+    let file = File::options()
+      .read(true)
+      .write(true)
+      .create_new(true)
+      .open(&path)
+      .wrap_err_with(|| format!("When creating '{}'", path.display()))?;
+    Ok(Self {
+      runs,
+      staging,
+      file,
+      size: 0,
+      limit,
+    })
+  }
+
+  pub fn write(&mut self, chunk: &[u8]) -> Result<(), Report> {
+    self.size = self.size.saturating_add(chunk.len());
+    if self.size > self.limit {
+      return Err(Report::new(PackageTooLarge {
+        limit: format_size(self.limit),
+      }));
+    }
+    self.file.write_all(chunk).wrap_err("When receiving the run package")
+  }
+
+  pub fn finish(self) -> Result<RunRecord, Report> {
+    let Self {
+      runs,
+      staging,
+      mut file,
+      limit,
+      ..
+    } = self;
+    file.rewind().wrap_err("When reading the run package")?;
+    import_run(&runs, &staging, file, limit)
+  }
+}
+
+fn import_run(manager: &RunManager, staging: &TempDir, file: File, limit: usize) -> Result<RunRecord, Report> {
+  let mut package = PackageReader::open(file)?;
+  package.ensure_within(limit)?;
+  let record = package.record()?;
   check_record(&record)?;
   let run_dir = staging.path().join(STAGED_RUN_DIR);
   let out_dir = run_dir.join(OUT_DIR);
   fs::create_dir_all(&out_dir).wrap_err_with(|| format!("When creating '{}'", out_dir.display()))?;
+  let sets_dir = staging.path().join(STAGED_SETS_DIR);
   let mut uploads = vec![];
-  let mut found = BTreeSet::new();
-  for (name, index) in &entries.files {
-    let path = Path::new(name);
-    if name == EVENTS_FILE || path.starts_with(OUT_DIR) {
-      extract(&mut archive, *index, name, &run_dir.join(path))?;
-    } else if let Some(input) = record.inputs.iter().find(|input| input.path == path) {
-      if found.insert(input.path.clone()) {
-        uploads.extend(extract_input(manager, &mut archive, *index, input, &run_dir)?);
+  let mut found = vec![];
+  for file in package.files().to_vec() {
+    let path = Path::new(file.name());
+    if file.name() == EVENTS_FILE || path.starts_with(OUT_DIR) {
+      extract(&mut package, &file, &run_dir.join(path))?;
+    } else if let Some(input) = record.inputs.iter().find(|input| input.path == path)
+      && !found.contains(&input.path)
+    {
+      found.push(input.path.clone());
+      if let Some(upload) = extract_input(
+        manager,
+        &mut package,
+        &file,
+        input,
+        &record.input_sets,
+        &sets_dir,
+        limit,
+      )? {
+        uploads.push(upload);
       }
     }
   }
@@ -55,100 +120,13 @@ pub fn import_run(manager: &RunManager, body: &mut dyn Read) -> Result<RunRecord
       missing.path.display()
     )));
   }
-  manager.publish_import(record, &run_dir, uploads)
-}
-
-fn receive(body: &mut dyn Read, path: &Path) -> Result<ZipArchive<File>, Report> {
-  let mut file = File::options()
-    .read(true)
-    .write(true)
-    .create_new(true)
-    .open(path)
-    .wrap_err_with(|| format!("When creating '{}'", path.display()))?;
-  io::copy(body, &mut file).wrap_err("When receiving the run package")?;
-  file.rewind().wrap_err("When reading the run package")?;
-  ZipArchive::new(file).map_err(|err| invalid(format!("the file is not a run package: it is not a zip archive: {err}")))
-}
-
-struct PackageEntries {
-  files: Vec<(String, usize)>,
-}
-
-impl PackageEntries {
-  fn of(archive: &mut ZipArchive<File>) -> Result<Self, Report> {
-    let mut entries = vec![];
-    for index in 0..archive.len() {
-      let entry = archive
-        .by_index_raw(index)
-        .map_err(|err| invalid(format!("the run package cannot be read: {err}")))?;
-      let name = entry
-        .name()
-        .map_err(|err| invalid(format!("the run package cannot be read: {err}")))?
-        .into_owned();
-      if !is_inside(Path::new(name.trim_end_matches('/'))) {
-        return Err(outside_package(&name));
-      }
-      if entry.is_symlink() {
-        return Err(invalid(format!(
-          "the run package holds `{name}`, a symbolic link; a run package holds files and folders only"
-        )));
-      }
-      if entry.is_file() {
-        entries.push((name, index));
-      }
-    }
-    let root = if entries.iter().any(|(name, _)| name == RUN_FILE) {
-      None
-    } else {
-      let folders = entries
-        .iter()
-        .filter_map(|(name, _)| name.split_once('/').map(|(folder, _)| folder))
-        .unique()
-        .collect_vec();
-      match folders.as_slice() {
-        [folder] if entries.iter().any(|(name, _)| *name == format!("{folder}/{RUN_FILE}")) => {
-          Some(format!("{folder}/"))
-        },
-        _ => {
-          return Err(invalid(format!(
-            "the file is not a run package: it holds no `{RUN_FILE}`"
-          )));
-        },
-      }
-    };
-    let files = entries
-      .iter()
-      .filter_map(|(name, index)| match &root {
-        Some(root) => name.strip_prefix(root.as_str()).map(|name| (name.to_owned(), *index)),
-        None => Some((name.clone(), *index)),
-      })
-      .collect();
-    Ok(Self { files })
-  }
-
-  fn index(&self, name: &str) -> Option<usize> {
-    self
-      .files
-      .iter()
-      .find_map(|(entry, index)| (entry == name).then_some(*index))
-  }
-}
-
-fn read_record(archive: &mut ZipArchive<File>, entries: &PackageEntries) -> Result<RunRecord, Report> {
-  let index = entries
-    .index(RUN_FILE)
-    .ok_or_else(|| invalid(format!("the file is not a run package: it holds no `{RUN_FILE}`")))?;
-  let mut text = String::new();
-  archive
-    .by_index(index)
-    .map_err(|err| invalid(format!("the run package cannot be read: {err}")))?
-    .read_to_string(&mut text)
-    .map_err(|err| invalid(format!("`{RUN_FILE}` of the run package cannot be read: {err}")))?;
-  json_read_str::<RunRecord>(&text).map_err(|report| {
-    invalid(format!(
-      "`{RUN_FILE}` of the run package is not a run record: {report:#}"
-    ))
-  })
+  let sets = record
+    .input_sets
+    .iter()
+    .enumerate()
+    .map(|(number, set)| (set.sha256.clone(), sets_dir.join(number.to_string())))
+    .collect_vec();
+  manager.publish_import(record, &run_dir, uploads, &sets)
 }
 
 fn check_record(record: &RunRecord) -> Result<(), Report> {
@@ -175,6 +153,7 @@ fn check_record(record: &RunRecord) -> Result<(), Report> {
   let paths = outside
     .into_iter()
     .chain(record.inputs.iter().map(|input| input.path.clone()))
+    .chain(record.input_sets.iter().map(|set| set.folder.clone()))
     .chain(
       record
         .output_files
@@ -198,67 +177,115 @@ fn check_record(record: &RunRecord) -> Result<(), Report> {
       input.path.display()
     )));
   }
-  Ok(())
+  if let Some(set) = record
+    .input_sets
+    .iter()
+    .find(|set| !set.folder.starts_with(INPUTS_DIR) || set.folder == Path::new(INPUTS_DIR))
+  {
+    return Err(invalid(format!(
+      "run.json of the run package lists the file set `{}`, which is not a folder in the package's `{INPUTS_DIR}/` \
+       folder",
+      set.folder.display()
+    )));
+  }
+  if let Some(input) = record
+    .inputs
+    .iter()
+    .find(|input| input.stored().is_none() && set_of(&record.input_sets, &input.path).is_none())
+  {
+    return Err(invalid(format!(
+      "run.json of the run package lists input `{}`, which is neither an uploaded file nor a file of a set in \
+       `input_sets`",
+      input.path.display()
+    )));
+  }
+  record.input_sets.iter().try_for_each(|set| check_set(record, set))
 }
 
 fn extract_input(
   manager: &RunManager,
-  archive: &mut ZipArchive<File>,
-  index: usize,
+  package: &mut PackageReader<File>,
+  file: &PackageFile,
   input: &RunInput,
-  run_dir: &Path,
+  sets: &[InputSet],
+  sets_dir: &Path,
+  limit: usize,
 ) -> Result<Option<StoredUpload>, Report> {
-  let mismatch = |size: usize, sha256: &str| {
-    invalid(format!(
+  let (size, sha256, upload) = if let Some(key) = input.stored() {
+    let mut writer = manager.input_store().begin(&key.name, limit, limit)?;
+    package.copy(file, |chunk| writer.write(chunk))?;
+    let upload = writer.finish()?;
+    (upload.size(), upload.sha256().to_owned(), Some(upload))
+  } else {
+    let (number, rest) = set_of(sets, &input.path)
+      .ok_or_else(|| make_internal_report!("input `{}` is in no file set of the package", input.path.display()))?;
+    let target = sets_dir.join(number.to_string()).join(rest);
+    let (size, sha256) = extract(package, file, &target)?;
+    (size, sha256, None)
+  };
+  if (size, sha256.as_str()) != (input.size, input.sha256.as_str()) {
+    return Err(invalid(format!(
       "input `{}` of the run package does not match its run.json: the file has {size} bytes and SHA-256 {sha256}, \
        run.json lists {} bytes and SHA-256 {}",
       input.path.display(),
       input.size,
       input.sha256
-    ))
-  };
-  if let Some(key) = input.stored() {
-    let mut entry = archive
-      .by_index(index)
-      .map_err(|err| invalid(format!("the run package cannot be read: {err}")))?;
-    let upload = manager
-      .input_store()
-      .store(&key.name, &mut entry, usize::MAX, usize::MAX)
-      .wrap_err_with(|| format!("When reading the input `{}` of the run package", input.path.display()))?;
-    if (upload.size(), upload.sha256()) != (input.size, input.sha256.as_str()) {
-      return Err(mismatch(upload.size(), upload.sha256()));
-    }
-    return Ok(Some(upload));
+    )));
   }
-  let target = run_dir.join(&input.path);
-  extract(archive, index, &input.path.to_string_lossy(), &target)?;
-  let (size, sha256) = file_sha256(&target)?;
-  if (size, &sha256) != (input.size, &input.sha256) {
-    return Err(mismatch(size, &sha256));
-  }
-  Ok(None)
+  Ok(upload)
 }
 
-fn extract(archive: &mut ZipArchive<File>, index: usize, name: &str, target: &Path) -> Result<(), Report> {
-  if let Some(parent) = target.parent() {
-    fs::create_dir_all(parent).wrap_err_with(|| format!("When creating '{}'", parent.display()))?;
+fn check_set(record: &RunRecord, set: &InputSet) -> Result<(), Report> {
+  let files = record
+    .inputs
+    .iter()
+    .filter_map(|input| {
+      input
+        .path
+        .strip_prefix(&set.folder)
+        .ok()
+        .map(|rest| (rest, input.sha256.as_str()))
+    })
+    .unique()
+    .collect_vec();
+  if files.is_empty() {
+    return Err(invalid(format!(
+      "the file set `{}` of the run package holds no input that run.json lists",
+      set.folder.display()
+    )));
   }
-  let mut entry = archive
-    .by_index(index)
-    .map_err(|err| invalid(format!("the run package cannot be read: {err}")))?;
-  let mut file = File::create(target).wrap_err_with(|| format!("When creating '{}'", target.display()))?;
-  io::copy(&mut entry, &mut file)
-    .map_err(|err| invalid(format!("the file `{name}` of the run package cannot be read: {err}")))?;
+  let sha256 = set_sha256(files)?;
+  if sha256 != set.sha256 {
+    return Err(invalid(format!(
+      "the file set `{}` of the run package does not match its run.json: its files give the key {sha256}, run.json \
+       lists {}",
+      set.folder.display(),
+      set.sha256
+    )));
+  }
   Ok(())
 }
 
-fn is_inside(path: &Path) -> bool {
-  let mut components = path.components().peekable();
-  components.peek().is_some() && components.all(|component| matches!(component, Component::Normal(_)))
+fn set_of<'a>(sets: &'a [InputSet], path: &'a Path) -> Option<(usize, &'a Path)> {
+  sets
+    .iter()
+    .enumerate()
+    .find_map(|(number, set)| path.strip_prefix(&set.folder).ok().map(|rest| (number, rest)))
 }
 
-fn outside_package(path: &str) -> Report {
-  invalid(format!(
-    "the run package names `{path}`, a path outside the package; every path of a run package is relative and inside it"
-  ))
+fn extract(package: &mut PackageReader<File>, file: &PackageFile, target: &Path) -> Result<(usize, String), Report> {
+  if let Some(parent) = target.parent() {
+    fs::create_dir_all(parent).wrap_err_with(|| format!("When creating '{}'", parent.display()))?;
+  }
+  let mut output = File::create(target).wrap_err_with(|| format!("When creating '{}'", target.display()))?;
+  let mut hasher = Sha256::new();
+  let mut size = 0_usize;
+  package.copy(file, |chunk| {
+    hasher.update(chunk);
+    size += chunk.len();
+    output
+      .write_all(chunk)
+      .wrap_err_with(|| format!("When writing '{}'", target.display()))
+  })?;
+  Ok((size, hex_digest(&hasher.finalize())?))
 }

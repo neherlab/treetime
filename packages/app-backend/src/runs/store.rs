@@ -4,7 +4,7 @@ use crate::runs::errors::{conflict, not_found};
 use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::input_store::InputStore;
-use crate::runs::record::{RunInput, RunRecord, RunStatus};
+use crate::runs::record::{InputSet, RunInput, RunRecord, RunStatus};
 use crate::runs::run_paths::OUT_DIR;
 use app_commands::command_config::CommandConfig;
 use chrono::{DateTime, Utc};
@@ -61,6 +61,7 @@ impl RunStore {
       title,
       config,
       inputs,
+      input_sets,
       source_run_id,
       example,
     } = run;
@@ -89,6 +90,7 @@ impl RunStore {
       duration_seconds: None,
       treetime_version: version_info().version.to_owned(),
       inputs,
+      input_sets,
       uploads: vec![],
       config_hash: None,
       changed_settings: vec![],
@@ -230,6 +232,7 @@ pub struct NewRun {
   pub title: String,
   pub config: CommandConfig,
   pub inputs: Vec<RunInput>,
+  pub input_sets: Vec<InputSet>,
   pub source_run_id: Option<JobId>,
   pub example: Option<String>,
 }

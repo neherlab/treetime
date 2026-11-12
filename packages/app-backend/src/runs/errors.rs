@@ -10,6 +10,15 @@ pub struct UploadTooLarge {
   pub name: String,
 }
 
+#[derive(Debug, Display, Error)]
+#[display(
+  "a run package is limited to {limit}, the upload limit, both as uploaded and unpacked; the package is larger"
+)]
+pub struct PackageTooLarge {
+  #[error(not(source))]
+  pub limit: String,
+}
+
 pub fn not_found(message: impl Into<String>) -> Report {
   Report::new(RunNotFound {
     message: message.into(),

@@ -8,5 +8,6 @@ mod test_openapi;
 mod test_openapi_contract;
 mod test_port;
 mod test_routes;
+mod test_run_package_routes;
 mod test_save_route;
 mod test_upload_routes;

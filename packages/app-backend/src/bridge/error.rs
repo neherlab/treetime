@@ -1,4 +1,4 @@
-use crate::runs::errors::{InvalidRunRequest, RunConflict, RunNotFound, UploadTooLarge};
+use crate::runs::errors::{InvalidRunRequest, PackageTooLarge, RunConflict, RunNotFound, UploadTooLarge};
 use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
@@ -43,7 +43,7 @@ impl ErrorResponse {
 pub enum ErrorCode {
   /// The run or file does not exist.
   NotFound,
-  /// The inputs of a run exceed the upload limit.
+  /// The inputs of a run or a run package exceed the upload limit.
   UploadTooLarge,
   /// The run is in a state that does not allow the operation.
   Conflict,
@@ -59,7 +59,7 @@ impl ErrorCode {
   pub fn of(report: &Report) -> Self {
     if report.downcast_ref::<RunNotFound>().is_some() {
       Self::NotFound
-    } else if report.downcast_ref::<UploadTooLarge>().is_some() {
+    } else if report.downcast_ref::<UploadTooLarge>().is_some() || report.downcast_ref::<PackageTooLarge>().is_some() {
       Self::UploadTooLarge
     } else if report.downcast_ref::<RunConflict>().is_some() {
       Self::Conflict

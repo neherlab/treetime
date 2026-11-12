@@ -117,13 +117,7 @@ impl StartedRun {
     );
     let job = run_job_step(&id, &run.token, || {
       let store = manager.input_store();
-      let mut config = Value::Object(resolve_settings(
-        command,
-        &record.config.settings()?,
-        &record.inputs,
-        &run_dir,
-        store,
-      )?);
+      let mut config = Value::Object(resolve_settings(&record, &run_dir, store)?);
       hook(&mut config)?;
       let Value::Object(settings) = &config else {
         return make_error!("a command configuration must be a mapping of settings");

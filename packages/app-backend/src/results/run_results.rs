@@ -86,11 +86,15 @@ pub fn results_of_record(record: &RunRecord, run_dir: &Path, store: &InputStore)
       CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?)
     },
     CommandConfig::Optimize { config } => CommandResults::Optimize(tree_change(
-      input.statistics(&config.tree, config.newick_dialect, &mut problems),
+      input
+        .statistics(&config.tree, config.newick_dialect, &mut problems)
+        .as_ref(),
       tree.as_ref(),
     )),
     CommandConfig::Prune { config } => CommandResults::Prune(tree_change(
-      input.statistics(&config.tree, config.newick_dialect, &mut problems),
+      input
+        .statistics(&config.tree, config.newick_dialect, &mut problems)
+        .as_ref(),
       tree.as_ref(),
     )),
   };
@@ -156,7 +160,7 @@ impl InputTree<'_> {
     dialect: TreeDialectArgs,
     problems: &mut Vec<OutputProblem>,
   ) -> Option<TreeStatistics> {
-    let path = resolve_path(tree.tree.as_deref()?, &self.record.inputs, self.run_dir, self.store);
+    let path = resolve_path(tree.tree.as_deref()?, self.record, self.run_dir, self.store);
     match input_tree_statistics(&path, dialect.newick_dialect.dialect()) {
       Ok(statistics) => Some(statistics),
       Err(report) => {

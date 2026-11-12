@@ -1,7 +1,9 @@
 use crate::runs::errors::{UploadTooLarge, invalid};
+use crate::runs::files::{files_size, relative_name};
 use crate::runs::inputs::hex_digest;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use schemars::JsonSchema;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
@@ -13,6 +15,8 @@ use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 const STORE_DIR: &str = ".inputs";
+
+const SETS_DIR: &str = "sets";
 
 const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
 
@@ -145,6 +149,57 @@ impl InputStore {
       _ => Ok(()),
     }
   }
+  pub fn set_dir(&self, sha256: &str) -> PathBuf {
+    self.root.join(SETS_DIR).join(sha256)
+  }
+
+  pub fn set_of(&self, path: &Path) -> Option<(String, PathBuf)> {
+    let mut components = path.strip_prefix(self.root.join(SETS_DIR)).ok()?.components();
+    let Some(Component::Normal(sha256)) = components.next() else {
+      return None;
+    };
+    let sha256 = sha256.to_str().filter(|sha256| is_sha256_hex(sha256))?;
+    let rest = components.as_path();
+    rest
+      .components()
+      .all(|component| matches!(component, Component::Normal(_)))
+      .then(|| (sha256.to_owned(), rest.to_path_buf()))
+  }
+
+  pub fn commit_set(&self, staged: &Path, sha256: &str) -> Result<(), Report> {
+    let target = self.set_dir(sha256);
+    if target.is_dir() {
+      return Ok(());
+    }
+    let sets = self.root.join(SETS_DIR);
+    fs::create_dir_all(&sets).wrap_err_with(|| format!("When creating '{}'", sets.display()))?;
+    fs::rename(staged, &target).wrap_err_with(|| format!("When saving the file set '{}'", target.display()))
+  }
+
+  pub fn set_keys(&self) -> Result<BTreeSet<String>, Report> {
+    Ok(
+      read_dir_if_exists(&self.root.join(SETS_DIR))?
+        .into_iter()
+        .filter(|folder| folder.is_dir())
+        .filter_map(|folder| folder.file_name().and_then(|name| name.to_str()).map(str::to_owned))
+        .filter(|sha256| is_sha256_hex(sha256))
+        .collect(),
+    )
+  }
+
+  pub fn set_size(&self, sha256: &str) -> Result<usize, Report> {
+    files_size(&self.set_dir(sha256))
+  }
+
+  pub fn remove_set(&self, sha256: &str) -> Result<(), Report> {
+    let folder = self.set_dir(sha256);
+    match fs::remove_dir_all(&folder) {
+      Err(err) if err.kind() != io::ErrorKind::NotFound => {
+        Err(Report::new(err).wrap_err(format!("When removing the file set '{}'", folder.display())))
+      },
+      _ => Ok(()),
+    }
+  }
 }
 
 /// Key of a file in the input store: the SHA-256 of its contents and its file name.
@@ -249,6 +304,15 @@ pub fn format_size(bytes: usize) -> String {
   } else {
     format!("{} {unit}", float_to_significant_digits(value, 3))
   }
+}
+
+pub fn set_sha256<'a>(files: impl IntoIterator<Item = (&'a Path, &'a str)>) -> Result<String, Report> {
+  let listing = files
+    .into_iter()
+    .map(|(path, sha256)| format!("{sha256}  {}\n", relative_name(path)))
+    .sorted()
+    .join("");
+  Ok(hex_digest(&Sha256::digest(listing.as_bytes()))?)
 }
 
 fn is_sha256_hex(text: &str) -> bool {

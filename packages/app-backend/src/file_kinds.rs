@@ -1,5 +1,5 @@
 use crate::command::{AppCommandExt, offered_commands};
-use crate::runs::record::RunRecord;
+use crate::runs::package_reader::PackageReader;
 use app_commands::command::AppCommand;
 use app_commands::config::properties::setting_properties;
 use app_commands::yaml::yaml_value_read_str;
@@ -11,7 +11,7 @@ use schemars::JsonSchema;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fs::File;
-use std::io::{Read, Seek};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use strum_macros::Display;
@@ -26,11 +26,7 @@ use treetime_utils::error::report_to_string;
 use treetime_utils::io::compression::remove_compression_ext;
 use treetime_utils::io::file::read_file_with;
 use treetime_utils::io::fs::extension;
-use treetime_utils::io::json::json_read_str;
 use treetime_utils::{make_error, make_report};
-use zip::ZipArchive;
-
-const RUN_RECORD_FILE: &str = "run.json";
 
 const ZIP_SIGNATURES: [[u8; 4]; 2] = [*b"PK\x03\x04", *b"PK\x05\x06"];
 
@@ -138,10 +134,7 @@ fn file_kind(path: &Path) -> DetectedFile {
           commands: vec![],
           reason: None,
         },
-        Err(report) => unknown(format!(
-          "The file is a zip archive but not a run package: {}",
-          report_to_string(&report)
-        )),
+        Err(report) => unknown(sentence(&report_to_string(&report))),
       };
     },
     Ok(false) => {},
@@ -303,17 +296,12 @@ fn is_zip(path: &Path) -> Result<bool, Report> {
 
 fn read_run_package(path: &Path) -> Result<(), Report> {
   let file = File::open(path).wrap_err_with(|| format!("When opening file '{}'", path.display()))?;
-  run_record_of(file).map(|_| ())
+  PackageReader::open(file)?.record().map(|_| ())
 }
 
-fn run_record_of(reader: impl Read + Seek) -> Result<RunRecord, Report> {
-  let mut archive = ZipArchive::new(reader).wrap_err("When reading the zip archive")?;
-  let mut entry = archive
-    .by_name(RUN_RECORD_FILE)
-    .wrap_err_with(|| format!("When reading `{RUN_RECORD_FILE}` of the archive"))?;
-  let mut text = String::new();
-  entry
-    .read_to_string(&mut text)
-    .wrap_err_with(|| format!("When reading `{RUN_RECORD_FILE}` of the archive"))?;
-  json_read_str(&text).wrap_err_with(|| format!("When reading `{RUN_RECORD_FILE}` as the record of a run"))
+fn sentence(text: &str) -> String {
+  let mut chars = text.chars();
+  chars
+    .next()
+    .map_or_else(String::new, |first| first.to_uppercase().chain(chars).collect())
 }

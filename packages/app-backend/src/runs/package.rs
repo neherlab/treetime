@@ -4,11 +4,11 @@ use crate::job::JobId;
 use crate::runs::downloads::package_name;
 use crate::runs::errors::{conflict, invalid};
 use crate::runs::files::{FileChunks, relative_name, walk_files};
-use crate::runs::input_store::validate_upload_name;
+use crate::runs::input_store::{set_sha256, validate_upload_name};
 use crate::runs::inputs::file_sha256;
 use crate::runs::manager::RunManager;
-use crate::runs::record::{RunInput, RunRecord};
-use crate::runs::run_paths::{INPUTS_DIR, OUT_DIR, map_path_values, path_strings};
+use crate::runs::record::{InputSet, RunInput, RunRecord};
+use crate::runs::run_paths::{INPUTS_DIR, OUT_DIR, map_path_values, path_strings, resolve_path};
 use crate::runs::store::{EVENTS_FILE, RUN_FILE, record_text};
 use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::aa_node_data::{cds_names, translation_path};
@@ -44,19 +44,22 @@ pub fn export_run(manager: &RunManager, id: &JobId) -> Result<RunPackage, Report
   let command = record.config.command();
   let mut settings = record.config.settings()?;
   let paths = PackagePaths::of(command, &settings, &record.inputs)?;
-  let inputs = package_inputs(manager, &run_dir, &record.inputs, &paths)?;
+  let inputs = package_inputs(manager, &run_dir, &record, &paths)?;
   map_path_values(command, &mut settings, |path| paths.package(path))?;
   let code = config_code(command, &settings)?;
+  let packaged_inputs = record
+    .inputs
+    .iter()
+    .map(|input| RunInput {
+      path: paths.package(&input.path),
+      ..input.clone()
+    })
+    .collect_vec();
+  let input_sets = packaged_sets(command, &settings, &packaged_inputs)?;
   let record = RunRecord {
     config: config_from_settings(command, &Value::Object(settings))?,
-    inputs: record
-      .inputs
-      .iter()
-      .map(|input| RunInput {
-        path: paths.package(&input.path),
-        ..input.clone()
-      })
-      .collect(),
+    inputs: packaged_inputs,
+    input_sets,
     output_files: record
       .output_files
       .iter()
@@ -345,13 +348,49 @@ fn template_paths(
   )
 }
 
+fn packaged_sets(
+  command: AppCommand,
+  settings: &Map<String, Value>,
+  inputs: &[RunInput],
+) -> Result<Vec<InputSet>, Report> {
+  setting_properties(command.config_schema().as_value())?
+    .into_iter()
+    .filter(|property| property.path_role == Some(PathRole::InputTemplate))
+    .filter_map(|property| {
+      let folder = Path::new(INPUTS_DIR).join(&property.key);
+      let Some(Value::String(template)) = settings.get(&property.key) else {
+        return None;
+      };
+      Path::new(template).starts_with(&folder).then_some(folder)
+    })
+    .map(|folder| {
+      let files = inputs
+        .iter()
+        .filter_map(|input| {
+          input
+            .path
+            .strip_prefix(&folder)
+            .ok()
+            .map(|rest| (rest, input.sha256.as_str()))
+        })
+        .unique()
+        .collect_vec();
+      Ok(InputSet {
+        sha256: set_sha256(files)?,
+        folder,
+      })
+    })
+    .collect()
+}
+
 fn package_inputs(
   manager: &RunManager,
   run_dir: &Path,
-  inputs: &[RunInput],
+  record: &RunRecord,
   paths: &PackagePaths,
 ) -> Result<Vec<PackageEntry>, Report> {
-  inputs
+  record
+    .inputs
     .iter()
     .unique_by(|input| paths.package(&input.path))
     .map(|input| {
@@ -368,9 +407,7 @@ fn package_inputs(
         }
         input.path.clone()
       } else {
-        input
-          .stored()
-          .map_or_else(|| run_dir.join(&input.path), |key| manager.input_store().path(&key))
+        resolve_path(&input.path, record, run_dir, manager.input_store())
       };
       if !source.is_file() {
         return Err(invalid(format!(

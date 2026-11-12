@@ -13,6 +13,7 @@ pub mod lifecycle;
 pub mod manager;
 pub mod package;
 pub mod package_import;
+pub mod package_reader;
 pub mod record;
 pub mod run_name;
 pub mod run_paths;

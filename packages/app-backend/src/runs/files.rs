@@ -9,7 +9,7 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
-use std::io::Read;
+use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 use treetime_schema::skip_serializing_optionals;
 
@@ -185,4 +185,28 @@ pub fn relative_name(path: &Path) -> String {
     .components()
     .map(|component| component.as_os_str().to_string_lossy().into_owned())
     .join("/")
+}
+
+pub fn files_size(dir: &Path) -> Result<usize, Report> {
+  let entries = match fs::read_dir(dir) {
+    Ok(entries) => entries,
+    Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(0),
+    Err(err) => return Err(Report::new(err).wrap_err(format!("When listing '{}'", dir.display()))),
+  };
+  entries
+    .map(|entry| -> Result<usize, Report> {
+      let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
+      let path = entry.path();
+      let metadata = entry
+        .metadata()
+        .wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?;
+      if metadata.is_dir() {
+        files_size(&path)
+      } else if metadata.is_file() {
+        Ok(usize::try_from(metadata.len())?)
+      } else {
+        Ok(0)
+      }
+    })
+    .sum()
 }

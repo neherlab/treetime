@@ -6,15 +6,15 @@ use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::downloads::{FileDownload, download_name};
 use crate::runs::errors::{conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
-use crate::runs::files::{RunFile, list_run_files, resolve_run_file};
+use crate::runs::files::{RunFile, files_size, list_run_files, resolve_run_file};
 use crate::runs::input_store::{
   InputStore, StoredInput, StoredUpload, UploadWriter, format_size, upload_too_large, validate_upload_name,
 };
 use crate::runs::lifecycle::StartedRun;
 use crate::runs::package::{RunPackage, export_run};
-use crate::runs::package_import::import_run;
+use crate::runs::package_import::PackageImport;
 use crate::runs::record::{
-  CreateRunRequest, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
+  CreateRunRequest, InputSet, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
   UpdateRunRequest,
 };
 use crate::runs::run_name::{dataset_label, run_name};
@@ -31,7 +31,7 @@ use schemars::JsonSchema;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::io::{self, Read};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -120,15 +120,8 @@ impl RunManager {
 
   pub fn settings(&self, id: &JobId) -> Result<SparseConfig, Report> {
     let record = self.store.read(id)?;
-    let command = record.config.command();
-    let mut settings = resolve_settings(
-      command,
-      &record.config.settings()?,
-      &record.inputs,
-      &self.store.run_dir(id),
-      &self.input_store,
-    )?;
-    command.remove_output_paths(&mut settings)?;
+    let mut settings = resolve_settings(&record, &self.store.run_dir(id), &self.input_store)?;
+    record.config.command().remove_output_paths(&mut settings)?;
     Ok(SparseConfig(settings))
   }
 
@@ -137,7 +130,11 @@ impl RunManager {
     let config = config_from_request(request.command, &request.config)?;
     let record = {
       let _records = self.records.lock();
-      let PortableConfig { config, inputs } = self.portable(&id, &config)?;
+      let PortableConfig {
+        config,
+        inputs,
+        input_sets,
+      } = self.portable(&id, &config)?;
       let dataset = dataset_label(request.example.as_deref(), &inputs);
       let title = run_name(dataset.as_deref(), &command_settings(request.command)?, &[]);
       self.store.create(NewRun {
@@ -145,6 +142,7 @@ impl RunManager {
         title,
         config,
         inputs,
+        input_sets,
         source_run_id: request.source_run_id.clone(),
         example: request.example.clone(),
       })?
@@ -179,21 +177,20 @@ impl RunManager {
       let config = match &request.config {
         Some(config) => config_from_request(command, config)?,
         None if command != record.config.command() => {
-          let current = resolve_settings(
-            record.config.command(),
-            &record.config.settings()?,
-            &record.inputs,
-            &self.store.run_dir(id),
-            &self.input_store,
-          )?;
+          let current = resolve_settings(record, &self.store.run_dir(id), &self.input_store)?;
           config_from_request(command, &SparseConfig(current))?
         },
         None => record.config.clone(),
       };
       if request.config.is_some() || command != record.config.command() {
-        let PortableConfig { config, inputs } = self.portable(id, &config)?;
+        let PortableConfig {
+          config,
+          inputs,
+          input_sets,
+        } = self.portable(id, &config)?;
         record.config = config;
         record.inputs = inputs;
+        record.input_sets = input_sets;
       }
       if let Some(source) = &request.source_run_id {
         record.source_run_id = Some(source.clone());
@@ -486,8 +483,8 @@ impl RunManager {
     write_atomically(destination, |file| package.write(file))
   }
 
-  pub fn import(&self, body: &mut dyn Read) -> Result<RunRecord, Report> {
-    import_run(self, body)
+  pub fn begin_import(self: &Arc<Self>, limit: usize) -> Result<PackageImport, Report> {
+    PackageImport::begin(Arc::clone(self), limit)
   }
 
   pub fn publish_import(
@@ -495,6 +492,7 @@ impl RunManager {
     mut record: RunRecord,
     staged: &Path,
     uploads: Vec<StoredUpload>,
+    sets: &[(String, PathBuf)],
   ) -> Result<RunRecord, Report> {
     let published = {
       let _records = self.records.lock();
@@ -508,6 +506,11 @@ impl RunManager {
       uploads
         .into_iter()
         .try_for_each(|upload| self.input_store.commit(upload).map(|_| ()))
+        .and_then(|()| {
+          sets
+            .iter()
+            .try_for_each(|(sha256, staged)| self.input_store.commit_set(staged, sha256))
+        })
         .and_then(|()| self.store.publish(staged, &record))
     };
     if let Err(report) = published {
@@ -569,6 +572,7 @@ impl RunManager {
     Ok(PortableConfig {
       config: config_from_settings(command, &Value::Object(settings))?,
       inputs,
+      input_sets: paths.input_sets(),
     })
   }
 
@@ -598,14 +602,21 @@ impl RunManager {
       .collect()
   }
 
-  fn size_of(&self, record: &RunRecord, references: &BTreeMap<StoredInput, usize>) -> Result<usize, Report> {
+  fn size_of(&self, record: &RunRecord, references: &BTreeMap<StoredEntry, usize>) -> Result<usize, Report> {
     let outputs = files_size(&self.store.out_dir(&record.id))?;
     let own_inputs = stored_references(record)
       .iter()
-      .filter(|key| references.get(*key) == Some(&1))
-      .map(|key| stored_size(&self.input_store, key))
+      .filter(|entry| references.get(*entry) == Some(&1))
+      .map(|entry| self.entry_size(entry))
       .sum::<Result<usize, _>>()?;
     Ok(outputs + own_inputs)
+  }
+
+  fn entry_size(&self, entry: &StoredEntry) -> Result<usize, Report> {
+    match entry {
+      StoredEntry::File(key) => file_size(&self.input_store.path(key)),
+      StoredEntry::Set(sha256) => self.input_store.set_size(sha256),
+    }
   }
 
   fn remove_unreferenced_inputs(&self) -> Result<(), Report> {
@@ -617,8 +628,13 @@ impl RunManager {
       .flat_map(stored_references)
       .collect::<BTreeSet<_>>();
     for key in self.input_store.keys()? {
-      if !referenced.contains(&key) {
+      if !referenced.contains(&StoredEntry::File(key.clone())) {
         self.input_store.remove(&key)?;
+      }
+    }
+    for sha256 in self.input_store.set_keys()? {
+      if !referenced.contains(&StoredEntry::Set(sha256.clone())) {
+        self.input_store.remove_set(&sha256)?;
       }
     }
     Ok(())
@@ -764,48 +780,33 @@ struct FinishedUpload<'a> {
 struct PortableConfig {
   config: CommandConfig,
   inputs: Vec<RunInput>,
+  input_sets: Vec<InputSet>,
 }
 
-fn stored_references(record: &RunRecord) -> BTreeSet<StoredInput> {
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum StoredEntry {
+  File(StoredInput),
+  Set(String),
+}
+
+fn stored_references(record: &RunRecord) -> BTreeSet<StoredEntry> {
   record
     .uploads
     .iter()
     .cloned()
     .chain(record.inputs.iter().filter_map(RunInput::stored))
+    .map(StoredEntry::File)
+    .chain(record.input_sets.iter().map(|set| StoredEntry::Set(set.sha256.clone())))
     .collect()
 }
 
-fn count_reference(mut counts: BTreeMap<StoredInput, usize>, key: StoredInput) -> BTreeMap<StoredInput, usize> {
-  *counts.entry(key).or_default() += 1;
+fn count_reference(mut counts: BTreeMap<StoredEntry, usize>, entry: StoredEntry) -> BTreeMap<StoredEntry, usize> {
+  *counts.entry(entry).or_default() += 1;
   counts
 }
 
 fn stored_size(store: &InputStore, key: &StoredInput) -> Result<usize, Report> {
   file_size(&store.path(key))
-}
-
-fn files_size(dir: &Path) -> Result<usize, Report> {
-  let entries = match fs::read_dir(dir) {
-    Ok(entries) => entries,
-    Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(0),
-    Err(err) => return Err(Report::new(err).wrap_err(format!("When listing '{}'", dir.display()))),
-  };
-  entries
-    .map(|entry| -> Result<usize, Report> {
-      let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
-      let path = entry.path();
-      let metadata = entry
-        .metadata()
-        .wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?;
-      if metadata.is_dir() {
-        files_size(&path)
-      } else if metadata.is_file() {
-        Ok(usize::try_from(metadata.len())?)
-      } else {
-        Ok(0)
-      }
-    })
-    .sum()
 }
 
 fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {

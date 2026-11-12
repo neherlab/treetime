@@ -5,12 +5,14 @@ mod tests {
   use crate::runs::__tests__::test_run_storage::tests::helpers::{ZIKA, run_with_uploads, start_from};
   use crate::runs::app_events::AppChange;
   use crate::runs::files::RUN_DOWNLOAD_CHUNK_SIZE;
+  use crate::runs::input_store::format_size;
   use crate::runs::manager::RunManager;
+  use crate::runs::package_reader::RECORD_SIZE_LIMIT;
   use crate::runs::record::{CreateRunRequest, RunStatus, StartRunRequest};
   use app_commands::command::AppCommand;
   use helpers::{
-    Damage, damaged, data_dir, entry_text, package_bytes, package_entries, record_json, staged_folders,
-    subscribe_changes,
+    Damage, damaged, data_dir, declared_smaller, entry_text, import, import_limited, package_bytes, package_entries,
+    padded_record, record_json, staged_folders, subscribe_changes, written_package,
   };
   use indoc::indoc;
   use itertools::Itertools;
@@ -35,7 +37,7 @@ mod tests {
     );
     let target = RunManager::open(target_root.path()).unwrap();
 
-    let imported = target.import(&mut &package_bytes(&source, &record.id)[..]).unwrap();
+    let imported = import(&target, &package_bytes(&source, &record.id)).unwrap();
 
     assert_eq!(
       (
@@ -59,7 +61,7 @@ mod tests {
     let bytes = package_bytes(&runs, &record.id);
     let changes = subscribe_changes(&runs);
 
-    let imported = runs.import(&mut &bytes[..]).unwrap();
+    let imported = import(&runs, &bytes).unwrap();
 
     let mut expected = record_json(&runs.get(&record.id).unwrap());
     expected["id"] = json!(imported.id.as_str());
@@ -158,7 +160,7 @@ mod tests {
     let packaged: serde_json::Value = serde_json::from_str(&packaged).unwrap();
     let target = RunManager::open(&root.path().join("web")).unwrap();
 
-    let imported = target.import(&mut &bytes[..]).unwrap();
+    let imported = import(&target, &bytes).unwrap();
     let rerun = start_from(&target, &target.settings(&imported.id).unwrap(), Some(&imported.id));
 
     assert_eq!(
@@ -213,13 +215,85 @@ mod tests {
     let inputs = runs.input_store().keys().unwrap();
     let (bytes, message) = damaged(&package_bytes(&runs, &record.id), &record, damage);
 
-    assert_error!(runs.import(&mut &bytes[..]), message);
+    assert_error!(import(&runs, &bytes), message);
     assert_eq!(
       (vec![record.id], inputs, 0),
       (
         runs.store().list().unwrap().into_iter().map(|run| run.id).collect_vec(),
         runs.input_store().keys().unwrap(),
         staged_folders(root.path()),
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_import_refuses_a_record_that_unpacks_above_the_record_limit() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let bytes = padded_record(&written_package(&runs, &record.id), &record, RECORD_SIZE_LIMIT + 1);
+
+    let result = import(&runs, &bytes);
+
+    assert_eq!((true, 0), (bytes.len() < 1 << 20, staged_folders(root.path())));
+    assert_error!(
+      result,
+      "`run.json` of the run package is larger than 8 MiB, the limit of a run record"
+    );
+  }
+
+  #[test]
+  fn test_run_package_import_refuses_an_entry_with_more_content_than_its_header_declares() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let output = format!("out/{}", record.output_files[0].path.display());
+    let entry = format!("treetime-{}/{output}", record.id.as_str());
+    let bytes = declared_smaller(&written_package(&runs, &record.id), &entry, 10);
+
+    let result = import(&runs, &bytes);
+
+    assert_eq!(
+      (vec![record.id], 0),
+      (
+        runs.store().list().unwrap().into_iter().map(|run| run.id).collect_vec(),
+        staged_folders(root.path())
+      )
+    );
+    assert_error!(
+      result,
+      format!(
+        "the file `{output}` of the run package cannot be read: File is larger than its declared uncompressed size"
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::uploaded_package_over_the_limit(0)]
+  #[case::unpacked_package_over_the_limit(1)]
+  #[trace]
+  fn test_run_package_import_refuses_a_package_over_the_upload_limit(#[case] above_upload: usize) {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let bytes = written_package(&runs, &record.id);
+    let limit = bytes.len() - 1 + above_upload;
+
+    let result = import_limited(&runs, &bytes, limit);
+
+    assert_eq!(
+      (vec![record.id], 0),
+      (
+        runs.store().list().unwrap().into_iter().map(|run| run.id).collect_vec(),
+        staged_folders(root.path())
+      )
+    );
+    assert_error!(
+      result,
+      format!(
+        "a run package is limited to {}, the upload limit, both as uploaded and unpacked; the package is larger",
+        format_size(limit)
       )
     );
   }
@@ -342,6 +416,7 @@ mod tests {
     use crate::runs::app_events::AppChange;
     use crate::runs::manager::RunManager;
     use crate::runs::record::RunRecord;
+    use eyre::Report;
     use parking_lot::Mutex;
     use serde_json::{Value, json};
     use std::fs;
@@ -479,6 +554,71 @@ mod tests {
         writer.write_all(content).unwrap();
       }
       writer.finish().unwrap().into_inner()
+    }
+
+    pub(super) fn import(runs: &Arc<RunManager>, bytes: &[u8]) -> Result<RunRecord, Report> {
+      import_limited(runs, bytes, 1 << 30)
+    }
+
+    pub(super) fn import_limited(runs: &Arc<RunManager>, bytes: &[u8], limit: usize) -> Result<RunRecord, Report> {
+      let mut import = runs.begin_import(limit)?;
+      for chunk in bytes.chunks(1000) {
+        import.write(chunk)?;
+      }
+      import.finish()
+    }
+
+    pub(super) fn written_package(runs: &RunManager, id: &JobId) -> Vec<u8> {
+      let mut written = Cursor::new(vec![]);
+      runs.package(id).unwrap().write(&mut written).unwrap();
+      written.into_inner()
+    }
+
+    pub(super) fn padded_record(bytes: &[u8], record: &RunRecord, size: usize) -> Vec<u8> {
+      let run_file = format!("treetime-{}/run.json", record.id.as_str());
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      let mut writer = ZipWriter::new(Cursor::new(vec![]));
+      let deflated = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+      for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = vec![];
+        file.read_to_end(&mut content).unwrap();
+        if name == run_file {
+          content.resize(size, b' ');
+        }
+        writer.start_file(name, deflated).unwrap();
+        writer.write_all(&content).unwrap();
+      }
+      writer.finish().unwrap().into_inner()
+    }
+
+    #[expect(
+      clippy::little_endian_bytes,
+      reason = "zip headers store sizes in little-endian byte order"
+    )]
+    pub(super) fn declared_smaller(bytes: &[u8], entry: &str, size: u32) -> Vec<u8> {
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      let mut writer = ZipWriter::new(Cursor::new(vec![]));
+      let stored = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+      for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = vec![];
+        file.read_to_end(&mut content).unwrap();
+        writer.start_file(name, stored).unwrap();
+        writer.write_all(&content).unwrap();
+      }
+      let mut bytes = writer.finish().unwrap().into_inner();
+      for (signature, size_offset, name_offset) in [(b"PK\x03\x04", 22, 30), (b"PK\x01\x02", 24, 46)] {
+        let start = (0..bytes.len() - 4)
+          .find(|start| {
+            bytes[*start..].starts_with(signature) && bytes[start + name_offset..].starts_with(entry.as_bytes())
+          })
+          .unwrap();
+        bytes[start + size_offset..start + size_offset + 4].copy_from_slice(&size.to_le_bytes());
+      }
+      bytes
     }
 
     pub(super) fn package_bytes(runs: &RunManager, id: &JobId) -> Vec<u8> {

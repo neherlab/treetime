@@ -128,6 +128,7 @@ mod tests {
         title: "homoplasy".to_owned(),
         config: config_from_settings(AppCommand::Homoplasy, &tree).unwrap(),
         inputs: vec![],
+        input_sets: vec![],
         source_run_id: None,
         example: None,
       })
@@ -156,6 +157,7 @@ mod tests {
         title: "homoplasy".to_owned(),
         config: config_from_settings(AppCommand::Homoplasy, &tree).unwrap(),
         inputs: vec![],
+        input_sets: vec![],
         source_run_id: None,
         example: None,
       })
@@ -718,6 +720,7 @@ mod tests {
         title: "prune".to_owned(),
         config: config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap(),
         inputs: vec![],
+        input_sets: vec![],
         source_run_id: None,
         example: None,
       })

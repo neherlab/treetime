@@ -71,6 +71,9 @@ pub struct RunRecord {
   pub treetime_version: String,
   /// Input files the run read. Before the run starts, the uploaded inputs its configuration names.
   pub inputs: Vec<RunInput>,
+  /// Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+  /// template of an imported run.
+  pub input_sets: Vec<InputSet>,
   /// Files uploaded for the run before it started; the run drops them when it starts.
   pub uploads: Vec<StoredInput>,
   /// SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
@@ -118,8 +121,8 @@ pub struct RunInput {
   /// Dot-separated key path of the setting that names the file.
   pub setting: String,
   /// Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;
-  /// `inputs/<setting>/...` for a file that a path template of an imported run names, kept in the run's folder; the
-  /// absolute path for a file read from elsewhere.
+  /// a path in the folder of an entry of `input_sets`, such as `inputs/<setting>/...`, for a file of a path template
+  /// that the input store keeps; the absolute path for a file read from elsewhere.
   pub path: PathBuf,
   /// Size of the file in bytes.
   pub size: usize,
@@ -144,6 +147,16 @@ impl RunInput {
       name: name.to_str()?.to_owned(),
     })
   }
+}
+
+/// Folder of a path template whose files the input store keeps as one set.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+pub struct InputSet {
+  /// Folder of the files relative to the run's folder, `inputs/<setting>`; the template and its files lie in it.
+  pub folder: PathBuf,
+  /// Key of the set in the input store: the SHA-256, as lowercase hexadecimal, of the sorted lines `<sha256>  <path>`,
+  /// one per file, with the file's SHA-256 and its path relative to the folder.
+  pub sha256: String,
 }
 
 /// Error of a failed run.
