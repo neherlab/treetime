@@ -7,8 +7,9 @@ use axum::response::Response;
 use eyre::Report;
 use log::warn;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+use app_backend::runs::downloads::FileDownload;
 #[cfg(target_family = "wasm")]
 use app_backend::runs::files::FileChunks;
 use app_backend::runs::package::RunPackage;
@@ -46,9 +47,12 @@ const CONTENT_TYPES: &[(&str, &str)] = &[
   ("jsonl", "application/jsonl"),
 ];
 
-pub(crate) async fn serve_run_file(path: PathBuf, request: Request) -> Result<FileContent, AppError> {
+pub(crate) async fn serve_run_file(
+  FileDownload { path, name }: FileDownload,
+  request: Request,
+) -> Result<FileContent, AppError> {
   let content_type = content_type(&path);
-  let disposition = attachment(&file_name(&path))?;
+  let disposition = attachment(&name)?;
   let mut response = file_response(&path, request).await?;
   if response.status().is_success() {
     let headers = response.headers_mut();
@@ -122,12 +126,6 @@ fn content_type(path: &Path) -> HeaderValue {
     .find(|(known, _)| *known == extension)
     .map_or("application/octet-stream", |(_, content_type)| *content_type);
   HeaderValue::from_static(content_type)
-}
-
-fn file_name(path: &Path) -> String {
-  path
-    .file_name()
-    .map_or_else(String::new, |name| name.to_string_lossy().into_owned())
 }
 
 fn attachment(name: &str) -> Result<HeaderValue, Report> {

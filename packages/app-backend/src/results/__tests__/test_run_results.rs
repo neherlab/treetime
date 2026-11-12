@@ -433,6 +433,33 @@ mod tests {
   }
 
   #[test]
+  fn test_run_files_list_the_main_formats_of_a_time_tree_first_in_menu_order() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
+
+    let files = runs.files(&id)?;
+
+    let main = files
+      .iter()
+      .take_while(|file| file.main)
+      .map(|file| (file.path.as_str(), file.label.as_str()))
+      .collect::<Vec<_>>();
+    assert_eq!(
+      (
+        vec![
+          ("timetree.auspice.json", "Auspice JSON"),
+          ("timetree.nwk", "Dated tree (Newick, branch lengths in years)"),
+          ("timetree.nexus", "Dated tree with node annotations (Nexus)"),
+        ],
+        true
+      ),
+      (main.clone(), files.iter().skip(main.len()).all(|file| !file.main))
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_run_results_refuse_a_run_that_did_not_finish() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;

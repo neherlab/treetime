@@ -3,6 +3,7 @@ use crate::command::{AppCommandExt, config_from_request, config_from_settings, e
 use crate::config::catalog::command_settings;
 use crate::job::{CancelToken, JobEvent, JobId, TerminalEvent};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
+use crate::runs::downloads::{FileDownload, download_name};
 use crate::runs::errors::{conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file};
@@ -428,12 +429,20 @@ impl RunManager {
 
   pub fn files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
     let record = self.store.read(id)?;
-    list_run_files(&self.store.out_dir(id), &record.output_files)
+    list_run_files(&record, &self.store.out_dir(id))
   }
 
   pub fn file_path(&self, id: &JobId, relative: &str) -> Result<PathBuf, Report> {
     self.store.read(id)?;
     resolve_run_file(&self.store.out_dir(id), relative)
+  }
+
+  pub fn file_download(&self, id: &JobId, relative: &str) -> Result<FileDownload, Report> {
+    let record = self.store.read(id)?;
+    Ok(FileDownload {
+      path: resolve_run_file(&self.store.out_dir(id), relative)?,
+      name: download_name(&record, relative),
+    })
   }
 
   pub fn save_file(&self, id: &JobId, relative: &str, destination: &Path) -> Result<(), Report> {

@@ -1,7 +1,7 @@
 use crate::chunks::ChunkReader;
 use app_backend::job::{CancelToken, JobEvent, run_job_step};
 use app_backend::runs::errors::invalid;
-use app_backend::runs::files::{FileChunks, list_run_files, resolve_run_file};
+use app_backend::runs::files::{FileChunks, out_file_paths, resolve_run_file};
 use app_backend::runs::inputs::file_sha256;
 use app_backend::runs::lifecycle::{JobInput, RunJob, RunOutcome, compute_run};
 use app_backend::runs::run_paths::OUT_DIR;
@@ -142,9 +142,7 @@ impl Job {
 
   #[wasm_bindgen(js_name = outputFiles)]
   pub fn output_files(&self) -> Result<Vec<String>, JsError> {
-    list_run_files(Path::new(OUT_DIR), &[])
-      .map(|files| files.into_iter().map(|file| file.path).collect_vec())
-      .map_err(|report| js_error(&report))
+    out_file_paths(Path::new(OUT_DIR)).map_err(|report| js_error(&report))
   }
 
   #[wasm_bindgen(js_name = readOutput)]

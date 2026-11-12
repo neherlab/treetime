@@ -619,8 +619,8 @@ async fn runs_file(
   ApiQuery(query): ApiQuery<FileQuery>,
   request: Request,
 ) -> Result<FileContent, AppError> {
-  let path = call(&state, move |service| service.runs().file_path(&id, &query.path)).await?;
-  serve_run_file(path, request).await
+  let download = call(&state, move |service| service.runs().file_download(&id, &query.path)).await?;
+  serve_run_file(download, request).await
 }
 
 /// Query of a run file.

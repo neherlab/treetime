@@ -1,5 +1,7 @@
 use crate::command::{OutputAlignment, OutputFile};
+use crate::runs::downloads::{download_name, main_outputs, output_label};
 use crate::runs::errors::{invalid, not_found};
+use crate::runs::record::RunRecord;
 use app_output::output_plan::OutputSelection;
 use deser::Serialize;
 use eyre::{Report, WrapErr};
@@ -13,15 +15,17 @@ use treetime_schema::skip_serializing_optionals;
 
 pub const RUN_DOWNLOAD_CHUNK_SIZE: usize = 1024 * 1024;
 
-pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec<RunFile>, Report> {
-  let planned: BTreeMap<String, &OutputFile> = output_files
+pub fn list_run_files(record: &RunRecord, out_dir: &Path) -> Result<Vec<RunFile>, Report> {
+  let command = record.config.command();
+  let planned: BTreeMap<String, &OutputFile> = record
+    .output_files
     .iter()
     .map(|file| (relative_name(&file.path), file))
     .collect();
+  let main = main_outputs(command);
   let mut files = vec![];
   for path in walk_files(out_dir)? {
-    let relative = path.strip_prefix(out_dir)?;
-    let name = relative_name(relative);
+    let name = relative_name(path.strip_prefix(out_dir)?);
     let size = usize::try_from(
       fs::metadata(&path)
         .wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?
@@ -30,14 +34,38 @@ pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec
     let file = planned.get(&name);
     let kind = file.map(|file| file.kind);
     files.push(RunFile {
+      label: output_label(command, kind, &name),
       description: kind.map(OutputSelection::description).unwrap_or_default().to_owned(),
+      download_name: download_name(record, &name),
+      main: kind.is_some_and(|kind| main.contains(&kind)),
       kind,
       alignment: file.and_then(|file| file.alignment.clone()),
       path: name,
       size,
     });
   }
-  Ok(files.into_iter().sorted_by(|a, b| a.path.cmp(&b.path)).collect())
+  let menu_position = |file: &RunFile| file.kind.and_then(|kind| main.iter().position(|main| *main == kind));
+  Ok(
+    files
+      .into_iter()
+      .sorted_by_key(|file| {
+        let position = menu_position(file);
+        (
+          position.is_none(),
+          position,
+          file.alignment.as_ref().map(|alignment| alignment.number),
+          file.path.clone(),
+        )
+      })
+      .collect(),
+  )
+}
+
+pub fn out_file_paths(out_dir: &Path) -> Result<Vec<String>, Report> {
+  walk_files(out_dir)?
+    .iter()
+    .map(|path| Ok(relative_name(path.strip_prefix(out_dir)?)))
+    .collect()
 }
 
 /// One file in a run's `out/` folder.
@@ -47,12 +75,21 @@ pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec
 pub struct RunFile {
   /// Path relative to the run's `out/` folder, with `/` separators.
   pub path: String,
+  /// Name to save the file under: the run's title, the start of its id, and the path, so that the files of different
+  /// runs do not share a name, for example `ebola-100-time-tree-1a2b3c4d.timetree.nwk`.
+  pub download_name: String,
+  /// Short name of the file with its format, for example `Dated tree (Newick, branch lengths in years)`; the file name
+  /// for files the output plan does not name.
+  pub label: String,
   /// Size in bytes.
   pub size: usize,
   /// Output selection that produced the file; absent for files the output plan does not name.
   pub kind: Option<OutputSelection>,
   /// What the file holds; empty for files the output plan does not name.
   pub description: String,
+  /// Whether the file is one of the main formats of the command, which the Download menu offers. The list holds these
+  /// files first, in menu order, then the other files by path.
+  pub main: bool,
   /// Alignment file the output belongs to, for an output written once per alignment file.
   pub alignment: Option<OutputAlignment>,
 }

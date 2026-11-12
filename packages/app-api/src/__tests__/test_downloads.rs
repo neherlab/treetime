@@ -5,6 +5,7 @@ mod tests {
   use axum::http::Request;
   use helpers::{archive_entries, finished_run, get, header_of};
   use itertools::Itertools;
+  use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use std::fs;
@@ -12,8 +13,17 @@ mod tests {
   use zip::CompressionMethod;
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_downloads_run_file_serves_byte_ranges_as_an_attachment() {
+  async fn test_downloads_run_file_serves_byte_ranges_as_an_attachment_under_its_download_name() {
     let (test, id) = finished_run().await;
+    let (_, files) = request(&test, "GET", &format!("/api/runs/{id}/files"), None).await;
+    let name = files
+      .as_array()
+      .unwrap()
+      .iter()
+      .find(|file| file["path"] == "timetree.auspice.json")
+      .and_then(|file| file["download_name"].as_str())
+      .unwrap()
+      .to_owned();
     let response = get(
       &test,
       &format!("/api/runs/{id}/file?path=timetree.auspice.json"),
@@ -32,7 +42,10 @@ mod tests {
         206,
         (
           Some("application/json".to_owned()),
-          Some("attachment; filename=\"timetree.auspice.json\"; filename*=UTF-8''timetree%2Eauspice%2Ejson".to_owned()),
+          Some(format!(
+            "attachment; filename=\"{name}\"; filename*=UTF-8''{}",
+            utf8_percent_encode(&name, NON_ALPHANUMERIC)
+          )),
           Some(true)
         ),
         4

@@ -2,6 +2,7 @@
 mod __tests__;
 
 pub mod app_events;
+pub mod downloads;
 pub mod errors;
 pub mod events;
 pub mod files;

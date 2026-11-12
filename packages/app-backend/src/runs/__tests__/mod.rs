@@ -1,4 +1,5 @@
 mod test_app_events;
+mod test_downloads;
 mod test_events;
 mod test_files;
 mod test_inputs;
