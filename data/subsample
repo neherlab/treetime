@@ -203,7 +203,7 @@ def generate_readme(spec: SubsampleSpec, config: DatasetConfig, data_dir: Path) 
 
 Subsample of `{spec.source}` ({spec.count} sequences).
 
-> /!\ Prepared by AI.
+> /!\\ Prepared by AI.
 
 ## Methodology
 
