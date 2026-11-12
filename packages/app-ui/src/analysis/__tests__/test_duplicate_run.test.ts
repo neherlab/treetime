@@ -16,6 +16,8 @@ const RUN: RunSummary = {
   changed_settings: [],
   headline: {},
   package_name: "zika-20-time-tree-a.zip",
+  log_name: "zika-20-time-tree-a.log.txt",
+  config_name: "zika-20-time-tree-a.yaml",
 };
 
 describe("duplicate run of a draft", () => {

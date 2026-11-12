@@ -7,7 +7,6 @@ import Download from "~icons/lucide/download";
 import Search from "~icons/lucide/search";
 
 import { OptionToggle } from "../components/OptionToggle";
-import { downloadName } from "../results/files";
 import { countWarnings, filterLog, logText, type LogFilter, type RunProgress } from "../results/progress";
 import { saveText } from "./saveRunOutput";
 import { StageLog } from "./StageLog";
@@ -15,11 +14,11 @@ import { StageLog } from "./StageLog";
 export function LogTab({
   progress,
   failure,
-  title,
+  fileName,
 }: {
   progress: RunProgress;
   failure: string | undefined;
-  title: string;
+  fileName: string | undefined;
 }) {
   const [filter, setFilter] = useState<LogFilter>("all");
   const [query, setQuery] = useState("");
@@ -37,7 +36,11 @@ export function LogTab({
 
   const text = logText(entries);
 
-  const onDownload = useCallback(() => saveText(text, downloadName(title, ".log.txt"), "text/plain"), [text, title]);
+  const onDownload = useCallback(() => {
+    if (fileName !== undefined) {
+      saveText(text, fileName, "text/plain");
+    }
+  }, [fileName, text]);
 
   const onQuery = useCallback((event: React.ChangeEvent<HTMLInputElement>) => setQuery(event.target.value), []);
 
@@ -63,7 +66,7 @@ export function LogTab({
             />
           </InputGroup>
           <CopyButton text={text} label="Copy the log" />
-          <Button type="button" variant="outline" size="sm" onClick={onDownload}>
+          <Button type="button" variant="outline" size="sm" onClick={onDownload} disabled={fileName === undefined}>
             <Download aria-hidden />
             Log (.txt)
           </Button>

@@ -15,6 +15,8 @@ function run(id: string, overrides: Partial<RunSummary>): RunSummary {
     changed_settings: [],
     headline: {},
     package_name: `${id}.zip`,
+    log_name: `${id}.log.txt`,
+    config_name: `${id}.yaml`,
     ...overrides,
   };
 }

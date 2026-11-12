@@ -1,10 +1,8 @@
 import type { RunRecord } from "@neherlab/app-contracts";
-import { runsList } from "@neherlab/app-contracts/client";
 import { Button } from "@neherlab/design/ui/button";
 import { DateTime } from "luxon";
 import GitBranchPlus from "~icons/lucide/git-branch-plus";
 
-import { useApi } from "../api/hooks";
 import { formatDuration } from "../format";
 import { commandSettings } from "../settings/catalog";
 import { baseName } from "../settings/inputs";
@@ -12,6 +10,7 @@ import { hasEnded, RunActionsMenu } from "../shell/runActions";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
 import { DownloadMenu } from "./DownloadMenu";
 import { RunCommandLine } from "./RunCommandLine";
+import { useRunSummary } from "./runContext";
 import { RunTitle } from "./RunTitle";
 import { useCreateVariant } from "./useCreateVariant";
 
@@ -45,8 +44,7 @@ export function RunHeader({ record }: { record: RunRecord }) {
 
 function RunHeaderActions({ record }: { record: RunRecord }) {
   const createVariant = useCreateVariant(record);
-  const { data: list } = useApi((context) => runsList(context));
-  const summary = list?.runs.find((run) => run.id === record.id);
+  const summary = useRunSummary(record.id);
 
   return (
     <div data-slot="run-actions" className="ml-auto flex flex-wrap items-center gap-1.5">

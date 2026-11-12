@@ -1,5 +1,5 @@
-import type { RunRecord, RunResults } from "@neherlab/app-contracts";
-import { runsAuspice, runsResults } from "@neherlab/app-contracts/client";
+import type { RunRecord, RunResults, RunSummary } from "@neherlab/app-contracts";
+import { runsAuspice, runsList, runsResults } from "@neherlab/app-contracts/client";
 import { createContext, use, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
@@ -22,6 +22,12 @@ export function useRunView(): RunView {
   }
 
   return view;
+}
+
+export function useRunSummary(id: string): RunSummary | undefined {
+  const { data: list } = useApi((context) => runsList(context));
+
+  return list?.runs.find((run) => run.id === id);
 }
 
 export type RunOutputs =

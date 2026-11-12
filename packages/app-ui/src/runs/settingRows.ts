@@ -14,3 +14,7 @@ export function shownSettings<T extends ShownSpec>(
       (!changedOnly || changed.has(spec.key) || (spec.role === "input" && config[spec.key] !== undefined)),
   );
 }
+
+export function changedSettingCount(specs: readonly ShownSpec[], changed: ReadonlySet<string>): number {
+  return specs.filter((spec) => !spec.set_by_app && changed.has(spec.key)).length;
+}

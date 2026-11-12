@@ -31,7 +31,7 @@ export function RunCommandLine({ record }: { record: RunRecord }) {
   );
 }
 
-function useRunCode(record: RunRecord, enabled: boolean): CommandLineCode {
+export function useRunCode(record: RunRecord, enabled: boolean): CommandLineCode {
   const { data: settings, error: settingsError } = useApi(
     (context) => runsSettings({ ...context, path: { id: record.id } }),
     { enabled, staleTime: Infinity },

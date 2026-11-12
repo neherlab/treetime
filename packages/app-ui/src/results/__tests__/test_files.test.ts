@@ -18,7 +18,7 @@ describe("download menu entries", () => {
         "Auspice JSON",
         "Dated tree (Newick, branch lengths in years)",
         "Dated tree with node annotations (Nexus)",
-        "All files (5)",
+        "All files",
       ],
     },
     {
@@ -28,7 +28,7 @@ describe("download menu entries", () => {
         file("clock.nwk", "Rerooted tree (Newick)", "nwk", true),
         file("clock.auspice.json", "Auspice JSON", "auspice", false),
       ],
-      expected: ["Run package", "Root-to-tip table (TSV)", "Rerooted tree (Newick)", "All files (3)"],
+      expected: ["Run package", "Root-to-tip table (TSV)", "Rerooted tree (Newick)", "All files"],
     },
     {
       analysis: "ancestral",
@@ -38,18 +38,12 @@ describe("download menu entries", () => {
         file("ancestral.auspice.json", "Auspice JSON", "auspice", true),
         file("ancestral.model.json", "Substitution model (JSON)", "model", false),
       ],
-      expected: [
-        "Run package",
-        "Ancestral sequences (FASTA)",
-        "Annotated tree (Nexus)",
-        "Auspice JSON",
-        "All files (4)",
-      ],
+      expected: ["Run package", "Ancestral sequences (FASTA)", "Annotated tree (Nexus)", "Auspice JSON", "All files"],
     },
     {
       analysis: "a run without outputs",
       files: [],
-      expected: ["Run package", "All files (0)"],
+      expected: ["Run package", "All files"],
     },
   ])("$analysis: the run package, the main formats in the given order, then all files", ({ files, expected }) => {
     expect(downloadEntries(files).map(entryText)).toStrictEqual(expected);
@@ -61,7 +55,7 @@ function entryText(entry: DownloadEntry): string {
     return "Run package";
   }
 
-  return entry.kind === "file" ? entry.file.label : `All files (${entry.count})`;
+  return entry.kind === "file" ? entry.file.label : "All files";
 }
 
 function file(path: string, label: string, kind: OutputSelection, main: boolean): RunFile {

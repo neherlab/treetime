@@ -1,4 +1,4 @@
-import { shownSettings, type ShownSpec } from "../settingRows";
+import { changedSettingCount, shownSettings, type ShownSpec } from "../settingRows";
 
 const SPECS: ShownSpec[] = [
   { key: "tree", role: "input", set_by_app: false },
@@ -25,5 +25,9 @@ describe("settings of a run", () => {
       "clock_rate",
       "coalescent",
     ]);
+  });
+
+  test("the count of changed settings leaves out the settings the app sets", () => {
+    expect(changedSettingCount(SPECS, CHANGED)).toBe(1);
   });
 });

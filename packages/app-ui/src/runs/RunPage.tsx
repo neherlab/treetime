@@ -18,7 +18,7 @@ import { AncestralResultsView } from "./AncestralResultsView";
 import { ClockResultsView } from "./ClockResultsView";
 import { LogTab } from "./LogTab";
 import { MissingRun } from "./MissingRun";
-import { RunContext, useRunOutputs, useRunView } from "./runContext";
+import { RunContext, useRunOutputs, useRunSummary, useRunView } from "./runContext";
 import { RunHeader } from "./RunHeader";
 import { RunningView } from "./RunningView";
 import { RunWarnings, WarningNames } from "./RunWarnings";
@@ -118,13 +118,17 @@ export function RunResultsTab() {
 export function RunSettingsTab() {
   const { record } = useRunView();
 
-  return <SettingsTab record={record} />;
+  const summary = useRunSummary(record.id);
+
+  return <SettingsTab record={record} configName={summary?.config_name} />;
 }
 
 export function RunLogTab() {
   const { record, progress, failure } = useRunView();
 
-  return <LogTab progress={progress} failure={failure} title={record.title} />;
+  const summary = useRunSummary(record.id);
+
+  return <LogTab progress={progress} failure={failure} fileName={summary?.log_name} />;
 }
 
 function FinishedOverview({ record }: { record: RunRecord }) {
