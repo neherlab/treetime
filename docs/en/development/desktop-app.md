@@ -25,10 +25,27 @@ An environment variable takes precedence over the settings key, and the key over
 
 ## Example data
 
-Every app takes its example data from one index, `data/index.json` (`DataIndex` in `packages/app-backend/src/datasets.rs`): every file that git tracks in `data/` except hidden files and folders, the datasets with their input files, the example configurations with the files they read, and the pipelines. The examples panel, the command palette, and the "Example files" action of each file input read the index.
+Every app takes its example data from one index, `data/index.json` (`DataIndex` in `packages/app-backend/src/datasets.rs`): every file that git tracks in `data/` except hidden files and folders, the datasets with their input files, the example configurations with the files they read, and the pipelines. The example gallery of the start screen and the command palette read the index. For each dataset, the index also holds the facts that the gallery shows, read with the input readers: the number of samples (the tips of the tree), the date range of the metadata, and the sequence length of the alignment.
 
-- **Web app**: web2 serves `data/index.json` and the files it lists from their own origin, through the Vite plugin `exampleData()` (`packages/app-ui/build/example-data-vite.ts`), which serves them in the dev server and copies them into `dist/data/` in the build. A chosen example file is uploaded into the run like a user file, and an example configuration is loaded with the paths of its uploaded files
-- **Desktop app**: an installed app starts with an empty examples folder. The example dialogs and the command palette then offer "Download examples": the back end downloads `examples.zip` of the app's release from `neherlab/treetime-nightly` and unpacks it into the examples folder in the background (`POST /api/examples/download`, with the progress on the app event stream), so a reload of the window does not stop it. The archive holds exactly the files of `data/index.json` and the index itself, and `GET /api/examples` returns the examples folder with its index. A nightly build downloads the archive of its own release; a development or release build downloads the archive of the latest release. The app reads the example files where they are, without an upload
+Each dataset folder has a `README.md` whose YAML front matter gives the facts that the files do not hold:
+
+```yaml
+---
+organism: "Dengue virus"
+settings:
+  metadata_id_columns:
+    - "genbank_accession"
+---
+```
+
+- `organism` (required): the organism of the samples, such as `Zika virus`
+- `segment`: the genome segment, for a segmented genome, such as `L` for `lassa/L`
+- `settings`: the settings, in configuration form, that the commands need to read the files of the dataset, such as `metadata_id_columns` when the tip names are in a metadata column that is not a default name column. The index reads the facts of the dataset with them, and "Open" in the gallery applies them to the new analysis
+
+`just data-reindex` reads the front matter; run it after a change of a `README.md`.
+
+- **Web app**: web2 serves `data/index.json` and the files it lists from their own origin, through the Vite plugin `exampleData()` (`packages/app-ui/build/example-data-vite.ts`), which serves them in the dev server and copies them into `dist/data/` in the build. An opened example is uploaded into the run like a user file, and the draft keeps its example path, so the page fetches it again after a reload
+- **Desktop app**: an installed app starts with an empty examples folder. The example gallery and the command palette then offer "Download examples": the back end downloads `examples.zip` of the app's release from `neherlab/treetime-nightly` and unpacks it into the examples folder in the background (`POST /api/examples/download`, with the progress on the app event stream), so a reload of the window does not stop it. The archive holds exactly the files of `data/index.json` and the index itself, and `GET /api/examples` returns the examples folder with its index. A nightly build downloads the archive of its own release; a development or release build downloads the archive of the latest release. The app reads the example files where they are, without an upload
 
 No CLI command downloads examples; CLI users download `examples.zip` from the release.
 
