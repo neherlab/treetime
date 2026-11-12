@@ -4,7 +4,7 @@ import { commandSettings } from "./catalog";
 import { normalizeConfig } from "./config";
 import { runInputAssignments } from "./inputs";
 
-const SEED_KEY = "seed";
+export const SEED_KEY = "seed";
 
 interface RerunDraft {
   config: SparseConfig;
