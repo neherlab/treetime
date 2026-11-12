@@ -7,6 +7,7 @@ use schemars::JsonSchema;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
@@ -14,6 +15,7 @@ use treetime_utils::make_error;
 pub struct EventLog {
   path: PathBuf,
   state: Mutex<EventLogState>,
+  next_seq: AtomicU64,
 }
 
 impl EventLog {
@@ -29,6 +31,7 @@ impl EventLog {
       .is_some_and(|event| matches!(event.event, JobEvent::Terminal { .. }));
     Ok(Self {
       path: path.to_path_buf(),
+      next_seq: AtomicU64::new(u64::try_from(events.len())?),
       state: Mutex::new(EventLogState {
         file,
         events,
@@ -54,6 +57,7 @@ impl EventLog {
       .file
       .write_all(line.as_bytes())
       .wrap_err_with(|| format!("When writing to the event log '{}'", self.path.display()))?;
+    self.next_seq.store(event.seq.saturating_add(1), Ordering::SeqCst);
     state.subscribers.retain_mut(|subscriber| subscriber(&event));
     state.events.push(event.clone());
     if is_terminal {
@@ -75,8 +79,8 @@ impl EventLog {
     }
   }
 
-  pub fn next_seq(&self) -> Result<u64, Report> {
-    Ok(u64::try_from(self.state.lock().events.len())?)
+  pub fn next_seq(&self) -> u64 {
+    self.next_seq.load(Ordering::SeqCst)
   }
 
   pub fn is_closed(&self) -> bool {

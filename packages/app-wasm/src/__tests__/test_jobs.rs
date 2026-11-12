@@ -70,7 +70,7 @@ mod tests {
     assert_eq!(
       (
         200,
-        json!({ "cancelled": true }),
+        json!({ "cancelled": true, "from": 1 }),
         vec![("cancel", run.id.clone())],
         true,
         false,

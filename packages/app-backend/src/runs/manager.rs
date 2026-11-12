@@ -14,9 +14,8 @@ use crate::runs::lifecycle::StartedRun;
 use crate::runs::package::{RunPackage, export_run};
 use crate::runs::package_import::PackageImport;
 use crate::runs::record::{
-  CancelRunResponse,
-  CreateRunRequest, InputSet, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
-  UpdateRunRequest,
+  CancelRunResponse, CreateRunRequest, InputSet, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest,
+  StartRunRequest, UpdateRunRequest,
 };
 use crate::runs::run_name::{dataset_label, run_name};
 use crate::runs::run_paths::{PortablePaths, resolve_settings};
@@ -226,7 +225,7 @@ impl RunManager {
     if let Some(run) = active.get(id)
       && run.is_started()
     {
-      let from = run.events.next_seq()?;
+      let from = run.events.next_seq();
       run.token.cancel();
       return Ok(CancelRunResponse {
         cancelled: true,
