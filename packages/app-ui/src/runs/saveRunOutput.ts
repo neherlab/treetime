@@ -64,3 +64,13 @@ export function downloadUrl(url: string, name: string): void {
 export function setBrowserTimer(callback: () => void, delayMs: number): void {
   globalThis.setTimeout(callback, delayMs);
 }
+
+export function saveText(text: string, name: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+
+  try {
+    downloadUrl(url, name);
+  } finally {
+    setBrowserTimer(() => URL.revokeObjectURL(url), OBJECT_URL_LIFETIME_MS);
+  }
+}

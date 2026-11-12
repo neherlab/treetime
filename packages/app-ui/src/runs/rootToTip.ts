@@ -45,3 +45,19 @@ function rttLine(regression: RootToTip): RttLine | undefined {
         label: `TreeTime clock model: rate ${formatRate(line.rate)} /site/yr`,
       };
 }
+
+export interface ClockSampleLists {
+  outliers: string[];
+  undated: string[];
+}
+
+export function clockSampleLists(regression: RootToTip | undefined): ClockSampleLists {
+  const points = regression?.points ?? [];
+
+  return {
+    outliers: points.filter((point) => point.outlier).map((point) => point.name),
+    undated: points
+      .filter((point) => point.date === undefined || (point.date_source !== undefined && point.date_source !== "input"))
+      .map((point) => point.name),
+  };
+}

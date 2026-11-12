@@ -5,7 +5,7 @@ import TreePine from "~icons/lucide/tree-pine";
 
 import type { FigureRun } from "../auspice/downloads";
 import { LoadingState } from "../components/PageShell";
-import type { TreeLink } from "./TreeWorkspace";
+import type { TreeLayout, TreeLink } from "./TreeWorkspace";
 
 const TreeWorkspace = lazy(async () => ({ default: (await import("./TreeWorkspace")).TreeWorkspace }));
 
@@ -19,18 +19,20 @@ export function TreeView({
   data,
   colorBy,
   entropy,
+  primary,
   aside,
   below,
 }: {
   data: TreeData;
   colorBy: string | undefined;
   entropy?: boolean | undefined;
+  primary?: TreeLayout | undefined;
   aside?: ((link: TreeLink) => ReactNode) | undefined;
   below?: ((link: TreeLink) => ReactNode) | undefined;
 }) {
   return (
     <Suspense fallback={<LoadingState text="Loading the tree view" />}>
-      <TreeWorkspace data={data} colorBy={colorBy} entropy={entropy} aside={aside} below={below} />
+      <TreeWorkspace data={data} colorBy={colorBy} entropy={entropy} primary={primary} aside={aside} below={below} />
     </Suspense>
   );
 }
@@ -40,7 +42,7 @@ export function MissingTree() {
     <Alert>
       <TreePine aria-hidden />
       <AlertTitle>No tree view</AlertTitle>
-      <AlertDescription>This run wrote no Auspice tree. The output files are listed below.</AlertDescription>
+      <AlertDescription>This run wrote no Auspice tree.</AlertDescription>
     </Alert>
   );
 }

@@ -7,6 +7,7 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import ArrowDown from "~icons/lucide/arrow-down";
 
 import { formatSeconds, type LogEntry } from "../results/progress";
+import { LogMessageView } from "./LogMessageView";
 
 const LEVEL_CLASS: Record<LogLevel, string | undefined> = {
   trace: "text-muted-foreground",
@@ -83,7 +84,7 @@ export function LogLines({
                       <span className="text-muted-foreground select-none">{formatSeconds(entry.seconds)} </span>
                       {entry.level === "warn" && <span className="font-bold">warning: </span>}
                       {entry.level === "error" && <span>error: </span>}
-                      {entry.message}
+                      <LogMessageView message={entry.message} />
                     </div>
                   )
                 );

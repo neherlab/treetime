@@ -1,48 +1,34 @@
 import { errorMessage, type RunRecord, type RunResults } from "@neherlab/app-contracts";
-import { runsAuspice, runsGet, runsList, runsResults, runsUpdate } from "@neherlab/app-contracts/client";
+import { runsGet } from "@neherlab/app-contracts/client";
 import { Alert, AlertDescription, AlertTitle } from "@neherlab/design/ui/alert";
 import { Badge } from "@neherlab/design/ui/badge";
 import { Button } from "@neherlab/design/ui/button";
-import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@neherlab/design/ui/tabs";
-import { useToastManager } from "@neherlab/design/ui/toast";
-import { Link, Outlet, useChildMatches, useNavigate } from "@tanstack/react-router";
-import { DateTime } from "luxon";
-import { createContext, use, useCallback, useMemo } from "react";
-import Pin from "~icons/lucide/pin";
-import PinOff from "~icons/lucide/pin-off";
+import { Link, Outlet, useChildMatches } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { useRunEvents } from "../api/events";
-import { useApi, useApiMutation } from "../api/hooks";
+import { useApi } from "../api/hooks";
+import { AuspiceStoreSlot, AuspiceStoreSlotContext } from "../auspice/storeSlot";
 import { LoadingState, PageShell } from "../components/PageShell";
-import { formatDuration } from "../format";
 import { countWarnings, EMPTY_PROGRESS, type RunProgress } from "../results/progress";
-import { commandSettings } from "../settings/catalog";
-import { StatusIcon, statusLabel } from "../shell/StatusIcon";
 import { AncestralResultsView } from "./AncestralResultsView";
 import { ClockResultsView } from "./ClockResultsView";
 import { LogTab } from "./LogTab";
 import { OutputFiles } from "./OutputFiles";
+import { RunContext, useRunOutputs, useRunView } from "./runContext";
+import { RunHeader } from "./RunHeader";
 import { RunningView } from "./RunningView";
-import { RunTitle } from "./RunTitle";
-import { RunWarnings } from "./RunWarnings";
+import { RunWarnings, WarningNames } from "./RunWarnings";
 import { SettingsTab } from "./SettingsTab";
-import { SubstitutionModels } from "./SubstitutionModels";
 import { TimetreeResultsView } from "./TimetreeResultsView";
 import { TreeOnlyResults } from "./TreeOnlyResults";
 import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
-
-const TABS = [
-  { label: "Results", to: "/runs/$id/results" },
-  { label: "Settings", to: "/runs/$id/settings" },
-  { label: "Log", to: "/runs/$id/log" },
-] as const;
+import { runViews } from "./views";
 
 const LOG_TAB = "/runs/$id/log";
-
-const RunContext = createContext<RunView | undefined>(undefined);
 
 const LIVE_STATUSES = new Set(["created", "running"]);
 
@@ -51,6 +37,7 @@ export function RunPage({ id }: { id: string }) {
   const { data: progress = EMPTY_PROGRESS, error: eventsError } = useRunEvents(id);
   const failure = eventsError === null ? undefined : errorMessage(eventsError);
   const tab = useChildMatches({ select: (matches) => matches.at(0)?.fullPath });
+  const [slot] = useState(() => new AuspiceStoreSlot());
 
   const view = useMemo(
     () => (record === undefined ? undefined : { record, progress, failure }),
@@ -77,9 +64,10 @@ export function RunPage({ id }: { id: string }) {
   return (
     <PageShell>
       <RunHeader record={record} />
+      <RunWarnings warnings={record.warnings} />
       <Tabs value={tab} className="gap-4">
         <TabsList variant="line" aria-label="Run views" className="border-b">
-          {TABS.map((entry) => (
+          {runViews(record.command, record.status).map((entry) => (
             <TabsTrigger
               key={entry.to}
               value={entry.to}
@@ -97,7 +85,9 @@ export function RunPage({ id }: { id: string }) {
         </TabsList>
         <TabsContent value={tab}>
           <RunContext value={view}>
-            <Outlet />
+            <AuspiceStoreSlotContext value={slot}>
+              <Outlet />
+            </AuspiceStoreSlotContext>
           </RunContext>
         </TabsContent>
       </Tabs>
@@ -116,7 +106,7 @@ export function RunResultsTab() {
     return <EndedRun record={record} progress={progress} />;
   }
 
-  return <FinishedResults record={record} />;
+  return <FinishedOverview record={record} />;
 }
 
 export function RunSettingsTab() {
@@ -126,65 +116,31 @@ export function RunSettingsTab() {
 }
 
 export function RunLogTab() {
-  const { progress, failure } = useRunView();
+  const { record, progress, failure } = useRunView();
 
-  return <LogTab progress={progress} failure={failure} />;
+  return <LogTab progress={progress} failure={failure} title={record.title} />;
 }
 
-interface RunView {
-  record: RunRecord;
-  progress: RunProgress;
-  failure: string | undefined;
-}
+function FinishedOverview({ record }: { record: RunRecord }) {
+  const outputs = useRunOutputs(record);
 
-function useRunView(): RunView {
-  const view = use(RunContext);
-
-  if (view === undefined) {
-    throw new Error("A run tab renders only inside the run page");
-  }
-
-  return view;
-}
-
-function FinishedResults({ record }: { record: RunRecord }) {
-  const { data: results, error } = useApi((context) => runsResults({ ...context, path: { id: record.id } }), {
-    staleTime: Infinity,
-  });
-
-  const hasTree = results?.tree !== undefined;
-
-  const { data: document, error: treeError } = useApi(
-    (context) => runsAuspice({ ...context, path: { id: record.id } }),
-    { enabled: hasTree, staleTime: Infinity },
-  );
-
-  const tree = useMemo<TreeData | undefined>(
-    () =>
-      results?.tree === undefined || document === undefined
-        ? undefined
-        : { document, tree: results.tree, run: { id: record.id, title: record.title, command: record.command } },
-    [document, record.command, record.id, record.title, results],
-  );
-
-  const failure = error ?? treeError;
-
-  if (failure !== null) {
+  if (outputs.state === "failed") {
     return (
       <Alert variant="destructive">
         <AlertTitle>The outputs of the run cannot be read</AlertTitle>
-        <AlertDescription>{failure.message}</AlertDescription>
+        <AlertDescription>{outputs.message}</AlertDescription>
       </Alert>
     );
   }
 
-  if (results === undefined || (hasTree && document === undefined)) {
+  if (outputs.state === "loading") {
     return <LoadingState text="Reading the outputs" />;
   }
 
+  const { results, tree } = outputs;
+
   return (
     <div className="grid gap-4">
-      <RunWarnings warnings={record.warnings} />
       {results.problems.length > 0 && (
         <Alert variant="destructive">
           <AlertTitle>Some outputs cannot be read</AlertTitle>
@@ -209,7 +165,6 @@ function FinishedResults({ record }: { record: RunRecord }) {
         </Alert>
       )}
       <CommandResults record={record} results={results} tree={tree} />
-      {results.models.models.length > 0 && <SubstitutionModels record={record} models={results.models} />}
       <OutputFiles record={record} citation={results.citation} />
     </div>
   );
@@ -244,6 +199,7 @@ function CommandResults({
 function EndedRun({ record, progress }: { record: RunRecord; progress: RunProgress }) {
   const rerun = useRerun(record);
   const error = record.error;
+  const affected = record.warnings.filter((warning) => warning.names.length > 0);
 
   return (
     <div className="grid gap-4">
@@ -262,16 +218,19 @@ function EndedRun({ record, progress }: { record: RunRecord; progress: RunProgre
               )}
             </>
           )}
-          <p className="text-muted-foreground">
-            The progress and log below show the run up to the point where it stopped.
-          </p>
+          {affected.map((warning) => (
+            <div key={warning.message} className="grid gap-1">
+              <p>{warning.message}</p>
+              <WarningNames names={warning.names} />
+            </div>
+          ))}
+          <p className="text-muted-foreground">The stages below show the run up to the point where it stopped.</p>
           <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={rerun}>
             <RotateCcw aria-hidden />
             Edit and run again
           </Button>
         </AlertDescription>
       </Alert>
-      <RunWarnings warnings={record.warnings} />
       <RunningView record={record} progress={progress} />
     </div>
   );
@@ -285,80 +244,3 @@ const ENDED_TITLES: Readonly<Record<RunRecord["status"], string>> = {
   cancelled: "The run was cancelled",
   interrupted: "The run was interrupted because the process that ran it stopped",
 };
-
-function RunHeader({ record }: { record: RunRecord }) {
-  const navigate = useNavigate();
-  const toasts = useToastManager();
-  const rerun = useRerun(record);
-  const { data: list } = useApi((context) => runsList(context));
-
-  const { mutateAsync: updateRun } = useApiMutation((context, pinned: boolean) =>
-    runsUpdate({ ...context, path: { id: record.id }, body: { pinned } }),
-  );
-
-  const created = DateTime.fromISO(record.created_at);
-
-  const comparable = useMemo(
-    () => (list?.runs ?? []).filter((run) => run.id !== record.id && run.status === "ok"),
-    [list, record.id],
-  );
-
-  const togglePin = useCallback(async () => {
-    try {
-      await updateRun(!record.pinned);
-    } catch (error: unknown) {
-      toasts.add({ title: "The run cannot be pinned", description: errorMessage(error) });
-    }
-  }, [record.pinned, toasts, updateRun]);
-
-  const onTogglePin = useCallback(() => void togglePin(), [togglePin]);
-
-  const onCompare = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const other = event.target.value;
-
-      if (other !== "") {
-        void navigate({ to: "/compare/$a/$b", params: { a: record.id, b: other } });
-      }
-    },
-    [navigate, record.id],
-  );
-
-  return (
-    <header className="flex flex-wrap items-start gap-4">
-      <div className="grid min-w-0 gap-1">
-        <RunTitle record={record} />
-        <p className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          <span className="text-foreground inline-flex items-center gap-1.5 font-bold">
-            <StatusIcon status={record.status} />
-            {statusLabel(record.status)}
-          </span>
-          <span>{commandSettings(record.command).title}</span>
-          <span>{created.isValid ? created.toFormat("d LLL yyyy, HH:mm") : record.created_at}</span>
-          {record.duration_seconds !== undefined && <span>{formatDuration(record.duration_seconds)}</span>}
-          <span>TreeTime {record.treetime_version}</span>
-        </p>
-      </div>
-      <div className="ml-auto flex flex-wrap items-center gap-1.5">
-        {comparable.length > 0 && (
-          <NativeSelect size="sm" aria-label="Compare with another run" value="" onChange={onCompare} className="w-44">
-            <NativeSelectOption value="">Compare with...</NativeSelectOption>
-            {comparable.map((run) => (
-              <NativeSelectOption key={run.id} value={run.id}>
-                {run.title}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        )}
-        <Button type="button" variant="ghost" size="sm" onClick={onTogglePin}>
-          {record.pinned ? <PinOff aria-hidden /> : <Pin aria-hidden />}
-          {record.pinned ? "Unpin" : "Pin"}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={rerun}>
-          <RotateCcw aria-hidden />
-          Edit and run again
-        </Button>
-      </div>
-    </header>
-  );
-}

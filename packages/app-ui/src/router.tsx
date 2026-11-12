@@ -7,6 +7,7 @@ import { NotFoundPage } from "./NotFoundPage";
 import { MAIN_SCROLL_ID, RootLayout } from "./RootLayout";
 import { ComparePage } from "./runs/ComparePage";
 import { RunLogTab, RunPage, RunResultsTab, RunSettingsTab } from "./runs/RunPage";
+import { RunClockTab, RunModelTab, RunPopulationTab } from "./runs/RunViewTabs";
 import { StartPage } from "./start/StartPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
@@ -23,6 +24,16 @@ const runIndexRoute = createRoute({ getParentRoute: () => runRoute, path: "/", c
 
 const runResultsRoute = createRoute({ getParentRoute: () => runRoute, path: "/results", component: RunResultsTab });
 
+const runClockRoute = createRoute({ getParentRoute: () => runRoute, path: "/clock", component: RunClockTab });
+
+const runPopulationRoute = createRoute({
+  getParentRoute: () => runRoute,
+  path: "/population",
+  component: RunPopulationTab,
+});
+
+const runModelRoute = createRoute({ getParentRoute: () => runRoute, path: "/model", component: RunModelTab });
+
 const runSettingsRoute = createRoute({ getParentRoute: () => runRoute, path: "/settings", component: RunSettingsTab });
 
 const runLogRoute = createRoute({ getParentRoute: () => runRoute, path: "/log", component: RunLogTab });
@@ -33,7 +44,15 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   workspaceRoute.addChildren([
     newRoute,
-    runRoute.addChildren([runIndexRoute, runResultsRoute, runSettingsRoute, runLogRoute]),
+    runRoute.addChildren([
+      runIndexRoute,
+      runResultsRoute,
+      runClockRoute,
+      runPopulationRoute,
+      runModelRoute,
+      runSettingsRoute,
+      runLogRoute,
+    ]),
   ]),
   compareRoute,
 ]);
@@ -55,7 +74,7 @@ declare module "@tanstack/react-router" {
 function RunLayout() {
   const { id } = runRoute.useParams();
 
-  return <RunPage id={id} />;
+  return <RunPage key={id} id={id} />;
 }
 
 function RunRedirect() {

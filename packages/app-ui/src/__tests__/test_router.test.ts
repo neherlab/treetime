@@ -1,6 +1,6 @@
 import { router } from "../router";
 
-const RUN_TABS = ["results", "settings", "log"] as const;
+const RUN_TABS = ["results", "clock", "population", "model", "settings", "log"] as const;
 
 describe("root route", () => {
   test("the root path matches the index route of the start page, outside the workspace", () => {

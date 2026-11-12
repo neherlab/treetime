@@ -7,7 +7,8 @@ import { Switch } from "@neherlab/design/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 import { keepPreviousData } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
+import Download from "~icons/lucide/download";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { CodeLineView, keyedLines } from "../analysis/CodePanel";
@@ -15,10 +16,13 @@ import { useApi } from "../api/hooks";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { useLocale } from "../i18n/locale";
+import { downloadName } from "../results/files";
 import { commandSettings } from "../settings/catalog";
 import { documentedDefault, effectiveValue } from "../settings/config";
 import { groupedSpecs } from "../settings/groups";
 import { defaultText } from "../settings/help";
+import { saveText } from "./saveRunOutput";
+import { shownSettings } from "./settingRows";
 import { useRerun } from "./useRerun";
 
 const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
@@ -39,13 +43,11 @@ export function SettingsTab({ record }: { record: RunRecord }) {
   const groups = useMemo(
     () =>
       groupedSpecs(settings, specs).flatMap(([group, members]) => {
-        const rows = members.filter(
-          (spec) => spec.role !== "output" && (!changedOnly || spec.role === "input" || changedKeys.has(spec.key)),
-        );
+        const rows = shownSettings(members, config, changedKeys, changedOnly);
 
         return rows.length === 0 ? [] : [{ group, rows }];
       }),
-    [changedKeys, changedOnly, settings, specs],
+    [changedKeys, changedOnly, config, settings, specs],
   );
 
   const changedCount = changedKeys.size;
@@ -63,16 +65,30 @@ export function SettingsTab({ record }: { record: RunRecord }) {
   const lines = code === null ? [] : format === "cli" ? code.command_line : code.yaml;
   const text = code === null ? "" : format === "cli" ? code.command_line_text : code.yaml_text;
 
+  const yaml = code === null ? undefined : code.yaml_text;
+
+  const onDownload = useCallback(() => {
+    if (yaml !== undefined) {
+      saveText(yaml, downloadName(record.title, ".yaml"), "application/yaml");
+    }
+  }, [record.title, yaml]);
+
   return (
     <div className="grid gap-4 @5xl:grid-cols-[minmax(0,1fr)_32rem]">
       <Panel
         title="Settings used"
         hint={`${changedCount} ${changedCount === 1 ? "setting differs" : "settings differ"} from the defaults`}
         actions={
-          <div className="flex items-center gap-2">
-            <Switch id="settings-changed-only" checked={changedOnly} onCheckedChange={setChangedOnly} />
-            <Label htmlFor="settings-changed-only">Changed only</Label>
-          </div>
+          <>
+            <div className="flex items-center gap-2">
+              <Switch id="settings-changed-only" checked={changedOnly} onCheckedChange={setChangedOnly} />
+              <Label htmlFor="settings-changed-only">Changed only</Label>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={onDownload} disabled={yaml === undefined}>
+              <Download aria-hidden />
+              Settings (.yaml)
+            </Button>
+          </>
         }
       >
         <Table>
