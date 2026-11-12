@@ -5,7 +5,7 @@ mod tests {
   use crate::results::run_results::{CommandResults, run_results};
   use crate::runs::manager::RunManager;
   use app_commands::command::AppCommand;
-  use helpers::{data, finished_run};
+  use helpers::{data, finished_run, star_dataset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -52,21 +52,24 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::within_limit_by_request(true,  true)]
-  #[case::above_limit(            false, false)]
+  #[case::above_limit_on_request(true,  true)]
+  #[case::above_limit(           false, false)]
   #[trace]
   fn test_clock_preview_of_a_tree_above_the_tip_limit_computes_only_on_request(
     #[case] beyond_limit: bool,
     #[case] computed: bool,
   ) {
+    let dir = tempdir().unwrap();
+    let tips = CLOCK_PREVIEW_TIP_LIMIT + 1;
+    let (tree, metadata) = star_dataset(dir.path(), tips);
     let preview = clock_preview(&ClockPreviewRequest {
       command: AppCommand::Timetree,
-      config: sparse(json!({ "tree": data("dengue/1000/tree.nwk"), "metadata": data("dengue/1000/metadata.tsv") })),
+      config: sparse(json!({ "tree": tree, "metadata": metadata })),
       beyond_limit,
     })
     .unwrap();
     assert_eq!(
-      (971, CLOCK_PREVIEW_TIP_LIMIT, computed),
+      (tips, CLOCK_PREVIEW_TIP_LIMIT, computed),
       (preview.tips, preview.tip_limit, preview.clock.is_some())
     );
   }
@@ -89,10 +92,13 @@ mod tests {
     use crate::runs::manager::RunManager;
     use crate::runs::record::{CreateRunRequest, RunStatus, StartRunRequest};
     use app_commands::command::AppCommand;
+    use itertools::Itertools;
     use pretty_assertions::assert_eq;
     use serde_json::Value;
+    use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn finished_run(runs: &Arc<RunManager>, config: Value) -> JobId {
       let created = runs
@@ -113,6 +119,25 @@ mod tests {
         .run();
       assert_eq!(RunStatus::Ok, runs.get(&created.id).unwrap().status);
       created.id
+    }
+
+    pub(super) fn star_dataset(dir: &Path, tips: usize) -> (PathBuf, PathBuf) {
+      let tree = dir.join("tree.nwk");
+      let metadata = dir.join("metadata.tsv");
+      let years = (0..tips).map(|tip| tip % 50).collect_vec();
+      let branches = years
+        .iter()
+        .enumerate()
+        .map(|(tip, year)| format!("t{tip}:{}", 0.001 * (year + 1).to_f64_exact()))
+        .join(",");
+      let rows = years
+        .iter()
+        .enumerate()
+        .map(|(tip, year)| format!("t{tip}\t{}\n", 2000 + year))
+        .join("");
+      fs::write(&tree, format!("({branches});\n")).unwrap();
+      fs::write(&metadata, format!("name\tdate\n{rows}")).unwrap();
+      (tree, metadata)
     }
 
     pub(super) fn data(path: &str) -> PathBuf {

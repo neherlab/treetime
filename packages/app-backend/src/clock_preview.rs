@@ -15,9 +15,10 @@ use treetime::cancel::NoopCancel;
 use treetime::progress::NoopProgress;
 use treetime_io::tree::tree_read_file;
 use treetime_schema::skip_serializing_optionals;
+use treetime_utils::error::report_to_string;
 use treetime_utils::make_internal_error;
 
-pub const CLOCK_PREVIEW_TIP_LIMIT: usize = 500;
+pub const CLOCK_PREVIEW_TIP_LIMIT: usize = 5100;
 
 pub fn clock_preview(request: &ClockPreviewRequest) -> Result<ClockPreview, Report> {
   let config = clock_config(request.command, &request.config)?;
@@ -44,7 +45,8 @@ pub fn clock_preview(request: &ClockPreviewRequest) -> Result<ClockPreview, Repo
     clock_model,
     regression_results,
     tip_names,
-  } = clock_regression(*config, &NoopCancel, &NoopProgress, &NoopProgress)?;
+  } = clock_regression(*config, &NoopCancel, &NoopProgress, &NoopProgress)
+    .map_err(|report| invalid(report_to_string(&report)))?;
   let tip_names: BTreeSet<&str> = tip_names.iter().map(String::as_str).collect();
   Ok(ClockPreview {
     tips,
