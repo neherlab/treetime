@@ -14,7 +14,7 @@ Some unit tests read trees, alignments, or metadata from the repository `data/` 
 
 ## Tests of the application crates
 
-Tests of `app-commands`, `app-backend`, `app-server`, `app-napi`, and `app-cli` also name `data/` paths. Some of them read the files, for example `packages/app-commands/src/commands/optimize/__tests__/test_augur_node_data.rs`, `packages/app-commands/src/commands/prune/__tests__/test_mutation_outputs.rs`, and `packages/app-commands/src/commands/timetree/__tests__/test_pipeline.rs`; others only use the path as a string. Each one needs a classification: a unit test to convert, or an integration test whose contract requires the example datasets, such as the dataset catalog test `packages/app-datasets/src/__tests__/test_examples.rs`.
+Tests of `app-commands`, `app-backend`, `app-api`, `app-napi`, and `app-cli` also name `data/` paths. Some of them read the files, for example `packages/app-commands/src/commands/optimize/__tests__/test_augur_node_data.rs`, `packages/app-commands/src/commands/prune/__tests__/test_mutation_outputs.rs`, and `packages/app-commands/src/commands/timetree/__tests__/test_pipeline.rs`; others only use the path as a string. Each one needs a classification: a unit test to convert, or an integration test whose contract requires the example datasets, such as the dataset catalog test `packages/app-datasets/src/__tests__/test_examples.rs`.
 
 ## Fix direction
 

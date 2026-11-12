@@ -58,7 +58,7 @@ Two orthogonal flags control tip output on both `ancestral` and `timetree`:
 - `--include-leaves` emits reconstructed tip sequences in addition to internal nodes.
 - `--impute-missing-data` resolves ambiguous and unknown tip states to the most likely inferred state.
 
-`--reconstruct-tip-states` is retained as the v0-compatible alias enabling both. The app-server request contracts expose all three fields with the same alias semantics. Under `--method-anc=parsimony`, imputation has no posterior to draw from; `--impute-missing-data` is a no-op that logs a warning rather than failing, so a caller that always passes `--reconstruct-tip-states` still runs, and `--include-leaves` still emits observed tips.
+`--reconstruct-tip-states` is retained as the v0-compatible alias enabling both. The app-api request contracts expose all three fields with the same alias semantics. Under `--method-anc=parsimony`, imputation has no posterior to draw from; `--impute-missing-data` is a no-op that logs a warning rather than failing, so a caller that always passes `--reconstruct-tip-states` still runs, and `--include-leaves` still emits observed tips.
 
 ## Consistency of output paths
 

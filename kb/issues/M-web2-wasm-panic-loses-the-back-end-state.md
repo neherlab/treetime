@@ -5,7 +5,7 @@ The WebAssembly back end is built with `panic = "abort"`: a panic aborts the mod
 ## Evidence
 
 - `-Cpanic=abort` in `[target.wasm32-unknown-emscripten]` of `.cargo/config.toml`: wasm-bindgen does not support unwinding across its boundary on Emscripten ([wasm-bindgen#5165](https://github.com/wasm-bindgen/wasm-bindgen/issues/5165)), although Emscripten itself can unwind with WebAssembly exceptions
-- `CatchPanicLayer` in `finish_router()` of `packages/app-server/src/routes.rs` turns a panic into a 500 response with `catch_unwind`, which does not catch an abort
+- `CatchPanicLayer` in `finish_router()` of `packages/app-api/src/routes.rs` turns a panic into a 500 response with `catch_unwind`, which does not catch an abort
 - The back-end worker reports an abort or a trap of its module as `crashed` with the error lines of `ErrorLines` (`packages/app-web2/src/backend/instantiate.ts`), and `WorkerConnection` (`packages/app-web2/src/backend/connection.ts`) terminates the worker and starts a new one; the job host of the old worker ends with it
 - Causes that remain in the back-end worker: a panic in a route or in the preparation of a run, an allocation that fails while the worker holds the uploads and the outputs of every run of the page in its linear memory and its file system, and a trap in a call of the job host into the module
 

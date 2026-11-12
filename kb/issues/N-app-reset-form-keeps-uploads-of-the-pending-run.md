@@ -2,7 +2,7 @@
 
 The apps upload the input files of a new analysis into a run that is created and not started (status `created`), the pending upload run of the draft. "Reset form" replaces the draft with a fresh one and drops `upload_run_id`, but releases none of the uploads of that run. The next upload creates a new pending run, and the old run keeps its files.
 
-In the server and the desktop app, the files stay on disk until the run manager next opens the runs folder and removes unstarted runs older than one day. In web2, the runs folder lives in the memory of the back-end worker for the life of the tab, so every reset after a large upload keeps that upload in memory until the page reloads.
+In the desktop app, the files stay on disk until the run manager next opens the runs folder and removes unstarted runs older than one day. In web2, the runs folder lives in the memory of the back-end worker for the life of the tab, so every reset after a large upload keeps that upload in memory until the page reloads.
 
 ## Evidence
 

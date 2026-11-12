@@ -31,7 +31,7 @@ v0 (`packages/legacy/treetime`) has no grid point limit. On `data/mpox/clade-ii/
 
 ## What v1 does
 
-- `struct MaxGridPoints` in `packages/treetime-grid/src/max_grid_points.rs` owns the limit and its validation: at least 1000 points (above the 300 points of the inference grids, which every run creates) and at most 9 007 199 254 740 991 points ($2^{53} - 1$, the largest count whose indices all convert to `f64` exactly; `usize::MAX` on 32-bit targets), default 1 000 000. The CLI flag, the settings file, the settings route, the server option, and the generated schemas reject the same values
+- `struct MaxGridPoints` in `packages/treetime-grid/src/max_grid_points.rs` owns the limit and its validation: at least 1000 points (above the 300 points of the inference grids, which every run creates) and at most 9 007 199 254 740 991 points ($2^{53} - 1$, the largest count whose indices all convert to `f64` exactly; `usize::MAX` on 32-bit targets), default 1 000 000. The CLI flag, the settings file, the settings route, and the generated schemas reject the same values
 - `MaxGridPoints::point_count()` compares the needed point count, computed as a floating-point number, with the limit before any integer conversion or allocation, and returns `GridPointLimitExceeded` above it. A count that overflows `usize` or is infinite, as when the spacing underflows, is reported as "more points than the limit"
 - Every grid operation of time inference checks its count: the grid constructors `Grid::from_range_dx()` and `GridFn::resample_range_dx_clamped()`; the exact range convolution; both resampled convolution operands and the convolution result of `len_a + len_b - 1` points; multiplication, products, and division; and the mass window of `rewindow_to_mass()` and `convolve_across_edge()`
 - Multiplication and division stop with the same error at the limit instead of switching to a coarser grid, so no operation lowers the resolution without telling the user
@@ -42,40 +42,9 @@ v0 (`packages/legacy/treetime`) has no grid point limit. On `data/mpox/clade-ii/
 
 - A run: `--max-grid-points` of `treetime timetree`, or `max_grid_points` in its config
 - The desktop app: `analysis.max_grid_points` in the settings file of the app folder, which `PUT /api/app-settings/analysis` replaces. It fills runs whose config does not set the value
-- A web server: `treetime-server --max-grid-points`. It fills runs whose config does not set the value and rejects a higher value, in the code preview and at run start. The default is the built-in default
 - Otherwise: 1 000 000
 
-`RunLimits::apply()` in `packages/app-backend/src/run_limits.rs` applies the app setting or the server option to every command whose config schema has a `max_grid_points` setting. `AppService` applies it to the config of the code preview before it builds the command line, and to the config of a run at its start, after input path confinement. The run record keeps the filled value, so a run reproduces from its command line and YAML, and "Edit and run again" shows the value as a changed setting.
-
-## Public server value
-
-`dev/deploy/hetzner/compose.yaml` runs `treetime-server` with two processing threads in a container limited to 3 GB. The server value is the largest of 1 000 000, 500 000, and 200 000 points for which every run of the following measurement stays below 1.5 GB, half of the container memory: `data/mpox/clade-ii/1000` with `-j 2 --max-iter=1`, at fixed clock rates from `1e-4` to `2e-3`, peak resident memory from `VmHWM` of the release build.
-
-| Limit (points) | Clock rate | Outcome | Peak memory (MB) | Time (s) |
-| --- | --- | --- | --- | --- |
-| 1 000 000 | `1e-4` | finished | 864 | 55 |
-| 1 000 000 | `2e-4` | finished | 546 | 18 |
-| 1 000 000 | `5e-4` | finished | 686 | 40 |
-| 1 000 000 | `7e-4` | limit error | 437 | 8 |
-| 1 000 000 | `1e-3` | limit error | 435 | 7 |
-| 1 000 000 | `2e-3` | limit error | 435 | 8 |
-| 500 000 | `1e-4` | finished | 869 | 48 |
-| 500 000 | `2e-4` | finished | 543 | 18 |
-| 500 000 | `5e-4` | finished | 687 | 39 |
-| 500 000 | `7e-4` | limit error | 436 | 9 |
-| 500 000 | `1e-3` | limit error | 435 | 8 |
-| 500 000 | `2e-3` | limit error | 434 | 9 |
-| 200 000 | `1e-4` | finished | 867 | 48 |
-| 200 000 | `2e-4` | finished | 540 | 19 |
-| 200 000 | `5e-4` | finished | 686 | 40 |
-| 200 000 | `7e-4` | limit error | 435 | 7 |
-| 200 000 | `1e-3` | limit error | 435 | 8 |
-| 200 000 | `2e-3` | limit error | 433 | 9 |
-
-Every run stays below 0.9 GB at every candidate, so the server uses the largest candidate, 1 000 000. The limit does not change the peak memory in this measurement: runs at rates up to `5e-4` finish with grids far below 200 000 points, and runs from `7e-4` stopped within 10 s on node distributions that reached millions to trillions of years into the past. Times are from a shared development machine and are approximate.
-
-> [!WARNING]
-> **Needs review.** The table predates the exact range convolution ([distribution-tails-and-arithmetic.md](distribution-tails-and-arithmetic.md#exact-point-and-range-convolution)), with which `data/mpox/clade-ii/1000 --max-iter=1` completes at `7e-4`, `1e-3` and `2e-3`. The peak memory of these runs with `-j 2` against the 1.5 GB bound of the server value is not measured.
+`RunLimits::apply()` in `packages/app-backend/src/run_limits.rs` applies the app setting to every command whose config schema has a `max_grid_points` setting. `AppService` applies it to the config of the code preview before it builds the command line, and to the config of a run at its start, after input path confinement. The run record keeps the filled value, so a run reproduces from its command line and YAML, and "Edit and run again" shows the value as a changed setting.
 
 ## Consequences
 

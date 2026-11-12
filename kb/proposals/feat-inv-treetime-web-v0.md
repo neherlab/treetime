@@ -1,6 +1,6 @@
 # UI/UX inventory of the legacy TreeTime web application
 
-The legacy TreeTime web application ran at `https://treetime.biozentrum.unibas.ch`. It was a Flask server with a React 0.14 and D3 3 frontend around TreeTime 0.5.1. This document lists its user-facing pages, controls, visualizations, interactions, and feedback. It is input for the design of the v1 desktop and web applications ([multi-target-desktop-web-architecture.md](multi-target-desktop-web-architecture.md)).
+The legacy TreeTime web application ran at `https://treetime.biozentrum.unibas.ch`. It was a Flask server with a React 0.14 and D3 3 frontend around TreeTime 0.5.1. This document lists its user-facing pages, controls, visualizations, interactions, and feedback. It is input for the design of the v1 desktop and web applications.
 
 Scope:
 

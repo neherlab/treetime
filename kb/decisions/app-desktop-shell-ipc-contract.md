@@ -26,4 +26,4 @@ One declaration per message removes the copies of the dialog and save types that
 - `packages/app-ui/src/host.ts`: channel table and `interface Host`
 - `packages/app-desktop/src/ipc-main.ts`, `packages/app-desktop/src/ipc-renderer.ts`: the only users of `ipcMain` and `ipcRenderer`
 - `packages/app-napi/src/backend.rs`: host and renderer routers
-- `packages/app-server/src/app_settings_routes.rs`: `runsSave`
+- `packages/app-api/src/app_settings_routes.rs`: `runsSave`

@@ -6,7 +6,7 @@
 
 ## Crates without a result
 
-The `no_comments` lint of the `custom` library rejects the `///` lines in the `macro_rules!` body of `packages/app-commands/src/commands/shared/ambiguity.rs` (18 errors). The macro generates a `clap::Args` struct, but the lint sees the doc comments in the macro body, where no derive renders them. The errors stop the compilation of `app-commands` under the lint, so every crate that depends on it gets no lint run: `app-backend`, `app-cli`, `app-napi`, `app-server` and `app-wasm`. The workspace report of `pub_unused_in_workspace` then stops with `pub-unused-report: no record for lib app_backend ...` (one line per target) and `the report is incomplete and nothing is judged`.
+The `no_comments` lint of the `custom` library rejects the `///` lines in the `macro_rules!` body of `packages/app-commands/src/commands/shared/ambiguity.rs` (18 errors). The macro generates a `clap::Args` struct, but the lint sees the doc comments in the macro body, where no derive renders them. The errors stop the compilation of `app-commands` under the lint, so every crate that depends on it gets no lint run: `app-backend`, `app-cli`, `app-napi`, `app-api` and `app-wasm`. The workspace report of `pub_unused_in_workspace` then stops with `pub-unused-report: no record for lib app_backend ...` (one line per target) and `the report is incomplete and nothing is judged`.
 
 `packages/app-commands/src/commands/shared/output_args.rs` has the same macro pattern and passes its help text as `#[doc = "..."]` attributes, which the lint accepts.
 

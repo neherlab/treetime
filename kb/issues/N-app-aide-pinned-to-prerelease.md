@@ -1,11 +1,11 @@
 # The OpenAPI generator aide is pinned to a pre-release
 
-The API server registers its routes through aide, which derives the OpenAPI document from the handler types. The workspace pins the pre-release `aide = "=0.16.0-alpha.4"` (`Cargo.toml`, used by `packages/app-server`), because the latest stable release, 0.15.1, depends on schemars 0.9, and every data type of the project derives the schemars 1.x `JsonSchema`.
+The API router (`packages/app-api`) registers its routes through aide, which derives the OpenAPI document from the handler types. The workspace pins the pre-release `aide = "=0.16.0-alpha.4"` (`Cargo.toml`, used by `packages/app-api`), because the latest stable release, 0.15.1, depends on schemars 0.9, and every data type of the project derives the schemars 1.x `JsonSchema`.
 
 ## Impact
 
 - A pre-release receives no patch releases; a fix in aide reaches the project only with a later alpha or with 0.16.0
-- The API of a pre-release can change between alphas, so moving to another alpha may need code changes in `packages/app-server/src/routes.rs` and `packages/app-server/src/api/`
+- The API of a pre-release can change between alphas, so moving to another alpha may need code changes in `packages/app-api/src/routes.rs` and `packages/app-api/src/api/`
 
 ## Required change
 
