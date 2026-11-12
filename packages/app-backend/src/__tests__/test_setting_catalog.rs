@@ -3,8 +3,8 @@ mod tests {
   use crate::check_inputs::{InputKind, InputNeed, InputSlot};
   use crate::command::offered_commands;
   use crate::config::catalog::{
-    ListItemKind, SettingKind, SettingOption, SettingPurpose, SettingRole, SettingSpec, command_settings,
-    setting_catalog,
+    ListItemKind, SettingKind, SettingOption, SettingPurpose, SettingRole, SettingSection, SettingSpec,
+    command_settings, setting_catalog,
   };
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
@@ -66,6 +66,64 @@ mod tests {
         "Reproducibility",
       ],
       command_settings(AppCommand::Timetree).unwrap().groups
+    );
+  }
+
+  #[test]
+  fn test_setting_catalog_timetree_sections_group_the_settings_by_purpose() {
+    assert_eq!(
+      vec![
+        SettingSection {
+          purpose: SettingPurpose::Data,
+          title: o!("Input data"),
+          groups: vec_of_owned!["Input data"],
+        },
+        SettingSection {
+          purpose: SettingPurpose::Analysis,
+          title: o!("Analysis"),
+          groups: vec_of_owned![
+            "Molecular clock",
+            "Rooting",
+            "Branch lengths",
+            "Dating",
+            "Polytomies",
+            "Coalescent prior",
+            "Substitution model",
+            "Ancestral reconstruction",
+          ],
+        },
+        SettingSection {
+          purpose: SettingPurpose::Output,
+          title: o!("Output format"),
+          groups: vec_of_owned!["Output"],
+        },
+        SettingSection {
+          purpose: SettingPurpose::Ordering,
+          title: o!("Tree ordering and reproducibility"),
+          groups: vec_of_owned!["Tree ordering", "Reproducibility"],
+        },
+      ],
+      command_settings(AppCommand::Timetree).unwrap().sections
+    );
+  }
+
+  #[test]
+  fn test_setting_catalog_timetree_form_offers_only_the_output_format() {
+    let offered = command_settings(AppCommand::Timetree)
+      .unwrap()
+      .settings
+      .into_iter()
+      .filter(|spec| spec.purpose == SettingPurpose::Output && !spec.set_by_app)
+      .map(|spec| spec.key)
+      .collect_vec();
+    assert_eq!(
+      vec_of_owned![
+        "newick_annotations",
+        "divergence_units",
+        "ambiguity_threshold",
+        "ambiguity_outputs"
+      ],
+      offered
     );
   }
 
@@ -146,6 +204,7 @@ mod tests {
         flag: o!("--clock-rate"),
         group: o!("Molecular clock"),
         purpose: SettingPurpose::Analysis,
+        set_by_app: false,
         role: SettingRole::Setting,
         kind: SettingKind::Number,
         nullable: true,
@@ -174,16 +233,21 @@ mod tests {
         flag: o!("--coalescent"),
         group: o!("Coalescent prior"),
         purpose: SettingPurpose::Analysis,
+        set_by_app: false,
         role: SettingRole::Setting,
         kind: SettingKind::EnumOrText,
         nullable: true,
         options: vec![
           SettingOption {
             value: o!("opt"),
+
+            label: o!("Optimized constant"),
             help: o!(""),
           },
           SettingOption {
             value: o!("skyline"),
+
+            label: o!("Skyline"),
             help: o!(""),
           },
         ],
@@ -334,6 +398,8 @@ mod tests {
       vec![
         SettingOption {
           value: o!("auto"),
+
+          label: o!("Automatic"),
           help: o!(
             "`input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site, \
              `marginal` otherwise"
@@ -341,10 +407,14 @@ mod tests {
         },
         SettingOption {
           value: o!("input"),
+
+          label: o!("Input"),
           help: o!("Keep the branch lengths of the input tree")
         },
         SettingOption {
           value: o!("marginal"),
+
+          label: o!("Marginal"),
           help: o!("Estimate the branch lengths from the alignment by marginal ancestral reconstruction")
         },
       ],

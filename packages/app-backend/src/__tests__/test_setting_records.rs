@@ -80,10 +80,14 @@ mod tests {
             options: vec![
               SettingOption {
                 value: o!("infer"),
+
+                label: o!("Infer GTR"),
                 help: o!("Infer the model"),
               },
               SettingOption {
                 value: o!("jc69"),
+
+                label: o!("JC69"),
                 help: o!("Jukes-Cantor"),
               },
             ],

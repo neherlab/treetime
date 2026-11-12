@@ -8,8 +8,6 @@ use serde_json::{Map, Value};
 use std::path::PathBuf;
 use treetime_schema::skip_serializing_optionals;
 
-pub const OUTPUT_SELECTION_KEY: &str = "output_selection";
-
 pub fn setting_differences(
   catalog: &CommandSettings,
   first: &ComparedConfig,
@@ -34,7 +32,7 @@ pub fn setting_differences(
 }
 
 pub fn compared_settings(catalog: &CommandSettings) -> impl Iterator<Item = &SettingSpec> {
-  catalog.settings.iter().filter(|spec| !is_set_by_app(spec))
+  catalog.settings.iter().filter(|spec| !spec.set_by_app)
 }
 
 pub fn compared_inputs(inputs: &[RunInput]) -> Vec<ComparedInput> {
@@ -99,10 +97,6 @@ pub struct ComparedInput {
   pub setting: String,
   pub path: PathBuf,
   pub sha256: Option<String>,
-}
-
-fn is_set_by_app(spec: &SettingSpec) -> bool {
-  spec.role == SettingRole::Output || spec.key == OUTPUT_SELECTION_KEY
 }
 
 fn setting_values(
