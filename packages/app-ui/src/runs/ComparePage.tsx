@@ -1,5 +1,4 @@
 import type {
-  LikelihoodMismatch,
   RunComparison,
   RunRecord,
   SettingDifference,
@@ -18,26 +17,26 @@ import ArrowLeftRight from "~icons/lucide/arrow-left-right";
 
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
+import { isNotFound } from "../api/retry";
 import { LoadingState, PageShell } from "../components/PageShell";
 import { Panel } from "../components/Panel";
-import { formatLevel, formatRate, formatSignedDays, yearDateText } from "../format";
+import { formatLevel, formatSignedDays, yearDateText } from "../format";
 import { useLocale } from "../i18n/locale";
+import { formatSignificant } from "../results/estimates";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { commandSettings } from "../settings/catalog";
-import { defaultText } from "../settings/help";
+import { defaultText, SettingHelpPopover } from "../settings/help";
 import { baseName } from "../settings/inputs";
 import type { RunTree } from "./CompareTrees";
 import { DateIntervals } from "./DateIntervals";
+import { MissingRun } from "./MissingRun";
 import { ShiftPlot } from "./ShiftPlot";
 
 const SIDE_LABELS = { first: "A", second: "B" } as const;
 
-const MISMATCH_LABELS: Readonly<Record<LikelihoodMismatch, string>> = {
-  data: "different data",
-  "substitution-model": "different substitution model",
-  "coalescent-prior": "different coalescent prior",
-  topology: "different tree topology",
-};
+const RATE_DIGITS = 3;
+
+const CORRELATION_DIGITS = 3;
 
 const CompareTrees = lazy(async () => ({ default: (await import("./CompareTrees")).CompareTrees }));
 
@@ -48,6 +47,14 @@ export function ComparePage({ first, second }: { first: string; second: string }
 
   if (left?.data === undefined || right?.data === undefined) {
     const error = left?.error ?? right?.error ?? null;
+
+    if (error !== null && isNotFound(error)) {
+      return (
+        <PageShell>
+          <MissingRun />
+        </PageShell>
+      );
+    }
 
     return error === null ? (
       <LoadingState text="Loading the runs" />
@@ -234,15 +241,7 @@ function SettingsDifferences({
   right: RunRecord;
   settings: SettingsComparison | undefined;
 }) {
-  const differences = useMemo(() => {
-    const appSet = new Set(
-      commandSettings(left.command)
-        .settings.filter((spec) => spec.set_by_app)
-        .map((spec) => spec.key),
-    );
-
-    return (settings?.differences ?? []).filter((difference) => !appSet.has(difference.key));
-  }, [left.command, settings]);
+  const differences = settings?.differences ?? [];
 
   return (
     <Panel
@@ -288,7 +287,7 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
   return (
     <TableRow>
       <TableCell className="whitespace-normal">
-        {spec?.label ?? difference.key} <code className="text-muted-foreground font-mono text-xs">{spec?.flag}</code>
+        {spec?.label ?? difference.key} {spec !== undefined && <SettingHelpPopover spec={spec} value={undefined} />}
         {difference.kind === "input" && (
           <span className="text-muted-foreground block text-xs">Different file contents</span>
         )}
@@ -412,8 +411,8 @@ function TimetreeEstimatesComparison({
               />
               <EstimateRow
                 label="r"
-                first={a.r === undefined ? "-" : a.r.toFixed(3)}
-                second={b.r === undefined ? "-" : b.r.toFixed(3)}
+                first={a.r === undefined ? "-" : formatSignificant(a.r, CORRELATION_DIGITS)}
+                second={b.r === undefined ? "-" : formatSignificant(b.r, CORRELATION_DIGITS)}
                 difference=""
               />
               <EstimateRow
@@ -427,11 +426,9 @@ function TimetreeEstimatesComparison({
                 first={likelihoodText(a)}
                 second={likelihoodText(b)}
                 difference={
-                  estimates.log_likelihood_mismatches.length > 0
-                    ? notComparableText(estimates.log_likelihood_mismatches)
-                    : likelihoodChange === undefined
-                      ? "-"
-                      : `${likelihoodChange > 0 ? "+" : ""}${likelihoodChange.toFixed(1)}`
+                  estimates.log_likelihood_not_comparable === undefined
+                    ? likelihoodChangeText(likelihoodChange)
+                    : `not comparable: ${estimates.log_likelihood_not_comparable}`
                 }
               />
             </TableBody>
@@ -502,7 +499,9 @@ function daysDifference(days: number | undefined): string {
 function rateText(estimates: TimetreeEstimates): string {
   const rate = estimates.clock_rate;
 
-  return rate === undefined ? "-" : `${formatRate(rate)}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
+  return rate === undefined
+    ? "-"
+    : `${formatSignificant(rate, RATE_DIGITS, "scientific")}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
 }
 
 function likelihoodText(estimates: TimetreeEstimates): string {
@@ -517,12 +516,12 @@ function likelihoodText(estimates: TimetreeEstimates): string {
   return Number.isFinite(value) ? value.toFixed(1) : `not finite (${nonFiniteLabel(value)})`;
 }
 
-function signedCount(count: number): string {
-  return count === 0 ? "0" : `${count > 0 ? "+" : ""}${count}`;
+function likelihoodChangeText(change: number | undefined): string {
+  return change === undefined ? "-" : `${change > 0 ? "+" : ""}${change.toFixed(1)}`;
 }
 
-function notComparableText(mismatches: readonly LikelihoodMismatch[]): string {
-  return `not comparable: ${mismatches.map((mismatch) => MISMATCH_LABELS[mismatch]).join(", ")}`;
+function signedCount(count: number): string {
+  return count === 0 ? "0" : `${count > 0 ? "+" : ""}${count}`;
 }
 
 type Side = keyof typeof SIDE_LABELS;

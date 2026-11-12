@@ -15,7 +15,6 @@ import { useRunOutputs, useRunView } from "./runContext";
 import { settingText } from "./settingText";
 import { SkylinePlot } from "./SkylinePlot";
 import { SubstitutionModels } from "./SubstitutionModels";
-import { coalescentPriorText } from "./TimetreeEstimates";
 import { TreeView, type TreeData } from "./TreeView";
 import { hasRunView, type RunViewKey } from "./views";
 
@@ -134,7 +133,7 @@ function PopulationView({ record, data }: { record: RunRecord; data: TimetreeRes
           {data.estimates !== undefined && (
             <>
               <DescriptionTerm>Prior used</DescriptionTerm>
-              <DescriptionDetails>{coalescentPriorText(data.estimates.coalescent_prior)}</DescriptionDetails>
+              <DescriptionDetails>{data.estimates.coalescent_summary}</DescriptionDetails>
             </>
           )}
           {settings.map((spec) => (

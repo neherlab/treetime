@@ -1,4 +1,4 @@
-import type { RunRecord, TreeChange, TreeStatistics } from "@neherlab/app-contracts";
+import type { RunRecord, TreeChange, TreeStatisticRow } from "@neherlab/app-contracts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 
 import { Panel } from "../components/Panel";
@@ -7,21 +7,6 @@ import { formatSignificant } from "../results/estimates";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
 const LENGTH_DIGITS = 4;
-
-const STATISTICS: ReadonlyArray<{
-  label: string;
-  value: (statistics: TreeStatistics) => number | undefined;
-  format: (value: number) => string;
-}> = [
-  { label: "Samples", value: (statistics) => statistics.samples, format: String },
-  { label: "Internal nodes", value: (statistics) => statistics.internal_nodes, format: String },
-  { label: "Polytomies", value: (statistics) => statistics.polytomies, format: String },
-  {
-    label: "Total branch length",
-    value: (statistics) => statistics.total_branch_length,
-    format: (value) => formatSignificant(value, LENGTH_DIGITS),
-  },
-];
 
 export function TreeOnlyResults({
   record,
@@ -46,18 +31,15 @@ export function TreeOnlyResults({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {STATISTICS.map((statistic) => {
-              const before = data.before === undefined ? undefined : statistic.value(data.before);
-              const after = data.after === undefined ? undefined : statistic.value(data.after);
+            {data.rows.map((row) => {
+              const format = rowFormat(row);
 
               return (
-                <TableRow key={statistic.label}>
-                  <TableCell>{statistic.label}</TableCell>
-                  <TableCell className="text-right tabular-nums">{valueText(before, statistic.format)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{valueText(after, statistic.format)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {changeText(before, after, statistic.format)}
-                  </TableCell>
+                <TableRow key={row.label}>
+                  <TableCell>{row.label}</TableCell>
+                  <TableCell className="text-right tabular-nums">{valueText(row.before, format)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{valueText(row.after, format)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{changeText(row.before, row.after, format)}</TableCell>
                 </TableRow>
               );
             })}
@@ -66,6 +48,10 @@ export function TreeOnlyResults({
       </Panel>
     </div>
   );
+}
+
+function rowFormat(row: TreeStatisticRow): (value: number) => string {
+  return row.count ? String : (value) => formatSignificant(value, LENGTH_DIGITS);
 }
 
 function valueText(value: number | undefined, format: (value: number) => string): string {

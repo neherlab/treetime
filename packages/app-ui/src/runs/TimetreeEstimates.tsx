@@ -1,4 +1,4 @@
-import type { CoalescentPrior, RunRecord, SparseConfig, TimetreeEstimates } from "@neherlab/app-contracts";
+import type { RunRecord, SparseConfig, TimetreeEstimates } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { DescriptionDetails, DescriptionList, DescriptionTerm } from "@neherlab/design/ui/description-list";
@@ -51,7 +51,7 @@ function RootDate({ record, estimates }: { record: RunRecord; estimates: Timetre
       value={date === undefined ? "not dated" : yearDateText(date)}
       detail={
         interval === undefined ? (
-          <NoInterval record={record} />
+          date !== undefined && <NoInterval record={record} computable={estimates.interval_computable} />
         ) : (
           <>
             <span className="tabular-nums">
@@ -65,17 +65,23 @@ function RootDate({ record, estimates }: { record: RunRecord; estimates: Timetre
   );
 }
 
-function NoInterval({ record }: { record: RunRecord }) {
-  const { start, busy } = useStartVariant(record, WITH_CONFIDENCE);
-
+function NoInterval({ record, computable }: { record: RunRecord; computable: boolean }) {
   return (
     <span className="flex flex-wrap items-center gap-x-2">
       No interval computed
-      <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={start} disabled={busy}>
-        {busy && <Spinner />}
-        Compute the interval
-      </Button>
+      {computable && <ComputeInterval record={record} />}
     </span>
+  );
+}
+
+function ComputeInterval({ record }: { record: RunRecord }) {
+  const { start, busy } = useStartVariant(record, WITH_CONFIDENCE);
+
+  return (
+    <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={start} disabled={busy}>
+      {busy && <Spinner />}
+      Compute the interval
+    </Button>
   );
 }
 
@@ -86,7 +92,7 @@ function ClockRate({ estimates }: { estimates: TimetreeEstimates }) {
     return <Stat label="Clock rate" value="not written" />;
   }
 
-  const { value, spread } = valueWithSpread(rate, estimates.clock_rate_std);
+  const { value, spread } = valueWithSpread(rate, estimates.clock_rate_std, "scientific");
 
   return (
     <Stat
@@ -120,8 +126,6 @@ function SamplesUsed({ record, estimates }: { record: RunRecord; estimates: Time
 }
 
 function RunDetails({ record, estimates }: { record: RunRecord; estimates: TimetreeEstimates }) {
-  const relax = estimates.relaxed_clock;
-
   return (
     <Collapsible className="border-t pt-2">
       <CollapsibleTrigger className="text-muted-foreground hover:text-foreground group flex items-center gap-1 text-xs">
@@ -131,11 +135,9 @@ function RunDetails({ record, estimates }: { record: RunRecord; estimates: Timet
       <CollapsibleContent>
         <DescriptionList className="pt-2 text-xs">
           <DescriptionTerm>Coalescent prior</DescriptionTerm>
-          <DescriptionDetails>{coalescentPriorText(estimates.coalescent_prior)}</DescriptionDetails>
+          <DescriptionDetails>{estimates.coalescent_summary}</DescriptionDetails>
           <DescriptionTerm>Clock model</DescriptionTerm>
-          <DescriptionDetails>
-            {relax === undefined ? "Strict clock" : `Relaxed clock: slack ${relax.slack}, coupling ${relax.coupling}`}
-          </DescriptionDetails>
+          <DescriptionDetails>{estimates.clock_model_summary}</DescriptionDetails>
           <DescriptionTerm>Log likelihood</DescriptionTerm>
           <DescriptionDetails className="tabular-nums">{likelihoodText(estimates)}</DescriptionDetails>
           <DescriptionTerm>Iterations</DescriptionTerm>
@@ -186,22 +188,4 @@ function likelihoodText(estimates: TimetreeEstimates): string {
   const value = fromJsonFloat(estimates.log_likelihood);
 
   return Number.isFinite(value) ? value.toFixed(LIKELIHOOD_DECIMALS) : nonFiniteLabel(value);
-}
-
-export function coalescentPriorText(prior: CoalescentPrior): string {
-  if (prior.kind === "fixed") {
-    return prior.unit === "substitutions-per-site"
-      ? `Constant size, Tc = ${prior.tc} substitutions per site`
-      : `Constant size, Tc = ${prior.tc}`;
-  }
-
-  if (prior.kind === "optimized") {
-    return "Constant size, optimized Tc";
-  }
-
-  if (prior.kind === "skyline") {
-    return `Skyline, ${prior.points} points, stiffness ${prior.stiffness}`;
-  }
-
-  return "None";
 }
