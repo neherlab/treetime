@@ -14,6 +14,7 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
 use treetime_schema::UNSET_KEY;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::{make_error, make_report};
@@ -97,8 +98,10 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
   let settings = settings.into_iter().map(|(_, _, spec)| spec).collect_vec();
   let choices = setting_choices(command, &settings)?;
   let sections = setting_sections(&settings, &groups);
+  let preview_settings = clock_preview_settings(command, &settings)?;
   Ok(CommandSettings {
     command,
+    command_line: command_line_name(command),
     title: command.title().to_owned(),
     description: command.description().to_owned(),
     inputs,
@@ -106,9 +109,37 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     groups,
     sections,
     main_rows: main_setting_rows(command, command.main_settings(), &settings, &choices)?,
+    preview_settings,
     choices,
     settings,
   })
+}
+
+pub fn command_line_name(command: AppCommand) -> String {
+  format!("treetime {command}")
+}
+
+fn clock_preview_settings(command: AppCommand, settings: &[SettingSpec]) -> Result<Vec<String>, Report> {
+  let read = |spec: &SettingSpec| matches!(spec.purpose, SettingPurpose::Data | SettingPurpose::Analysis);
+  let clock: BTreeSet<String> = if command == AppCommand::Clock {
+    settings
+      .iter()
+      .filter(|spec| read(spec))
+      .map(|spec| spec.key.clone())
+      .collect()
+  } else {
+    command_settings(AppCommand::Clock)?
+      .preview_settings
+      .into_iter()
+      .collect()
+  };
+  Ok(
+    settings
+      .iter()
+      .filter(|spec| clock.contains(&spec.key))
+      .map(|spec| spec.key.clone())
+      .collect(),
+  )
 }
 
 /// Settings of every command the app runs, as the settings form shows them.
@@ -123,6 +154,8 @@ pub struct SettingCatalog {
 pub struct CommandSettings {
   /// The command.
   pub command: AppCommand,
+  /// The command as the command line runs it, for example `treetime timetree`.
+  pub command_line: String,
   /// Name of the analysis as the app shows it, for example `Time tree`.
   pub title: String,
   /// One sentence on what the analysis does.
@@ -138,6 +171,9 @@ pub struct CommandSettings {
   pub sections: Vec<SettingSection>,
   /// The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
   pub main_rows: Vec<MainSettingRow>,
+  /// Keys of the settings that the clock preview reads: the input data and analysis settings that the `clock` command
+  /// shares with this command, in catalog order. The preview of a draft changes only when one of them changes.
+  pub preview_settings: Vec<String>,
   /// Settings that the form shows as one choice between options.
   pub choices: Vec<SettingChoice>,
   /// Every setting of the command, by group, in the order `--help` lists them.

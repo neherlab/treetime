@@ -37,7 +37,7 @@ mod tests {
           RowControl::Switches { switches } => {
             format!("switches {}", switches.iter().map(|switch| &switch.key).join(","))
           },
-          RowControl::Coalescent { options } => {
+          RowControl::Coalescent { options, .. } => {
             format!("coalescent {}", options.iter().map(|option| &option.value).join(","))
           },
           RowControl::ClockFilter { .. } => "clock-filter".to_owned(),
@@ -60,6 +60,50 @@ mod tests {
       ],
       kinds
     );
+  }
+
+  #[test]
+  fn test_setting_rows_controls_name_settings_of_the_command() {
+    for command in offered_commands() {
+      let catalog = command_settings(command).unwrap();
+      let named = catalog
+        .main_rows
+        .iter()
+        .flat_map(|row| match &row.control {
+          RowControl::Coalescent {
+            setting,
+            skyline_settings,
+            ..
+          } => [vec![setting.clone()], skyline_settings.clone()].concat(),
+          RowControl::ClockFilter { setting, .. } => vec![setting.clone()],
+          RowControl::SubstitutionModel {
+            model_setting,
+            parameters_setting,
+            ..
+          } => vec![model_setting.clone(), parameters_setting.clone()],
+          RowControl::Switches { switches } => switches.iter().map(|switch| switch.key.clone()).collect(),
+          RowControl::Choice { .. } | RowControl::Setting => vec![],
+        })
+        .collect_vec();
+      let unknown = named
+        .iter()
+        .filter(|key| !catalog.settings.iter().any(|spec| spec.key == **key))
+        .collect_vec();
+      assert_eq!(Vec::<&String>::new(), unknown, "{command}");
+    }
+  }
+
+  #[test]
+  fn test_setting_rows_coalescent_years_suffix() {
+    let suffix = command_settings(AppCommand::Timetree)
+      .unwrap()
+      .main_rows
+      .into_iter()
+      .find_map(|row| match row.control {
+        RowControl::Coalescent { years_suffix, .. } => Some(years_suffix),
+        _ => None,
+      });
+    assert_eq!(Some("y".to_owned()), suffix);
   }
 
   #[test]

@@ -2,6 +2,7 @@
 mod tests {
   use crate::__tests__::test_support::tests::sparse;
   use crate::clock_preview::{CLOCK_PREVIEW_TIP_LIMIT, ClockPreviewRequest, PreviewRoot, clock_preview};
+  use crate::config::catalog::command_settings;
   use crate::results::auspice::run_auspice;
   use crate::results::run_results::{CommandResults, run_results};
   use crate::runs::manager::RunManager;
@@ -160,6 +161,21 @@ mod tests {
         preview.problem.as_deref()
       )
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::clock_rate(   "clock_rate",   false)]
+  #[case::clock_filter( "clock_filter", true)]
+  #[case::reroot(       "reroot",       true)]
+  #[case::tree(         "tree",         true)]
+  #[case::coalescent(   "coalescent",   false)]
+  #[case::confidence(   "confidence",   false)]
+  #[case::output(       "output_all",   false)]
+  #[trace]
+  fn test_clock_preview_settings_of_the_time_tree(#[case] key: &str, #[case] read: bool) {
+    let settings = command_settings(AppCommand::Timetree).unwrap().preview_settings;
+    assert_eq!(read, settings.iter().any(|setting| setting == key));
   }
 
   #[test]

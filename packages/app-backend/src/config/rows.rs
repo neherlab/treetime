@@ -1,6 +1,7 @@
 use crate::config::catalog::SettingSpec;
 use crate::config::choices::{ChoiceName, SettingChoice};
 use app_commands::command::AppCommand;
+use app_commands::commands::timetree::coalescent::TimescaleUnit;
 use deser::Serialize;
 use eyre::Report;
 use itertools::Itertools;
@@ -33,28 +34,32 @@ const ROWS: [RowDef; 8] = [
       ("n_skyline", "Skyline grid points"),
       ("skyline_stiffness", "Skyline stiffness"),
     ],
-    control: ControlDef::Coalescent(&[
-      OptionDef {
-        value: "none",
-        label: "None",
-        note: Some("The node times have no coalescent prior."),
-      },
-      OptionDef {
-        value: "fixed",
-        label: "Fixed constant",
-        note: Some("Constant population size with a time scale in years."),
-      },
-      OptionDef {
-        value: "opt",
-        label: "Optimized constant",
-        note: Some("Constant population size with a time scale fitted to the tree."),
-      },
-      OptionDef {
-        value: "skyline",
-        label: "Skyline",
-        note: Some("Piecewise-constant population size on a grid of time points."),
-      },
-    ]),
+    control: ControlDef::Coalescent {
+      setting: "coalescent",
+      skyline_settings: &["n_skyline", "skyline_stiffness"],
+      options: &[
+        OptionDef {
+          value: "none",
+          label: "None",
+          note: Some("The node times have no coalescent prior."),
+        },
+        OptionDef {
+          value: "fixed",
+          label: "Fixed constant",
+          note: Some("Constant population size with a time scale in years."),
+        },
+        OptionDef {
+          value: "opt",
+          label: "Optimized constant",
+          note: Some("Constant population size with a time scale fitted to the tree."),
+        },
+        OptionDef {
+          value: "skyline",
+          label: "Skyline",
+          note: Some("Piecewise-constant population size on a grid of time points."),
+        },
+      ],
+    },
   },
   RowDef {
     label: "Root",
@@ -67,6 +72,7 @@ const ROWS: [RowDef; 8] = [
     description: Some("Outlier threshold in interquartile ranges"),
     settings: &[("clock_filter", "Threshold")],
     control: ControlDef::ClockFilter {
+      setting: "clock_filter",
       off: "Off: all samples stay in the regression.",
       on: "Samples farther from the regression than the threshold, in interquartile ranges, are ignored.",
     },
@@ -86,6 +92,8 @@ const ROWS: [RowDef; 8] = [
     description: None,
     settings: &[("model", "Substitution model"), ("model_params", "Parameters")],
     control: ControlDef::SubstitutionModel {
+      model_setting: "model",
+      parameters_setting: "model_params",
       parameters_example: "kappa=0.2 pis=0.25,0.25,0.25,0.25",
     },
   },
@@ -187,9 +195,19 @@ pub enum RowControl {
   /// Switches, one per setting.
   Switches { switches: Vec<RowSwitch> },
   /// The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.
-  Coalescent { options: Vec<RowOption> },
+  Coalescent {
+    /// Key of the setting that holds the prior: an option name, or a fixed time scale.
+    setting: String,
+    /// Keys of the settings of the skyline, which apply only while the skyline is picked.
+    skyline_settings: Vec<String>,
+    /// Unit suffix of a fixed time scale in years, as the setting takes it after the number: `y` in `50y`.
+    years_suffix: String,
+    options: Vec<RowOption>,
+  },
   /// The clock filter threshold.
   ClockFilter {
+    /// Key of the setting that holds the threshold.
+    setting: String,
     /// Note while the threshold is 0.
     off: String,
     /// Note while the threshold is above 0.
@@ -197,6 +215,10 @@ pub enum RowControl {
   },
   /// The substitution model and its parameters.
   SubstitutionModel {
+    /// Key of the setting that holds the model.
+    model_setting: String,
+    /// Key of the setting that holds the parameters of the model.
+    parameters_setting: String,
     /// Example of the parameters, as the form shows them in the empty field.
     parameters_example: String,
   },
@@ -271,7 +293,14 @@ impl RowDef {
           })
           .collect(),
       },
-      ControlDef::Coalescent(options) => RowControl::Coalescent {
+      ControlDef::Coalescent {
+        setting,
+        skyline_settings,
+        options,
+      } => RowControl::Coalescent {
+        setting: setting.to_owned(),
+        skyline_settings: skyline_settings.iter().map(|key| (*key).to_owned()).collect(),
+        years_suffix: TimescaleUnit::Years.to_string(),
         options: options
           .iter()
           .map(|option| RowOption {
@@ -281,11 +310,18 @@ impl RowDef {
           })
           .collect(),
       },
-      ControlDef::ClockFilter { off, on } => RowControl::ClockFilter {
+      ControlDef::ClockFilter { setting, off, on } => RowControl::ClockFilter {
+        setting: setting.to_owned(),
         off: off.to_owned(),
         on: on.to_owned(),
       },
-      ControlDef::SubstitutionModel { parameters_example } => RowControl::SubstitutionModel {
+      ControlDef::SubstitutionModel {
+        model_setting,
+        parameters_setting,
+        parameters_example,
+      } => RowControl::SubstitutionModel {
+        model_setting: model_setting.to_owned(),
+        parameters_setting: parameters_setting.to_owned(),
         parameters_example: parameters_example.to_owned(),
       },
     };
@@ -309,9 +345,21 @@ impl RowDef {
 enum ControlDef {
   Choice(ChoiceName),
   Switches(&'static [SwitchDef]),
-  Coalescent(&'static [OptionDef]),
-  ClockFilter { off: &'static str, on: &'static str },
-  SubstitutionModel { parameters_example: &'static str },
+  Coalescent {
+    setting: &'static str,
+    skyline_settings: &'static [&'static str],
+    options: &'static [OptionDef],
+  },
+  ClockFilter {
+    setting: &'static str,
+    off: &'static str,
+    on: &'static str,
+  },
+  SubstitutionModel {
+    model_setting: &'static str,
+    parameters_setting: &'static str,
+    parameters_example: &'static str,
+  },
 }
 
 struct SwitchDef {

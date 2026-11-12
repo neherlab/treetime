@@ -1,5 +1,5 @@
 use crate::command::{AppCommandExt, config_from_request};
-use crate::config::catalog::{SettingPurpose, command_settings};
+use crate::config::catalog::command_settings;
 use crate::results::auspice::{AuspiceDocument, display_auspice};
 use crate::results::clock::{ClockResults, clock_results_of_tips};
 use crate::runs::errors::invalid;
@@ -129,21 +129,11 @@ pub enum PreviewRoot {
 }
 
 fn clock_config(command: AppCommand, config: &SparseConfig) -> Result<SparseConfig, Report> {
-  let shared: BTreeSet<String> = command_settings(AppCommand::Clock)?
-    .settings
-    .into_iter()
-    .filter(|spec| matches!(spec.purpose, SettingPurpose::Data | SettingPurpose::Analysis))
-    .map(|spec| spec.key)
-    .collect();
-  let draft_keys: BTreeSet<String> = command_settings(command)?
-    .settings
-    .into_iter()
-    .map(|spec| spec.key)
-    .collect();
+  let read: BTreeSet<String> = command_settings(command)?.preview_settings.into_iter().collect();
   let settings: Map<_, _> = config
     .0
     .iter()
-    .filter(|(key, _)| shared.contains(*key) && draft_keys.contains(*key))
+    .filter(|(key, _)| read.contains(*key))
     .map(|(key, value)| (key.clone(), value.clone()))
     .collect();
   Ok(SparseConfig(settings))
