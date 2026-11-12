@@ -22,7 +22,7 @@ pub fn run_headline(record: &RunRecord, run_dir: &Path, store: &InputStore) -> R
       })
       .unwrap_or_default(),
     CommandResults::Clock(results) => RunHeadline {
-      root_date: None,
+      root_date: results.estimates.root_date,
       clock_rate: results.estimates.clock_rate.map(JsonFloat),
       r_squared: results.estimates.r_squared.map(JsonFloat),
       ..RunHeadline::default()
@@ -43,7 +43,7 @@ pub fn run_headline(record: &RunRecord, run_dir: &Path, store: &InputStore) -> R
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RunHeadline {
-  /// Date of the root of a time tree.
+  /// Date of the root: of the time tree, or where the root-to-tip regression of a clock run reaches zero divergence.
   pub root_date: Option<YearDate>,
   /// Clock rate in substitutions per site per year.
   pub clock_rate: Option<JsonFloat>,

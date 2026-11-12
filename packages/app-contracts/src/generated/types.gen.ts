@@ -1129,7 +1129,7 @@ export type RunStatus = 'created' | 'running' | 'ok' | 'error' | 'cancelled' | '
  */
 export type RunHeadline = {
   /**
-   * Date of the root of a time tree.
+   * Date of the root: of the time tree, or where the root-to-tip regression of a clock run reaches zero divergence.
    */
   root_date?: YearDate;
   /**

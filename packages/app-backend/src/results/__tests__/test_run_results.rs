@@ -184,6 +184,35 @@ mod tests {
   }
 
   #[test]
+  fn test_run_results_headline_of_a_clock_run_holds_the_root_date_of_the_regression() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Clock,
+      json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv") }),
+    );
+
+    let CommandResults::Clock(clock) = run_results(&runs, &id)?.results else {
+      panic!("a clock run has clock results");
+    };
+    let estimates = clock.estimates;
+    assert_eq!(
+      (
+        true,
+        RunHeadline {
+          root_date: estimates.root_date.clone(),
+          clock_rate: estimates.clock_rate.map(JsonFloat),
+          r_squared: estimates.r_squared.map(JsonFloat),
+          recurrent_substitutions: None,
+        }
+      ),
+      (estimates.root_date.is_some(), runs.get(&id)?.headline)
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_run_results_of_a_clock_run_count_dated_samples_and_outliers() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
