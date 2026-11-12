@@ -11,19 +11,18 @@ The `justfile` is the entry point for every routine task. `just` lists the recip
 
 ```
 packages/
-  app-backend/       Run records, results, settings, and pre-run checks of the server, the addon, and the web2 worker
+  app-api/           API router of the desktop app and the web2 worker
+  app-backend/       Run records, results, settings, and pre-run checks of the addon and the web2 worker
   app-cli/           CLI binary (treetime)
-  app-commands/      Command configs and runners shared by the CLI, the server, and the addon
+  app-commands/      Command configs and runners shared by the CLI, the addon, and the web2 worker
   app-contracts/     TypeScript types and schemas of the bridge between the apps and the Rust code
   app-datasets/      Bundled example datasets
   app-desktop/       Electron shell of the desktop app
   app-docs/          Docs site code (Astro with headless fumadocs-core)
   app-napi/          Node addon of the desktop app (Rust, napi-rs)
-  app-output/        Output writers shared by the CLI, the server, and the addon
-  app-server/        HTTP API server of the web app (treetime-server)
-  app-ui/            React components shared by the desktop and web apps
+  app-output/        Output writers shared by the CLI, the addon, and the web2 worker
+  app-ui/            React components shared by the desktop app and web2
   app-wasm/          WebAssembly back end of the web2 app (Rust, Emscripten, wasm-bindgen)
-  app-web/           Web app (Vite)
   app-web2/          Web app on the WebAssembly back end in a web worker (Vite)
   legacy/            TreeTime v0, the Python reference implementation
   schemas/           Generated JSON schemas of the CLI input

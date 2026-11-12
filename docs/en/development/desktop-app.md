@@ -3,7 +3,7 @@ title: Desktop app
 description: Run and package the Electron desktop app, its folders, settings, and example data.
 ---
 
-`just desktop` starts the Electron app in development mode, with the Vite server of its renderer on the desktop port of the checkout (14007 in the main checkout, `TREETIME_DESKTOP_PORT` overrides it). `just desktop-prod` builds the desktop app for production (the Node addon in the `dist` profile and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
+`just desktop` starts the Electron app in development mode, with the Vite server of its renderer on the desktop port of the checkout (`just status` prints it, `TREETIME_DESKTOP_PORT` overrides it). `just desktop-prod` builds the desktop app for production (the Node addon in the `dist` profile and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
 
 The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like the CLI, and copied to `packages/app-napi/app-napi.node`, the `main` file of the package: `just build-napi` builds the `dev` profile for `just desktop`, and `just build-napi dist` the `dist` profile for `just build-desktop` and `just desktop-prod`. `just gen napi-types` generates its TypeScript types (`index.d.ts`).
 
@@ -27,7 +27,7 @@ An environment variable takes precedence over the settings key, and the key over
 
 Every app takes its example data from one index, `data/index.json` (`DataIndex` in `packages/app-backend/src/datasets.rs`): every file that git tracks in `data/` except hidden files and folders, the datasets with their input files, the example configurations with the files they read, and the pipelines. The examples panel, the command palette, and the "Example files" action of each file input read the index.
 
-- **Web apps**: the web app and web2 serve `data/index.json` and the files it lists from their own origin, through the Vite plugin `exampleData()` (`packages/app-ui/build/example-data-vite.ts`), which serves them in the dev server and copies them into `dist/data/` in the build. A chosen example file is uploaded into the run like a user file, and an example configuration is loaded with the paths of its uploaded files
+- **Web app**: web2 serves `data/index.json` and the files it lists from their own origin, through the Vite plugin `exampleData()` (`packages/app-ui/build/example-data-vite.ts`), which serves them in the dev server and copies them into `dist/data/` in the build. A chosen example file is uploaded into the run like a user file, and an example configuration is loaded with the paths of its uploaded files
 - **Desktop app**: an installed app starts with an empty examples folder. The example dialogs and the command palette then offer "Download examples": the back end downloads `examples.zip` of the app's release from `neherlab/treetime-nightly` and unpacks it into the examples folder in the background (`POST /api/examples/download`, with the progress on the app event stream), so a reload of the window does not stop it. The archive holds exactly the files of `data/index.json` and the index itself, and `GET /api/examples` returns the examples folder with its index. A nightly build downloads the archive of its own release; a development or release build downloads the archive of the latest release. The app reads the example files where they are, without an upload
 
 No CLI command downloads examples; CLI users download `examples.zip` from the release.
@@ -41,7 +41,7 @@ ui:
   theme: "dark"
 ```
 
-Every key is optional, and an unknown key is an error that names the file. When `settings.json` exists instead, the app reads and writes JSON; both files at once is an error. The app reads the folders when it starts. The user changes the runs folder in the app, with the folder button in the header or "Change runs folder" in the command palette; the back end then restarts to open it, which interrupts runs that are computing. A runs folder set by `TREETIME_RUNS_DIR` cannot be changed in the app. Only the desktop app serves the settings routes (`/api/app-settings`, `/api/workspace`): `treetime-server` leaves them out, so a shared server never mixes the preferences of its visitors.
+Every key is optional, and an unknown key is an error that names the file. When `settings.json` exists instead, the app reads and writes JSON; both files at once is an error. The app reads the folders when it starts. The user changes the runs folder in the app, with the folder button in the header or "Change runs folder" in the command palette; the back end then restarts to open it, which interrupts runs that are computing. A runs folder set by `TREETIME_RUNS_DIR` cannot be changed in the app. Only the desktop app serves the settings routes (`/api/app-settings`, `/api/workspace`) of `local_api_routers()`; the web2 back end serves only `api_router()` and keeps the preferences in the browser.
 
 ## Packages
 
