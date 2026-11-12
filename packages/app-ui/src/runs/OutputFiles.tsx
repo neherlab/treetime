@@ -10,7 +10,6 @@ import Download from "~icons/lucide/download";
 
 import { useApiContext } from "../api/context";
 import { useApi } from "../api/hooks";
-import { useBrowserBackend } from "../browser-backend";
 import { Panel } from "../components/Panel";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
@@ -127,14 +126,13 @@ function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; 
 export function useSaveRunOutput() {
   const { client } = useApiContext();
   const host = useHost();
-  const browserBackend = useBrowserBackend();
   const toasts = useToastManager();
 
   return useCallback(
     async (output: RunOutput, failureTitle: string) => {
       try {
         const reply = await saveRunOutput(
-          { host, browserBackend, client, download: downloadUrl, objectUrls: URL, setTimer: setBrowserTimer },
+          { host, client, download: downloadUrl, objectUrls: URL, setTimer: setBrowserTimer },
           output,
         );
 
@@ -145,6 +143,6 @@ export function useSaveRunOutput() {
         toasts.add({ title: failureTitle, description: errorMessage(failure) });
       }
     },
-    [browserBackend, client, host, toasts],
+    [client, host, toasts],
   );
 }

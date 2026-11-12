@@ -1,6 +1,5 @@
 import { createApiClient } from "@neherlab/app-contracts/client";
 
-import { TAB_BACKEND } from "../../browser-backend";
 import { type ObjectUrls, saveRunOutput, type SaveTarget } from "../saveRunOutput";
 
 const ORIGIN = "http://treetime.test";
@@ -23,7 +22,6 @@ describe("save run output with a desktop host", () => {
     const reply = await saveRunOutput(
       {
         host,
-        browserBackend: null,
         client,
         objectUrls: URL,
         setTimer: noTimer,
@@ -43,51 +41,6 @@ describe("save run output with a desktop host", () => {
 });
 
 describe("save run output in a browser", () => {
-  test("a file starts a download of its file URL", async () => {
-    const downloads: Array<[string, string]> = [];
-
-    const reply = await saveRunOutput(
-      {
-        host: null,
-        browserBackend: null,
-        client,
-        objectUrls: URL,
-        setTimer: noTimer,
-        download: (url, name) => {
-          downloads.push([url, name]);
-        },
-      },
-      { id: "r1", path: "a/tree.nwk", name: "tree.nwk" },
-    );
-
-    expect([reply, downloads]).toStrictEqual([
-      { kind: "saved" },
-      [[`${ORIGIN}/api/runs/r1/file?path=a%2Ftree.nwk`, "tree.nwk"]],
-    ]);
-  });
-
-  test("an output without a path starts a download of the run archive", async () => {
-    const downloads: Array<[string, string]> = [];
-
-    await saveRunOutput(
-      {
-        host: null,
-        browserBackend: null,
-        client,
-        objectUrls: URL,
-        setTimer: noTimer,
-        download: (url, name) => {
-          downloads.push([url, name]);
-        },
-      },
-      { id: "r1", name: "run.zip" },
-    );
-
-    expect(downloads).toStrictEqual([[`${ORIGIN}/api/runs/r1/archive`, "run.zip"]]);
-  });
-});
-
-describe("save run output with a browser back end", () => {
   test("a file downloads its content through an object URL under the file name", async () => {
     const server = fakeServer({ "/api/runs/r1/file?path=a%2Ftree.nwk": "(A,B);" });
     const objectUrls = new FakeObjectUrls();
@@ -97,7 +50,6 @@ describe("save run output with a browser back end", () => {
     const reply = await saveRunOutput(
       {
         host: null,
-        browserBackend: TAB_BACKEND,
         client: server.client,
         download: (url, name) => {
           downloads.push({ url, name });
@@ -124,7 +76,6 @@ describe("save run output with a browser back end", () => {
     await saveRunOutput(
       {
         host: null,
-        browserBackend: TAB_BACKEND,
         client: server.client,
         download: (url, name) => {
           downloads.push({ url, name });
@@ -150,7 +101,6 @@ describe("save run output with a browser back end", () => {
     await saveRunOutput(
       {
         host: null,
-        browserBackend: TAB_BACKEND,
         client: server.client,
         download: (url) => {
           urls.push(url);
@@ -175,7 +125,6 @@ describe("save run output with a browser back end", () => {
     const save = saveRunOutput(
       {
         host: null,
-        browserBackend: TAB_BACKEND,
         client: server.client,
         download: (url) => {
           downloads.push(url);

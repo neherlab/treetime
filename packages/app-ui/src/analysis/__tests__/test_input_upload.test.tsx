@@ -10,7 +10,6 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { inAct, registerDom } from "../../__tests__/dom";
 import { ApiContext, type ApiContextValue } from "../../api/context";
-import { type BrowserBackend, BrowserBackendContext, TAB_BACKEND } from "../../browser-backend";
 import { useDraftStore } from "../../store/draft";
 import type { FormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
@@ -54,19 +53,10 @@ afterEach(() => {
 });
 
 describe("inputs note", () => {
-  test("the web app says that files are uploaded to the server", async () => {
+  test("the web app says that files and runs stay in this tab", async () => {
     await render(fakeServer().fetch);
 
-    expect(page().queryByText("Files are uploaded into the run folder on the server")).not.toBeNull();
-  });
-
-  test("a browser back end says that files and runs stay in this tab", async () => {
-    await render(fakeServer().fetch, TAB_BACKEND);
-
-    expect([
-      page().queryByText("Files and runs stay in this browser tab until it reloads or closes"),
-      page().queryByText("Files are uploaded into the run folder on the server"),
-    ]).toStrictEqual([expect.any(HTMLElement), null]);
+    expect(page().queryByText("Files and runs stay in this browser tab until it reloads or closes")).not.toBeNull();
   });
 });
 
@@ -379,7 +369,7 @@ function fakeServer({ failing, held, holdCreates }: { failing?: string; held?: s
   };
 }
 
-async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBackend | null = null) {
+async function render(fetch: typeof globalThis.fetch) {
   const api = apiContext(fetch);
   const container = document.createElement("div");
   document.body.append(container);
@@ -389,11 +379,9 @@ async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBac
     root.render(
       <ApiContext.Provider value={api}>
         <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-          <BrowserBackendContext.Provider value={browserBackend}>
-            <Toaster>
-              <Form />
-            </Toaster>
-          </BrowserBackendContext.Provider>
+          <Toaster>
+            <Form />
+          </Toaster>
         </QueryClientProvider>
       </ApiContext.Provider>,
     ),

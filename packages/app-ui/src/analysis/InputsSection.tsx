@@ -5,7 +5,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
 import Upload from "~icons/lucide/upload";
 
-import { type BrowserBackend, useBrowserBackend } from "../browser-backend";
 import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";
 import type { Host } from "../host";
@@ -20,7 +19,6 @@ import { PathPicker, useFileDrop } from "./PathPicker";
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
   const [panel, setPanel] = useState<ExamplesPanelKind | null>(null);
   const host = useHost();
-  const browserBackend = useBrowserBackend();
   const pressed = useMemo(() => (panel === null ? [] : [panel]), [panel]);
   const closePanel = useCallback(() => setPanel(null), []);
 
@@ -32,7 +30,7 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
   return (
     <div className="grid grid-cols-1 gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground text-sm">{inputsNote(host, browserBackend)}</span>
+        <span className="text-muted-foreground text-sm">{inputsNote(host)}</span>
         <ToggleGroup
           aria-label="Examples"
           variant="outline"
@@ -61,14 +59,10 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
   );
 }
 
-function inputsNote(host: Host | null, browserBackend: BrowserBackend | null): string {
-  if (host !== null) {
-    return "Files are read from this computer";
-  }
-
-  return browserBackend === null
-    ? "Files are uploaded into the run folder on the server"
-    : "Files and runs stay in this browser tab until it reloads or closes";
+function inputsNote(host: Host | null): string {
+  return host === null
+    ? "Files and runs stay in this browser tab until it reloads or closes"
+    : "Files are read from this computer";
 }
 
 function InputSlotRow({

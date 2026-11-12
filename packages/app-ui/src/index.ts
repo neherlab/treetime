@@ -1,7 +1,5 @@
 export { App, type AppProps } from "./App";
 
-export { type BrowserBackend, TAB_BACKEND } from "./browser-backend";
-
 export { ApiProvider } from "./api/ApiProvider";
 
 export { reloadOnChunkError } from "./chunk-reload";
