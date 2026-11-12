@@ -95,6 +95,14 @@ impl TreetimeTimetreeArgs {
   pub fn alignments(&self) -> &[PathBuf] {
     &self.sequences.alignments
   }
+
+  pub fn seed(&self) -> Option<u64> {
+    self.seed
+  }
+
+  pub fn random_step(&self) -> Option<&'static str> {
+    (!self.dating.keep_polytomies).then_some("Polytomy resolution")
+  }
 }
 
 impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
