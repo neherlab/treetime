@@ -19,15 +19,17 @@ The web app computes in the browser tab and stores no run in the browser. A run 
 
 The browser keeps two things: your preferences (such as the theme and the width of the sidebar), which all tabs share, and the unfinished form of each tab, which survives a reload of that tab. After a reload, the form keeps its settings and its example files, but your own files belonged to the previous page: choose them again.
 
-While the tab holds runs, the browser asks before it closes or reloads the tab. The history shows the size of each run, because all runs of a tab share the memory of the tab. Delete the runs that you no longer need to free the memory.
+While the tab holds runs, a run computes, a run package import is open, or the form holds files that no run uses, the browser asks before it closes or reloads the tab. The history shows the size of each run, because all runs of a tab share the memory of the tab. Delete the runs that you no longer need to free the memory.
 
-When the computation of the tab fails, for example when it runs out of memory, a banner at the top of the main area says that every run of the tab is lost and that run packages keep runs. The app restarts the computation by itself; when it cannot start, the banner offers to reload the page. When a new version of the web app is published while a tab holds runs, a notice offers to reload the page instead of reloading it by itself.
+When the computation of the tab fails, for example when it runs out of memory, a banner at the top of the main area says that every run of the tab is lost and that run packages keep runs. The app restarts the computation by itself; when it cannot start, the banner offers to reload the page. When a new version of the web app is published while the tab holds such work, a notice offers to reload the page instead of reloading it by itself.
 
-A link to a run that is not in the tab, for example after a reload, opens a page that says so, with actions that open the run list or import a run package.
+A link to a run that is not in the tab, for example after a reload, opens the page "This run is not in this tab" with its cause and the actions "Open the run list" and "Import a run package".
 
 ## Desktop app
 
 The desktop app keeps each run in a folder of its runs folder, and the history lists every run of that folder, also after a restart. "Change runs folder" in the command palette, or the folder button in the header, selects another runs folder. A run package also moves a run between computers.
+
+When the computation of the app fails, a banner says that the runs that were computing stopped and that the finished runs stay in the runs folder; when the computation cannot start, the banner offers to restart it. A link to a run that is not in the runs folder opens the page "This run is not in the runs folder" with the same actions as in the web app.
 
 ## Delete runs
 

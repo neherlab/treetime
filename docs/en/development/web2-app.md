@@ -41,7 +41,7 @@ The back end keeps one layout on both apps (`RunStore`, `packages/app-backend/sr
 - `.inputs/<sha256>/<name>`: the uploaded inputs, stored once by content (`InputStore`) and shared by every run that reads them, so a variant keeps working after the delete of its source. `DELETE /api/runs/{id}` removes a run and the inputs that no other run reads, and emits one `AppChange::RunRemoved`
 - `.staging/`: the import of a run package, which the back end moves to `<id>/` only when it is complete
 
-The page keeps the delete of a run hidden for the Undo time of its notice and sends one delete request per run when the notice closes (`useRunDeletionStore`, `packages/app-ui/src/store/runDeletion.ts`). The form deletes the upload run of a draft that the user discards. While the tab holds runs, the page asks before it unloads, and after a crash of the back-end worker it shows a banner that every run of the tab is lost.
+The page keeps the delete of a run hidden for the Undo time of its notice and sends one delete request per run when the notice closes (`useRunDeletionStore`, `packages/app-ui/src/store/runDeletion.ts`). The form deletes the upload run of a draft that the user discards. The page asks before it unloads while the tab holds runs, a run computes, a run package import is open, or the form holds uploads that no run uses (`leaveLosesWork()`, `packages/app-ui/src/notices/leaveGuard.ts`); a code chunk that fails to load then shows a reload notice instead of reloading by itself. After a crash of the back-end worker the page shows a banner that every run of the tab is lost (`AppNotices`, `packages/app-ui/src/notices/`), and a run link without a run shows `MissingRun` with "Import a run package".
 
 ## Run package
 

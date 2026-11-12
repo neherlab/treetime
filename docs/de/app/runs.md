@@ -1,7 +1,7 @@
 ---
 title: Läufe in der Web-App und der Desktop-App
 description: Wo die Läufe leben, wie lange sie bleiben und wie man sie behält, löscht und wiederherstellt.
-sourceHash: d440f5ca00f99eb5
+sourceHash: c18aff969f6f5e3e
 ---
 
 Die Web-App und die Desktop-App bewahren ihre Läufe an verschiedenen Orten auf, daher bestehen ihre Lauflisten verschieden lange.
@@ -20,15 +20,17 @@ Die Web-App rechnet im Browser-Tab und speichert keinen Lauf im Browser. Ein Lau
 
 Der Browser behält zwei Dinge: Ihre Einstellungen der Oberfläche (etwa das Farbschema und die Breite der Seitenleiste), die alle Tabs teilen, und das unfertige Formular jedes Tabs, das ein Neuladen dieses Tabs übersteht. Nach einem Neuladen behält das Formular seine Einstellungen und seine Beispieldateien, aber Ihre eigenen Dateien gehörten zur vorigen Seite: wählen Sie sie erneut.
 
-Solange der Tab Läufe enthält, fragt der Browser, bevor er den Tab schließt oder neu lädt. Die Liste zeigt die Größe jedes Laufs, weil alle Läufe eines Tabs den Speicher des Tabs teilen. Löschen Sie die Läufe, die Sie nicht mehr brauchen, um den Speicher freizugeben.
+Solange der Tab Läufe enthält, ein Lauf rechnet, ein Import eines Laufpakets offen ist oder das Formular Dateien enthält, die kein Lauf verwendet, fragt der Browser, bevor er den Tab schließt oder neu lädt. Die Liste zeigt die Größe jedes Laufs, weil alle Läufe eines Tabs den Speicher des Tabs teilen. Löschen Sie die Läufe, die Sie nicht mehr brauchen, um den Speicher freizugeben.
 
-Wenn die Berechnung des Tabs fehlschlägt, zum Beispiel weil der Speicher ausgeht, sagt ein Banner oben im Hauptbereich, dass jeder Lauf des Tabs verloren ist und dass Laufpakete Läufe behalten. Die App startet die Berechnung selbst neu; wenn sie nicht starten kann, bietet das Banner an, die Seite neu zu laden. Wenn eine neue Version der Web-App erscheint, während ein Tab Läufe enthält, bietet ein Hinweis an, die Seite neu zu laden, statt sie selbst neu zu laden.
+Wenn die Berechnung des Tabs fehlschlägt, zum Beispiel weil der Speicher ausgeht, sagt ein Banner oben im Hauptbereich, dass jeder Lauf des Tabs verloren ist und dass Laufpakete Läufe behalten. Die App startet die Berechnung selbst neu; wenn sie nicht starten kann, bietet das Banner an, die Seite neu zu laden. Wenn eine neue Version der Web-App erscheint, während der Tab solche Arbeit enthält, bietet ein Hinweis an, die Seite neu zu laden, statt sie selbst neu zu laden.
 
-Ein Verweis auf einen Lauf, der nicht im Tab ist, etwa nach einem Neuladen, öffnet eine Seite, die das sagt, mit Aktionen, die die Laufliste öffnen oder ein Laufpaket importieren.
+Ein Verweis auf einen Lauf, der nicht im Tab ist, etwa nach einem Neuladen, öffnet die Seite „This run is not in this tab“ mit ihrer Ursache und den Aktionen „Open the run list“ und „Import a run package“.
 
 ## Desktop-App
 
 Die Desktop-App bewahrt jeden Lauf in einem Ordner ihres Laufordners auf, und die Liste zeigt jeden Lauf dieses Ordners, auch nach einem Neustart. „Change runs folder“ in der Befehlspalette oder die Ordner-Schaltfläche in der Kopfzeile wählt einen anderen Laufordner. Ein Laufpaket bringt einen Lauf auch auf einen anderen Computer.
+
+Wenn die Berechnung der App fehlschlägt, sagt ein Banner, dass die rechnenden Läufe angehalten wurden und die beendeten Läufe im Laufordner bleiben; wenn die Berechnung nicht starten kann, bietet das Banner an, sie neu zu starten. Ein Verweis auf einen Lauf, der nicht im Laufordner ist, öffnet die Seite „This run is not in the runs folder“ mit denselben Aktionen wie in der Web-App.
 
 ## Läufe löschen
 
