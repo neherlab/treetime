@@ -6,7 +6,7 @@ import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
-import { runOptionsDraft } from "../store/draftRules";
+import { ownDraft, runOptionsDraft } from "../store/draftRules";
 
 export function useRerun(record: RunRecord): () => void {
   const { client } = useApiContext();
@@ -16,9 +16,9 @@ export function useRerun(record: RunRecord): () => void {
   const rerun = useCallback(async () => {
     try {
       const { data: settings } = await runsSettings({ client, path: { id: record.id }, throwOnError: true });
-      const { draft, viewing, load } = useDraftStore.getState();
+      const state = useDraftStore.getState();
 
-      load(runOptionsDraft(record, settings, viewing?.parked ?? draft));
+      state.load(runOptionsDraft(record, settings, ownDraft(state)));
       await navigate({ to: "/new" });
 
       const [named] = record.error?.settings ?? [];

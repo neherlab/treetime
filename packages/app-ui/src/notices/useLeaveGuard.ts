@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
 import { useHost } from "../host-context";
-import { hasEnded } from "../shell/runActions";
 import { useListedRuns } from "../shell/useListedRuns";
 import { useDraftStore } from "../store/draft";
 import { formUploads, leaveLosesWork, useTabWorkStore } from "./leaveGuard";
@@ -17,7 +16,6 @@ export function useLeaveGuard(): void {
     host === null &&
     leaveLosesWork({
       runs: all.length,
-      computing: all.filter((run) => !hasEnded(run.status)).length,
       imports,
       formUploads: uploads,
     });

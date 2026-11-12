@@ -1,7 +1,7 @@
 import { freshDraft } from "../../store/draftSchema";
 import { formUploads, leaveLosesWork, useTabWorkStore } from "../leaveGuard";
 
-const NONE = { runs: 0, computing: 0, imports: 0, formUploads: 0 };
+const NONE = { runs: 0, imports: 0, formUploads: 0 };
 
 beforeEach(() => {
   useTabWorkStore.setState({ imports: 0, holdsWork: false });
@@ -11,7 +11,6 @@ describe("leave guard", () => {
   test.each([
     { name: "nothing to lose", work: NONE, expected: false },
     { name: "the tab holds runs", work: { ...NONE, runs: 2 }, expected: true },
-    { name: "a run computes", work: { ...NONE, computing: 1 }, expected: true },
     { name: "a package import is open", work: { ...NONE, imports: 1 }, expected: true },
     { name: "the form holds uploaded files", work: { ...NONE, formUploads: 1 }, expected: true },
   ])("$name: $expected", ({ work, expected }) => {

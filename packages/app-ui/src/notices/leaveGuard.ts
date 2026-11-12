@@ -3,13 +3,12 @@ import { create } from "zustand";
 
 export interface TabWork {
   runs: number;
-  computing: number;
   imports: number;
   formUploads: number;
 }
 
-export function leaveLosesWork({ runs, computing, imports, formUploads }: TabWork): boolean {
-  return runs > 0 || computing > 0 || imports > 0 || formUploads > 0;
+export function leaveLosesWork({ runs, imports, formUploads }: TabWork): boolean {
+  return runs > 0 || imports > 0 || formUploads > 0;
 }
 
 export function formUploads(draft: UiDraft): number {
