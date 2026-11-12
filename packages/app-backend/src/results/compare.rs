@@ -35,6 +35,7 @@ pub fn compare_runs(manager: &RunManager, first: &JobId, second: &JobId) -> Resu
     Ok(RunComparison {
       same_analysis,
       settings,
+      delta: None,
       estimates: None,
       ancestors: None,
     })
@@ -83,6 +84,7 @@ fn compare_results(
     .unwrap_or_default();
   RunComparison {
     same_analysis,
+    delta: estimate_delta(first, second),
     ancestors: timetrees.and(trees).map(|(a, b)| compare_ancestors(a, b)),
     estimates: timetrees
       .and_then(|(a, b)| a.estimates.clone().zip(b.estimates.clone()))
@@ -104,10 +106,86 @@ pub struct RunComparison {
   pub same_analysis: bool,
   /// Settings and inputs that differ; absent when the runs are different analyses.
   pub settings: Option<SettingsComparison>,
+  /// Changes of the root date and the clock rate, for a one-line summary; present when both runs are finished
+  /// time-tree runs or finished clock runs, and at least one of the two estimates is known in both.
+  pub delta: Option<EstimateDelta>,
   /// Estimates side by side; present when both runs are finished time-tree runs with a tree.
   pub estimates: Option<EstimateComparison>,
   /// Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree.
   pub ancestors: Option<AncestorComparison>,
+}
+
+fn estimate_delta(first: &RunResults, second: &RunResults) -> Option<EstimateDelta> {
+  let (first, second) = match (&first.results, &second.results) {
+    (CommandResults::Timetree(a), CommandResults::Timetree(b)) => {
+      let (a, b) = a.estimates.as_ref().zip(b.estimates.as_ref())?;
+      (
+        (a.root_date.as_ref(), a.clock_rate),
+        (b.root_date.as_ref(), b.clock_rate),
+      )
+    },
+    (CommandResults::Clock(a), CommandResults::Clock(b)) => (
+      (a.estimates.root_date.as_ref(), a.estimates.clock_rate),
+      (b.estimates.root_date.as_ref(), b.estimates.clock_rate),
+    ),
+    _ => return None,
+  };
+  let root_date_days = first
+    .0
+    .zip(second.0)
+    .and_then(|(a, b)| year_fraction_days_between(a.year, b.year));
+  let clock_rate_percent = first
+    .1
+    .zip(second.1)
+    .filter(|(a, _)| *a != 0.0)
+    .map(|(a, b)| (b - a) / a * 100.0);
+  let parts = [
+    root_date_days.map(|days| format!("Root date {}", signed(days, 0, " d"))),
+    clock_rate_percent.map(|percent| format!("clock rate {}", signed(percent, 1, " %"))),
+  ]
+  .into_iter()
+  .flatten()
+  .collect::<Vec<_>>();
+  (!parts.is_empty()).then(|| EstimateDelta {
+    root_date_days,
+    clock_rate_percent,
+    summary: capitalized(&parts.join(", ")),
+  })
+}
+
+/// Changes of the main estimates from the first run to the second.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct EstimateDelta {
+  /// Root date of the second run minus the root date of the first, in days: the dated root of a time tree, or the
+  /// x-intercept of the root-to-tip regression of a clock run.
+  pub root_date_days: Option<f64>,
+  /// Change of the clock rate, in percent of the first rate.
+  pub clock_rate_percent: Option<f64>,
+  /// The changes in one line, for example `Root date -46 d, clock rate -7.9 %`.
+  pub summary: String,
+}
+
+fn signed(value: f64, decimals: usize, unit: &str) -> String {
+  let text = format!("{value:+.decimals$}");
+  if text
+    .trim_start_matches(['+', '-'])
+    .chars()
+    .all(|c| matches!(c, '0' | '.'))
+  {
+    format!("{}{unit}", text.trim_start_matches(['+', '-']))
+  } else {
+    format!("{text}{unit}")
+  }
+}
+
+fn capitalized(text: &str) -> String {
+  let mut chars = text.chars();
+  chars
+    .next()
+    .map(|first| first.to_uppercase().chain(chars).collect())
+    .unwrap_or_default()
 }
 
 /// Settings and inputs that differ between two runs of the same command. The settings that the app sets for every

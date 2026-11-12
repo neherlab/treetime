@@ -7,7 +7,7 @@ mod tests {
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
-  use crate::results::compare::{LikelihoodMismatch, compare_runs};
+  use crate::results::compare::{EstimateDelta, LikelihoodMismatch, compare_runs};
   use crate::results::models::{RunModel, RunModels};
   use crate::results::outputs::OutputProblem;
   use crate::results::run_results::{CommandResults, RunResults, run_results};
@@ -30,8 +30,9 @@ mod tests {
   use tempfile::tempdir;
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
+  use treetime_utils::datetime::year_fraction::year_fraction_days_between;
   use treetime_utils::io::json::{json_read_file, to_json_value};
-  use treetime_utils::{assert_error, pretty_assert_ulps_eq, vec_of_owned};
+  use treetime_utils::{assert_error, pretty_assert_relative_eq, pretty_assert_ulps_eq, vec_of_owned};
 
   #[test]
   fn test_run_results_show_the_tree_of_the_first_alignment_file() -> Result<(), Report> {
@@ -507,6 +508,14 @@ mod tests {
     let comparison = compare_runs(&runs, &id, &id)?;
 
     let settings = comparison.settings.expect("both runs execute the same command");
+    assert_eq!(
+      Some(EstimateDelta {
+        root_date_days: Some(0.0),
+        clock_rate_percent: Some(0.0),
+        summary: o!("Root date 0 d, clock rate 0.0 %"),
+      }),
+      comparison.delta
+    );
     let estimates = comparison.estimates.expect("both runs are time trees");
     let ancestors = comparison.ancestors.expect("both runs are time trees");
     assert_eq!(
@@ -602,13 +611,48 @@ mod tests {
     let comparison = compare_runs(&runs, &timetree, &clock)?;
 
     assert_eq!(
-      (false, None, None, None),
+      (false, None, None, None, None),
       (
         comparison.same_analysis,
         comparison.settings,
+        comparison.delta,
         comparison.estimates,
         comparison.ancestors
       )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_compare_clock_runs_gives_the_change_of_the_regression_root_date_and_clock_rate() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let config =
+      |keep_root: bool| json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv"), "keep_root": keep_root });
+    let first = finished_run(&runs, AppCommand::Clock, config(false));
+    let second = finished_run(&runs, AppCommand::Clock, config(true));
+    let (first_model, second_model) = (clock_model(&runs, &first)?, clock_model(&runs, &second)?);
+    let days =
+      year_fraction_days_between(first_model.t_mrca(), second_model.t_mrca()).expect("both dates are in range");
+    let percent = (second_model.clock_rate() / first_model.clock_rate() - 1.0) * 100.0;
+
+    let delta = compare_runs(&runs, &first, &second)?
+      .delta
+      .expect("both runs are clock runs");
+
+    assert_eq!(
+      (format!("Root date {days:+.0} d, clock rate {percent:+.1} %"), true),
+      (delta.summary.clone(), days.round() != 0.0)
+    );
+    pretty_assert_ulps_eq!(
+      days,
+      delta.root_date_days.expect("both runs have a root date"),
+      max_ulps = 4
+    );
+    pretty_assert_relative_eq!(
+      percent,
+      delta.clock_rate_percent.expect("both runs have a clock rate"),
+      max_relative = 1e-9
     );
     Ok(())
   }
