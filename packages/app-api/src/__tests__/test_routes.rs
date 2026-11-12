@@ -647,7 +647,7 @@ pub(crate) mod tests {
     wait_for_status(&test, &id, "ok").await;
 
     let (status, results) = request(&test, "GET", &format!("/api/runs/{id}/results"), None).await;
-    let (_, comparison) = request(&test, "GET", &format!("/api/runs/{id}/compare/{id}"), None).await;
+    let (_, comparison) = request(&test, "GET", &format!("/api/compare/{id}/{id}"), None).await;
     let root = results["tree"]["nodes"][0]["name"].clone();
     let (_, clade) = request(
       &test,

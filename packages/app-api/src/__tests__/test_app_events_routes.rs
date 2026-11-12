@@ -32,6 +32,7 @@ mod tests {
       { "path": "/api/runs", "scope": "exact" },
       { "path": format!("/api/runs/{id}"), "scope": "subtree" },
       { "path": "/api/clade-in-runs", "scope": "exact" },
+      { "path": "/api/compare", "scope": "subtree" },
     ]);
     assert_eq!(
       vec![
@@ -124,6 +125,7 @@ mod tests {
           json!([
             { "path": "/api/runs", "scope": "subtree" },
             { "path": "/api/clade-in-runs", "scope": "exact" },
+            { "path": "/api/compare", "scope": "subtree" },
             { "path": "/api/examples", "scope": "exact" },
             { "path": "/api/examples/download", "scope": "exact" },
           ])

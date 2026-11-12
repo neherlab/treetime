@@ -12,6 +12,8 @@ pub const RUNS_PATH: &str = "/api/runs";
 
 pub const CLADE_IN_RUNS_PATH: &str = "/api/clade-in-runs";
 
+pub const COMPARE_PATH: &str = "/api/compare";
+
 pub const EXAMPLES_PATH: &str = "/api/examples";
 
 pub const EXAMPLES_DOWNLOAD_PATH: &str = "/api/examples/download";
@@ -21,6 +23,7 @@ pub fn run_stale_paths(id: &JobId) -> Vec<StalePath> {
     StalePath::exact(RUNS_PATH),
     StalePath::subtree(format!("{RUNS_PATH}/{}", id.as_str())),
     StalePath::exact(CLADE_IN_RUNS_PATH),
+    StalePath::subtree(COMPARE_PATH),
   ]
 }
 
@@ -93,6 +96,7 @@ pub fn resync_stale_paths() -> Vec<StalePath> {
   vec![
     StalePath::subtree(RUNS_PATH),
     StalePath::exact(CLADE_IN_RUNS_PATH),
+    StalePath::subtree(COMPARE_PATH),
     StalePath::exact(EXAMPLES_PATH),
     StalePath::exact(EXAMPLES_DOWNLOAD_PATH),
   ]

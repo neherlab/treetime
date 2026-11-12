@@ -273,10 +273,12 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       }),
     )
     .api_route(
-      "/api/runs/{id}/compare/{other}",
+      "/api/compare/{id}/{other}",
       get_with(runs_compare, |op| {
-        op.id("runsCompare")
-          .description("Differences of the second run's results from the first run's.")
+        op.id("runsCompare").description(
+          "Differences of the second run's settings and results from the first run's. Every change of a run makes \
+           the comparisons under `/api/compare` stale.",
+        )
       }),
     )
     .api_route(

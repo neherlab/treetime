@@ -42,7 +42,7 @@ describe("api keys", () => {
     {
       name: "two path parameters",
       request: (context) => runsCompare({ ...context, path: { id: "abc", other: "xyz" } }),
-      expected: ["api", "runs", "abc", "compare", "xyz"],
+      expected: ["api", "compare", "abc", "xyz"],
     },
     {
       name: "an escaped path parameter",
@@ -162,10 +162,10 @@ describe("api keys", () => {
       expected: true,
     },
     {
-      name: "a comparison of the run",
+      name: "a comparison that names the run second",
       scope: "subtree",
-      path: "/api/runs/abc",
-      request: (context) => runsCompare({ ...context, path: { id: "abc", other: "x" } }),
+      path: "/api/compare",
+      request: (context) => runsCompare({ ...context, path: { id: "x", other: "abc" } }),
       expected: true,
     },
     {
