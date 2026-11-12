@@ -197,6 +197,45 @@
         }
       }
     },
+    "/api/file-roles": {
+      "post": {
+        "description": "What the app does with each file that the user opened, from the first bytes of the file and before any upload: import it as a run package, load it as a configuration, or read it as an input.",
+        "operationId": "fileRoles",
+        "requestBody": {
+          "description": "The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before\nany upload.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileHeadsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "What TreeTime does with each file of a request, in the order of the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileRoles"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clock-preview": {
       "post": {
         "description": "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.",
@@ -1390,6 +1429,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/import-file": {
+      "post": {
+        "description": "Import a run package from a file on disk, with the checks and the size limit of `/api/runs/import`. Only local apps serve this path.",
+        "operationId": "runsImportFile",
+        "requestBody": {
+          "description": "A run package to import from a file on disk.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
                 }
               }
             }
@@ -2899,6 +2977,78 @@
           }
         ]
       },
+      "FileHeadsRequest": {
+        "description": "The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before\nany upload.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "One entry per file.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileHead"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "files"
+        ]
+      },
+      "FileHead": {
+        "description": "The first bytes of one file.",
+        "type": "object",
+        "properties": {
+          "head": {
+            "description": "The first bytes of the file as text, with each byte sequence that is not UTF-8 replaced.",
+            "type": "string"
+          },
+          "complete": {
+            "description": "Whether `head` holds the whole file.",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "head",
+          "complete"
+        ]
+      },
+      "FileRoles": {
+        "description": "What TreeTime does with each file of a request, in the order of the request.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "One entry per file of the request.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileRole"
+            }
+          }
+        },
+        "required": [
+          "files"
+        ]
+      },
+      "FileRole": {
+        "description": "What TreeTime does with a file that the user opened.",
+        "oneOf": [
+          {
+            "description": "A zip archive, imported as a run package; the import reads and checks the whole package.",
+            "type": "string",
+            "const": "run-package"
+          },
+          {
+            "description": "A configuration of an analysis that the app runs, loaded into the form.",
+            "type": "string",
+            "const": "configuration"
+          },
+          {
+            "description": "Any other file, read as an input of the analysis.",
+            "type": "string",
+            "const": "input"
+          }
+        ]
+      },
       "ClockPreviewRequest": {
         "description": "The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.",
         "type": "object",
@@ -3364,6 +3514,14 @@
           "package_name": {
             "description": "Name to save the run package under: the run's title and the start of its id, as in the names of its output\nfiles, for example `ebola-100-time-tree-1a2b3c4d.zip`.",
             "type": "string"
+          },
+          "log_name": {
+            "description": "Name to save the log of the run under, for example `ebola-100-time-tree-1a2b3c4d.log.txt`.",
+            "type": "string"
+          },
+          "config_name": {
+            "description": "Name to save the configuration of the run under, for example `ebola-100-time-tree-1a2b3c4d.yaml`.",
+            "type": "string"
           }
         },
         "required": [
@@ -3377,7 +3535,9 @@
           "created_at",
           "changed_settings",
           "headline",
-          "package_name"
+          "package_name",
+          "log_name",
+          "config_name"
         ]
       },
       "RunStatus": {
@@ -3817,6 +3977,13 @@
           "cancelled": {
             "description": "Whether cancellation was requested; the run ends with a `cancelled` terminal event.",
             "type": "boolean"
+          },
+          "from": {
+            "description": "Sequence number from which to read the run's events to wait for its terminal event; absent when nothing was\ncancelled.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           }
         },
         "required": [
@@ -4389,6 +4556,10 @@
             "description": "Whether the root date lies within 5% of the interval width from a bound of its interval.",
             "type": "boolean"
           },
+          "interval_computable": {
+            "description": "Whether a rerun with confidence intervals on adds the root-date interval: the root is dated, and the run computed\nno interval because its `confidence` setting was off.",
+            "type": "boolean"
+          },
           "clock_rate": {
             "description": "Clock rate in substitutions per site per year.",
             "type": "number",
@@ -4438,10 +4609,18 @@
             "description": "Coalescent prior the run used.",
             "$ref": "#/components/schemas/CoalescentPrior"
           },
+          "coalescent_summary": {
+            "description": "The coalescent prior in words, for example `Skyline, 20 points, stiffness 2`.",
+            "type": "string"
+          },
           "relaxed_clock": {
             "description": "Relaxed clock the run used.",
             "$ref": "#/components/schemas/RelaxedClock",
             "x-unset": true
+          },
+          "clock_model_summary": {
+            "description": "The clock model in words: `Strict clock`, or the relaxed clock with its parameters.",
+            "type": "string"
           },
           "log_likelihood": {
             "description": "Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).",
@@ -4457,10 +4636,13 @@
         },
         "required": [
           "root_near_interval_edge",
+          "interval_computable",
           "clock_rate_fixed",
           "samples",
           "excluded_samples",
           "coalescent_prior",
+          "coalescent_summary",
+          "clock_model_summary",
           "iterations"
         ]
       },
@@ -4706,60 +4888,53 @@
         "description": "The tree before and after an `optimize` or `prune` run.",
         "type": "object",
         "properties": {
-          "before": {
-            "description": "Statistics of the input tree; absent when it cannot be read, and the problems of the results name the cause.",
-            "$ref": "#/components/schemas/TreeStatistics",
-            "x-unset": true
-          },
-          "after": {
-            "description": "Statistics of the tree the run wrote; absent when the run wrote no Auspice tree.",
-            "$ref": "#/components/schemas/TreeStatistics",
-            "x-unset": true
-          },
           "mutations": {
             "description": "Number of nucleotide mutations on all branches of the tree the run wrote.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
+          },
+          "rows": {
+            "description": "The statistics of both trees by name, in the order to show them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreeStatisticRow"
+            }
           }
         },
         "required": [
-          "mutations"
+          "mutations",
+          "rows"
         ]
       },
-      "TreeStatistics": {
-        "description": "Size and shape of a tree.",
+      "TreeStatisticRow": {
+        "description": "One statistic of the input tree and the result tree.",
         "type": "object",
         "properties": {
-          "samples": {
-            "description": "Number of samples.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
+          "label": {
+            "description": "Name of the statistic.",
+            "type": "string"
           },
-          "internal_nodes": {
-            "description": "Number of internal nodes, the root included.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
+          "count": {
+            "description": "Whether the statistic counts nodes; otherwise it is a length in substitutions per site.",
+            "type": "boolean"
           },
-          "polytomies": {
-            "description": "Number of internal nodes with more than two children.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
+          "before": {
+            "description": "Value for the input tree; absent when it cannot be read, and the problems of the results name the cause.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
           },
-          "total_branch_length": {
-            "description": "Sum of the branch lengths, in substitutions per site; absent when the tree has no branch lengths.",
+          "after": {
+            "description": "Value for the tree the run wrote; absent when the run wrote no Auspice tree.",
             "type": "number",
             "format": "double",
             "x-unset": true
           }
         },
         "required": [
-          "samples",
-          "internal_nodes",
-          "polytomies"
+          "label",
+          "count"
         ]
       },
       "OutputProblem": {
@@ -4913,6 +5088,11 @@
             "items": {
               "$ref": "#/components/schemas/LikelihoodMismatch"
             }
+          },
+          "log_likelihood_not_comparable": {
+            "description": "The mismatches in words, for example `different data, different coalescent prior`; absent when the log\nlikelihoods can be compared.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "required": [
@@ -5949,6 +6129,20 @@
         },
         "required": [
           "download"
+        ]
+      },
+      "ImportFileRequest": {
+        "description": "A run package to import from a file on disk.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path of the run package.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "path"
         ]
       },
       "Workspace": {

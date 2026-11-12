@@ -486,6 +486,38 @@ export const zFileKinds = z.object({
 });
 
 /**
+ * The first bytes of one file.
+ */
+export const zFileHead = z.strictObject({
+  head: z.string(),
+  complete: z.boolean()
+});
+
+/**
+ * The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+ * any upload.
+ */
+export const zFileHeadsRequest = z.strictObject({
+  files: z.array(zFileHead)
+});
+
+/**
+ * What TreeTime does with a file that the user opened.
+ */
+export const zFileRole = z.union([
+  z.literal('run-package'),
+  z.literal('configuration'),
+  z.literal('input')
+]);
+
+/**
+ * What TreeTime does with each file of a request, in the order of the request.
+ */
+export const zFileRoles = z.object({
+  files: z.array(zFileRole)
+});
+
+/**
  * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
  */
 export const zClockPreviewRequest = z.strictObject({
@@ -630,7 +662,9 @@ export const zRunSummary = z.object({
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
-  package_name: z.string()
+  package_name: z.string(),
+  log_name: z.string(),
+  config_name: z.string()
 });
 
 /**
@@ -781,7 +815,8 @@ export const zStartRunRequest = z.strictObject({
  * Answer to a cancellation request.
  */
 export const zCancelRunResponse = z.object({
-  cancelled: z.boolean()
+  cancelled: z.boolean(),
+  from: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 /**
@@ -963,22 +998,21 @@ export const zAncestralResults = z.object({
 });
 
 /**
- * Size and shape of a tree.
+ * One statistic of the input tree and the result tree.
  */
-export const zTreeStatistics = z.object({
-  samples: z.int().gte(0),
-  internal_nodes: z.int().gte(0),
-  polytomies: z.int().gte(0),
-  total_branch_length: z.number().optional()
+export const zTreeStatisticRow = z.object({
+  label: z.string(),
+  count: z.boolean(),
+  before: z.number().optional(),
+  after: z.number().optional()
 });
 
 /**
  * The tree before and after an `optimize` or `prune` run.
  */
 export const zTreeChange = z.object({
-  before: zTreeStatistics.optional(),
-  after: zTreeStatistics.optional(),
-  mutations: z.int().gte(0)
+  mutations: z.int().gte(0),
+  rows: z.array(zTreeStatisticRow)
 });
 
 /**
@@ -1263,6 +1297,13 @@ export const zDataIndex = z.strictObject({
 export const zExamplesFolder = z.object({
   folder: z.string(),
   index: zDataIndex.optional()
+});
+
+/**
+ * A run package to import from a file on disk.
+ */
+export const zImportFileRequest = z.strictObject({
+  path: z.string()
 });
 
 /**
@@ -2401,6 +2442,7 @@ export const zTimetreeEstimates = z.object({
   root_date: zYearDate.optional(),
   root_interval: zDateInterval.optional(),
   root_near_interval_edge: z.boolean(),
+  interval_computable: z.boolean(),
   clock_rate: z.number().optional(),
   clock_rate_std: z.number().optional(),
   clock_rate_fixed: z.boolean(),
@@ -2410,7 +2452,9 @@ export const zTimetreeEstimates = z.object({
   latest_sample: zYearDate.optional(),
   excluded_samples: z.int().gte(0),
   coalescent_prior: zCoalescentPrior,
+  coalescent_summary: z.string(),
   relaxed_clock: zRelaxedClock.optional(),
+  clock_model_summary: z.string(),
   log_likelihood: zJsonFloat.optional(),
   iterations: z.int().gte(0)
 });
@@ -2437,7 +2481,8 @@ export const zEstimateComparison = z.object({
   clock_rate_change_percent: z.number().optional(),
   excluded_samples_change: z.int().min(-9007199254740991, { error: 'Invalid value: Expected int64 to be >= -9007199254740991, the smallest exact JSON integer' }).max(9007199254740991, { error: 'Invalid value: Expected int64 to be <= 9007199254740991, the largest exact JSON integer' }),
   log_likelihood_change: z.number().optional(),
-  log_likelihood_mismatches: z.array(zLikelihoodMismatch)
+  log_likelihood_mismatches: z.array(zLikelihoodMismatch),
+  log_likelihood_not_comparable: z.string().optional()
 });
 
 /**
@@ -2938,6 +2983,17 @@ export const zFileKindsBody = zFileKindsRequest;
 export const zFileKindsResponse = zFileKinds;
 
 /**
+ * The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+ * any upload.
+ */
+export const zFileRolesBody = zFileHeadsRequest;
+
+/**
+ * What TreeTime does with each file of a request, in the order of the request.
+ */
+export const zFileRolesResponse = zFileRoles;
+
+/**
  * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
  */
 export const zClockPreviewBody = zClockPreviewRequest;
@@ -3207,6 +3263,19 @@ export const zExamplesDownloadResponse = zExamplesDownloadStatus;
  * The request was accepted and runs in the background
  */
 export const zExamplesDownloadStartResponse = zExamplesDownloadStatus;
+
+/**
+ * A run package to import from a file on disk.
+ */
+export const zRunsImportFileBody = zImportFileRequest;
+
+/**
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
+ */
+export const zRunsImportFileResponse = zRunRecord;
 
 /**
  * The runs folder of the running back end, and the folder used when the settings name none.

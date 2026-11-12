@@ -12,6 +12,7 @@ use crate::runs::setting_differences::{
 };
 use deser::Serialize;
 use eyre::Report;
+use itertools::Itertools;
 use schemars::JsonSchema;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::cast::ToF64Exact;
@@ -232,6 +233,7 @@ pub fn compare_estimates(
       .zip(finite(&second))
       .filter(|_| log_likelihood_mismatches.is_empty())
       .map(|(a, b)| b - a),
+    log_likelihood_not_comparable: likelihood_mismatch_text(&log_likelihood_mismatches),
     log_likelihood_mismatches,
     first,
     second,
@@ -288,6 +290,21 @@ pub enum LikelihoodMismatch {
   Topology,
 }
 
+impl LikelihoodMismatch {
+  pub const fn label(self) -> &'static str {
+    match self {
+      Self::Data => "different data",
+      Self::SubstitutionModel => "different substitution model",
+      Self::CoalescentPrior => "different coalescent prior",
+      Self::Topology => "different tree topology",
+    }
+  }
+}
+
+pub fn likelihood_mismatch_text(mismatches: &[LikelihoodMismatch]) -> Option<String> {
+  (!mismatches.is_empty()).then(|| mismatches.iter().map(|mismatch| mismatch.label()).join(", "))
+}
+
 /// Estimates of two time-tree runs and their differences, second minus first.
 #[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
@@ -310,6 +327,9 @@ pub struct EstimateComparison {
   pub log_likelihood_change: Option<f64>,
   /// Why the log likelihoods of the two runs cannot be compared; empty when they can.
   pub log_likelihood_mismatches: Vec<LikelihoodMismatch>,
+  /// The mismatches in words, for example `different data, different coalescent prior`; absent when the log
+  /// likelihoods can be compared.
+  pub log_likelihood_not_comparable: Option<String>,
 }
 
 pub fn compare_ancestors(first: &ResultTree, second: &ResultTree) -> AncestorComparison {

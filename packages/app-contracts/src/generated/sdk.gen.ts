@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AppSettingsAnalysisData, AppSettingsAnalysisErrors, AppSettingsAnalysisResponses, AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ClockPreviewData, ClockPreviewErrors, ClockPreviewResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, ExamplesData, ExamplesDownloadData, ExamplesDownloadErrors, ExamplesDownloadResponses, ExamplesDownloadStartData, ExamplesDownloadStartErrors, ExamplesDownloadStartResponses, ExamplesErrors, ExamplesResponses, FileKindsData, FileKindsErrors, FileKindsResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsImportData, RunsImportErrors, RunsImportResponses, RunsListData, RunsListErrors, RunsListResponses, RunsPackageData, RunsPackageErrors, RunsPackageResponses, RunsReleaseInputData, RunsReleaseInputErrors, RunsReleaseInputResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsSettingsData, RunsSettingsErrors, RunsSettingsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadAllowanceData, RunsUploadAllowanceErrors, RunsUploadAllowanceResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
-import { zAppSettingsAnalysisBody, zAppSettingsAnalysisResponse, zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zClockPreviewBody, zClockPreviewResponse, zConfigCheckBody, zConfigCheckResponse, zEventsQuery, zEventsResponse, zExamplesDownloadResponse, zExamplesDownloadStartResponse, zExamplesResponse, zFileKindsBody, zFileKindsResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsImportBody, zRunsImportResponse, zRunsListResponse, zRunsPackagePath, zRunsPackageResponse, zRunsReleaseInputPath, zRunsReleaseInputQuery, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsSettingsPath, zRunsSettingsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadAllowancePath, zRunsUploadAllowanceQuery, zRunsUploadAllowanceResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputQuery, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
+import type { AppSettingsAnalysisData, AppSettingsAnalysisErrors, AppSettingsAnalysisResponses, AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ClockPreviewData, ClockPreviewErrors, ClockPreviewResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, ExamplesData, ExamplesDownloadData, ExamplesDownloadErrors, ExamplesDownloadResponses, ExamplesDownloadStartData, ExamplesDownloadStartErrors, ExamplesDownloadStartResponses, ExamplesErrors, ExamplesResponses, FileKindsData, FileKindsErrors, FileKindsResponses, FileRolesData, FileRolesErrors, FileRolesResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsImportData, RunsImportErrors, RunsImportFileData, RunsImportFileErrors, RunsImportFileResponses, RunsImportResponses, RunsListData, RunsListErrors, RunsListResponses, RunsPackageData, RunsPackageErrors, RunsPackageResponses, RunsReleaseInputData, RunsReleaseInputErrors, RunsReleaseInputResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsSettingsData, RunsSettingsErrors, RunsSettingsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadAllowanceData, RunsUploadAllowanceErrors, RunsUploadAllowanceResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
+import { zAppSettingsAnalysisBody, zAppSettingsAnalysisResponse, zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zClockPreviewBody, zClockPreviewResponse, zConfigCheckBody, zConfigCheckResponse, zEventsQuery, zEventsResponse, zExamplesDownloadResponse, zExamplesDownloadStartResponse, zExamplesResponse, zFileKindsBody, zFileKindsResponse, zFileRolesBody, zFileRolesResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsImportBody, zRunsImportFileBody, zRunsImportFileResponse, zRunsImportResponse, zRunsListResponse, zRunsPackagePath, zRunsPackageResponse, zRunsReleaseInputPath, zRunsReleaseInputQuery, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsSettingsPath, zRunsSettingsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadAllowancePath, zRunsUploadAllowanceQuery, zRunsUploadAllowanceResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputQuery, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -100,6 +100,24 @@ export const fileKinds = <ThrowOnError extends boolean = false>(options: Options
   }).parseAsync(data),
   responseValidator: async (data) => await zFileKindsResponse.parseAsync(data),
   url: '/api/file-kinds',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * What the app does with each file that the user opened, from the first bytes of the file and before any upload: import it as a run package, load it as a configuration, or read it as an input.
+ */
+export const fileRoles = <ThrowOnError extends boolean = false>(options: Options<FileRolesData, ThrowOnError>): RequestResult<FileRolesResponses, FileRolesErrors, ThrowOnError> => (options.client ?? client).post<FileRolesResponses, FileRolesErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zFileRolesBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zFileRolesResponse.parseAsync(data),
+  url: '/api/file-roles',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -533,6 +551,24 @@ export const examplesDownloadStart = <ThrowOnError extends boolean = false>(opti
   responseValidator: async (data) => await zExamplesDownloadStartResponse.parseAsync(data),
   url: '/api/examples/download',
   ...options
+});
+
+/**
+ * Import a run package from a file on disk, with the checks and the size limit of `/api/runs/import`. Only local apps serve this path.
+ */
+export const runsImportFile = <ThrowOnError extends boolean = false>(options: Options<RunsImportFileData, ThrowOnError>): RequestResult<RunsImportFileResponses, RunsImportFileErrors, ThrowOnError> => (options.client ?? client).post<RunsImportFileResponses, RunsImportFileErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zRunsImportFileBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zRunsImportFileResponse.parseAsync(data),
+  url: '/api/runs/import-file',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
 });
 
 /**

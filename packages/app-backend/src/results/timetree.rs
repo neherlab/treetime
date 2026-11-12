@@ -129,7 +129,10 @@ fn timetree_estimates(
   let root = tree.root();
   let fixed = outputs.clock_model.is_some_and(has_fixed_rate);
   let r = outputs.clock_model.and_then(ClockModel::r_val);
+  let coalescent = coalescent_prior(config);
+  let relaxed = relaxed_clock(config);
   TimetreeEstimates {
+    interval_computable: root.date.is_some() && root.date_interval.is_none() && !config.confidence,
     root_date: root.date.clone(),
     root_interval: root.date_interval.clone(),
     root_near_interval_edge: root
@@ -152,8 +155,10 @@ fn timetree_estimates(
     samples: tree.tips().count(),
     latest_sample: latest_sample(tree),
     excluded_samples: tree.tips().filter(|tip| tip.excluded == Some(true)).count(),
-    coalescent_prior: coalescent_prior(config),
-    relaxed_clock: relaxed_clock(config),
+    coalescent_summary: coalescent.summary(),
+    coalescent_prior: coalescent,
+    clock_model_summary: clock_model_summary(relaxed),
+    relaxed_clock: relaxed,
     log_likelihood: outputs
       .trace
       .last()
@@ -173,6 +178,9 @@ pub struct TimetreeEstimates {
   pub root_interval: Option<DateInterval>,
   /// Whether the root date lies within 5% of the interval width from a bound of its interval.
   pub root_near_interval_edge: bool,
+  /// Whether a rerun with confidence intervals on adds the root-date interval: the root is dated, and the run computed
+  /// no interval because its `confidence` setting was off.
+  pub interval_computable: bool,
   /// Clock rate in substitutions per site per year.
   pub clock_rate: Option<f64>,
   /// Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
@@ -191,8 +199,12 @@ pub struct TimetreeEstimates {
   pub excluded_samples: usize,
   /// Coalescent prior the run used.
   pub coalescent_prior: CoalescentPrior,
+  /// The coalescent prior in words, for example `Skyline, 20 points, stiffness 2`.
+  pub coalescent_summary: String,
   /// Relaxed clock the run used.
   pub relaxed_clock: Option<RelaxedClock>,
+  /// The clock model in words: `Strict clock`, or the relaxed clock with its parameters.
+  pub clock_model_summary: String,
   /// Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).
   pub log_likelihood: Option<JsonFloat>,
   /// Number of iterations the tracelog records.
@@ -251,6 +263,24 @@ pub enum CoalescentPrior {
   },
 }
 
+impl CoalescentPrior {
+  pub fn summary(&self) -> String {
+    match self {
+      Self::None => "None".to_owned(),
+      Self::Fixed {
+        tc,
+        unit: FixedTcUnit::SubstitutionsPerSite,
+      } => format!("Constant size, Tc = {tc} substitutions per site"),
+      Self::Fixed {
+        tc,
+        unit: FixedTcUnit::Time,
+      } => format!("Constant size, Tc = {tc}"),
+      Self::Optimized => "Constant size, optimized Tc".to_owned(),
+      Self::Skyline { points, stiffness } => format!("Skyline, {points} points, stiffness {stiffness}"),
+    }
+  }
+}
+
 /// Unit of a fixed coalescent time scale.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "kebab-case")]
@@ -267,6 +297,13 @@ pub fn relaxed_clock(config: &TreetimeTimetreeArgsRaw) -> Option<RelaxedClock> {
     &[slack, coupling] => Some(RelaxedClock { slack, coupling }),
     _ => None,
   }
+}
+
+pub fn clock_model_summary(relaxed: Option<RelaxedClock>) -> String {
+  relaxed.map_or_else(
+    || "Strict clock".to_owned(),
+    |RelaxedClock { slack, coupling }| format!("Relaxed clock: slack {slack}, coupling {coupling}"),
+  )
 }
 
 /// Parameters of a relaxed clock.

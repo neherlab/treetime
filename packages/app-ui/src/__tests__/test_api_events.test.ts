@@ -67,6 +67,8 @@ function appEvent(seq: number, kind: "resync" | "run-updated", stale: StalePath[
           changed_settings: [],
           headline: {},
           package_name: "abc.zip",
+          log_name: "abc.log.txt",
+          config_name: "abc.yaml",
         },
       };
 }

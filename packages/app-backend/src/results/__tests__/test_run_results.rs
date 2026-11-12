@@ -7,12 +7,11 @@ mod tests {
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
-  use crate::results::compare::{EstimateDelta, LikelihoodMismatch, compare_runs};
+  use crate::results::compare::{EstimateDelta, LikelihoodMismatch, compare_runs, likelihood_mismatch_text};
   use crate::results::models::{RunModel, RunModels};
   use crate::results::outputs::OutputProblem;
   use crate::results::run_results::{CommandResults, RunResults, run_results};
   use crate::results::tree::ResultTree;
-  use crate::results::tree_change::{TreeChange, TreeStatistics};
   use crate::runs::headline::RunHeadline;
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
@@ -411,22 +410,30 @@ mod tests {
       panic!("a prune run has prune results");
     };
 
-    let shape = |change: &TreeChange| {
-      [&change.before, &change.after].map(|statistics| {
-        statistics
-          .as_ref()
-          .map(|statistics| (statistics.samples, statistics.internal_nodes, statistics.polytomies))
-      })
+    let [samples, internal, polytomies, length] = change.rows.as_slice() else {
+      panic!("a tree change has four statistics");
     };
-    let length = |statistics: &Option<TreeStatistics>| {
-      statistics
-        .as_ref()
-        .and_then(|statistics| statistics.total_branch_length)
-        .expect("both trees have branch lengths")
-    };
-    assert_eq!([Some((5, 3, 1)), Some((4, 3, 0))], shape(&change));
-    pretty_assert_ulps_eq!(1.15, length(&change.before), max_ulps = 4);
-    pretty_assert_ulps_eq!(0.85, length(&change.after), max_ulps = 4);
+    assert_eq!(
+      vec![
+        (o!("Samples"), true, Some(5.0), Some(4.0)),
+        (o!("Internal nodes"), true, Some(3.0), Some(3.0)),
+        (o!("Polytomies"), true, Some(1.0), Some(0.0)),
+      ],
+      [samples, internal, polytomies]
+        .map(|row| (row.label.clone(), row.count, row.before, row.after))
+        .to_vec()
+    );
+    assert_eq!((o!("Total branch length"), false), (length.label.clone(), length.count));
+    pretty_assert_ulps_eq!(
+      1.15,
+      length.before.expect("the input tree has branch lengths"),
+      max_ulps = 4
+    );
+    pretty_assert_ulps_eq!(
+      0.85,
+      length.after.expect("the result tree has branch lengths"),
+      max_ulps = 4
+    );
     Ok(())
   }
 
@@ -456,7 +463,7 @@ mod tests {
           ),
         }]
       ),
-      (change.before.clone(), results.problems)
+      (change.rows.iter().find_map(|row| row.before), results.problems)
     );
     Ok(())
   }
@@ -681,6 +688,19 @@ mod tests {
       )
     );
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::comparable(vec![],                                                                None)]
+  #[case::one(       vec![LikelihoodMismatch::CoalescentPrior],                             Some("different coalescent prior"))]
+  #[case::two(       vec![LikelihoodMismatch::Data, LikelihoodMismatch::Topology],          Some("different data, different tree topology"))]
+  #[trace]
+  fn test_compare_likelihood_mismatch_text_names_each_mismatch(
+    #[case] mismatches: Vec<LikelihoodMismatch>,
+    #[case] expected: Option<&str>,
+  ) {
+    assert_eq!(expected.map(str::to_owned), likelihood_mismatch_text(&mismatches));
   }
 
   #[test]

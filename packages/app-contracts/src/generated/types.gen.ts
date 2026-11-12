@@ -846,6 +846,46 @@ export type DetectedFile = {
 export type FileKind = 'tree' | 'alignment' | 'metadata' | 'configuration' | 'run-package' | 'unknown';
 
 /**
+ * The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+ * any upload.
+ */
+export type FileHeadsRequest = {
+  /**
+   * One entry per file.
+   */
+  files: Array<FileHead>;
+};
+
+/**
+ * The first bytes of one file.
+ */
+export type FileHead = {
+  /**
+   * The first bytes of the file as text, with each byte sequence that is not UTF-8 replaced.
+   */
+  head: string;
+  /**
+   * Whether `head` holds the whole file.
+   */
+  complete: boolean;
+};
+
+/**
+ * What TreeTime does with each file of a request, in the order of the request.
+ */
+export type FileRoles = {
+  /**
+   * One entry per file of the request.
+   */
+  files: Array<FileRole>;
+};
+
+/**
+ * What TreeTime does with a file that the user opened.
+ */
+export type FileRole = 'run-package' | 'configuration' | 'input';
+
+/**
  * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
  */
 export type ClockPreviewRequest = {
@@ -1164,6 +1204,14 @@ export type RunSummary = {
    * files, for example `ebola-100-time-tree-1a2b3c4d.zip`.
    */
   package_name: string;
+  /**
+   * Name to save the log of the run under, for example `ebola-100-time-tree-1a2b3c4d.log.txt`.
+   */
+  log_name: string;
+  /**
+   * Name to save the configuration of the run under, for example `ebola-100-time-tree-1a2b3c4d.yaml`.
+   */
+  config_name: string;
 };
 
 /**
@@ -1424,6 +1472,11 @@ export type CancelRunResponse = {
    * Whether cancellation was requested; the run ends with a `cancelled` terminal event.
    */
   cancelled: boolean;
+  /**
+   * Sequence number from which to read the run's events to wait for its terminal event; absent when nothing was
+   * cancelled.
+   */
+  from?: number;
 };
 
 /**
@@ -1797,6 +1850,11 @@ export type TimetreeEstimates = {
    */
   root_near_interval_edge: boolean;
   /**
+   * Whether a rerun with confidence intervals on adds the root-date interval: the root is dated, and the run computed
+   * no interval because its `confidence` setting was off.
+   */
+  interval_computable: boolean;
+  /**
    * Clock rate in substitutions per site per year.
    */
   clock_rate?: number;
@@ -1833,9 +1891,17 @@ export type TimetreeEstimates = {
    */
   coalescent_prior: CoalescentPrior;
   /**
+   * The coalescent prior in words, for example `Skyline, 20 points, stiffness 2`.
+   */
+  coalescent_summary: string;
+  /**
    * Relaxed clock the run used.
    */
   relaxed_clock?: RelaxedClock;
+  /**
+   * The clock model in words: `Strict clock`, or the relaxed clock with its parameters.
+   */
+  clock_model_summary: string;
   /**
    * Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).
    */
@@ -2004,39 +2070,35 @@ export type RecurrentSite = {
  */
 export type TreeChange = {
   /**
-   * Statistics of the input tree; absent when it cannot be read, and the problems of the results name the cause.
-   */
-  before?: TreeStatistics;
-  /**
-   * Statistics of the tree the run wrote; absent when the run wrote no Auspice tree.
-   */
-  after?: TreeStatistics;
-  /**
    * Number of nucleotide mutations on all branches of the tree the run wrote.
    */
   mutations: number;
+  /**
+   * The statistics of both trees by name, in the order to show them.
+   */
+  rows: Array<TreeStatisticRow>;
 };
 
 /**
- * Size and shape of a tree.
+ * One statistic of the input tree and the result tree.
  */
-export type TreeStatistics = {
+export type TreeStatisticRow = {
   /**
-   * Number of samples.
+   * Name of the statistic.
    */
-  samples: number;
+  label: string;
   /**
-   * Number of internal nodes, the root included.
+   * Whether the statistic counts nodes; otherwise it is a length in substitutions per site.
    */
-  internal_nodes: number;
+  count: boolean;
   /**
-   * Number of internal nodes with more than two children.
+   * Value for the input tree; absent when it cannot be read, and the problems of the results name the cause.
    */
-  polytomies: number;
+  before?: number;
   /**
-   * Sum of the branch lengths, in substitutions per site; absent when the tree has no branch lengths.
+   * Value for the tree the run wrote; absent when the run wrote no Auspice tree.
    */
-  total_branch_length?: number;
+  after?: number;
 };
 
 /**
@@ -2156,6 +2218,11 @@ export type EstimateComparison = {
    * Why the log likelihoods of the two runs cannot be compared; empty when they can.
    */
   log_likelihood_mismatches: Array<LikelihoodMismatch>;
+  /**
+   * The mismatches in words, for example `different data, different coalescent prior`; absent when the log
+   * likelihoods can be compared.
+   */
+  log_likelihood_not_comparable?: string;
 };
 
 /**
@@ -2805,6 +2872,16 @@ export type ExamplesDownloadStatus = {
    * events it received has the higher number.
    */
   seq?: number;
+};
+
+/**
+ * A run package to import from a file on disk.
+ */
+export type ImportFileRequest = {
+  /**
+   * Absolute path of the run package.
+   */
+  path: string;
 };
 
 /**
@@ -6434,6 +6511,35 @@ export type FileKindsResponses = {
 
 export type FileKindsResponse = FileKindsResponses[keyof FileKindsResponses];
 
+export type FileRolesData = {
+  /**
+   * The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+   * any upload.
+   */
+  body: FileHeadsRequest;
+  path?: never;
+  query?: never;
+  url: '/api/file-roles';
+};
+
+export type FileRolesErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type FileRolesError = FileRolesErrors[keyof FileRolesErrors];
+
+export type FileRolesResponses = {
+  /**
+   * What TreeTime does with each file of a request, in the order of the request.
+   */
+  200: FileRoles;
+};
+
+export type FileRolesResponse = FileRolesResponses[keyof FileRolesResponses];
+
 export type ClockPreviewData = {
   /**
    * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
@@ -7294,6 +7400,37 @@ export type ExamplesDownloadStartResponses = {
 };
 
 export type ExamplesDownloadStartResponse = ExamplesDownloadStartResponses[keyof ExamplesDownloadStartResponses];
+
+export type RunsImportFileData = {
+  /**
+   * A run package to import from a file on disk.
+   */
+  body: ImportFileRequest;
+  path?: never;
+  query?: never;
+  url: '/api/runs/import-file';
+};
+
+export type RunsImportFileErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsImportFileError = RunsImportFileErrors[keyof RunsImportFileErrors];
+
+export type RunsImportFileResponses = {
+  /**
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
+   */
+  200: RunRecord;
+};
+
+export type RunsImportFileResponse = RunsImportFileResponses[keyof RunsImportFileResponses];
 
 export type WorkspaceData = {
   body?: never;

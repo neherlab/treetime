@@ -308,6 +308,7 @@ mod tests {
         root_date: Some(YearDate::new(root_date)),
         root_interval: DateInterval::new(lower, upper),
         root_near_interval_edge: false,
+        interval_computable: false,
         clock_rate: Some(clock_rate),
         clock_rate_std: None,
         clock_rate_fixed: false,
@@ -317,7 +318,9 @@ mod tests {
         latest_sample: None,
         excluded_samples,
         coalescent_prior: CoalescentPrior::None,
+        coalescent_summary: "None".to_owned(),
         relaxed_clock: None,
+        clock_model_summary: "Strict clock".to_owned(),
         log_likelihood: Some(log_likelihood),
         iterations: 2,
       }
