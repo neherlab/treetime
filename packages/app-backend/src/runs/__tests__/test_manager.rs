@@ -190,6 +190,7 @@ mod tests {
       command: Some(AppCommand::Mugration),
       config: None,
       source_run_id: None,
+      example: None,
     };
     assert_error!(
       runs.start(&created.id, &request, accept()).map(|_| ()),
@@ -401,6 +402,7 @@ mod tests {
       command: None,
       config: Some(sparse(json!({ "tree": tree, "alignment": [first, second] }))),
       source_run_id: None,
+      example: None,
     };
 
     let started = runs.start(&created.id, &request, accept()).unwrap().record().clone();
@@ -487,6 +489,7 @@ mod tests {
       command: None,
       config: Some(sparse(clock_config())),
       source_run_id: None,
+      example: None,
     };
 
     let (start, uploaded) = thread::scope(|scope| {
@@ -609,6 +612,7 @@ mod tests {
       command: None,
       config: Some(sparse(clock_config())),
       source_run_id: None,
+      example: None,
     };
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
 
@@ -650,6 +654,7 @@ mod tests {
       command: None,
       config: Some(sparse(json!({ "tree": tree, "metadata": metadata }))),
       source_run_id: None,
+      example: None,
     };
 
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
@@ -725,12 +730,36 @@ mod tests {
       command: Some(AppCommand::Clock),
       config: Some(sparse(clock_config())),
       source_run_id: None,
+      example: None,
     };
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
     let record = runs.get(&created.id).unwrap();
     assert_eq!(
       ("ok", AppCommand::Clock),
       (terminal_status(&terminal), record.config.command())
+    );
+  }
+
+  #[test]
+  fn test_manager_start_names_the_run_after_the_example_given_at_start() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(clock_config())),
+      source_run_id: None,
+      example: Some(o!("zika/20")),
+    };
+    let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
+    let record = runs.get(&created.id).unwrap();
+    assert_eq!(
+      ("ok", Some(o!("zika/20")), true),
+      (
+        terminal_status(&terminal),
+        record.example,
+        record.title.starts_with("zika/20, ")
+      )
     );
   }
 

@@ -196,6 +196,9 @@ impl RunManager {
       if let Some(source) = &request.source_run_id {
         record.source_run_id = Some(source.clone());
       }
+      if let Some(example) = &request.example {
+        record.example = Some(example.clone());
+      }
       record.uploads.clear();
       record.status = RunStatus::Running;
       record.started_at = Some(Utc::now());

@@ -268,6 +268,12 @@ pub struct StartRunRequest {
   #[schemars(default)]
   #[deser(default)]
   pub source_run_id: Option<JobId>,
+  /// Name of the example dataset whose files the run reads, for example `ebola/100`; replaces the one given at
+  /// creation, for example when the user opened an example after the run that holds the uploads was created. The run's
+  /// name starts with it.
+  #[schemars(default)]
+  #[deser(default)]
+  pub example: Option<String>,
 }
 
 /// Answer to a cancellation request.

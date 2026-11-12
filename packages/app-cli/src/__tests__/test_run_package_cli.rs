@@ -35,6 +35,7 @@ mod tests {
       command: None,
       config: Some(SparseConfig(config)),
       source_run_id: None,
+      example: None,
     };
     runs.start(&created.id, &start, Box::new(|_| Ok(()))).unwrap().run();
     let record = runs.get(&created.id).unwrap();

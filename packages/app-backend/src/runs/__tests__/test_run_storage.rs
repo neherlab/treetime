@@ -278,6 +278,7 @@ pub(crate) mod tests {
         command: None,
         config: Some(SparseConfig(config)),
         source_run_id: None,
+        example: None,
       };
       runs.start(&created.id, &request, unconfined()).unwrap().run();
       runs.get(&created.id).unwrap()
