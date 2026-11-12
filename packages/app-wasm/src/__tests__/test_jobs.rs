@@ -111,6 +111,7 @@ mod tests {
         json!({
           "message": "unreachable",
           "causes": ["thread 'main' panicked at src/lib.rs:1:1: index out of bounds"],
+          "settings": [],
         })
       ),
       (failed, record["status"].clone(), record["error"].clone())
@@ -123,7 +124,7 @@ mod tests {
     run.jobs.fail(&run.id, vec![]).unwrap();
     let (_, record) = call(&run.router, "GET", &format!("/api/runs/{}", run.id)).await;
     assert_eq!(
-      json!({ "message": "the run worker stopped without an error message", "causes": [] }),
+      json!({ "message": "the run worker stopped without an error message", "causes": [], "settings": [] }),
       record["error"]
     );
   }

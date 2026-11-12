@@ -149,6 +149,8 @@ pub struct RunError {
   pub message: String,
   /// The errors that caused `message`, outermost first.
   pub causes: Vec<String>,
+  /// Keys of the settings whose command-line flags the error and its causes name, in the order they name them.
+  pub settings: Vec<String>,
 }
 
 /// Runs, newest first, and the number of runs computing now.

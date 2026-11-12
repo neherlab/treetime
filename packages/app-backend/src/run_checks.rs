@@ -203,6 +203,16 @@ fn partitions(context: &CheckContext<'_>) -> Vec<RunCheck> {
   vec![block("partitions", with_setting_labels(&sentence(&message), context.settings)).concerning(&settings)]
 }
 
+pub fn named_settings<'a>(texts: impl IntoIterator<Item = &'a str>, settings: &[SettingSpec]) -> Vec<String> {
+  texts
+    .into_iter()
+    .flat_map(|text| FLAG.captures_iter(text))
+    .filter_map(|captures| settings.iter().find(|spec| spec.flag == captures["flag"]))
+    .map(|spec| spec.key.clone())
+    .unique()
+    .collect()
+}
+
 #[expect(clippy::string_slice, reason = "a match of the pattern starts at a char boundary")]
 fn with_setting_labels(message: &str, settings: &[SettingSpec]) -> String {
   FLAG

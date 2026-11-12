@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputProblem};
+  use crate::config::catalog::command_settings;
   use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOptionName};
   use crate::run_checks::{
-    CheckContext, CheckFix, CheckLevel, ConfigRejection, RunCheck, SettingPatch, rejection_messages, run_checks,
+    CheckContext, CheckFix, CheckLevel, ConfigRejection, RunCheck, SettingPatch, named_settings, rejection_messages,
+    run_checks,
   };
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
@@ -28,6 +30,19 @@ mod tests {
     assert_eq!(
       ids.iter().map(|id| ((*id).to_owned(), CheckLevel::Block)).collect::<Vec<_>>(),
       found.into_iter().map(|check| (check.id, check.level)).collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_run_checks_named_settings_are_the_known_flags_in_order() {
+    let settings = command_settings(AppCommand::Timetree).unwrap().settings;
+    let texts = [
+      "--sequence-length is required without an alignment",
+      "pass --clock-rate=0.001, --unknown-flag, or --sequence-length again",
+    ];
+    assert_eq!(
+      vec_of_owned!["sequence_length", "clock_rate"],
+      named_settings(texts, &settings)
     );
   }
 

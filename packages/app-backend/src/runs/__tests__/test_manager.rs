@@ -824,6 +824,33 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_manager_failed_run_names_the_settings_of_its_error() {
+    let root = tempdir().unwrap();
+    let inputs = tempdir().unwrap();
+    let tree = inputs.path().join("tree.nwk");
+    let metadata = inputs.path().join("metadata.tsv");
+    fs::write(&tree, "((A:0.1,B:0.1)X:0.1,C:0.1)root;\n").unwrap();
+    fs::write(&metadata, "strain\tdate\nA\t2000.5\nB\t2001.5\nC\t2002.5\n").unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(
+      &runs,
+      AppCommand::Timetree,
+      json!({ "tree": tree, "metadata": metadata }),
+    );
+
+    runs
+      .start(&created.id, &StartRunRequest::default(), accept())
+      .unwrap()
+      .run();
+
+    let record = runs.get(&created.id).unwrap();
+    assert_eq!(
+      (RunStatus::Error, Some(vec![o!("sequence_length")])),
+      (record.status, record.error.map(|error| error.settings))
+    );
+  }
+
   mod helpers {
     use crate::__tests__::test_support::tests::sparse;
     use crate::job::TerminalEvent;

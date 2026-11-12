@@ -4,6 +4,7 @@ use crate::command::run_command;
 use crate::command::{CommandOutcome, OutputAlignment, OutputFile};
 use crate::config::catalog::{OUTPUT_SELECTION_KEY, command_settings};
 use crate::job::{JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job, run_job_step};
+use crate::run_checks::named_settings;
 use crate::runs::errors::invalid;
 use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::hash_inputs;
@@ -22,6 +23,7 @@ use itertools::Itertools;
 use log::{error, info};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -367,9 +369,11 @@ impl RunEnd<'_> {
           },
           TerminalEvent::Error { message, causes, .. } => {
             record.status = RunStatus::Error;
+            let catalog = command_settings(record.config.command())?;
             record.error = Some(RunError {
               message: message.clone(),
               causes: causes.clone(),
+              settings: named_settings(iter::once(message).chain(causes).map(String::as_str), &catalog.settings),
             });
           },
           TerminalEvent::Cancelled { .. } => record.status = RunStatus::Cancelled,
