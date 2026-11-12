@@ -15,6 +15,12 @@ describe("router search parameters", () => {
     expect(router.buildLocation({ to: "/new" }).href).toBe("/new?jobs=many");
   });
 
+  test("a link keeps no other parameter of the current URL", async () => {
+    const router = await testRouter("/runs/r1?jobs=2&view=tree");
+
+    expect(router.buildLocation({ to: "/new" }).href).toBe("/new?jobs=2");
+  });
+
   test("a URL without jobs gains none", async () => {
     const router = await testRouter("/");
 
