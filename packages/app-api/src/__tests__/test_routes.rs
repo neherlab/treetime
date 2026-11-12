@@ -166,7 +166,7 @@ pub(crate) mod tests {
     let events = events_of(&test, &id, "").await;
     assert_eq!(
       json!(format!(
-        "input `{}` of setting `tree` is outside the directories the back end reads inputs from",
+        "input `{}` of setting `tree` is not a file uploaded to TreeTime",
         tree.display()
       )),
       events.last().unwrap().data["data"]["message"]
@@ -533,7 +533,7 @@ pub(crate) mod tests {
     assert_eq!(
       (
         400,
-        json!("input `../../Cargo.toml` of setting `tree` is outside the directories the back end reads inputs from")
+        json!("input `../../Cargo.toml` of setting `tree` is not a file uploaded to TreeTime")
       ),
       (status, body["message"].clone())
     );
