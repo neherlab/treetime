@@ -1,4 +1,4 @@
-import type { JsonValue, SettingSpec } from "@neherlab/app-contracts";
+import type { JsonValue, SettingOption, SettingSpec } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@neherlab/design/ui/popover";
@@ -31,7 +31,7 @@ export function SettingSummary({ spec, label }: { spec: SettingSpec; label: Reac
       {label} <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>{" "}
       {spec.role === "setting" && (
         <span className="text-muted-foreground text-xs">
-          {m.settings_default({ value: defaultText(documentedDefault(spec), locale) }, { locale })}
+          {m.settings_default({ value: defaultText(documentedDefault(spec), locale, spec.options) }, { locale })}
         </span>
       )}
     </div>
@@ -131,13 +131,19 @@ export function SettingHelp({ spec }: { spec: SettingSpec }) {
   );
 }
 
-export function defaultText(value: JsonValue | undefined, locale: Locale): string {
+export function defaultText(
+  value: JsonValue | undefined,
+  locale: Locale,
+  options: readonly SettingOption[] = [],
+): string {
   if (value === undefined) {
     return m.settings_not_set({}, { locale });
   }
 
   if (Array.isArray(value)) {
-    return value.length === 0 ? m.settings_none({}, { locale }) : formatList(value);
+    return value.length === 0
+      ? m.settings_none({}, { locale })
+      : formatList(value.map((item) => optionLabel(item, options)));
   }
 
   if (value === true) {
@@ -148,5 +154,9 @@ export function defaultText(value: JsonValue | undefined, locale: Locale): strin
     return m.settings_off({}, { locale });
   }
 
-  return isJsonObject(value) ? JSON.stringify(value) : String(value);
+  return isJsonObject(value) ? JSON.stringify(value) : String(optionLabel(value, options));
+}
+
+function optionLabel<T extends JsonValue>(value: T, options: readonly SettingOption[]): T | string {
+  return options.find((option) => option.value === value)?.label ?? value;
 }

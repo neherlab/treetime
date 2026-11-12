@@ -71,10 +71,10 @@ export function SettingsTab({ record }: { record: RunRecord }) {
                       <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
                     </TableCell>
                     <TableCell className="font-mono text-xs break-all whitespace-normal">
-                      {defaultText(effectiveValue(config, spec), locale)}
+                      {defaultText(effectiveValue(config, spec), locale, spec.options)}
                     </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">
-                      {spec.role === "setting" ? defaultText(documentedDefault(spec), locale) : ""}
+                      {spec.role === "setting" ? defaultText(documentedDefault(spec), locale, spec.options) : ""}
                     </TableCell>
                   </TableRow>
                 );

@@ -100,6 +100,20 @@ describe("default text", () => {
   ])("writes %s", (_, value, locale, expected) => {
     expect(defaultText(value, locale)).toBe(expected);
   });
+
+  test.each<[string, JsonValue, string]>([
+    ["an option value", "opt", "Optimized constant"],
+    ["a text value of an enum-or-text setting", "26w", "26w"],
+    ["a number of an enum-or-text setting", 0.01, "0.01"],
+    ["a list of option values", ["opt", "skyline"], "Optimized constant Skyline"],
+  ])("writes %s with the label of its option", (_, value, expected) => {
+    const options = [
+      { value: "opt", label: "Optimized constant", help: "" },
+      { value: "skyline", label: "Skyline", help: "" },
+    ];
+
+    expect(defaultText(value, "en", options)).toBe(expected);
+  });
 });
 
 function render(node: ReactNode, locale: Locale) {

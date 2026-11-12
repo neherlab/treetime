@@ -296,12 +296,12 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
       <TableCell className="font-mono text-xs break-all whitespace-normal">
         {difference.kind === "input"
           ? difference.first.map(baseName).join(", ")
-          : defaultText(difference.first, locale)}
+          : defaultText(difference.first, locale, spec?.options)}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
         {difference.kind === "input"
           ? difference.second.map(baseName).join(", ")
-          : defaultText(difference.second, locale)}
+          : defaultText(difference.second, locale, spec?.options)}
       </TableCell>
     </TableRow>
   );
