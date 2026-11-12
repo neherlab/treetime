@@ -1,6 +1,6 @@
 use crate::command::OutputFile;
 use crate::job::JobId;
-use crate::runs::downloads::package_name;
+use crate::runs::downloads::{config_name, log_name, package_name};
 use crate::runs::headline::RunHeadline;
 use crate::runs::input_store::StoredInput;
 use crate::runs::run_paths::INPUTS_DIR;
@@ -111,6 +111,8 @@ impl RunRecord {
       changed_settings: self.changed_settings.clone(),
       headline: self.headline.clone(),
       package_name: package_name(self),
+      log_name: log_name(self),
+      config_name: config_name(self),
     }
   }
 }
@@ -220,6 +222,10 @@ pub struct RunSummary {
   /// Name to save the run package under: the run's title and the start of its id, as in the names of its output
   /// files, for example `ebola-100-time-tree-1a2b3c4d.zip`.
   pub package_name: String,
+  /// Name to save the log of the run under, for example `ebola-100-time-tree-1a2b3c4d.log.txt`.
+  pub log_name: String,
+  /// Name to save the configuration of the run under, for example `ebola-100-time-tree-1a2b3c4d.yaml`.
+  pub config_name: String,
 }
 
 /// State of a run.

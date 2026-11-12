@@ -64,6 +64,23 @@ mod tests {
     assert_eq!(expected.replace("<id>", &id), record.summary().package_name);
   }
 
+  #[test]
+  fn test_downloads_log_and_config_names_have_the_stem_of_the_output_names() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = titled_run(&runs, "Ebola/100, time tree");
+
+    let id = record.id.as_str().chars().take(8).collect::<String>();
+    let summary = record.summary();
+    assert_eq!(
+      (
+        format!("ebola-100-time-tree-{id}.log.txt"),
+        format!("ebola-100-time-tree-{id}.yaml")
+      ),
+      (summary.log_name, summary.config_name)
+    );
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::dated_tree(     AppCommand::Timetree, Some(OutputSelection::Nwk),      "timetree.nwk",          "Dated tree (Newick, branch lengths in years)")]

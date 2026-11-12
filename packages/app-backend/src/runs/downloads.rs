@@ -8,12 +8,24 @@ const STEM_MAX_CHARS: usize = 60;
 
 const RUN_ID_CHARS: usize = 8;
 
+const LOG_SUFFIX: &str = "log.txt";
+
+const CONFIG_SUFFIX: &str = "yaml";
+
 pub fn download_name(record: &RunRecord, relative: &str) -> String {
   format!("{}.{}", download_stem(record), relative.replace('/', "-"))
 }
 
 pub fn package_name(record: &RunRecord) -> String {
   format!("{}.zip", download_stem(record))
+}
+
+pub fn log_name(record: &RunRecord) -> String {
+  format!("{}.{LOG_SUFFIX}", download_stem(record))
+}
+
+pub fn config_name(record: &RunRecord) -> String {
+  format!("{}.{CONFIG_SUFFIX}", download_stem(record))
 }
 
 pub struct FileDownload {
