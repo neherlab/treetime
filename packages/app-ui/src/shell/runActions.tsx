@@ -17,7 +17,6 @@ import Ellipsis from "~icons/lucide/ellipsis";
 import { lostFilesMessage } from "../analysis/lostRuns";
 import { useApiContext } from "../api/context";
 import { useApi, useApiMutation } from "../api/hooks";
-import { downloadName } from "../results/files";
 import { useSaveRunOutput } from "../runs/OutputFiles";
 import { useDraftStore } from "../store/draft";
 import { ownDraft } from "../store/draftRules";
@@ -37,7 +36,7 @@ const ENDED: Readonly<Record<RunStatus, boolean>> = {
   interrupted: true,
 };
 
-export type ActionRun = Pick<RunSummary, "id" | "title" | "pinned" | "status" | "source_run_id">;
+export type ActionRun = Pick<RunSummary, "id" | "title" | "pinned" | "status" | "source_run_id" | "package_name">;
 
 interface RunActions {
   rename: (run: ActionRun) => void;
@@ -45,6 +44,10 @@ interface RunActions {
   downloadPackage: (run: ActionRun) => Promise<void>;
   remove: (runs: readonly ActionRun[]) => void;
   compareWithSource: (run: ActionRun) => void;
+}
+
+export function hasEnded(status: RunStatus): boolean {
+  return ENDED[status];
 }
 
 export function useRunActions(): RunActions {
@@ -73,8 +76,7 @@ export function useRunActions(): RunActions {
   );
 
   const downloadPackage = useCallback(
-    async (run: ActionRun) =>
-      save({ id: run.id, name: downloadName(run.title, ".zip") }, "The run package cannot be downloaded"),
+    async (run: ActionRun) => save({ id: run.id, name: run.package_name }, "The run package cannot be downloaded"),
     [save],
   );
 

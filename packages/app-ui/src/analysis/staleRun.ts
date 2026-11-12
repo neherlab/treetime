@@ -27,7 +27,11 @@ export function staleRun({ shownRunId, runCommand, edited, check, specs }: Stale
 export function staleText(changes: readonly string[]): string {
   return changes.length === 0
     ? "Settings changed since this run. Run to update."
-    : `Settings changed since this run: ${changes.map(inSentence).join(", ")}. Run to update.`;
+    : `Settings changed since this run: ${changesText(changes)}. Run to update.`;
+}
+
+export function changesText(changes: readonly string[]): string {
+  return changes.map(inSentence).join(", ");
 }
 
 export interface StaleRunInput {

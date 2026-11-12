@@ -1,6 +1,8 @@
-import type { CoalescentPrior, RunRecord, TimetreeEstimates } from "@neherlab/app-contracts";
+import type { CoalescentPrior, RunRecord, SparseConfig, TimetreeEstimates } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { DescriptionDetails, DescriptionList, DescriptionTerm } from "@neherlab/design/ui/description-list";
+import { Spinner } from "@neherlab/design/ui/spinner";
 import { Stat } from "@neherlab/design/ui/stat";
 import type { ReactNode } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
@@ -10,16 +12,19 @@ import { formatDuration, formatLevel, yearDateText } from "../format";
 import { formatSignificant, RATE_UNIT, valueWithSpread } from "../results/estimates";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { warningsOf } from "./RunWarnings";
+import { useStartVariant } from "./useCreateVariant";
 
 const CORRELATION_DIGITS = 3;
 
 const LIKELIHOOD_DECIMALS = 1;
 
+const WITH_CONFIDENCE: SparseConfig = { confidence: true };
+
 export function TimetreeEstimatesPanel({ record, estimates }: { record: RunRecord; estimates: TimetreeEstimates }) {
   return (
     <section aria-label="Estimates" className="bg-card grid gap-3 rounded-lg border px-4 py-3">
       <div className="flex flex-wrap items-start gap-x-10 gap-y-3">
-        <RootDate estimates={estimates} />
+        <RootDate record={record} estimates={estimates} />
         <ClockRate estimates={estimates} />
         <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1 self-center text-sm">
           <dt className="text-muted-foreground">Temporal signal</dt>
@@ -35,7 +40,7 @@ export function TimetreeEstimatesPanel({ record, estimates }: { record: RunRecor
   );
 }
 
-function RootDate({ estimates }: { estimates: TimetreeEstimates }) {
+function RootDate({ record, estimates }: { record: RunRecord; estimates: TimetreeEstimates }) {
   const date = estimates.root_date;
   const interval = estimates.root_interval;
   const edge = estimates.root_near_interval_edge;
@@ -46,7 +51,7 @@ function RootDate({ estimates }: { estimates: TimetreeEstimates }) {
       value={date === undefined ? "not dated" : yearDateText(date)}
       detail={
         interval === undefined ? (
-          "No interval computed"
+          <NoInterval record={record} />
         ) : (
           <>
             <span className="tabular-nums">
@@ -57,6 +62,20 @@ function RootDate({ estimates }: { estimates: TimetreeEstimates }) {
         )
       }
     />
+  );
+}
+
+function NoInterval({ record }: { record: RunRecord }) {
+  const { start, busy } = useStartVariant(record, WITH_CONFIDENCE);
+
+  return (
+    <span className="flex flex-wrap items-center gap-x-2">
+      No interval computed
+      <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={start} disabled={busy}>
+        {busy && <Spinner />}
+        Compute the interval
+      </Button>
+    </span>
   );
 }
 

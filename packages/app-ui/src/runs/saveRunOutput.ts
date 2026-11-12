@@ -4,6 +4,8 @@ import type { Host, SaveRunReply } from "../host";
 
 const OBJECT_URL_LIFETIME_MS = 40_000;
 
+const PICKER_CANCELED = "AbortError";
+
 export interface RunOutput {
   id: string;
   path?: string;
@@ -13,10 +15,13 @@ export interface RunOutput {
 export interface SaveTarget {
   host: Pick<Host, "saveRun"> | null;
   client: ApiClient;
+  pickFile: SaveFilePicker | null;
   download: (url: string, name: string) => void;
   objectUrls: ObjectUrls;
   setTimer: (callback: () => void, delayMs: number) => void;
 }
+
+export type SaveFilePicker = (name: string) => Promise<WritableStream<Uint8Array> | undefined>;
 
 export interface ObjectUrls {
   createObjectURL(blob: Blob): string;
@@ -24,24 +29,22 @@ export interface ObjectUrls {
 }
 
 export async function saveRunOutput(
-  { host, client, download, objectUrls, setTimer }: SaveTarget,
+  { host, client, pickFile, download, objectUrls, setTimer }: SaveTarget,
   output: RunOutput,
 ): Promise<SaveRunReply> {
   if (host !== null) {
     return host.saveRun(output);
   }
 
-  const { id, path, name } = output;
+  if (pickFile !== null) {
+    return streamToFile(client, pickFile, output);
+  }
 
-  const { data } =
-    path === undefined
-      ? await runsPackage({ client, path: { id }, parseAs: "blob", throwOnError: true })
-      : await runsFile({ client, path: { id }, query: { path }, parseAs: "blob", throwOnError: true });
-
+  const { data } = await fetchOutput(client, output, "blob");
   const url = objectUrls.createObjectURL(data);
 
   try {
-    download(url, name);
+    download(url, output.name);
   } finally {
     setTimer(() => {
       objectUrls.revokeObjectURL(url);
@@ -49,6 +52,28 @@ export async function saveRunOutput(
   }
 
   return { kind: "saved" };
+}
+
+export function browserFilePicker(scope: SavePickerScope = window): SaveFilePicker | null {
+  const showSaveFilePicker = scope.showSaveFilePicker;
+
+  if (!scope.isSecureContext || showSaveFilePicker === undefined) {
+    return null;
+  }
+
+  return async (name) => {
+    try {
+      const handle = await showSaveFilePicker({ suggestedName: name });
+
+      return await handle.createWritable();
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === PICKER_CANCELED) {
+        return undefined;
+      }
+
+      throw error;
+    }
+  };
 }
 
 export function downloadUrl(url: string, name: string): void {
@@ -73,4 +98,42 @@ export function saveText(text: string, name: string, type: string): void {
   } finally {
     setBrowserTimer(() => URL.revokeObjectURL(url), OBJECT_URL_LIFETIME_MS);
   }
+}
+
+async function streamToFile(client: ApiClient, pickFile: SaveFilePicker, output: RunOutput): Promise<SaveRunReply> {
+  const sink = await pickFile(output.name);
+
+  if (sink === undefined) {
+    return { kind: "canceled" };
+  }
+
+  let body: ReadableStream<Uint8Array> | null;
+
+  try {
+    ({
+      response: { body },
+    } = await fetchOutput(client, output, "stream"));
+  } catch (error: unknown) {
+    await sink.abort(error);
+    throw error;
+  }
+
+  if (body === null) {
+    await sink.close();
+  } else {
+    await body.pipeTo(sink);
+  }
+
+  return { kind: "saved" };
+}
+
+async function fetchOutput(client: ApiClient, { id, path }: RunOutput, parseAs: "blob" | "stream") {
+  return path === undefined
+    ? runsPackage({ client, path: { id }, parseAs, throwOnError: true })
+    : runsFile({ client, path: { id }, query: { path }, parseAs, throwOnError: true });
+}
+
+interface SavePickerScope {
+  isSecureContext: boolean;
+  showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle>;
 }

@@ -16,7 +16,6 @@ import { countWarnings, EMPTY_PROGRESS, type RunProgress } from "../results/prog
 import { AncestralResultsView } from "./AncestralResultsView";
 import { ClockResultsView } from "./ClockResultsView";
 import { LogTab } from "./LogTab";
-import { OutputFiles } from "./OutputFiles";
 import { RunContext, useRunOutputs, useRunView } from "./runContext";
 import { RunHeader } from "./RunHeader";
 import { RunningView } from "./RunningView";
@@ -26,6 +25,7 @@ import { TimetreeResultsView } from "./TimetreeResultsView";
 import { TreeOnlyResults } from "./TreeOnlyResults";
 import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
+import { VariantDelta } from "./VariantDelta";
 import { runViews } from "./views";
 
 const LOG_TAB = "/runs/$id/log";
@@ -164,8 +164,8 @@ function FinishedOverview({ record }: { record: RunRecord }) {
           </AlertDescription>
         </Alert>
       )}
+      <VariantDelta record={record} />
       <CommandResults record={record} results={results} tree={tree} />
-      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

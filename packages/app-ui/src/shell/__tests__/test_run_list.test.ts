@@ -14,6 +14,7 @@ function run(id: string, overrides: Partial<RunSummary>): RunSummary {
     created_at: "2026-09-25T08:00:00Z",
     changed_settings: [],
     headline: {},
+    package_name: `${id}.zip`,
     ...overrides,
   };
 }

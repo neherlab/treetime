@@ -1,6 +1,6 @@
 import { createApiClient } from "@neherlab/app-contracts/client";
 
-import { type ObjectUrls, saveRunOutput, type SaveTarget } from "../saveRunOutput";
+import { browserFilePicker, type ObjectUrls, saveRunOutput, type SaveTarget } from "../saveRunOutput";
 
 const ORIGIN = "http://treetime.test";
 
@@ -23,6 +23,7 @@ describe("save run output with a desktop host", () => {
       {
         host,
         client,
+        pickFile: null,
         objectUrls: URL,
         setTimer: noTimer,
         download: (url) => {
@@ -51,6 +52,7 @@ describe("save run output in a browser", () => {
       {
         host: null,
         client: server.client,
+        pickFile: null,
         download: (url, name) => {
           downloads.push({ url, name });
         },
@@ -77,6 +79,7 @@ describe("save run output in a browser", () => {
       {
         host: null,
         client: server.client,
+        pickFile: null,
         download: (url, name) => {
           downloads.push({ url, name });
         },
@@ -102,6 +105,7 @@ describe("save run output in a browser", () => {
       {
         host: null,
         client: server.client,
+        pickFile: null,
         download: (url) => {
           urls.push(url);
         },
@@ -126,6 +130,7 @@ describe("save run output in a browser", () => {
       {
         host: null,
         client: server.client,
+        pickFile: null,
         download: (url) => {
           downloads.push(url);
         },
@@ -137,6 +142,79 @@ describe("save run output in a browser", () => {
 
     await expect(save).rejects.toThrow("no such file");
     expect([downloads, objectUrls.liveCount()]).toStrictEqual([[], 0]);
+  });
+});
+
+describe("save run output in a browser with a save file picker", () => {
+  test("the output streams into the picked file without an object URL", async () => {
+    const server = fakeServer({ "/api/runs/r1/package": "PK" });
+    const objectUrls = new FakeObjectUrls();
+    const files = new FakeFiles();
+
+    const reply = await saveRunOutput(
+      { host: null, client: server.client, pickFile: files.pick, download: noDownload, objectUrls, setTimer: noTimer },
+      { id: "r1", name: "ebola-1a2b3c4d.zip" },
+    );
+
+    expect([reply, server.requested, files.saved(), objectUrls.liveCount()]).toStrictEqual([
+      { kind: "saved" },
+      ["/api/runs/r1/package"],
+      [{ name: "ebola-1a2b3c4d.zip", content: "PK", state: "closed" }],
+      0,
+    ]);
+  });
+
+  test("a canceled picker requests nothing", async () => {
+    const server = fakeServer({ "/api/runs/r1/package": "PK" });
+    const objectUrls = new FakeObjectUrls();
+
+    const reply = await saveRunOutput(
+      {
+        host: null,
+        client: server.client,
+        pickFile: () => Promise.resolve(undefined),
+        download: noDownload,
+        objectUrls,
+        setTimer: noTimer,
+      },
+      { id: "r1", name: "run.zip" },
+    );
+
+    expect([reply, server.requested]).toStrictEqual([{ kind: "canceled" }, []]);
+  });
+
+  test("a file the back end cannot send aborts the picked file and fails with its error", async () => {
+    const server = fakeServer({});
+    const objectUrls = new FakeObjectUrls();
+    const files = new FakeFiles();
+
+    const save = saveRunOutput(
+      { host: null, client: server.client, pickFile: files.pick, download: noDownload, objectUrls, setTimer: noTimer },
+      { id: "r1", path: "missing.nwk", name: "missing.nwk" },
+    );
+
+    await expect(save).rejects.toThrow("no such file");
+    expect(files.saved()).toStrictEqual([{ name: "missing.nwk", content: "", state: "aborted" }]);
+  });
+});
+
+describe("browser file picker", () => {
+  test("a browser without a save file picker or outside a secure context has none", () => {
+    const showSaveFilePicker = () => Promise.reject(new Error("no picker expected"));
+
+    expect([
+      browserFilePicker({ isSecureContext: true }),
+      browserFilePicker({ isSecureContext: false, showSaveFilePicker }),
+    ]).toStrictEqual([null, null]);
+  });
+
+  test("a dismissed picker counts as canceled", async () => {
+    const pick = browserFilePicker({
+      isSecureContext: true,
+      showSaveFilePicker: () => Promise.reject(new DOMException("The user aborted a request.", "AbortError")),
+    });
+
+    expect(await pick?.("run.zip")).toBeUndefined();
   });
 });
 
@@ -221,4 +299,52 @@ class FakeTimers {
 
 function noTimer(): void {
   throw new Error("no timer expected");
+}
+
+function noDownload(): void {
+  throw new Error("no download expected");
+}
+
+interface SavedFile {
+  name: string;
+  content: string;
+  state: "open" | "closed" | "aborted";
+}
+
+interface PickedFile {
+  file: SavedFile;
+  chunks: Uint8Array[];
+}
+
+class FakeFiles {
+  readonly #files: PickedFile[] = [];
+
+  readonly pick = (name: string): Promise<WritableStream<Uint8Array>> => {
+    const entry: PickedFile = { file: { name, content: "", state: "open" }, chunks: [] };
+
+    this.#files.push(entry);
+
+    return Promise.resolve(
+      new WritableStream<Uint8Array>({
+        write: (chunk) => {
+          entry.chunks.push(chunk);
+        },
+        close: () => {
+          entry.file.state = "closed";
+        },
+        abort: () => {
+          entry.file.state = "aborted";
+        },
+      }),
+    );
+  };
+
+  saved(): SavedFile[] {
+    const decoder = new TextDecoder();
+
+    return this.#files.map(({ file, chunks }) => ({
+      ...file,
+      content: chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join("") + decoder.decode(),
+    }));
+  }
 }

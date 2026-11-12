@@ -1,4 +1,4 @@
-import { type SparseConfig, errorMessage, type AppCommand } from "@neherlab/app-contracts";
+import { type SparseConfig, errorMessage, type AppCommand, type StartRunRequest } from "@neherlab/app-contracts";
 import { runsCreate, runsStart } from "@neherlab/app-contracts/client";
 import { useToastManager } from "@neherlab/design/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
@@ -38,7 +38,16 @@ export function useStartRun(command: AppCommand) {
         const upload = pendingUpload(uploadRunId === undefined ? undefined : kept.runs.get(uploadRunId));
 
         const example = exampleDatasetName(kept.draft);
-        const named = example === undefined ? {} : { example };
+        const source = kept.draft.from_run_id;
+        const named: Pick<StartRunRequest, "example" | "source_run_id"> = {};
+
+        if (example !== undefined) {
+          named.example = example;
+        }
+
+        if (source !== undefined) {
+          named.source_run_id = source;
+        }
 
         const { data: record } =
           upload === undefined

@@ -1,4 +1,4 @@
-import type { AppCommand, JobId } from "@neherlab/app-contracts";
+import type { AppCommand, CheckConfigResponse, JobId } from "@neherlab/app-contracts";
 import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } from "@neherlab/app-contracts/client";
 import { Button } from "@neherlab/design/ui/button";
 import { useHotkey } from "@tanstack/react-hotkeys";
@@ -10,19 +10,22 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { useApi } from "../api/hooks";
-import { RUN_HOTKEY } from "../hotkeys";
+import { COMMAND_LINE_HOTKEY, RUN_HOTKEY } from "../hotkeys";
 import { commandSettings } from "../settings/catalog";
 import { COMMAND_VERBS } from "../settings/commands";
 import { normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { RunFooter } from "./ChecksPanel";
+import { type CommandLineCode, CommandLineDialog } from "./CommandLineDialog";
 import { configResolver } from "./configResolver";
 import { datasetLabel } from "./datasetLabel";
 import { fromFormConfig, toFormConfig, type FormConfig } from "./formValues";
+import { OptionsMenu } from "./OptionsMenu";
 import { OptionsPanel } from "./OptionsPanel";
 import { StaleBar } from "./StaleBar";
 import { useStartRun } from "./useStartRun";
+import { variantSummary } from "./variantSummary";
 import { WorkspaceContext, type WorkspaceView } from "./workspaceContext";
 import { WorkspaceLayout } from "./WorkspaceLayout";
 
@@ -53,6 +56,8 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
   );
 
   const choices = useDraftStore((state) => state.draft.choices);
+  const fromRunId = useDraftStore((state) => state.draft.from_run_id);
+  const comparedRunId = shownRunId ?? fromRunId;
 
   const { data: check, isPlaceholderData: checkPending } = useApi(
     (context) => {
@@ -60,7 +65,7 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
       const picked = choices ?? [];
 
       const body = { command, text, choices: picked };
-      const withRun = shownRunId === undefined ? body : { ...body, run_id: shownRunId };
+      const withRun = comparedRunId === undefined ? body : { ...body, run_id: comparedRunId };
 
       return configCheck({
         ...context,
@@ -109,6 +114,21 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
 
   useHotkey(RUN_HOTKEY, run);
 
+  const [commandLineOpen, setCommandLineOpen] = useState(false);
+  const showCommandLine = useCallback(() => setCommandLineOpen(true), []);
+
+  useHotkey(COMMAND_LINE_HOTKEY, showCommandLine);
+
+  const code = useMemo((): CommandLineCode => {
+    if (runConfig === undefined) {
+      return { state: "loading" };
+    }
+
+    return runConfig.status === "valid"
+      ? { state: "ready", code: runConfig.code }
+      : { state: "invalid", message: [runConfig.message, ...runConfig.causes].join(": ") };
+  }, [runConfig]);
+
   const workspace = useMemo(
     (): WorkspaceView => ({ command, shownRunId, readOnly, settled, facts, check, run }),
     [check, command, facts, readOnly, run, settled, shownRunId],
@@ -119,7 +139,7 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
       <WorkspaceContext value={workspace}>
         <WorkspaceLayout
           title={<WorkspaceTitle />}
-          description={<WorkspaceDescription shownRunId={shownRunId} />}
+          description={<WorkspaceDescription shownRunId={shownRunId} check={check} />}
           actions={<ResetButton />}
           panel={
             <form noValidate onSubmit={onSubmit} aria-label="Options">
@@ -131,12 +151,19 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
                 checked={checked}
                 facts={facts}
                 effective={check?.effective}
+                menu={<OptionsMenu command={command} onCommandLine={showCommandLine} />}
               />
             </form>
           }
           footer={<RunFooter checks={checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} onRun={run} />}
           aboveMain={shownRunId === undefined ? undefined : <StaleBar shownRunId={shownRunId} />}
           main={<Outlet />}
+        />
+        <CommandLineDialog
+          open={commandLineOpen}
+          onOpenChange={setCommandLineOpen}
+          description="The options as a command, with the paths that a run records"
+          code={code}
         />
       </WorkspaceContext>
     </FormProvider>
@@ -149,20 +176,29 @@ function WorkspaceTitle() {
   return label ?? "New analysis";
 }
 
-function WorkspaceDescription({ shownRunId }: { shownRunId: JobId | undefined }) {
+function WorkspaceDescription({
+  shownRunId,
+  check,
+}: {
+  shownRunId: JobId | undefined;
+  check: CheckConfigResponse | undefined;
+}) {
   const viewing = useDraftStore((state) => state.viewing?.runId);
-  const fromRunId = useDraftStore((state) => state.draft.from_run_id);
+  const draft = useDraftStore((state) => state.draft);
   const { data: runList } = useApi((context) => runsList(context));
-  const titleOf = (id: JobId) => runList?.runs.find((run) => run.id === id)?.title ?? id;
+  const findRun = (id: JobId | undefined) => runList?.runs.find((run) => run.id === id);
 
   const text =
     viewing === undefined
-      ? fromRunId === undefined
-        ? undefined
-        : fromRunId === shownRunId
-          ? "Variant of this run"
-          : `Variant of "${titleOf(fromRunId)}"`
-      : `Options of "${titleOf(viewing)}". An edit starts a variant of this run.`;
+      ? variantSummary({
+          fromRunId: draft.from_run_id,
+          shownRunId,
+          viewing: false,
+          source: findRun(draft.from_run_id),
+          check,
+          specs: commandSettings(draft.command).settings,
+        })
+      : `Options of "${findRun(viewing)?.title ?? viewing}". An edit starts a variant of this run.`;
 
   return text === undefined ? null : <p className="text-muted-foreground text-xs">{text}</p>;
 }

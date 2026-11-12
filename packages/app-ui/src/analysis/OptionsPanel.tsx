@@ -37,6 +37,7 @@ export function OptionsPanel({
   checked,
   facts,
   effective,
+  menu,
 }: {
   command: AppCommand;
   config: SparseConfig;
@@ -45,6 +46,7 @@ export function OptionsPanel({
   checked: SparseConfig | undefined;
   facts: InputFacts | undefined;
   effective: readonly EffectiveValue[] | undefined;
+  menu: ReactNode;
 }) {
   const changed = changedSpecs(commandSettings(command).settings, config).length;
 
@@ -52,7 +54,7 @@ export function OptionsPanel({
 
   return (
     <div className="grid gap-5 px-4 pt-3 pb-5">
-      <AnalysisSelector command={command} config={config} />
+      <AnalysisSelector command={command} config={config} menu={menu} />
       <Section title="Data">
         <InputsSection command={command} facts={facts} />
         {facts !== undefined && <DetectedFacts command={command} facts={detectedFacts(facts.detected)} />}
@@ -72,7 +74,7 @@ export function OptionsPanel({
   );
 }
 
-function AnalysisSelector({ command, config }: { command: AppCommand; config: SparseConfig }) {
+function AnalysisSelector({ command, config, menu }: { command: AppCommand; config: SparseConfig; menu: ReactNode }) {
   const settings = commandSettings(command);
 
   const select = useCallback(
@@ -116,6 +118,7 @@ function AnalysisSelector({ command, config }: { command: AppCommand; config: Sp
           <code className="text-muted-foreground font-mono text-xs">treetime {command}</code>
         </HoverCardContent>
       </HoverCard>
+      {menu}
     </div>
   );
 }

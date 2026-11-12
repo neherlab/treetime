@@ -1,6 +1,5 @@
 use crate::command::{OutputAlignment, OutputFile};
 use crate::job::JobId;
-use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
 use crate::results::homoplasy::{HomoplasyResults, homoplasy_results};
 use crate::results::models::{RunModels, run_models};
@@ -100,7 +99,6 @@ pub fn results_of_record(record: &RunRecord, run_dir: &Path, store: &InputStore)
     tree_alignment: tree_alignment(&record.output_files),
     models: run_models(gtr.as_ref()),
     results,
-    citation: citation(),
     problems,
   })
 }
@@ -118,8 +116,6 @@ pub struct RunResults {
   pub models: RunModels,
   /// Results specific to the command of the run.
   pub results: CommandResults,
-  /// The publication to cite.
-  pub citation: Citation,
   /// Output files, and the input tree of an `optimize` or `prune` run, that could not be read.
   pub problems: Vec<OutputProblem>,
 }
