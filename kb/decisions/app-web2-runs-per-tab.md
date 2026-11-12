@@ -7,7 +7,7 @@
 ## Decision
 
 - **Runs live in the tab**: the runs of web2, their inputs, and their outputs live in the in-memory file system of the back-end worker of the tab ([app-web2-wasm-worker-back-end.md](app-web2-wasm-worker-back-end.md)). Nothing stores a run in browser storage. A reload, a closed tab, or a crash of the back-end worker ends every run of the tab, and each tab has its own runs
-- **Browser storage holds the preferences and the form only**: `localStorage` keeps the preferences under `treetime-preferences` (the sidebar width, shared by every tab) and the theme under `theme`; `sessionStorage` keeps the unfinished form of each tab under `treetime-draft` (`packages/app-ui/src/preferences/storage.ts`). After a reload, the form keeps its settings and fetches its example inputs again; uploaded files belonged to the lost back end, and the user chooses them again
+- **Browser storage holds the preferences and the form only**: `localStorage` keeps the preferences under `treetime-preferences` (the widths of the sidebar and the options panel, shared by every tab) and the theme under `theme`; `sessionStorage` keeps the unfinished form of each tab under `treetime-draft` (`packages/app-ui/src/preferences/storage.ts`). After a reload, the form keeps its settings and fetches its example inputs again; uploaded files belonged to the lost back end, and the user chooses them again
 - **The run package keeps and shares a run**: a run leaves the tab as a run package, one zip with the record, the log, the inputs, the outputs, the YAML configuration, and the command line (`packages/app-backend/src/runs/package.rs`). Importing the package in any tab or in the desktop app recreates the run with equal results, and the CLI reproduces it from the extracted folder
 - **Desktop keeps its runs folder**: the desktop app stores each run in its runs folder with the same back-end code (`RunStore`), so its history outlives the app. The two histories differ in lifetime: desktop lists every run of the runs folder, web2 lists the runs of one tab
 - **The interface states the model**: web2 asks before the tab unloads while it holds runs, shows a banner when the back-end worker crashes, explains a run link without a run in the tab, offers "Import a run package" there, shows the size of each run, and deletes runs to free tab memory
@@ -41,6 +41,5 @@ A store that outlives the page stays possible later: the record and the package 
 
 - [kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](../issues/M-web2-wasm-panic-loses-the-back-end-state.md)
 - [kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](../issues/M-app-runs-folder-grows-without-retention-or-quota.md)
-- [kb/issues/N-web2-run-package-import-read-whole-before-checks.md](../issues/N-web2-run-package-import-read-whole-before-checks.md)
 - [kb/issues/N-web2-downloads-held-in-page-memory-without-save-file-picker.md](../issues/N-web2-downloads-held-in-page-memory-without-save-file-picker.md)
 - [kb/issues/N-web2-uploaded-files-held-whole-in-tab-memory.md](../issues/N-web2-uploaded-files-held-whole-in-tab-memory.md)
