@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::sparse;
+  use crate::__tests__::test_support::tests::{sparse, upload_bytes};
   use crate::command::config_from_settings;
   use crate::job::{JobEvent, JobId, TerminalEvent};
   use crate::runs::events::{RunEvent, read_events};
@@ -10,14 +10,15 @@ mod tests {
   use crate::runs::store::{NewRun, RunStore};
   use app_commands::command::AppCommand;
   use chrono::{TimeDelta, Utc};
-  use helpers::{GatedReader, accept, clock_config, create, event_types, terminal_status, timetree_config};
+  use helpers::{accept, allowance, clock_config, create, event_types, terminal_status, timetree_config};
+  use itertools::Itertools;
   use maplit::btreeset;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::collections::BTreeSet;
   use std::fs;
-  use std::path::Path;
+  use std::path::{Path, PathBuf};
   use std::sync::Arc;
   use std::thread;
   use tempfile::tempdir;
@@ -329,23 +330,20 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    let uploaded = runs
-      .upload_input(&created.id, "tree.nwk", &[], &mut &[b'x'; 700][..], 1024)
-      .unwrap();
+    let uploaded = upload_bytes(&runs, &created.id, "tree.nwk", &[], &[b'x'; 700], 1024).unwrap();
     assert_eq!(
       (700, runs.input_store().root().join(&uploaded.sha256).join("tree.nwk")),
       (uploaded.size, uploaded.path)
     );
     assert_error!(
-      runs.upload_input(&created.id, "metadata.tsv", &[], &mut &[b'x'; 400][..], 1024),
+      upload_bytes(&runs, &created.id, "metadata.tsv", &[], &[b'x'; 400], 1024),
       "the inputs of a run are limited to 1 KiB in total; `metadata.tsv` does not fit"
     );
     assert_eq!(
       (1, 324),
       (
         runs.input_store().keys().unwrap().len(),
-        runs
-          .upload_input(&created.id, "metadata.tsv", &[], &mut &[b'y'; 324][..], 1024)
+        upload_bytes(&runs, &created.id, "metadata.tsv", &[], &[b'y'; 324], 1024)
           .unwrap()
           .size
       )
@@ -357,12 +355,8 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Ancestral, json!({}));
-    let ha = runs
-      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nACGT\n"[..], 1024)
-      .unwrap();
-    let na = runs
-      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nAC\n"[..], 1024)
-      .unwrap();
+    let ha = upload_bytes(&runs, &created.id, "aligned.fasta", &[], b">A\nACGT\n", 1024).unwrap();
+    let na = upload_bytes(&runs, &created.id, "aligned.fasta", &[], b">A\nAC\n", 1024).unwrap();
     assert_eq!(
       (
         (o!(">A\nACGT\n"), o!(">A\nAC\n")),
@@ -387,8 +381,7 @@ mod tests {
     let created = create(&runs, AppCommand::Ancestral, json!({}));
     let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
     let upload = |name: &str, bytes: Vec<u8>| {
-      runs
-        .upload_input(&created.id, name, &[], &mut &bytes[..], 1 << 24)
+      upload_bytes(&runs, &created.id, name, &[], &bytes, 1 << 24)
         .unwrap()
         .path
     };
@@ -426,7 +419,7 @@ mod tests {
     let created = create(&runs, AppCommand::Clock, json!({}));
     for name in ["../x.nwk", "a/b.nwk", ".hidden", ".."] {
       assert_error!(
-        runs.upload_input(&created.id, name, &[], &mut &b"x"[..], 1024),
+        upload_bytes(&runs, &created.id, name, &[], b"x", 1024),
         format!("upload name `{name}` must be a plain file name without directories")
       );
     }
@@ -437,13 +430,9 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Ancestral, json!({}));
-    let first = runs
-      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nACGT\n"[..], 1024)
-      .unwrap();
+    let first = upload_bytes(&runs, &created.id, "aligned.fasta", &[], b">A\nACGT\n", 1024).unwrap();
     runs.release_input(&created.id, &first.path).unwrap();
-    let second = runs
-      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nAC\n"[..], 1024)
-      .unwrap();
+    let second = upload_bytes(&runs, &created.id, "aligned.fasta", &[], b">A\nAC\n", 1024).unwrap();
 
     runs.release_input(&created.id, &first.path).unwrap();
 
@@ -451,30 +440,72 @@ mod tests {
   }
 
   #[test]
-  fn test_manager_second_upload_waits_for_the_first_and_counts_it_toward_the_limit() {
+  fn test_manager_concurrent_uploads_fail_the_one_that_ends_without_room() {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    let (mut first_body, started, resume) = GatedReader::new(vec![b'x'; 600]);
+    let mut first = runs.begin_upload(&created.id, "a.nwk", &[], 1000).unwrap();
+    first.write(&[b'x'; 600]).unwrap();
 
-    let (first, second) = thread::scope(|scope| {
-      let first = scope.spawn(|| runs.upload_input(&created.id, "a.nwk", &[], &mut first_body, 1000));
-      started.recv().unwrap();
-      let second = scope.spawn(|| runs.upload_input(&created.id, "b.nwk", &[], &mut &[b'x'; 600][..], 1000));
-      resume.send(()).unwrap();
-      (first.join().unwrap(), second.join().unwrap())
-    });
+    let second = upload_bytes(&runs, &created.id, "b.nwk", &[], &[b'y'; 600], 1000);
+    let first = first.finish();
 
     assert_eq!(
       (
         Some(600),
         Some(o!(
-          "the inputs of a run are limited to 1000 bytes in total; `b.nwk` does not fit"
-        ))
+          "the inputs of a run are limited to 1000 bytes in total; `a.nwk` does not fit"
+        )),
+        1,
       ),
       (
-        first.ok().map(|uploaded| uploaded.size),
-        second.err().map(|err| err.to_string())
+        second.ok().map(|uploaded| uploaded.size),
+        first.err().map(|err| err.to_string()),
+        runs.input_store().keys().unwrap().len(),
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_upload_over_the_limit_fails_in_its_stream_and_leaves_no_file() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let mut upload = runs.begin_upload(&created.id, "a.nwk", &[], 1000).unwrap();
+    upload.write(&[b'x'; 600]).unwrap();
+
+    let refused = upload.write(&[b'x'; 600]);
+    drop(upload);
+
+    assert_error!(
+      refused,
+      "the inputs of a run are limited to 1000 bytes in total; `a.nwk` does not fit"
+    );
+    assert_eq!(
+      (Vec::<PathBuf>::new(), 0),
+      (
+        fs::read_dir(runs.input_store().root())
+          .unwrap()
+          .map(|entry| entry.unwrap().path())
+          .collect_vec(),
+        runs.get(&created.id).unwrap().uploads.len(),
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_upload_allowance_counts_the_inputs_of_the_run_except_the_replaced_ones() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let tree = upload_bytes(&runs, &created.id, "tree.nwk", &[], &[b'x'; 300], 1000).unwrap();
+    upload_bytes(&runs, &created.id, "metadata.tsv", &[], &[b'y'; 200], 1000).unwrap();
+
+    assert_eq!(
+      ((500, 1000, o!("1000 bytes")), (800, 1000, o!("1000 bytes"))),
+      (
+        allowance(&runs, &created.id, &[]),
+        allowance(&runs, &created.id, &[tree.path]),
       )
     );
   }
@@ -484,24 +515,20 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    let (mut body, started, resume) = GatedReader::new(vec![b'x'; 600]);
     let request = StartRunRequest {
       command: None,
       config: Some(sparse(clock_config())),
       source_run_id: None,
       example: None,
     };
+    let mut upload = runs.begin_upload(&created.id, "a.nwk", &[], 1000).unwrap();
+    upload.write(&[b'x'; 600]).unwrap();
 
-    let (start, uploaded) = thread::scope(|scope| {
-      let upload = scope.spawn(|| runs.upload_input(&created.id, "a.nwk", &[], &mut body, 1000));
-      started.recv().unwrap();
-      let start = runs
-        .start(&created.id, &request, accept())
-        .err()
-        .map(|err| err.to_string());
-      resume.send(()).unwrap();
-      (start, upload.join().unwrap())
-    });
+    let start = runs
+      .start(&created.id, &request, accept())
+      .err()
+      .map(|err| err.to_string());
+    let uploaded = upload.finish();
 
     assert_eq!(
       (
@@ -528,7 +555,7 @@ mod tests {
     let missing = JobId::random();
 
     assert_error!(
-      runs.upload_input(&missing, "a.nwk", &[], &mut &b"(A,B);"[..], 1024),
+      upload_bytes(&runs, &missing, "a.nwk", &[], b"(A,B);", 1024),
       format!("no run with id `{}`", missing.as_str())
     );
     assert_eq!(0, runs.inputs.lock().len());
@@ -539,12 +566,10 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    runs
-      .upload_input(&created.id, "a.nwk", &[], &mut &b"(A,B);"[..], 1024)
-      .unwrap();
+    upload_bytes(&runs, &created.id, "a.nwk", &[], b"(A,B);", 1024).unwrap();
 
     let cancelled = runs.cancel(&created.id).unwrap();
-    let late = runs.upload_input(&created.id, "b.nwk", &[], &mut &b"(A,B);"[..], 1024);
+    let late = upload_bytes(&runs, &created.id, "b.nwk", &[], b"(A,B);", 1024);
 
     assert_eq!(
       (
@@ -573,15 +598,11 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    let (mut body, started, resume) = GatedReader::new(vec![b'x'; 600]);
+    let mut upload = runs.begin_upload(&created.id, "a.nwk", &[], 1000).unwrap();
+    upload.write(&[b'x'; 600]).unwrap();
 
-    let (cancel, uploaded) = thread::scope(|scope| {
-      let upload = scope.spawn(|| runs.upload_input(&created.id, "a.nwk", &[], &mut body, 1000));
-      started.recv().unwrap();
-      let cancel = runs.cancel(&created.id).err().map(|err| err.to_string());
-      resume.send(()).unwrap();
-      (cancel, upload.join().unwrap())
-    });
+    let cancel = runs.cancel(&created.id).err().map(|err| err.to_string());
+    let uploaded = upload.finish();
 
     assert_eq!(
       (
@@ -605,9 +626,7 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    runs
-      .upload_input(&created.id, "a.nwk", &[], &mut &b"(A,B);"[..], 1024)
-      .unwrap();
+    upload_bytes(&runs, &created.id, "a.nwk", &[], b"(A,B);", 1024).unwrap();
     let request = StartRunRequest {
       command: None,
       config: Some(sparse(clock_config())),
@@ -616,7 +635,7 @@ mod tests {
     };
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
 
-    let late = runs.upload_input(&created.id, "b.nwk", &[], &mut &b"(A,B);"[..], 1024);
+    let late = upload_bytes(&runs, &created.id, "b.nwk", &[], b"(A,B);", 1024);
 
     assert_eq!(
       (
@@ -642,8 +661,7 @@ mod tests {
     let created = create(&runs, AppCommand::Clock, json!({}));
     let zika = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
     let upload = |name: &str, bytes: Vec<u8>| {
-      runs
-        .upload_input(&created.id, name, &[], &mut &bytes[..], 1 << 20)
+      upload_bytes(&runs, &created.id, name, &[], &bytes, 1 << 20)
         .unwrap()
         .path
     };
@@ -853,47 +871,18 @@ mod tests {
 
   mod helpers {
     use crate::__tests__::test_support::tests::sparse;
-    use crate::job::TerminalEvent;
+    use crate::job::{JobId, TerminalEvent};
     use crate::runs::events::RunEvent;
     use crate::runs::manager::{ConfigHook, RunManager};
     use crate::runs::record::{CreateRunRequest, RunRecord};
     use app_commands::command::AppCommand;
     use serde_json::{Value, json};
-    use std::io::{self, Read};
-    use std::path::Path;
-    use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+    use std::path::{Path, PathBuf};
     use treetime_utils::io::json::to_json_value;
 
-    pub(super) struct GatedReader {
-      bytes: Vec<u8>,
-      started: Option<SyncSender<()>>,
-      resume: Receiver<()>,
-    }
-
-    impl GatedReader {
-      pub(super) fn new(bytes: Vec<u8>) -> (Self, Receiver<()>, SyncSender<()>) {
-        let (started_sender, started) = sync_channel(1);
-        let (resume, resume_receiver) = sync_channel(1);
-        let reader = Self {
-          bytes,
-          started: Some(started_sender),
-          resume: resume_receiver,
-        };
-        (reader, started, resume)
-      }
-    }
-
-    impl Read for GatedReader {
-      fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        if let Some(started) = self.started.take() {
-          started.send(()).map_err(io::Error::other)?;
-          self.resume.recv().map_err(io::Error::other)?;
-        }
-        let count = buffer.len().min(self.bytes.len());
-        buffer[..count].copy_from_slice(&self.bytes[..count]);
-        self.bytes.drain(..count);
-        Ok(count)
-      }
+    pub(super) fn allowance(runs: &RunManager, id: &JobId, replaces: &[PathBuf]) -> (usize, usize, String) {
+      let allowance = runs.upload_allowance(id, replaces, 1000).unwrap();
+      (allowance.remaining, allowance.limit, allowance.limit_text)
     }
 
     pub(super) fn accept() -> ConfigHook {

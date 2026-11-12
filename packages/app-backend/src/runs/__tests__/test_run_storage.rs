@@ -241,7 +241,7 @@ pub(crate) mod tests {
   }
 
   pub(crate) mod helpers {
-    use crate::__tests__::test_support::tests::{sparse, unconfined};
+    use crate::__tests__::test_support::tests::{sparse, unconfined, upload_bytes};
     use crate::job::JobId;
     use crate::runs::manager::RunManager;
     use crate::runs::record::{CreateRunRequest, RunRecord, StartRunRequest};
@@ -284,10 +284,10 @@ pub(crate) mod tests {
       runs.get(&created.id).unwrap()
     }
 
-    fn upload(runs: &RunManager, id: &JobId, dataset: &str, name: &str) -> PathBuf {
+    fn upload(runs: &Arc<RunManager>, id: &JobId, dataset: &str, name: &str) -> PathBuf {
       let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data").join(dataset);
       let bytes = fs::read(data.join(name)).unwrap();
-      runs.upload_input(id, name, &[], &mut &bytes[..], 1 << 24).unwrap().path
+      upload_bytes(runs, id, name, &[], &bytes, 1 << 24).unwrap().path
     }
 
     pub(crate) fn start_from(runs: &Arc<RunManager>, settings: &SparseConfig, source: Option<&JobId>) -> RunRecord {

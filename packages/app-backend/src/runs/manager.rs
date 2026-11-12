@@ -7,7 +7,9 @@ use crate::runs::downloads::{FileDownload, download_name};
 use crate::runs::errors::{conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file};
-use crate::runs::input_store::{InputStore, StoredInput, StoredUpload, validate_upload_name};
+use crate::runs::input_store::{
+  InputStore, StoredInput, StoredUpload, UploadWriter, format_size, upload_too_large, validate_upload_name,
+};
 use crate::runs::lifecycle::StartedRun;
 use crate::runs::package::{RunPackage, export_run};
 use crate::runs::package_import::import_run;
@@ -24,7 +26,7 @@ use chrono::{TimeDelta, Utc};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use schemars::JsonSchema;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -165,7 +167,7 @@ impl RunManager {
     let Some(inputs) = self.run_inputs(id)? else {
       return Err(conflict(format!("run `{}` has already started", id.as_str())));
     };
-    let Some(_inputs) = inputs.lock.try_lock() else {
+    let Some(_inputs) = inputs.idle() else {
       return Err(upload_in_progress(id, &inputs, "start"));
     };
     let record = self.modify(id, |record| {
@@ -228,7 +230,7 @@ impl RunManager {
     let Some(inputs) = self.run_inputs(id)? else {
       return Ok(false);
     };
-    let Some(_inputs) = inputs.lock.try_lock() else {
+    let Some(_inputs) = inputs.idle() else {
       return Err(upload_in_progress(id, &inputs, "cancel"));
     };
     let run = match active.remove(id) {
@@ -253,12 +255,7 @@ impl RunManager {
     let mut active = self.active.lock();
     let inputs = self.inputs.lock().get(id).cloned();
     let _upload = match &inputs {
-      Some(inputs) => Some(
-        inputs
-          .lock
-          .try_lock()
-          .ok_or_else(|| upload_in_progress(id, inputs, "delete"))?,
-      ),
+      Some(inputs) => Some(inputs.idle().ok_or_else(|| upload_in_progress(id, inputs, "delete"))?),
       None => None,
     };
     {
@@ -328,23 +325,54 @@ impl RunManager {
     }
   }
 
-  pub fn upload_input(
-    &self,
+  pub fn begin_upload(
+    self: &Arc<Self>,
     id: &JobId,
     name: &str,
     replaces: &[PathBuf],
-    body: &mut dyn Read,
     max_total_size: usize,
-  ) -> Result<UploadedInput, Report> {
+  ) -> Result<InputUpload, Report> {
     validate_upload_name(name)?;
     let Some(inputs) = self.run_inputs(id)? else {
       return Err(started(id, UPLOAD_AFTER_START));
     };
     let _inputs = inputs.lock.lock();
-    *inputs.uploading.lock() = Some(name.to_owned());
-    let uploaded = self.store_upload(id, name, replaces, body, max_total_size);
-    *inputs.uploading.lock() = None;
-    uploaded
+    let record = self.store.read(id)?;
+    if record.status != RunStatus::Created {
+      return Err(started(id, UPLOAD_AFTER_START));
+    }
+    let replaced = self.replaced_uploads(id, &record, replaces)?;
+    let retained = self.retained_size(&record, &replaced)?;
+    let writer = self
+      .input_store
+      .begin(name, max_total_size.saturating_sub(retained), max_total_size)?;
+    Ok(InputUpload {
+      runs: Arc::clone(self),
+      id: id.clone(),
+      replaced,
+      max_total_size,
+      writer,
+      uploading: Uploading::new(Arc::clone(&inputs), name),
+    })
+  }
+
+  pub fn upload_allowance(
+    &self,
+    id: &JobId,
+    replaces: &[PathBuf],
+    max_total_size: usize,
+  ) -> Result<UploadAllowance, Report> {
+    let record = self.store.read(id)?;
+    if record.status != RunStatus::Created {
+      return Err(started(id, UPLOAD_AFTER_START));
+    }
+    let replaced = self.replaced_uploads(id, &record, replaces)?;
+    let retained = self.retained_size(&record, &replaced)?;
+    Ok(UploadAllowance {
+      remaining: max_total_size.saturating_sub(retained),
+      limit: max_total_size,
+      limit_text: format_size(max_total_size),
+    })
   }
 
   pub fn release_input(&self, id: &JobId, path: &Path) -> Result<(), Report> {
@@ -376,19 +404,13 @@ impl RunManager {
     Ok(Some(Arc::clone(inputs.entry(id.clone()).or_default())))
   }
 
-  fn store_upload(
+  fn replaced_uploads(
     &self,
     id: &JobId,
-    name: &str,
+    record: &RunRecord,
     replaces: &[PathBuf],
-    body: &mut dyn Read,
-    max_total_size: usize,
-  ) -> Result<UploadedInput, Report> {
-    let record = self.store.read(id)?;
-    if record.status != RunStatus::Created {
-      return Err(started(id, UPLOAD_AFTER_START));
-    }
-    let replaced = replaces
+  ) -> Result<BTreeSet<StoredInput>, Report> {
+    replaces
       .iter()
       .map(|path| {
         self
@@ -397,37 +419,35 @@ impl RunManager {
           .filter(|key| record.uploads.contains(key))
           .ok_or_else(|| not_an_upload(id, path))
       })
-      .collect::<Result<BTreeSet<_>, _>>()?;
-    let retained = record
+      .collect()
+  }
+
+  fn retained_size(&self, record: &RunRecord, replaced: &BTreeSet<StoredInput>) -> Result<usize, Report> {
+    record
       .uploads
       .iter()
       .unique()
       .filter(|key| !replaced.contains(key))
       .map(|key| stored_size(&self.input_store, key))
-      .sum::<Result<usize, _>>()?;
-    let upload = self
-      .input_store
-      .store(name, body, max_total_size.saturating_sub(retained), max_total_size)?;
-    let size = upload.size();
-    let key = {
-      let _records = self.records.lock();
-      let mut record = self.store.read(id)?;
-      if record.status != RunStatus::Created {
-        return Err(started(id, UPLOAD_AFTER_START));
-      }
-      let key = self.input_store.commit(upload)?;
-      if !record.uploads.contains(&key) {
-        record.uploads.push(key.clone());
-        self.store.write(&record)?;
-      }
-      key
-    };
-    Ok(UploadedInput {
-      name: name.to_owned(),
-      path: self.input_store.path(&key),
-      size,
-      sha256: key.sha256,
-    })
+      .sum()
+  }
+
+  fn commit_upload(&self, upload: StoredUpload, finished: &FinishedUpload) -> Result<StoredInput, Report> {
+    let _records = self.records.lock();
+    let mut record = self.store.read(finished.id)?;
+    if record.status != RunStatus::Created {
+      return Err(started(finished.id, UPLOAD_AFTER_START));
+    }
+    let retained = self.retained_size(&record, finished.replaced)?;
+    if retained.saturating_add(upload.size()) > finished.max_total_size {
+      return Err(upload_too_large(finished.max_total_size, finished.name));
+    }
+    let key = self.input_store.commit(upload)?;
+    if !record.uploads.contains(&key) {
+      record.uploads.push(key.clone());
+      self.store.write(&record)?;
+    }
+    Ok(key)
   }
 
   pub fn files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
@@ -620,6 +640,63 @@ pub struct UploadedInput {
   pub sha256: String,
 }
 
+/// Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+#[derive(Clone, Debug, JsonSchema, Serialize)]
+pub struct UploadAllowance {
+  /// Bytes that the next uploads may add in total; the files that the request names as replaced do not count.
+  pub remaining: usize,
+  /// Limit of the total size of the inputs of a run, in bytes.
+  pub limit: usize,
+  /// The limit as the upload errors name it, such as `1 GiB`.
+  pub limit_text: String,
+}
+
+pub struct InputUpload {
+  runs: Arc<RunManager>,
+  id: JobId,
+  replaced: BTreeSet<StoredInput>,
+  max_total_size: usize,
+  writer: UploadWriter,
+  uploading: Uploading,
+}
+
+impl InputUpload {
+  pub fn write(&mut self, chunk: &[u8]) -> Result<(), Report> {
+    self.writer.write(chunk)
+  }
+
+  pub fn finish(self) -> Result<UploadedInput, Report> {
+    let Self {
+      runs,
+      id,
+      replaced,
+      max_total_size,
+      writer,
+      uploading,
+    } = self;
+    let upload = writer.finish()?;
+    let size = upload.size();
+    let key = {
+      let _inputs = uploading.inputs.lock.lock();
+      runs.commit_upload(
+        upload,
+        &FinishedUpload {
+          id: &id,
+          name: &uploading.name,
+          replaced: &replaced,
+          max_total_size,
+        },
+      )?
+    };
+    Ok(UploadedInput {
+      name: uploading.name.clone(),
+      path: runs.input_store.path(&key),
+      size,
+      sha256: key.sha256,
+    })
+  }
+}
+
 pub(super) struct ActiveRun {
   pub(super) token: CancelToken,
   pub(super) events: EventLog,
@@ -643,7 +720,45 @@ impl ActiveRun {
 #[derive(Default)]
 pub(super) struct RunInputs {
   lock: Mutex<()>,
-  uploading: Mutex<Option<String>>,
+  uploading: Mutex<Vec<String>>,
+}
+
+impl RunInputs {
+  fn idle(&self) -> Option<MutexGuard<'_, ()>> {
+    let guard = self.lock.try_lock()?;
+    self.uploading.lock().is_empty().then_some(guard)
+  }
+}
+
+struct Uploading {
+  inputs: Arc<RunInputs>,
+  name: String,
+}
+
+impl Uploading {
+  fn new(inputs: Arc<RunInputs>, name: &str) -> Self {
+    inputs.uploading.lock().push(name.to_owned());
+    Self {
+      inputs,
+      name: name.to_owned(),
+    }
+  }
+}
+
+impl Drop for Uploading {
+  fn drop(&mut self) {
+    let mut uploading = self.inputs.uploading.lock();
+    if let Some(index) = uploading.iter().position(|name| *name == self.name) {
+      uploading.remove(index);
+    }
+  }
+}
+
+struct FinishedUpload<'a> {
+  id: &'a JobId,
+  name: &'a str,
+  replaced: &'a BTreeSet<StoredInput>,
+  max_total_size: usize,
 }
 
 struct PortableConfig {
@@ -694,7 +809,7 @@ fn files_size(dir: &Path) -> Result<usize, Report> {
 }
 
 fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {
-  let uploading = inputs.uploading.lock().clone();
+  let uploading = inputs.uploading.lock().first().cloned();
   conflict(format!(
     "run `{}` cannot {action} while {} is uploaded; {action} it again when the upload ends",
     id.as_str(),

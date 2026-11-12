@@ -60,39 +60,30 @@ impl InputStore {
   }
 
   pub fn store(&self, name: &str, body: &mut dyn Read, allowed: usize, limit: usize) -> Result<StoredUpload, Report> {
-    validate_upload_name(name)?;
-    fs::create_dir_all(&self.root)
-      .wrap_err_with(|| format!("When creating the input store '{}'", self.root.display()))?;
-    let mut file = NamedTempFile::new_in(&self.root)
-      .wrap_err_with(|| format!("When creating a file in '{}'", self.root.display()))?;
-    let mut hasher = Sha256::new();
+    let mut writer = self.begin(name, allowed, limit)?;
     let mut buffer = vec![0_u8; UPLOAD_BUFFER_SIZE];
-    let mut size: usize = 0;
     loop {
       let read = body.read(&mut buffer).wrap_err("When receiving the upload")?;
       if read == 0 {
-        break;
+        return writer.finish();
       }
-      size += read;
-      if size > allowed {
-        return Err(Report::new(UploadTooLarge {
-          limit: format_size(limit),
-          name: name.to_owned(),
-        }));
-      }
-      hasher.update(&buffer[..read]);
-      file
-        .as_file_mut()
-        .write_all(&buffer[..read])
-        .wrap_err("When storing the upload")?;
+      writer.write(&buffer[..read])?;
     }
-    Ok(StoredUpload {
+  }
+
+  pub fn begin(&self, name: &str, allowed: usize, limit: usize) -> Result<UploadWriter, Report> {
+    validate_upload_name(name)?;
+    fs::create_dir_all(&self.root)
+      .wrap_err_with(|| format!("When creating the input store '{}'", self.root.display()))?;
+    let file = NamedTempFile::new_in(&self.root)
+      .wrap_err_with(|| format!("When creating a file in '{}'", self.root.display()))?;
+    Ok(UploadWriter {
       file,
-      key: StoredInput {
-        sha256: hex_digest(&hasher.finalize())?,
-        name: name.to_owned(),
-      },
-      size,
+      hasher: Sha256::new(),
+      name: name.to_owned(),
+      size: 0,
+      allowed,
+      limit,
     })
   }
 
@@ -165,6 +156,48 @@ pub struct StoredInput {
   pub name: String,
 }
 
+pub struct UploadWriter {
+  file: NamedTempFile,
+  hasher: Sha256,
+  name: String,
+  size: usize,
+  allowed: usize,
+  limit: usize,
+}
+
+impl UploadWriter {
+  pub fn write(&mut self, chunk: &[u8]) -> Result<(), Report> {
+    self.size += chunk.len();
+    if self.size > self.allowed {
+      return Err(upload_too_large(self.limit, &self.name));
+    }
+    self.hasher.update(chunk);
+    self
+      .file
+      .as_file_mut()
+      .write_all(chunk)
+      .wrap_err("When storing the upload")
+  }
+
+  pub fn finish(self) -> Result<StoredUpload, Report> {
+    let Self {
+      file,
+      hasher,
+      name,
+      size,
+      ..
+    } = self;
+    Ok(StoredUpload {
+      file,
+      key: StoredInput {
+        sha256: hex_digest(&hasher.finalize())?,
+        name,
+      },
+      size,
+    })
+  }
+}
+
 pub struct StoredUpload {
   file: NamedTempFile,
   key: StoredInput,
@@ -190,6 +223,13 @@ pub fn validate_upload_name(name: &str) -> Result<(), Report> {
     )));
   }
   Ok(())
+}
+
+pub fn upload_too_large(limit: usize, name: &str) -> Report {
+  Report::new(UploadTooLarge {
+    limit: format_size(limit),
+    name: name.to_owned(),
+  })
 }
 
 pub fn format_size(bytes: usize) -> String {

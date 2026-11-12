@@ -87,13 +87,15 @@ mod tests {
     use std::fs;
     use std::io::Cursor;
     use std::path::{Path, PathBuf};
+    use std::sync::Arc;
     use treetime::progress::NoopProgress;
     use zip::ZipArchive;
 
-    pub(super) fn upload(runs: &RunManager, id: &JobId, name: &str) -> Value {
+    pub(super) fn upload(runs: &Arc<RunManager>, id: &JobId, name: &str) -> Value {
       let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
-      let bytes = fs::read(data.join(name)).unwrap();
-      let uploaded = runs.upload_input(id, name, &[], &mut &bytes[..], usize::MAX).unwrap();
+      let mut upload = runs.begin_upload(id, name, &[], usize::MAX).unwrap();
+      upload.write(&fs::read(data.join(name)).unwrap()).unwrap();
+      let uploaded = upload.finish().unwrap();
       Value::String(uploaded.path.to_string_lossy().into_owned())
     }
 

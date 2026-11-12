@@ -1401,6 +1401,24 @@ export type CancelRunResponse = {
 };
 
 /**
+ * Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+ */
+export type UploadAllowance = {
+  /**
+   * Bytes that the next uploads may add in total; the files that the request names as replaced do not count.
+   */
+  remaining: number;
+  /**
+   * Limit of the total size of the inputs of a run, in bytes.
+   */
+  limit: number;
+  /**
+   * The limit as the upload errors name it, such as `1 GiB`.
+   */
+  limit_text: string;
+};
+
+/**
  * One file in a run's `out/` folder.
  */
 export type RunFile = {
@@ -1461,10 +1479,6 @@ export type RunResults = {
    * Results specific to the command of the run.
    */
   results: CommandResults;
-  /**
-   * The publication to cite.
-   */
-  citation: Citation;
   /**
    * Output files, and the input tree of an `optimize` or `prune` run, that could not be read.
    */
@@ -6665,6 +6679,42 @@ export type RunsReleaseInputResponses = {
   200: unknown;
 };
 
+export type RunsUploadAllowanceData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: {
+    /**
+     * Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size
+     * does not count toward the upload limit.
+     */
+    replaces?: Array<string>;
+  };
+  url: '/api/runs/{id}/inputs';
+};
+
+export type RunsUploadAllowanceErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsUploadAllowanceError = RunsUploadAllowanceErrors[keyof RunsUploadAllowanceErrors];
+
+export type RunsUploadAllowanceResponses = {
+  /**
+   * Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+   */
+  200: UploadAllowance;
+};
+
+export type RunsUploadAllowanceResponse = RunsUploadAllowanceResponses[keyof RunsUploadAllowanceResponses];
+
 export type RunsFilesData = {
   body?: never;
   path: {
@@ -6986,8 +7036,8 @@ export type RunsUploadInputData = {
   };
   query?: {
     /**
-     * Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size
-     * does not count toward the upload limit of this upload.
+     * Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size
+     * does not count toward the upload limit.
      */
     replaces?: Array<string>;
   };

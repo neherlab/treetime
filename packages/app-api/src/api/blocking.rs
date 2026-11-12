@@ -1,7 +1,9 @@
 use crate::error::AppError;
+use app_backend::runs::manager::{InputUpload, UploadedInput};
 use axum::body::Body;
 use eyre::Report;
 use std::io::Read;
+use tokio_stream::StreamExt as _;
 
 #[cfg(target_family = "wasm")]
 use axum::body::to_bytes;
@@ -10,9 +12,20 @@ use std::future::{Ready, ready};
 #[cfg(not(target_family = "wasm"))]
 use std::io;
 #[cfg(not(target_family = "wasm"))]
-use tokio_stream::StreamExt as _;
-#[cfg(not(target_family = "wasm"))]
 use tokio_util::io::{StreamReader, SyncIoBridge};
+
+pub(crate) async fn upload_body(body: Body, mut upload: InputUpload) -> Result<UploadedInput, AppError> {
+  let mut chunks = body.into_data_stream();
+  while let Some(chunk) = chunks.next().await {
+    let chunk = chunk?;
+    upload = run_blocking(move || {
+      upload.write(&chunk)?;
+      Ok(upload)
+    })
+    .await?;
+  }
+  run_blocking(move || upload.finish()).await
+}
 
 #[cfg(not(target_family = "wasm"))]
 pub(crate) async fn read_body_blocking<T, F>(body: Body, work: F) -> Result<T, AppError>

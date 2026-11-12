@@ -559,6 +559,59 @@
       }
     },
     "/api/runs/{id}/inputs": {
+      "get": {
+        "description": "Report how many bytes the next uploads of a run that has not started may add before the inputs of the run reach the upload limit.",
+        "operationId": "runsUploadAllowance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          },
+          {
+            "in": "query",
+            "name": "replaces",
+            "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
+            "schema": {
+              "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadAllowance"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "description": "Remove an uploaded file from a run that has not started; the file stays while another run uses it. Removing an upload that is already gone succeeds.",
         "operationId": "runsReleaseInput",
@@ -1079,9 +1132,9 @@
           {
             "in": "query",
             "name": "replaces",
-            "description": "Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit of this upload.",
+            "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
             "schema": {
-              "description": "Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit of this upload.",
+              "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
               "type": "array",
               "items": {
                 "type": "string"
@@ -3730,6 +3783,33 @@
           "cancelled"
         ]
       },
+      "UploadAllowance": {
+        "description": "Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.",
+        "type": "object",
+        "properties": {
+          "remaining": {
+            "description": "Bytes that the next uploads may add in total; the files that the request names as replaced do not count.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "limit": {
+            "description": "Limit of the total size of the inputs of a run, in bytes.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "limit_text": {
+            "description": "The limit as the upload errors name it, such as `1 GiB`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "remaining",
+          "limit",
+          "limit_text"
+        ]
+      },
       "RunFile": {
         "description": "One file in a run's `out/` folder.",
         "type": "object",
@@ -3802,10 +3882,6 @@
             "description": "Results specific to the command of the run.",
             "$ref": "#/components/schemas/CommandResults"
           },
-          "citation": {
-            "description": "The publication to cite.",
-            "$ref": "#/components/schemas/Citation"
-          },
           "problems": {
             "description": "Output files, and the input tree of an `optimize` or `prune` run, that could not be read.",
             "type": "array",
@@ -3817,7 +3893,6 @@
         "required": [
           "models",
           "results",
-          "citation",
           "problems"
         ]
       },

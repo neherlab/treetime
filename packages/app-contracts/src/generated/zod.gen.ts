@@ -776,6 +776,15 @@ export const zCancelRunResponse = z.object({
 });
 
 /**
+ * Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+ */
+export const zUploadAllowance = z.object({
+  remaining: z.int().gte(0),
+  limit: z.int().gte(0),
+  limit_text: z.string()
+});
+
+/**
  * One file in a run's `out/` folder.
  */
 export const zRunFile = z.object({
@@ -2450,7 +2459,6 @@ export const zRunResults = z.object({
   tree_alignment: zOutputAlignment.optional(),
   models: zRunModels,
   results: zCommandResults,
-  citation: zCitation,
   problems: z.array(zOutputProblem)
 });
 
@@ -3013,6 +3021,19 @@ export const zRunsReleaseInputPath = z.object({
 export const zRunsReleaseInputQuery = z.object({
   path: z.string()
 });
+
+export const zRunsUploadAllowancePath = z.object({
+  id: zJobId
+});
+
+export const zRunsUploadAllowanceQuery = z.object({
+  replaces: z.array(z.string()).optional().default([])
+});
+
+/**
+ * Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+ */
+export const zRunsUploadAllowanceResponse = zUploadAllowance;
 
 export const zRunsFilesPath = z.object({
   id: zJobId

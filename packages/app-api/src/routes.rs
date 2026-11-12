@@ -1,4 +1,4 @@
-use crate::api::blocking::{read_body_blocking, run_blocking};
+use crate::api::blocking::{read_body_blocking, run_blocking, upload_body};
 use crate::api::download::{serve_run_file, stream_run_package};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
@@ -9,7 +9,7 @@ use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, remove_cli_only_commands};
 use crate::state::{AppState, LocalSettings, RouterConfig};
 use aide::axum::ApiRouter;
-use aide::axum::routing::{delete_with, get_with, post_with, put_with};
+use aide::axum::routing::{get_with, post_with, put_with};
 use aide::openapi::{Contact, Info, License, OpenApi};
 use app_backend::bridge::error::ErrorCode;
 use app_backend::bridge::service::AppService;
@@ -26,7 +26,7 @@ use app_backend::run_config::{RunConfigRequest, RunConfigResponse};
 use app_backend::runs::app_events::AppEvent;
 use app_backend::runs::events::RunEvent;
 use app_backend::runs::files::RunFile;
-use app_backend::runs::manager::UploadedInput;
+use app_backend::runs::manager::{UploadAllowance, UploadedInput};
 use app_backend::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
@@ -244,7 +244,13 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
     )
     .api_route(
       "/api/runs/{id}/inputs",
-      delete_with(runs_release_input, |op| {
+      get_with(runs_upload_allowance, |op| {
+        op.id("runsUploadAllowance").description(
+          "Report how many bytes the next uploads of a run that has not started may add before the inputs of the run \
+           reach the upload limit.",
+        )
+      })
+      .delete_with(runs_release_input, |op| {
         op.id("runsReleaseInput").description(
           "Remove an uploaded file from a run that has not started; the file stays while another run uses it. \
            Removing an upload that is already gone succeeds.",
@@ -566,11 +572,21 @@ async fn runs_upload_input(
   let runs = Arc::clone(&state.runs);
   let limit = state.config.max_upload_size;
   let replaces = replaces.into_iter().map(PathBuf::from).collect_vec();
-  let uploaded = read_body_blocking(body, move |reader| {
-    runs.upload_input(&id, &name, &replaces, reader, limit)
-  })
-  .await?;
-  Ok(ApiJson(uploaded))
+  let upload = run_blocking(move || runs.begin_upload(&id, &name, &replaces, limit)).await?;
+  Ok(ApiJson(upload_body(body, upload).await?))
+}
+
+async fn runs_upload_allowance(
+  State(state): State<Arc<AppState>>,
+  ApiPath(RunPath { id }): ApiPath<RunPath>,
+  ApiQuery(UploadInputQuery { replaces }): ApiQuery<UploadInputQuery>,
+) -> Result<ApiJson<UploadAllowance>, AppError> {
+  let runs = Arc::clone(&state.runs);
+  let limit = state.config.max_upload_size;
+  let replaces = replaces.into_iter().map(PathBuf::from).collect_vec();
+  run_blocking(move || runs.upload_allowance(&id, &replaces, limit))
+    .await
+    .map(ApiJson)
 }
 
 /// Path of an input file of a run.
@@ -583,12 +599,12 @@ struct InputPath {
   name: String,
 }
 
-/// Query of an upload.
+/// Query of an upload or of the upload allowance of a run.
 #[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(inline)]
 struct UploadInputQuery {
-  /// Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size
-  /// does not count toward the upload limit of this upload.
+  /// Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size
+  /// does not count toward the upload limit.
   #[deser(default)]
   #[schemars(default)]
   replaces: Vec<String>,
