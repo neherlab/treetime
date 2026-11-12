@@ -49,7 +49,7 @@ settings:
 
 No CLI command downloads examples; CLI users download `examples.zip` from the release.
 
-`settings.yaml` holds the folders (`paths`) and the preferences of the user interface (`ui`: theme, sidebar width, and the unfinished form):
+`settings.yaml` holds the folders (`paths`) and the preferences of the user interface (`ui`: theme, the widths of the sidebar and the options panel, and the unfinished form):
 
 ```yaml
 paths:
