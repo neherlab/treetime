@@ -20,6 +20,13 @@ export function datasetLabel(draft: UiDraft): string | undefined {
   return folders.size === 1 && folder !== undefined ? folder : sources.map((source) => source.label).join(", ");
 }
 
+export function exampleDatasetName(draft: UiDraft): string | undefined {
+  const folders = new Set(Object.values(draft.sources).map(exampleFolder));
+  const [folder, ...others] = folders;
+
+  return others.length === 0 ? folder : undefined;
+}
+
 function exampleFolder(source: UiDraftSource): string | undefined {
   if (source.origin.kind === "example") {
     return folderName(source.origin.path);

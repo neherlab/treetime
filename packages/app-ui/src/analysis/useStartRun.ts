@@ -6,6 +6,7 @@ import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
+import { exampleDatasetName } from "./datasetLabel";
 import { forgetLostRuns, lostFilesMessage } from "./lostRuns";
 import { pendingUpload } from "./pendingUpload";
 import { whileRunBusy } from "./runWork";
@@ -36,11 +37,14 @@ export function useStartRun(command: AppCommand) {
         const uploadRunId = kept.draft.upload_run_id;
         const upload = pendingUpload(uploadRunId === undefined ? undefined : kept.runs.get(uploadRunId));
 
+        const example = exampleDatasetName(kept.draft);
+        const named = example === undefined ? {} : { example };
+
         const { data: record } =
           upload === undefined
-            ? await runsCreate({ client, body: { command, config, defer_start: false }, throwOnError: true })
+            ? await runsCreate({ client, body: { command, config, defer_start: false, ...named }, throwOnError: true })
             : await whileRunBusy(upload.id, async () =>
-                runsStart({ client, path: { id: upload.id }, body: { command, config }, throwOnError: true }),
+                runsStart({ client, path: { id: upload.id }, body: { command, config, ...named }, throwOnError: true }),
               );
 
         finishStart();
