@@ -570,6 +570,34 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_clock_preview_computes_the_regression_of_uploaded_inputs() {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let config = test
+      .upload_data(
+        &id,
+        json!({ "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" }),
+      )
+      .await;
+    let (status, preview) = request(
+      &test,
+      "POST",
+      "/api/clock-preview",
+      Some(json!({ "command": "timetree", "config": config })),
+    )
+    .await;
+    assert_eq!(
+      (200, json!(20), json!(20), json!(20)),
+      (
+        status,
+        preview["tips"].clone(),
+        preview["clock"]["estimates"]["dated_samples"].clone(),
+        json!(preview["clock"]["root_to_tip"]["points"].as_array().map(Vec::len)),
+      )
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_check_config_reports_cli_errors() {
     let test = app();
     let (_, response) = request(

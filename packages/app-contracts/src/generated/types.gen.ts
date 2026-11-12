@@ -113,6 +113,11 @@ export type InputFacts = {
    */
   tips_without_metadata?: Array<string>;
   /**
+   * What the readers used or found for each setting of how the input files are read, with the key of the setting
+   * that overrides it.
+   */
+  detected: DetectedSettings;
+  /**
    * Inputs that could not be read, with the reason.
    */
   problems: Array<InputProblem>;
@@ -228,6 +233,267 @@ export type DateFacts = {
    * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
    */
   on_day_1_or_15: number;
+  /**
+   * Earliest and latest sampling date that the parser read; a date range counts with its first and its last day.
+   * Absent when no date could be read.
+   */
+  span?: DateSpan;
+};
+
+/**
+ * The earliest and the latest of a set of dates.
+ */
+export type DateSpan = {
+  /**
+   * The earliest date.
+   */
+  earliest: YearDate;
+  /**
+   * The latest date.
+   */
+  latest: YearDate;
+};
+
+/**
+ * A date as a decimal year and as a calendar day.
+ */
+export type YearDate = {
+  /**
+   * The date as a decimal year, for example `2015.47`.
+   */
+  year: number;
+  /**
+   * The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.
+   */
+  date?: string;
+};
+
+/**
+ * What the input readers used or found for each setting of how the input files are read, each with the key of the
+ * setting that overrides it. A fact is present when the command has its setting and the readers read the input it
+ * concerns.
+ */
+export type DetectedSettings = {
+  /**
+   * Newick dialect the tree was read in.
+   */
+  newick_dialect?: DetectedDialect;
+  /**
+   * Delimiter of the columns of the metadata table.
+   */
+  metadata_delimiter?: DetectedDelimiter;
+  /**
+   * Column of the metadata table that holds the sample names.
+   */
+  id_column?: DetectedColumn;
+  /**
+   * Column of the metadata table that holds the sampling dates.
+   */
+  date_column?: DetectedColumn;
+  /**
+   * Forms in which the date parser read the sampling dates, with the count of dates read.
+   */
+  date_format?: DetectedDateFormat;
+  /**
+   * Alphabet the alignments were read in.
+   */
+  alphabet?: DetectedAlphabet;
+  /**
+   * Number of sites of the sequences: the sites of every alignment file, or the `sequence_length` setting without an
+   * alignment.
+   */
+  sequence_length?: DetectedLength;
+  /**
+   * Partitions of the sites of the alignment files.
+   */
+  partitions?: DetectedPartitions;
+};
+
+/**
+ * The Newick dialect the tree was read in.
+ */
+export type DetectedDialect = {
+  /**
+   * The dialect as the setting spells it: `<structure>,<annotations>`, for example `classic,plain`.
+   */
+  dialect: string;
+  /**
+   * Where the dialect comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the dialect.
+   */
+  setting: string;
+};
+
+/**
+ * Where the value of a detected setting comes from.
+ */
+export type SettingOrigin = 'detected' | 'setting' | 'default';
+
+/**
+ * The delimiter of the columns of the metadata table.
+ */
+export type DetectedDelimiter = {
+  /**
+   * The delimiter character, for example a tab.
+   */
+  delimiter: string;
+  /**
+   * Where the delimiter comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the delimiter.
+   */
+  setting: string;
+};
+
+/**
+ * A column of the metadata table.
+ */
+export type DetectedColumn = {
+  /**
+   * Name of the column, as the table writes it.
+   */
+  column: string;
+  /**
+   * Where the column comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the column.
+   */
+  setting: string;
+};
+
+/**
+ * The forms in which the date parser read the sampling dates.
+ */
+export type DetectedDateFormat = {
+  /**
+   * Each form the parser read dates in, with its count, the most frequent form first.
+   */
+  readings: Array<DateReading>;
+  /**
+   * Number of rows whose date the parser read.
+   */
+  read: number;
+  /**
+   * Number of rows of the table.
+   */
+  rows: number;
+  /**
+   * Where the date format comes from: `setting` when the configuration names a format that the parser tries first.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the date format.
+   */
+  setting: string;
+};
+
+/**
+ * The dates that the parser read in one form.
+ */
+export type DateReading = {
+  /**
+   * Form of the dates.
+   */
+  form: DateForm;
+  /**
+   * The format of a calendar date, in the `strftime` notation of the `date_format` setting, for example `%Y-%m-%d`.
+   */
+  format?: string;
+  /**
+   * Number of dates read in this form.
+   */
+  count: number;
+};
+
+/**
+ * Form of a sampling date.
+ */
+export type DateForm = 'numeric' | 'calendar' | 'uncertain' | 'range';
+
+/**
+ * The alphabet the alignments were read in.
+ */
+export type DetectedAlphabet = {
+  /**
+   * The alphabet.
+   */
+  alphabet: AlphabetName;
+  /**
+   * Where the alphabet comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the alphabet.
+   */
+  setting: string;
+};
+
+export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
+
+/**
+ * The number of sites of the sequences.
+ */
+export type DetectedLength = {
+  /**
+   * Number of sites.
+   */
+  length: number;
+  /**
+   * Where the number comes from: `detected` for the sites of the alignment files, `setting` for the
+   * `sequence_length` setting.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that changes the number: `alignment` for the sites of the alignment files.
+   */
+  setting: string;
+};
+
+/**
+ * The partitions of the sites of the alignment files.
+ */
+export type DetectedPartitions = {
+  /**
+   * Each partition, in the order of the run.
+   */
+  partitions: Array<PartitionFacts>;
+  /**
+   * Where the partitions come from: `default` for one partition per alignment file.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the partitions.
+   */
+  setting: string;
+};
+
+/**
+ * One partition of the sites of an alignment file.
+ */
+export type PartitionFacts = {
+  /**
+   * Name of the partition in outputs and messages.
+   */
+  label: string;
+  /**
+   * Number of the alignment file of the partition, from 1.
+   */
+  alignment: number;
+  /**
+   * Number of sites of the partition.
+   */
+  sites: number;
+  /**
+   * Substitution model of the partition, as the `model` setting spells it.
+   */
+  model: string;
 };
 
 /**
@@ -476,6 +742,204 @@ export type CheckInputsRequest = {
 };
 
 /**
+ * Files to identify by their content, for example files that the user dropped without naming the input they fill.
+ */
+export type FileKindsRequest = {
+  /**
+   * Paths of the files.
+   */
+  files: Array<string>;
+};
+
+/**
+ * The kind of each file of a request, in the order of the request.
+ */
+export type FileKinds = {
+  /**
+   * One entry per file of the request.
+   */
+  files: Array<DetectedFile>;
+};
+
+/**
+ * The kind of one file, as the readers of the commands read it.
+ */
+export type DetectedFile = {
+  /**
+   * Path of the file, as the request gives it.
+   */
+  path: string;
+  /**
+   * Kind of the file, from its content; the file name extension only decides which reader tries first.
+   */
+  kind: FileKind;
+  /**
+   * The analyses whose settings the configuration sets, for a `configuration`: the analysis that its
+   * `yaml-language-server` schema directive names, or else every analysis that has all of its top-level keys.
+   */
+  commands: Array<AppCommand>;
+  /**
+   * Why no reader reads the file, for an `unknown` file.
+   */
+  reason?: string;
+};
+
+/**
+ * Kind of a file.
+ */
+export type FileKind = 'tree' | 'alignment' | 'metadata' | 'configuration' | 'run-package' | 'unknown';
+
+/**
+ * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
+ */
+export type ClockPreviewRequest = {
+  /**
+   * Command of the draft.
+   */
+  command: AppCommand;
+  /**
+   * Settings of the draft. The preview takes the settings that the `clock` command shares with the draft's command
+   * and that concern the input data or the analysis, such as the input files, the dates, the rooting, and the clock
+   * filter, and ignores the rest.
+   */
+  config: SparseConfig;
+  /**
+   * Whether to compute the preview also for a tree with more tips than `tip_limit`.
+   */
+  beyond_limit?: boolean;
+};
+
+/**
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ */
+export type ClockPreview = {
+  /**
+   * Number of tips of the tree.
+   */
+  tips: number;
+  /**
+   * Largest tree, in tips, whose preview the back end computes without `beyond_limit`.
+   */
+  tip_limit: number;
+  /**
+   * Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does
+   * not set `beyond_limit`.
+   */
+  clock?: ClockResults;
+};
+
+/**
+ * Results of a `clock` run.
+ */
+export type ClockResults = {
+  /**
+   * Estimates of the clock model.
+   */
+  estimates: ClockEstimates;
+  /**
+   * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
+   */
+  root_to_tip?: RootToTip;
+};
+
+/**
+ * Estimates of a `clock` run.
+ */
+export type ClockEstimates = {
+  /**
+   * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
+   */
+  clock_rate?: number;
+  /**
+   * Whether the clock rate was fixed by the user instead of estimated.
+   */
+  clock_rate_fixed: boolean;
+  /**
+   * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
+   */
+  r?: number;
+  /**
+   * Coefficient of determination of the root-to-tip regression.
+   */
+  r_squared?: number;
+  /**
+   * Number of samples with a date.
+   */
+  dated_samples: number;
+  /**
+   * Number of dated samples the clock filter flagged as outliers.
+   */
+  outliers: number;
+};
+
+/**
+ * The points and line of a root-to-tip regression, as TreeTime fitted it.
+ */
+export type RootToTip = {
+  /**
+   * Samples as the regression saw them.
+   */
+  points: Array<RootToTipPoint>;
+  /**
+   * Line of the clock model; absent when the run wrote no clock model.
+   */
+  line?: ClockLine;
+};
+
+/**
+ * One sample of a root-to-tip regression.
+ */
+export type RootToTipPoint = {
+  /**
+   * Name of the sample.
+   */
+  name: string;
+  /**
+   * Date the regression used.
+   */
+  date?: YearDate;
+  /**
+   * Where the date came from; absent when the table does not say.
+   */
+  date_source?: ClockDateSource;
+  /**
+   * Root-to-tip divergence the regression used.
+   */
+  div: number;
+  /**
+   * Date the clock model predicts from the divergence.
+   */
+  predicted_date: YearDate;
+  /**
+   * Sampling date minus the predicted date, in days.
+   */
+  residual_days?: number;
+  /**
+   * Whether the clock filter flagged the sample as an outlier.
+   */
+  outlier: boolean;
+};
+
+/**
+ * Where the date a clock regression used for a sample came from.
+ */
+export type ClockDateSource = 'input' | 'inferred' | 'missing';
+
+/**
+ * Line of a clock model: divergence = rate * date + intercept.
+ */
+export type ClockLine = {
+  /**
+   * Clock rate in substitutions per site per year.
+   */
+  rate: number;
+  /**
+   * Divergence at year 0.
+   */
+  intercept: number;
+};
+
+/**
  * Runs, newest first, and the number of runs computing now.
  */
 export type RunList = {
@@ -581,20 +1045,6 @@ export type RunHeadline = {
    * Number of distinct substitutions on two or more branches of a homoplasy run.
    */
   recurrent_substitutions?: number;
-};
-
-/**
- * A date as a decimal year and as a calendar day.
- */
-export type YearDate = {
-  /**
-   * The date as a decimal year, for example `2015.47`.
-   */
-  year: number;
-  /**
-   * The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.
-   */
-  date?: string;
 };
 
 /**
@@ -1218,73 +1668,6 @@ export type RelaxedClock = {
 };
 
 /**
- * The points and line of a root-to-tip regression, as TreeTime fitted it.
- */
-export type RootToTip = {
-  /**
-   * Samples as the regression saw them.
-   */
-  points: Array<RootToTipPoint>;
-  /**
-   * Line of the clock model; absent when the run wrote no clock model.
-   */
-  line?: ClockLine;
-};
-
-/**
- * One sample of a root-to-tip regression.
- */
-export type RootToTipPoint = {
-  /**
-   * Name of the sample.
-   */
-  name: string;
-  /**
-   * Date the regression used.
-   */
-  date?: YearDate;
-  /**
-   * Where the date came from; absent when the table does not say.
-   */
-  date_source?: ClockDateSource;
-  /**
-   * Root-to-tip divergence the regression used.
-   */
-  div: number;
-  /**
-   * Date the clock model predicts from the divergence.
-   */
-  predicted_date: YearDate;
-  /**
-   * Sampling date minus the predicted date, in days.
-   */
-  residual_days?: number;
-  /**
-   * Whether the clock filter flagged the sample as an outlier.
-   */
-  outlier: boolean;
-};
-
-/**
- * Where the date a clock regression used for a sample came from.
- */
-export type ClockDateSource = 'input' | 'inferred' | 'missing';
-
-/**
- * Line of a clock model: divergence = rate * date + intercept.
- */
-export type ClockLine = {
-  /**
-   * Clock rate in substitutions per site per year.
-   */
-  rate: number;
-  /**
-   * Divergence at year 0.
-   */
-  intercept: number;
-};
-
-/**
  * Convergence values of one iteration.
  */
 export type IterationRow = {
@@ -1352,50 +1735,6 @@ export type Band = {
    * Upper bound of the band.
    */
   upper?: number;
-};
-
-/**
- * Results of a `clock` run.
- */
-export type ClockResults = {
-  /**
-   * Estimates of the clock model.
-   */
-  estimates: ClockEstimates;
-  /**
-   * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
-   */
-  root_to_tip?: RootToTip;
-};
-
-/**
- * Estimates of a `clock` run.
- */
-export type ClockEstimates = {
-  /**
-   * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
-   */
-  clock_rate?: number;
-  /**
-   * Whether the clock rate was fixed by the user instead of estimated.
-   */
-  clock_rate_fixed: boolean;
-  /**
-   * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
-   */
-  r?: number;
-  /**
-   * Coefficient of determination of the root-to-tip regression.
-   */
-  r_squared?: number;
-  /**
-   * Number of samples with a date.
-   */
-  dated_samples: number;
-  /**
-   * Number of dated samples the clock filter flagged as outliers.
-   */
-  outliers: number;
 };
 
 /**
@@ -2110,6 +2449,28 @@ export type IndexedDataset = {
    * uncompressed name.
    */
   inputs: Array<IndexedInput>;
+  /**
+   * Organism of the samples, from the `organism` field of the front matter of the folder's `README.md`, for example
+   * `Zika virus`.
+   */
+  organism: string;
+  /**
+   * Genome segment of the sequences, for a segmented genome, from the `segment` field of the same front matter, for
+   * example `NA`.
+   */
+  segment?: string;
+  /**
+   * Number of samples: the tips of the tree.
+   */
+  samples: number;
+  /**
+   * Earliest and latest sampling date of the metadata, when the dataset has dates.
+   */
+  dates?: DateSpan;
+  /**
+   * Number of sites of the alignment, when the dataset has an alignment.
+   */
+  sequence_length?: number;
 };
 
 /**
@@ -2657,8 +3018,6 @@ export type PartitionSpec = {
 };
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
-
-export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
 
 export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'midpoint';
 
@@ -5636,6 +5995,62 @@ export type InputsCheckResponses = {
 };
 
 export type InputsCheckResponse = InputsCheckResponses[keyof InputsCheckResponses];
+
+export type FileKindsData = {
+  /**
+   * Files to identify by their content, for example files that the user dropped without naming the input they fill.
+   */
+  body: FileKindsRequest;
+  path?: never;
+  query?: never;
+  url: '/api/file-kinds';
+};
+
+export type FileKindsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type FileKindsError = FileKindsErrors[keyof FileKindsErrors];
+
+export type FileKindsResponses = {
+  /**
+   * The kind of each file of a request, in the order of the request.
+   */
+  200: FileKinds;
+};
+
+export type FileKindsResponse = FileKindsResponses[keyof FileKindsResponses];
+
+export type ClockPreviewData = {
+  /**
+   * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
+   */
+  body: ClockPreviewRequest;
+  path?: never;
+  query?: never;
+  url: '/api/clock-preview';
+};
+
+export type ClockPreviewErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type ClockPreviewError = ClockPreviewErrors[keyof ClockPreviewErrors];
+
+export type ClockPreviewResponses = {
+  /**
+   * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+   */
+  200: ClockPreview;
+};
+
+export type ClockPreviewResponse = ClockPreviewResponses[keyof ClockPreviewResponses];
 
 export type RunsListData = {
   body?: never;

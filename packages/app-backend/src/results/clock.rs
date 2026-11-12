@@ -13,7 +13,16 @@ pub fn clock_results(
   model: Option<&ClockModel>,
   rows: Option<&[ClockRegressionResult]>,
 ) -> ClockResults {
-  let root_to_tip = rows.map(|rows| root_to_tip(tree, model, rows));
+  let tips = tree.map(tree_tips);
+  clock_results_of_tips(tips.as_ref(), model, rows)
+}
+
+pub fn clock_results_of_tips(
+  tips: Option<&BTreeSet<&str>>,
+  model: Option<&ClockModel>,
+  rows: Option<&[ClockRegressionResult]>,
+) -> ClockResults {
+  let root_to_tip = rows.map(|rows| root_to_tip_of_tips(tips, model, rows));
   let dated = root_to_tip
     .iter()
     .flat_map(|regression| &regression.points)
@@ -63,14 +72,20 @@ pub struct ClockEstimates {
 }
 
 pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: &[ClockRegressionResult]) -> RootToTip {
-  let tips: Option<BTreeSet<&str>> = tree.map(|tree| tree.tips().map(|tip| tip.name.as_str()).collect());
+  let tips = tree.map(tree_tips);
+  root_to_tip_of_tips(tips.as_ref(), model, rows)
+}
+
+fn root_to_tip_of_tips(
+  tips: Option<&BTreeSet<&str>>,
+  model: Option<&ClockModel>,
+  rows: &[ClockRegressionResult],
+) -> RootToTip {
   let points = rows
     .iter()
     .filter_map(|row| {
       let name = row.name.as_str();
-      let listed = tips
-        .as_ref()
-        .map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
+      let listed = tips.map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
       listed.then(|| RootToTipPoint {
         name: name.to_owned(),
         date: row.date.map(YearDate::new),
@@ -91,6 +106,10 @@ pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: 
       intercept: model.intercept(),
     }),
   }
+}
+
+fn tree_tips(tree: &ResultTree) -> BTreeSet<&str> {
+  tree.tips().map(|tip| tip.name.as_str()).collect()
 }
 
 /// The points and line of a root-to-tip regression, as TreeTime fitted it.

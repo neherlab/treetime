@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AppSettingsAnalysisData, AppSettingsAnalysisErrors, AppSettingsAnalysisResponses, AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, ExamplesData, ExamplesDownloadData, ExamplesDownloadErrors, ExamplesDownloadResponses, ExamplesDownloadStartData, ExamplesDownloadStartErrors, ExamplesDownloadStartResponses, ExamplesErrors, ExamplesResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsReleaseInputData, RunsReleaseInputErrors, RunsReleaseInputResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsSettingsData, RunsSettingsErrors, RunsSettingsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
-import { zAppSettingsAnalysisBody, zAppSettingsAnalysisResponse, zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zEventsQuery, zEventsResponse, zExamplesDownloadResponse, zExamplesDownloadStartResponse, zExamplesResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsReleaseInputPath, zRunsReleaseInputQuery, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsSettingsPath, zRunsSettingsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputQuery, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
+import type { AppSettingsAnalysisData, AppSettingsAnalysisErrors, AppSettingsAnalysisResponses, AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ClockPreviewData, ClockPreviewErrors, ClockPreviewResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, ExamplesData, ExamplesDownloadData, ExamplesDownloadErrors, ExamplesDownloadResponses, ExamplesDownloadStartData, ExamplesDownloadStartErrors, ExamplesDownloadStartResponses, ExamplesErrors, ExamplesResponses, FileKindsData, FileKindsErrors, FileKindsResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsReleaseInputData, RunsReleaseInputErrors, RunsReleaseInputResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsSettingsData, RunsSettingsErrors, RunsSettingsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
+import { zAppSettingsAnalysisBody, zAppSettingsAnalysisResponse, zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zClockPreviewBody, zClockPreviewResponse, zConfigCheckBody, zConfigCheckResponse, zEventsQuery, zEventsResponse, zExamplesDownloadResponse, zExamplesDownloadStartResponse, zExamplesResponse, zFileKindsBody, zFileKindsResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsReleaseInputPath, zRunsReleaseInputQuery, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsSettingsPath, zRunsSettingsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputQuery, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -82,6 +82,42 @@ export const inputsCheck = <ThrowOnError extends boolean = false>(options: Optio
   }).parseAsync(data),
   responseValidator: async (data) => await zInputsCheckResponse.parseAsync(data),
   url: '/api/check-inputs',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with the readers the commands use, or `unknown` with the reason.
+ */
+export const fileKinds = <ThrowOnError extends boolean = false>(options: Options<FileKindsData, ThrowOnError>): RequestResult<FileKindsResponses, FileKindsErrors, ThrowOnError> => (options.client ?? client).post<FileKindsResponses, FileKindsErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zFileKindsBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zFileKindsResponse.parseAsync(data),
+  url: '/api/file-kinds',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run; trees above the tip limit only on request.
+ */
+export const clockPreview = <ThrowOnError extends boolean = false>(options: Options<ClockPreviewData, ThrowOnError>): RequestResult<ClockPreviewResponses, ClockPreviewErrors, ThrowOnError> => (options.client ?? client).post<ClockPreviewResponses, ClockPreviewErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zClockPreviewBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zClockPreviewResponse.parseAsync(data),
+  url: '/api/clock-preview',
   ...options,
   headers: {
     'Content-Type': 'application/json',

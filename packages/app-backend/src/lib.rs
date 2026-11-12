@@ -7,6 +7,7 @@ pub mod atomic_write;
 pub mod bridge;
 pub mod check_config;
 pub mod check_inputs;
+pub mod clock_preview;
 pub mod command;
 pub mod config;
 pub mod datasets;

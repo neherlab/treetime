@@ -158,6 +158,84 @@
         }
       }
     },
+    "/api/file-kinds": {
+      "post": {
+        "description": "The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with the readers the commands use, or `unknown` with the reason.",
+        "operationId": "fileKinds",
+        "requestBody": {
+          "description": "Files to identify by their content, for example files that the user dropped without naming the input they fill.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileKindsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The kind of each file of a request, in the order of the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileKinds"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clock-preview": {
+      "post": {
+        "description": "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run; trees above the tip limit only on request.",
+        "operationId": "clockPreview",
+        "requestBody": {
+          "description": "The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClockPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs": {
       "get": {
         "description": "Runs, newest first, and the number of runs computing now.",
@@ -1522,6 +1600,10 @@
             },
             "x-unset": true
           },
+          "detected": {
+            "description": "What the readers used or found for each setting of how the input files are read, with the key of the setting\nthat overrides it.",
+            "$ref": "#/components/schemas/DetectedSettings"
+          },
           "problems": {
             "description": "Inputs that could not be read, with the reason.",
             "type": "array",
@@ -1532,6 +1614,7 @@
         },
         "required": [
           "alignments",
+          "detected",
           "problems"
         ]
       },
@@ -1710,6 +1793,11 @@
             "type": "integer",
             "format": "uint",
             "minimum": 0
+          },
+          "span": {
+            "description": "Earliest and latest sampling date that the parser read; a date range counts with its first and its last day.\nAbsent when no date could be read.",
+            "$ref": "#/components/schemas/DateSpan",
+            "x-unset": true
           }
         },
         "required": [
@@ -1717,6 +1805,382 @@
           "unreadable",
           "exact_days",
           "on_day_1_or_15"
+        ]
+      },
+      "DateSpan": {
+        "description": "The earliest and the latest of a set of dates.",
+        "type": "object",
+        "properties": {
+          "earliest": {
+            "description": "The earliest date.",
+            "$ref": "#/components/schemas/YearDate"
+          },
+          "latest": {
+            "description": "The latest date.",
+            "$ref": "#/components/schemas/YearDate"
+          }
+        },
+        "required": [
+          "earliest",
+          "latest"
+        ]
+      },
+      "YearDate": {
+        "description": "A date as a decimal year and as a calendar day.",
+        "type": "object",
+        "properties": {
+          "year": {
+            "description": "The date as a decimal year, for example `2015.47`.",
+            "type": "number",
+            "format": "double"
+          },
+          "date": {
+            "description": "The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "year"
+        ]
+      },
+      "DetectedSettings": {
+        "description": "What the input readers used or found for each setting of how the input files are read, each with the key of the\nsetting that overrides it. A fact is present when the command has its setting and the readers read the input it\nconcerns.",
+        "type": "object",
+        "properties": {
+          "newick_dialect": {
+            "description": "Newick dialect the tree was read in.",
+            "$ref": "#/components/schemas/DetectedDialect",
+            "x-unset": true
+          },
+          "metadata_delimiter": {
+            "description": "Delimiter of the columns of the metadata table.",
+            "$ref": "#/components/schemas/DetectedDelimiter",
+            "x-unset": true
+          },
+          "id_column": {
+            "description": "Column of the metadata table that holds the sample names.",
+            "$ref": "#/components/schemas/DetectedColumn",
+            "x-unset": true
+          },
+          "date_column": {
+            "description": "Column of the metadata table that holds the sampling dates.",
+            "$ref": "#/components/schemas/DetectedColumn",
+            "x-unset": true
+          },
+          "date_format": {
+            "description": "Forms in which the date parser read the sampling dates, with the count of dates read.",
+            "$ref": "#/components/schemas/DetectedDateFormat",
+            "x-unset": true
+          },
+          "alphabet": {
+            "description": "Alphabet the alignments were read in.",
+            "$ref": "#/components/schemas/DetectedAlphabet",
+            "x-unset": true
+          },
+          "sequence_length": {
+            "description": "Number of sites of the sequences: the sites of every alignment file, or the `sequence_length` setting without an\nalignment.",
+            "$ref": "#/components/schemas/DetectedLength",
+            "x-unset": true
+          },
+          "partitions": {
+            "description": "Partitions of the sites of the alignment files.",
+            "$ref": "#/components/schemas/DetectedPartitions",
+            "x-unset": true
+          }
+        }
+      },
+      "DetectedDialect": {
+        "description": "The Newick dialect the tree was read in.",
+        "type": "object",
+        "properties": {
+          "dialect": {
+            "description": "The dialect as the setting spells it: `<structure>,<annotations>`, for example `classic,plain`.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Where the dialect comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the dialect.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dialect",
+          "origin",
+          "setting"
+        ]
+      },
+      "SettingOrigin": {
+        "description": "Where the value of a detected setting comes from.",
+        "oneOf": [
+          {
+            "description": "The readers found the value in the input files, among the candidates of the setting.",
+            "type": "string",
+            "const": "detected"
+          },
+          {
+            "description": "The configuration sets the value.",
+            "type": "string",
+            "const": "setting"
+          },
+          {
+            "description": "The default of the setting, which the configuration does not change.",
+            "type": "string",
+            "const": "default"
+          }
+        ]
+      },
+      "DetectedDelimiter": {
+        "description": "The delimiter of the columns of the metadata table.",
+        "type": "object",
+        "properties": {
+          "delimiter": {
+            "description": "The delimiter character, for example a tab.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Where the delimiter comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the delimiter.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delimiter",
+          "origin",
+          "setting"
+        ]
+      },
+      "DetectedColumn": {
+        "description": "A column of the metadata table.",
+        "type": "object",
+        "properties": {
+          "column": {
+            "description": "Name of the column, as the table writes it.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Where the column comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the column.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "origin",
+          "setting"
+        ]
+      },
+      "DetectedDateFormat": {
+        "description": "The forms in which the date parser read the sampling dates.",
+        "type": "object",
+        "properties": {
+          "readings": {
+            "description": "Each form the parser read dates in, with its count, the most frequent form first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DateReading"
+            }
+          },
+          "read": {
+            "description": "Number of rows whose date the parser read.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "rows": {
+            "description": "Number of rows of the table.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "origin": {
+            "description": "Where the date format comes from: `setting` when the configuration names a format that the parser tries first.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the date format.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "readings",
+          "read",
+          "rows",
+          "origin",
+          "setting"
+        ]
+      },
+      "DateReading": {
+        "description": "The dates that the parser read in one form.",
+        "type": "object",
+        "properties": {
+          "form": {
+            "description": "Form of the dates.",
+            "$ref": "#/components/schemas/DateForm"
+          },
+          "format": {
+            "description": "The format of a calendar date, in the `strftime` notation of the `date_format` setting, for example `%Y-%m-%d`.",
+            "type": "string",
+            "x-unset": true
+          },
+          "count": {
+            "description": "Number of dates read in this form.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "form",
+          "count"
+        ]
+      },
+      "DateForm": {
+        "description": "Form of a sampling date.",
+        "oneOf": [
+          {
+            "description": "A numeric date, a decimal year such as `2015.3`.",
+            "type": "string",
+            "const": "numeric"
+          },
+          {
+            "description": "A calendar day in the format that `format` names.",
+            "type": "string",
+            "const": "calendar"
+          },
+          {
+            "description": "A date with unknown parts, such as `2015-XX-XX`, read as the range of days it allows.",
+            "type": "string",
+            "const": "uncertain"
+          },
+          {
+            "description": "A range of two dates, such as `2015-01-01/2015-06-30`.",
+            "type": "string",
+            "const": "range"
+          }
+        ]
+      },
+      "DetectedAlphabet": {
+        "description": "The alphabet the alignments were read in.",
+        "type": "object",
+        "properties": {
+          "alphabet": {
+            "description": "The alphabet.",
+            "$ref": "#/components/schemas/AlphabetName"
+          },
+          "origin": {
+            "description": "Where the alphabet comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the alphabet.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alphabet",
+          "origin",
+          "setting"
+        ]
+      },
+      "AlphabetName": {
+        "type": "string",
+        "enum": [
+          "nuc",
+          "aa",
+          "aa-no-stop"
+        ]
+      },
+      "DetectedLength": {
+        "description": "The number of sites of the sequences.",
+        "type": "object",
+        "properties": {
+          "length": {
+            "description": "Number of sites.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "origin": {
+            "description": "Where the number comes from: `detected` for the sites of the alignment files, `setting` for the\n`sequence_length` setting.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that changes the number: `alignment` for the sites of the alignment files.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "length",
+          "origin",
+          "setting"
+        ]
+      },
+      "DetectedPartitions": {
+        "description": "The partitions of the sites of the alignment files.",
+        "type": "object",
+        "properties": {
+          "partitions": {
+            "description": "Each partition, in the order of the run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartitionFacts"
+            }
+          },
+          "origin": {
+            "description": "Where the partitions come from: `default` for one partition per alignment file.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the partitions.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partitions",
+          "origin",
+          "setting"
+        ]
+      },
+      "PartitionFacts": {
+        "description": "One partition of the sites of an alignment file.",
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "Name of the partition in outputs and messages.",
+            "type": "string"
+          },
+          "alignment": {
+            "description": "Number of the alignment file of the partition, from 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "sites": {
+            "description": "Number of sites of the partition.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "model": {
+            "description": "Substitution model of the partition, as the `model` setting spells it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "alignment",
+          "sites",
+          "model"
         ]
       },
       "InputProblem": {
@@ -2144,6 +2608,325 @@
           "config"
         ]
       },
+      "FileKindsRequest": {
+        "description": "Files to identify by their content, for example files that the user dropped without naming the input they fill.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "Paths of the files.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "files"
+        ]
+      },
+      "FileKinds": {
+        "description": "The kind of each file of a request, in the order of the request.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "One entry per file of the request.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DetectedFile"
+            }
+          }
+        },
+        "required": [
+          "files"
+        ]
+      },
+      "DetectedFile": {
+        "description": "The kind of one file, as the readers of the commands read it.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file, as the request gives it.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Kind of the file, from its content; the file name extension only decides which reader tries first.",
+            "$ref": "#/components/schemas/FileKind"
+          },
+          "commands": {
+            "description": "The analyses whose settings the configuration sets, for a `configuration`: the analysis that its\n`yaml-language-server` schema directive names, or else every analysis that has all of its top-level keys.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppCommand"
+            }
+          },
+          "reason": {
+            "description": "Why no reader reads the file, for an `unknown` file.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "commands"
+        ]
+      },
+      "FileKind": {
+        "description": "Kind of a file.",
+        "oneOf": [
+          {
+            "description": "A tree in Newick or Nexus format, with at least two tips.",
+            "type": "string",
+            "const": "tree"
+          },
+          {
+            "description": "Sequences in FASTA format.",
+            "type": "string",
+            "const": "alignment"
+          },
+          {
+            "description": "A table with a column of sample names.",
+            "type": "string",
+            "const": "metadata"
+          },
+          {
+            "description": "A YAML or JSON configuration of an analysis.",
+            "type": "string",
+            "const": "configuration"
+          },
+          {
+            "description": "A zip archive whose `run.json` is the record of a run.",
+            "type": "string",
+            "const": "run-package"
+          },
+          {
+            "description": "None of the above.",
+            "type": "string",
+            "const": "unknown"
+          }
+        ]
+      },
+      "ClockPreviewRequest": {
+        "description": "The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.",
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "Command of the draft.",
+            "$ref": "#/components/schemas/AppCommand"
+          },
+          "config": {
+            "description": "Settings of the draft. The preview takes the settings that the `clock` command shares with the draft's command\nand that concern the input data or the analysis, such as the input files, the dates, the rooting, and the clock\nfilter, and ignores the rest.",
+            "$ref": "#/components/schemas/SparseConfig"
+          },
+          "beyond_limit": {
+            "description": "Whether to compute the preview also for a tree with more tips than `tip_limit`.",
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "command",
+          "config"
+        ]
+      },
+      "ClockPreview": {
+        "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.",
+        "type": "object",
+        "properties": {
+          "tips": {
+            "description": "Number of tips of the tree.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "tip_limit": {
+            "description": "Largest tree, in tips, whose preview the back end computes without `beyond_limit`.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "clock": {
+            "description": "Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does\nnot set `beyond_limit`.",
+            "$ref": "#/components/schemas/ClockResults",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "tips",
+          "tip_limit"
+        ]
+      },
+      "ClockResults": {
+        "description": "Results of a `clock` run.",
+        "type": "object",
+        "properties": {
+          "estimates": {
+            "description": "Estimates of the clock model.",
+            "$ref": "#/components/schemas/ClockEstimates"
+          },
+          "root_to_tip": {
+            "description": "Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.",
+            "$ref": "#/components/schemas/RootToTip",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "estimates"
+        ]
+      },
+      "ClockEstimates": {
+        "description": "Estimates of a `clock` run.",
+        "type": "object",
+        "properties": {
+          "clock_rate": {
+            "description": "Clock rate in substitutions per site per year; absent when the run wrote no clock model.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "clock_rate_fixed": {
+            "description": "Whether the clock rate was fixed by the user instead of estimated.",
+            "type": "boolean"
+          },
+          "r": {
+            "description": "Correlation coefficient of the root-to-tip regression; absent for a fixed rate.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "r_squared": {
+            "description": "Coefficient of determination of the root-to-tip regression.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "dated_samples": {
+            "description": "Number of samples with a date.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "outliers": {
+            "description": "Number of dated samples the clock filter flagged as outliers.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "clock_rate_fixed",
+          "dated_samples",
+          "outliers"
+        ]
+      },
+      "RootToTip": {
+        "description": "The points and line of a root-to-tip regression, as TreeTime fitted it.",
+        "type": "object",
+        "properties": {
+          "points": {
+            "description": "Samples as the regression saw them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RootToTipPoint"
+            }
+          },
+          "line": {
+            "description": "Line of the clock model; absent when the run wrote no clock model.",
+            "$ref": "#/components/schemas/ClockLine",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "points"
+        ]
+      },
+      "RootToTipPoint": {
+        "description": "One sample of a root-to-tip regression.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name of the sample.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date the regression used.",
+            "$ref": "#/components/schemas/YearDate",
+            "x-unset": true
+          },
+          "date_source": {
+            "description": "Where the date came from; absent when the table does not say.",
+            "$ref": "#/components/schemas/ClockDateSource",
+            "x-unset": true
+          },
+          "div": {
+            "description": "Root-to-tip divergence the regression used.",
+            "type": "number",
+            "format": "double"
+          },
+          "predicted_date": {
+            "description": "Date the clock model predicts from the divergence.",
+            "$ref": "#/components/schemas/YearDate"
+          },
+          "residual_days": {
+            "description": "Sampling date minus the predicted date, in days.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "outlier": {
+            "description": "Whether the clock filter flagged the sample as an outlier.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "div",
+          "predicted_date",
+          "outlier"
+        ]
+      },
+      "ClockDateSource": {
+        "description": "Where the date a clock regression used for a sample came from.",
+        "oneOf": [
+          {
+            "description": "The sampling date given in the input.",
+            "type": "string",
+            "const": "input"
+          },
+          {
+            "description": "The date the time tree inferred for a sample without an input date.",
+            "type": "string",
+            "const": "inferred"
+          },
+          {
+            "description": "No date; the sample did not enter the regression.",
+            "type": "string",
+            "const": "missing"
+          }
+        ]
+      },
+      "ClockLine": {
+        "description": "Line of a clock model: divergence = rate * date + intercept.",
+        "type": "object",
+        "properties": {
+          "rate": {
+            "description": "Clock rate in substitutions per site per year.",
+            "type": "number",
+            "format": "double"
+          },
+          "intercept": {
+            "description": "Divergence at year 0.",
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "rate",
+          "intercept"
+        ]
+      },
       "RunList": {
         "description": "Runs, newest first, and the number of runs computing now.",
         "type": "object",
@@ -2317,25 +3100,6 @@
             "x-unset": true
           }
         }
-      },
-      "YearDate": {
-        "description": "A date as a decimal year and as a calendar day.",
-        "type": "object",
-        "properties": {
-          "year": {
-            "description": "The date as a decimal year, for example `2015.47`.",
-            "type": "number",
-            "format": "double"
-          },
-          "date": {
-            "description": "The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.",
-            "type": "string",
-            "x-unset": true
-          }
-        },
-        "required": [
-          "year"
-        ]
       },
       "JsonFloat": {
         "description": "A number; infinities and NaN are the strings \"inf\", \"-inf\" and \"nan\".",
@@ -3338,112 +4102,6 @@
           "coupling"
         ]
       },
-      "RootToTip": {
-        "description": "The points and line of a root-to-tip regression, as TreeTime fitted it.",
-        "type": "object",
-        "properties": {
-          "points": {
-            "description": "Samples as the regression saw them.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RootToTipPoint"
-            }
-          },
-          "line": {
-            "description": "Line of the clock model; absent when the run wrote no clock model.",
-            "$ref": "#/components/schemas/ClockLine",
-            "x-unset": true
-          }
-        },
-        "required": [
-          "points"
-        ]
-      },
-      "RootToTipPoint": {
-        "description": "One sample of a root-to-tip regression.",
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "Name of the sample.",
-            "type": "string"
-          },
-          "date": {
-            "description": "Date the regression used.",
-            "$ref": "#/components/schemas/YearDate",
-            "x-unset": true
-          },
-          "date_source": {
-            "description": "Where the date came from; absent when the table does not say.",
-            "$ref": "#/components/schemas/ClockDateSource",
-            "x-unset": true
-          },
-          "div": {
-            "description": "Root-to-tip divergence the regression used.",
-            "type": "number",
-            "format": "double"
-          },
-          "predicted_date": {
-            "description": "Date the clock model predicts from the divergence.",
-            "$ref": "#/components/schemas/YearDate"
-          },
-          "residual_days": {
-            "description": "Sampling date minus the predicted date, in days.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "outlier": {
-            "description": "Whether the clock filter flagged the sample as an outlier.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "name",
-          "div",
-          "predicted_date",
-          "outlier"
-        ]
-      },
-      "ClockDateSource": {
-        "description": "Where the date a clock regression used for a sample came from.",
-        "oneOf": [
-          {
-            "description": "The sampling date given in the input.",
-            "type": "string",
-            "const": "input"
-          },
-          {
-            "description": "The date the time tree inferred for a sample without an input date.",
-            "type": "string",
-            "const": "inferred"
-          },
-          {
-            "description": "No date; the sample did not enter the regression.",
-            "type": "string",
-            "const": "missing"
-          }
-        ]
-      },
-      "ClockLine": {
-        "description": "Line of a clock model: divergence = rate * date + intercept.",
-        "type": "object",
-        "properties": {
-          "rate": {
-            "description": "Clock rate in substitutions per site per year.",
-            "type": "number",
-            "format": "double"
-          },
-          "intercept": {
-            "description": "Divergence at year 0.",
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "required": [
-          "rate",
-          "intercept"
-        ]
-      },
       "IterationRow": {
         "description": "Convergence values of one iteration.",
         "type": "object",
@@ -3538,69 +4196,6 @@
         },
         "required": [
           "value"
-        ]
-      },
-      "ClockResults": {
-        "description": "Results of a `clock` run.",
-        "type": "object",
-        "properties": {
-          "estimates": {
-            "description": "Estimates of the clock model.",
-            "$ref": "#/components/schemas/ClockEstimates"
-          },
-          "root_to_tip": {
-            "description": "Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.",
-            "$ref": "#/components/schemas/RootToTip",
-            "x-unset": true
-          }
-        },
-        "required": [
-          "estimates"
-        ]
-      },
-      "ClockEstimates": {
-        "description": "Estimates of a `clock` run.",
-        "type": "object",
-        "properties": {
-          "clock_rate": {
-            "description": "Clock rate in substitutions per site per year; absent when the run wrote no clock model.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "clock_rate_fixed": {
-            "description": "Whether the clock rate was fixed by the user instead of estimated.",
-            "type": "boolean"
-          },
-          "r": {
-            "description": "Correlation coefficient of the root-to-tip regression; absent for a fixed rate.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "r_squared": {
-            "description": "Coefficient of determination of the root-to-tip regression.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "dated_samples": {
-            "description": "Number of samples with a date.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          },
-          "outliers": {
-            "description": "Number of dated samples the clock filter flagged as outliers.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "clock_rate_fixed",
-          "dated_samples",
-          "outliers"
         ]
       },
       "AncestralResults": {
@@ -4714,12 +5309,41 @@
             "items": {
               "$ref": "#/components/schemas/IndexedInput"
             }
+          },
+          "organism": {
+            "description": "Organism of the samples, from the `organism` field of the front matter of the folder's `README.md`, for example\n`Zika virus`.",
+            "type": "string"
+          },
+          "segment": {
+            "description": "Genome segment of the sequences, for a segmented genome, from the `segment` field of the same front matter, for\nexample `NA`.",
+            "type": "string",
+            "x-unset": true
+          },
+          "samples": {
+            "description": "Number of samples: the tips of the tree.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "dates": {
+            "description": "Earliest and latest sampling date of the metadata, when the dataset has dates.",
+            "$ref": "#/components/schemas/DateSpan",
+            "x-unset": true
+          },
+          "sequence_length": {
+            "description": "Number of sites of the alignment, when the dataset has an alignment.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-unset": true
           }
         },
         "additionalProperties": false,
         "required": [
           "name",
-          "inputs"
+          "inputs",
+          "organism",
+          "samples"
         ]
       },
       "IndexedInput": {
@@ -5620,14 +6244,6 @@
             "type": "string",
             "const": "infer"
           }
-        ]
-      },
-      "AlphabetName": {
-        "type": "string",
-        "enum": [
-          "nuc",
-          "aa",
-          "aa-no-stop"
         ]
       },
       "RerootMethod": {

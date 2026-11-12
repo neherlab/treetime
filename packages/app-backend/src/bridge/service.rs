@@ -1,6 +1,7 @@
 use crate::bridge::executor::RunExecutor;
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
 use crate::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
+use crate::clock_preview::{ClockPreview, ClockPreviewRequest, clock_preview};
 use crate::file_kinds::{FileKinds, FileKindsRequest, file_kinds};
 use crate::job::JobId;
 use crate::results::auspice::{AuspiceDocument, run_auspice};
@@ -88,6 +89,11 @@ impl AppService {
       .try_collect()
       .map_err(|err: Report| invalid(format!("{err:#}")))?;
     Ok(file_kinds(&FileKindsRequest { files }))
+  }
+
+  pub fn clock_preview(&self, request: ClockPreviewRequest) -> Result<ClockPreview, Report> {
+    let config = self.confined(request.command, request.config)?;
+    clock_preview(&ClockPreviewRequest { config, ..request })
   }
 
   pub fn list_runs(&self) -> Result<RunList, Report> {

@@ -1,4 +1,4 @@
-use crate::commands::clock::args::TreetimeClockArgs;
+use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -35,33 +35,7 @@ pub fn run_clock(
   stages.report("Reading input", 0.0, "");
 
   let resolved = clock_args.outputs.resolve()?;
-  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect, log)?;
-  let names = nwk_parsed.names;
-  let graph = nwk_parsed.graph;
-  let branch_lengths = nwk_parsed.branch_lengths;
-  let input_order = leaf_order(&graph);
-
-  let dates = read_input_dates(&clock_args.dates, &graph, &names, log)?;
-
-  let params = ClockParams {
-    clock_filter: clock_args.clock_filter,
-    allow_negative_rate: clock_args.allow_negative_rate,
-    reroot_spec: clock_args
-      .reroot
-      .as_ref()
-      .map(|reroot| reroot.spec(&graph, &names))
-      .transpose()?,
-    prune_tips: clock_args.prune_tips.resolve(&graph, &names, log)?,
-  };
-
-  let input = ClockInput {
-    graph,
-    names,
-    dates,
-    branch_lengths,
-  };
-
-  let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
+  let ClockFit { output, input_order } = fit_clock(clock_args, cancel, stages, log)?;
   let pipeline::ClockOutput {
     mut graph,
     inputs,
@@ -91,9 +65,77 @@ pub fn run_clock(
   })
 }
 
+pub fn clock_regression(
+  raw: TreetimeClockArgsRaw,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<ClockRegression, Report> {
+  let clock_args = TreetimeClockArgs::try_from(raw)?;
+  cancel.check()?;
+  let ClockFit { output, .. } = fit_clock(&clock_args, cancel, stages, log)?;
+  let tip_names = output
+    .graph
+    .get_leaves()
+    .map(|leaf| output.names[leaf.key()].to_owned())
+    .collect();
+  Ok(ClockRegression {
+    clock_model: output.clock_model,
+    regression_results: output.regression_results,
+    tip_names,
+  })
+}
+
+pub struct ClockRegression {
+  pub clock_model: ClockModel,
+  pub regression_results: Vec<ClockRegressionResult>,
+  pub tip_names: BTreeSet<String>,
+}
+
 pub struct ClockResult {
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
+}
+
+fn fit_clock(
+  clock_args: &TreetimeClockArgs,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<ClockFit, Report> {
+  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect, log)?;
+  let names = nwk_parsed.names;
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
+  let input_order = leaf_order(&graph);
+
+  let dates = read_input_dates(&clock_args.dates, &graph, &names, log)?;
+
+  let params = ClockParams {
+    clock_filter: clock_args.clock_filter,
+    allow_negative_rate: clock_args.allow_negative_rate,
+    reroot_spec: clock_args
+      .reroot
+      .as_ref()
+      .map(|reroot| reroot.spec(&graph, &names))
+      .transpose()?,
+    prune_tips: clock_args.prune_tips.resolve(&graph, &names, log)?,
+  };
+
+  let input = ClockInput {
+    graph,
+    names,
+    dates,
+    branch_lengths,
+  };
+
+  let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
+  Ok(ClockFit { output, input_order })
+}
+
+struct ClockFit {
+  output: pipeline::ClockOutput,
+  input_order: Vec<GraphNodeKey>,
 }
 
 fn write_clock_run_outputs(

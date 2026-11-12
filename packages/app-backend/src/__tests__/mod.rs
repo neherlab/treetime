@@ -2,6 +2,7 @@ mod test_app_paths;
 mod test_check_config;
 mod test_check_inputs;
 mod test_cli_rules;
+mod test_clock_preview;
 mod test_config_code;
 mod test_datasets;
 mod test_effective_values;

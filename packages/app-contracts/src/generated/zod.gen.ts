@@ -80,13 +80,30 @@ export const zAlignmentFacts = z.object({
 });
 
 /**
+ * A date as a decimal year and as a calendar day.
+ */
+export const zYearDate = z.object({
+  year: z.number(),
+  date: z.string().optional()
+});
+
+/**
+ * The earliest and the latest of a set of dates.
+ */
+export const zDateSpan = z.object({
+  earliest: zYearDate,
+  latest: zYearDate
+});
+
+/**
  * Facts about the sampling dates of a metadata table.
  */
 export const zDateFacts = z.object({
   readable: z.int().gte(0),
   unreadable: z.array(z.string()),
   exact_days: z.int().gte(0),
-  on_day_1_or_15: z.int().gte(0)
+  on_day_1_or_15: z.int().gte(0),
+  span: zDateSpan.optional()
 });
 
 /**
@@ -98,6 +115,131 @@ export const zMetadataFacts = z.object({
   id_column: z.string(),
   date_column: z.string().optional(),
   dates: zDateFacts.optional()
+});
+
+/**
+ * Where the value of a detected setting comes from.
+ */
+export const zSettingOrigin = z.union([
+  z.literal('detected'),
+  z.literal('setting'),
+  z.literal('default')
+]);
+
+/**
+ * The Newick dialect the tree was read in.
+ */
+export const zDetectedDialect = z.object({
+  dialect: z.string(),
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+/**
+ * The delimiter of the columns of the metadata table.
+ */
+export const zDetectedDelimiter = z.object({
+  delimiter: z.string(),
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+/**
+ * A column of the metadata table.
+ */
+export const zDetectedColumn = z.object({
+  column: z.string(),
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+/**
+ * Form of a sampling date.
+ */
+export const zDateForm = z.union([
+  z.literal('numeric'),
+  z.literal('calendar'),
+  z.literal('uncertain'),
+  z.literal('range')
+]);
+
+/**
+ * The dates that the parser read in one form.
+ */
+export const zDateReading = z.object({
+  form: zDateForm,
+  format: z.string().optional(),
+  count: z.int().gte(0)
+});
+
+/**
+ * The forms in which the date parser read the sampling dates.
+ */
+export const zDetectedDateFormat = z.object({
+  readings: z.array(zDateReading),
+  read: z.int().gte(0),
+  rows: z.int().gte(0),
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+export const zAlphabetName = z.enum([
+  'nuc',
+  'aa',
+  'aa-no-stop'
+]);
+
+/**
+ * The alphabet the alignments were read in.
+ */
+export const zDetectedAlphabet = z.object({
+  alphabet: zAlphabetName,
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+/**
+ * The number of sites of the sequences.
+ */
+export const zDetectedLength = z.object({
+  length: z.int().gte(0),
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+/**
+ * One partition of the sites of an alignment file.
+ */
+export const zPartitionFacts = z.object({
+  label: z.string(),
+  alignment: z.int().gte(0),
+  sites: z.int().gte(0),
+  model: z.string()
+});
+
+/**
+ * The partitions of the sites of the alignment files.
+ */
+export const zDetectedPartitions = z.object({
+  partitions: z.array(zPartitionFacts),
+  origin: zSettingOrigin,
+  setting: z.string()
+});
+
+/**
+ * What the input readers used or found for each setting of how the input files are read, each with the key of the
+ * setting that overrides it. A fact is present when the command has its setting and the readers read the input it
+ * concerns.
+ */
+export const zDetectedSettings = z.object({
+  newick_dialect: zDetectedDialect.optional(),
+  metadata_delimiter: zDetectedDelimiter.optional(),
+  id_column: zDetectedColumn.optional(),
+  date_column: zDetectedColumn.optional(),
+  date_format: zDetectedDateFormat.optional(),
+  alphabet: zDetectedAlphabet.optional(),
+  sequence_length: zDetectedLength.optional(),
+  partitions: zDetectedPartitions.optional()
 });
 
 /**
@@ -126,6 +268,7 @@ export const zInputFacts = z.object({
   alignments: z.array(zAlignmentFacts),
   metadata: zMetadataFacts.optional(),
   tips_without_metadata: z.array(z.string()).optional(),
+  detected: zDetectedSettings,
   problems: z.array(zInputProblem)
 });
 
@@ -279,6 +422,118 @@ export const zCheckInputsRequest = z.strictObject({
 });
 
 /**
+ * Files to identify by their content, for example files that the user dropped without naming the input they fill.
+ */
+export const zFileKindsRequest = z.strictObject({
+  files: z.array(z.string())
+});
+
+/**
+ * Kind of a file.
+ */
+export const zFileKind = z.union([
+  z.literal('tree'),
+  z.literal('alignment'),
+  z.literal('metadata'),
+  z.literal('configuration'),
+  z.literal('run-package'),
+  z.literal('unknown')
+]);
+
+/**
+ * The kind of one file, as the readers of the commands read it.
+ */
+export const zDetectedFile = z.object({
+  path: z.string(),
+  kind: zFileKind,
+  commands: z.array(zAppCommand),
+  reason: z.string().optional()
+});
+
+/**
+ * The kind of each file of a request, in the order of the request.
+ */
+export const zFileKinds = z.object({
+  files: z.array(zDetectedFile)
+});
+
+/**
+ * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
+ */
+export const zClockPreviewRequest = z.strictObject({
+  command: zAppCommand,
+  config: zSparseConfig,
+  beyond_limit: z.boolean().optional().default(false)
+});
+
+/**
+ * Estimates of a `clock` run.
+ */
+export const zClockEstimates = z.object({
+  clock_rate: z.number().optional(),
+  clock_rate_fixed: z.boolean(),
+  r: z.number().optional(),
+  r_squared: z.number().optional(),
+  dated_samples: z.int().gte(0),
+  outliers: z.int().gte(0)
+});
+
+/**
+ * Where the date a clock regression used for a sample came from.
+ */
+export const zClockDateSource = z.union([
+  z.literal('input'),
+  z.literal('inferred'),
+  z.literal('missing')
+]);
+
+/**
+ * One sample of a root-to-tip regression.
+ */
+export const zRootToTipPoint = z.object({
+  name: z.string(),
+  date: zYearDate.optional(),
+  date_source: zClockDateSource.optional(),
+  div: z.number(),
+  predicted_date: zYearDate,
+  residual_days: z.number().optional(),
+  outlier: z.boolean()
+});
+
+/**
+ * Line of a clock model: divergence = rate * date + intercept.
+ */
+export const zClockLine = z.object({
+  rate: z.number(),
+  intercept: z.number()
+});
+
+/**
+ * The points and line of a root-to-tip regression, as TreeTime fitted it.
+ */
+export const zRootToTip = z.object({
+  points: z.array(zRootToTipPoint),
+  line: zClockLine.optional()
+});
+
+/**
+ * Results of a `clock` run.
+ */
+export const zClockResults = z.object({
+  estimates: zClockEstimates,
+  root_to_tip: zRootToTip.optional()
+});
+
+/**
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ */
+export const zClockPreview = z.object({
+  tips: z.int().gte(0),
+  tip_limit: z.int().gte(0),
+  clock: zClockResults.optional()
+});
+
+/**
  * Identifier of one command run, unique among the jobs of a process.
  */
 export const zJobId = z.string();
@@ -294,14 +549,6 @@ export const zRunStatus = z.union([
   z.literal('cancelled'),
   z.literal('interrupted')
 ]);
-
-/**
- * A date as a decimal year and as a calendar day.
- */
-export const zYearDate = z.object({
-  year: z.number(),
-  date: z.string().optional()
-});
 
 /**
  * A number; infinities and NaN are the strings "inf", "-inf" and "nan".
@@ -595,44 +842,6 @@ export const zRelaxedClock = z.object({
 });
 
 /**
- * Where the date a clock regression used for a sample came from.
- */
-export const zClockDateSource = z.union([
-  z.literal('input'),
-  z.literal('inferred'),
-  z.literal('missing')
-]);
-
-/**
- * One sample of a root-to-tip regression.
- */
-export const zRootToTipPoint = z.object({
-  name: z.string(),
-  date: zYearDate.optional(),
-  date_source: zClockDateSource.optional(),
-  div: z.number(),
-  predicted_date: zYearDate,
-  residual_days: z.number().optional(),
-  outlier: z.boolean()
-});
-
-/**
- * Line of a clock model: divergence = rate * date + intercept.
- */
-export const zClockLine = z.object({
-  rate: z.number(),
-  intercept: z.number()
-});
-
-/**
- * The points and line of a root-to-tip regression, as TreeTime fitted it.
- */
-export const zRootToTip = z.object({
-  points: z.array(zRootToTipPoint),
-  line: zClockLine.optional()
-});
-
-/**
  * Convergence values of one iteration.
  */
 export const zIterationRow = z.object({
@@ -661,26 +870,6 @@ export const zSkylineSegment = z.object({
   end: z.number(),
   tc: zBand,
   ne: zBand
-});
-
-/**
- * Estimates of a `clock` run.
- */
-export const zClockEstimates = z.object({
-  clock_rate: z.number().optional(),
-  clock_rate_fixed: z.boolean(),
-  r: z.number().optional(),
-  r_squared: z.number().optional(),
-  dated_samples: z.int().gte(0),
-  outliers: z.int().gte(0)
-});
-
-/**
- * Results of a `clock` run.
- */
-export const zClockResults = z.object({
-  estimates: zClockEstimates,
-  root_to_tip: zRootToTip.optional()
 });
 
 /**
@@ -939,7 +1128,12 @@ export const zIndexedInput = z.strictObject({
  */
 export const zIndexedDataset = z.strictObject({
   name: z.string(),
-  inputs: z.array(zIndexedInput)
+  inputs: z.array(zIndexedInput),
+  organism: z.string(),
+  segment: z.string().optional(),
+  samples: z.int().gte(0),
+  dates: zDateSpan.optional(),
+  sequence_length: z.int().gte(0).optional()
 });
 
 /**
@@ -1197,12 +1391,6 @@ export const zPartitionSpec = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional()
 });
-
-export const zAlphabetName = z.enum([
-  'nuc',
-  'aa',
-  'aa-no-stop'
-]);
 
 export const zRerootMethod = z.union([
   z.literal('least-squares'),
@@ -2574,6 +2762,26 @@ export const zInputsCheckBody = zCheckInputsRequest;
  * Facts about the input files of a run, read with the readers the commands use.
  */
 export const zInputsCheckResponse = zInputFacts;
+
+/**
+ * Files to identify by their content, for example files that the user dropped without naming the input they fill.
+ */
+export const zFileKindsBody = zFileKindsRequest;
+
+/**
+ * The kind of each file of a request, in the order of the request.
+ */
+export const zFileKindsResponse = zFileKinds;
+
+/**
+ * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
+ */
+export const zClockPreviewBody = zClockPreviewRequest;
+
+/**
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ */
+export const zClockPreviewResponse = zClockPreview;
 
 /**
  * Runs, newest first, and the number of runs computing now.

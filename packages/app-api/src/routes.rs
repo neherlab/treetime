@@ -15,6 +15,7 @@ use app_backend::bridge::error::ErrorCode;
 use app_backend::bridge::service::AppService;
 use app_backend::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_backend::check_inputs::{CheckInputsRequest, InputFacts};
+use app_backend::clock_preview::{ClockPreview, ClockPreviewRequest};
 use app_backend::file_kinds::{FileKinds, FileKindsRequest};
 use app_backend::job::JobId;
 use app_backend::results::auspice::AuspiceDocument;
@@ -184,6 +185,15 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         op.id("fileKinds").description(
           "The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with \
            the readers the commands use, or `unknown` with the reason.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/clock-preview",
+      post_with(clock_preview, |op| {
+        op.id("clockPreview").description(
+          "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run \
+           computes it, without a run; trees above the tip limit only on request.",
         )
       }),
     )
@@ -363,6 +373,15 @@ async fn file_kinds(
   ApiJson(request): ApiJson<FileKindsRequest>,
 ) -> Result<ApiJson<FileKinds>, AppError> {
   call(&state, move |service| service.file_kinds(&request))
+    .await
+    .map(ApiJson)
+}
+
+async fn clock_preview(
+  State(state): State<Arc<AppState>>,
+  ApiJson(request): ApiJson<ClockPreviewRequest>,
+) -> Result<ApiJson<ClockPreview>, AppError> {
+  call(&state, move |service| service.clock_preview(request))
     .await
     .map(ApiJson)
 }
