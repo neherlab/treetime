@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::sparse;
-  use crate::clock_preview::{CLOCK_PREVIEW_TIP_LIMIT, ClockPreview, ClockPreviewRequest, clock_preview};
+  use crate::clock_preview::{CLOCK_PREVIEW_TIP_LIMIT, ClockPreviewRequest, PreviewRoot, clock_preview};
+  use crate::results::auspice::run_auspice;
   use crate::results::run_results::{CommandResults, run_results};
   use crate::runs::manager::RunManager;
   use app_commands::command::AppCommand;
-  use helpers::{data, finished_run, star_dataset};
+  use helpers::{clades, data, finished_run, star_dataset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -40,13 +41,24 @@ mod tests {
     })
     .unwrap();
 
+    let run_tree = run_auspice(&runs, &id).unwrap();
+    let tree = preview.tree.unwrap();
+
     assert_eq!(
-      ClockPreview {
-        tips: 20,
-        tip_limit: CLOCK_PREVIEW_TIP_LIMIT,
-        clock: Some(expected),
-      },
-      preview
+      (
+        20,
+        CLOCK_PREVIEW_TIP_LIMIT,
+        Some(expected),
+        PreviewRoot::Regression,
+        clades(&run_tree.0.tree)
+      ),
+      (
+        preview.tips,
+        preview.tip_limit,
+        preview.clock,
+        tree.root,
+        clades(&tree.auspice.0.tree)
+      )
     );
   }
 
@@ -69,20 +81,52 @@ mod tests {
     })
     .unwrap();
     assert_eq!(
-      (tips, CLOCK_PREVIEW_TIP_LIMIT, computed),
-      (preview.tips, preview.tip_limit, preview.clock.is_some())
+      (tips, CLOCK_PREVIEW_TIP_LIMIT, computed, computed),
+      (
+        preview.tips,
+        preview.tip_limit,
+        preview.clock.is_some(),
+        preview.tree.is_some()
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_metadata( AppCommand::Timetree,  json!({ "tree": data("zika/20/tree.nwk") }))]
+  #[case::without_dates(    AppCommand::Ancestral, json!({ "tree": data("zika/20/tree.nwk"), "alignment": [data("zika/20/aln.fasta.xz")] }))]
+  #[trace]
+  fn test_clock_preview_without_a_regression_draws_the_input_tree(#[case] command: AppCommand, #[case] draft: Value) {
+    let preview = clock_preview(&ClockPreviewRequest {
+      command,
+      config: sparse(draft),
+      beyond_limit: false,
+    })
+    .unwrap();
+    let tree = preview.tree.unwrap();
+    let root = &tree.auspice.0.tree;
+
+    assert_eq!(
+      (20, true, PreviewRoot::Input, 20, Some(0.0)),
+      (
+        preview.tips,
+        preview.clock.is_none(),
+        tree.root,
+        clades(root).iter().map(Vec::len).max().unwrap_or(0),
+        root.node_attrs.div
+      )
     );
   }
 
   #[test]
-  fn test_clock_preview_needs_the_metadata() {
+  fn test_clock_preview_needs_a_tree() {
     assert_error!(
       clock_preview(&ClockPreviewRequest {
         command: AppCommand::Timetree,
-        config: sparse(json!({ "tree": data("zika/20/tree.nwk") })),
+        config: sparse(json!({ "metadata": data("zika/20/metadata.tsv") })),
         beyond_limit: false,
       }),
-      "a clock preview needs the metadata with the sampling dates"
+      "a clock preview needs a tree"
     );
   }
 
@@ -95,9 +139,11 @@ mod tests {
     use itertools::Itertools;
     use pretty_assertions::assert_eq;
     use serde_json::Value;
+    use std::collections::BTreeSet;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
+    use treetime_io::auspice_types::AuspiceTreeNode;
     use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn finished_run(runs: &Arc<RunManager>, config: Value) -> JobId {
@@ -139,6 +185,26 @@ mod tests {
       fs::write(&tree, format!("({branches});\n")).unwrap();
       fs::write(&metadata, format!("name\tdate\n{rows}")).unwrap();
       (tree, metadata)
+    }
+
+    pub(super) fn clades(node: &AuspiceTreeNode) -> BTreeSet<Vec<String>> {
+      let mut clades = BTreeSet::new();
+      collect_clades(node, &mut clades);
+      clades
+    }
+
+    fn collect_clades(node: &AuspiceTreeNode, clades: &mut BTreeSet<Vec<String>>) -> Vec<String> {
+      if node.children.is_empty() {
+        return vec![node.name.clone()];
+      }
+      let tips = node
+        .children
+        .iter()
+        .flat_map(|child| collect_clades(child, clades))
+        .sorted()
+        .collect_vec();
+      clades.insert(tips.clone());
+      tips
     }
 
     pub(super) fn data(path: &str) -> PathBuf {

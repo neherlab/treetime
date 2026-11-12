@@ -62,7 +62,7 @@ const FINISHED_RECORD = {
       names: ["A"],
     },
   ],
-  error: { message: "When running clock", causes: ["no dates"] },
+  error: { message: "When running clock", causes: ["no dates"], settings: [] },
 };
 
 const TERMINAL_EVENTS = [

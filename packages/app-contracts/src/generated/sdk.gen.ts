@@ -108,7 +108,7 @@ export const fileKinds = <ThrowOnError extends boolean = false>(options: Options
 });
 
 /**
- * The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run; trees above the tip limit only on request.
+ * The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.
  */
 export const clockPreview = <ThrowOnError extends boolean = false>(options: Options<ClockPreviewData, ThrowOnError>): RequestResult<ClockPreviewResponses, ClockPreviewErrors, ThrowOnError> => (options.client ?? client).post<ClockPreviewResponses, ClockPreviewErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({

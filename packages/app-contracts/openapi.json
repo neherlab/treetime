@@ -199,7 +199,7 @@
     },
     "/api/clock-preview": {
       "post": {
-        "description": "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run; trees above the tip limit only on request.",
+        "description": "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.",
         "operationId": "clockPreview",
         "requestBody": {
           "description": "The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.",
@@ -224,7 +224,7 @@
             }
           },
           "200": {
-            "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.",
+            "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2861,7 +2861,7 @@
         ]
       },
       "ClockPreview": {
-        "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.",
+        "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.",
         "type": "object",
         "properties": {
           "tips": {
@@ -2877,8 +2877,13 @@
             "minimum": 0
           },
           "clock": {
-            "description": "Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does\nnot set `beyond_limit`.",
+            "description": "Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does\nnot set `beyond_limit`, when the draft has no metadata, and when the draft's command uses no dates.",
             "$ref": "#/components/schemas/ClockResults",
+            "x-unset": true
+          },
+          "tree": {
+            "description": "The tree in divergence units, without dates; absent when the tree has more tips than `tip_limit` and the request\ndoes not set `beyond_limit`.",
+            "$ref": "#/components/schemas/PreviewTree",
             "x-unset": true
           }
         },
@@ -3149,6 +3154,44 @@
           "rate",
           "intercept"
         ]
+      },
+      "PreviewTree": {
+        "description": "The tree of a draft, as the preview draws it.",
+        "type": "object",
+        "properties": {
+          "root": {
+            "description": "Where the root of the tree comes from.",
+            "$ref": "#/components/schemas/PreviewRoot"
+          },
+          "auspice": {
+            "description": "The tree as an Auspice document, with the divergence of every node and no dates.",
+            "$ref": "#/components/schemas/AuspiceDocument"
+          }
+        },
+        "required": [
+          "root",
+          "auspice"
+        ]
+      },
+      "PreviewRoot": {
+        "description": "Where the root of a preview tree comes from.",
+        "oneOf": [
+          {
+            "description": "The root that the root-to-tip regression places, as in `clock`.",
+            "type": "string",
+            "const": "regression"
+          },
+          {
+            "description": "The root of the input tree file, because the preview runs no regression.",
+            "type": "string",
+            "const": "input"
+          }
+        ]
+      },
+      "AuspiceDocument": {
+        "description": "Auspice JSON of a run, with the color scales the app displays.",
+        "type": "object",
+        "additionalProperties": true
       },
       "RunList": {
         "description": "Runs, newest first, and the number of runs computing now.",
@@ -3610,11 +3653,19 @@
             "items": {
               "type": "string"
             }
+          },
+          "settings": {
+            "description": "Keys of the settings whose command-line flags the error and its causes name, in the order they name them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "message",
-          "causes"
+          "causes",
+          "settings"
         ]
       },
       "UpdateRunRequest": {
@@ -4608,11 +4659,6 @@
           "path",
           "message"
         ]
-      },
-      "AuspiceDocument": {
-        "description": "Auspice JSON of a run, with the color scales the app displays.",
-        "type": "object",
-        "additionalProperties": true
       },
       "RunComparison": {
         "description": "Comparison of two runs: their settings and their results.",
@@ -5878,6 +5924,13 @@
               "type": "string"
             }
           },
+          "sections": {
+            "description": "Sections of the settings form in display order, one per purpose: the settings of the purpose that the app does not\nset, by group.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingSection"
+            }
+          },
           "main_rows": {
             "description": "The settings the form shows first, in rows of settings that it edits together, in the order it shows them.",
             "type": "array",
@@ -5907,6 +5960,7 @@
           "inputs",
           "uses_dates",
           "groups",
+          "sections",
           "main_rows",
           "choices",
           "settings"
@@ -5971,6 +6025,32 @@
             "type": "string",
             "const": "optional"
           }
+        ]
+      },
+      "SettingSection": {
+        "description": "One section of the settings form: the settings of one purpose.",
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "description": "Purpose of the settings of the section.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "title": {
+            "description": "Heading of the section, for example `Output format`.",
+            "type": "string"
+          },
+          "groups": {
+            "description": "Groups of the section, in the order of `groups`; each has a setting of the purpose that the app does not set.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "purpose",
+          "title",
+          "groups"
         ]
       },
       "MainSettingRow": {
@@ -6192,6 +6272,10 @@
             "description": "What the setting is for, which places it in the form.",
             "$ref": "#/components/schemas/SettingPurpose"
           },
+          "set_by_app": {
+            "description": "Whether the app sets the setting for every run, as it does for the output files and their selection, so that\nthe form does not offer it and comparisons of configurations skip it.",
+            "type": "boolean"
+          },
           "role": {
             "description": "What the setting names: a file, or a value.",
             "$ref": "#/components/schemas/SettingRole"
@@ -6274,6 +6358,7 @@
           "flag",
           "group",
           "purpose",
+          "set_by_app",
           "role",
           "kind",
           "nullable",
@@ -6370,6 +6455,10 @@
             "description": "The value, as the configuration spells it.",
             "type": "string"
           },
+          "label": {
+            "description": "Name of the value as the form shows it, for example `Least squares`.",
+            "type": "string"
+          },
           "help": {
             "description": "Description of the value, when it has one.",
             "type": "string"
@@ -6377,6 +6466,7 @@
         },
         "required": [
           "value",
+          "label",
           "help"
         ]
       },

@@ -193,7 +193,7 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       post_with(clock_preview, |op| {
         op.id("clockPreview").description(
           "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run \
-           computes it, without a run; trees above the tip limit only on request.",
+           computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.",
         )
       }),
     )

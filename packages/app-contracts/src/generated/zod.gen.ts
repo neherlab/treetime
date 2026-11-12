@@ -557,6 +557,27 @@ export const zRootToTip = z.object({
 });
 
 /**
+ * Where the root of a preview tree comes from.
+ */
+export const zPreviewRoot = z.union([
+  z.literal('regression'),
+  z.literal('input')
+]);
+
+/**
+ * Auspice JSON of a run, with the color scales the app displays.
+ */
+export const zAuspiceDocument = z.record(z.string(), z.unknown());
+
+/**
+ * The tree of a draft, as the preview draws it.
+ */
+export const zPreviewTree = z.object({
+  root: zPreviewRoot,
+  auspice: zAuspiceDocument
+});
+
+/**
  * State of a run.
  */
 export const zRunStatus = z.union([
@@ -724,7 +745,8 @@ export const zRunWarning = z.object({
  */
 export const zRunError = z.object({
   message: z.string(),
-  causes: z.array(z.string())
+  causes: z.array(z.string()),
+  settings: z.array(z.string())
 });
 
 /**
@@ -947,11 +969,6 @@ export const zOutputProblem = z.object({
   path: z.string(),
   message: z.string()
 });
-
-/**
- * Auspice JSON of a run, with the color scales the app displays.
- */
-export const zAuspiceDocument = z.record(z.string(), z.unknown());
 
 /**
  * Changes of the main estimates from the first run to the second.
@@ -1276,6 +1293,15 @@ export const zInputSlot = z.object({
 });
 
 /**
+ * One section of the settings form: the settings of one purpose.
+ */
+export const zSettingSection = z.object({
+  purpose: zSettingPurpose,
+  title: z.string(),
+  groups: z.array(z.string())
+});
+
+/**
  * One setting of a row of the main settings.
  */
 export const zRowSetting = z.object({
@@ -1351,6 +1377,7 @@ export const zSettingKind = z.union([
  */
 export const zSettingOption = z.object({
   value: z.string(),
+  label: z.string(),
   help: z.string()
 });
 
@@ -1388,6 +1415,7 @@ export const zSettingSpec = z.object({
   flag: z.string(),
   group: z.string(),
   purpose: zSettingPurpose,
+  set_by_app: z.boolean(),
   role: zSettingRole,
   kind: zSettingKind,
   nullable: z.boolean(),
@@ -2089,12 +2117,13 @@ export const zClockResults = z.object({
 });
 
 /**
- * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.
  */
 export const zClockPreview = z.object({
   tips: z.int().gte(0),
   tip_limit: z.int().gte(0),
-  clock: zClockResults.optional()
+  clock: zClockResults.optional(),
+  tree: zPreviewTree.optional()
 });
 
 export const zRunRecordTimetree = z.object({
@@ -2828,6 +2857,7 @@ export const zCommandSettings = z.object({
   inputs: z.array(zInputSlot),
   uses_dates: z.boolean(),
   groups: z.array(z.string()),
+  sections: z.array(zSettingSection),
   main_rows: z.array(zMainSettingRow),
   choices: z.array(zSettingChoice),
   settings: z.array(zSettingSpec)
@@ -2888,7 +2918,7 @@ export const zFileKindsResponse = zFileKinds;
 export const zClockPreviewBody = zClockPreviewRequest;
 
 /**
- * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.
  */
 export const zClockPreviewResponse = zClockPreview;
 

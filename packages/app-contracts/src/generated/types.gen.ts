@@ -866,7 +866,7 @@ export type ClockPreviewRequest = {
 };
 
 /**
- * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.
  */
 export type ClockPreview = {
   /**
@@ -879,9 +879,14 @@ export type ClockPreview = {
   tip_limit: number;
   /**
    * Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does
-   * not set `beyond_limit`.
+   * not set `beyond_limit`, when the draft has no metadata, and when the draft's command uses no dates.
    */
   clock?: ClockResults;
+  /**
+   * The tree in divergence units, without dates; absent when the tree has more tips than `tip_limit` and the request
+   * does not set `beyond_limit`.
+   */
+  tree?: PreviewTree;
 };
 
 /**
@@ -1041,6 +1046,32 @@ export type ClockLine = {
    * Divergence at year 0.
    */
   intercept: number;
+};
+
+/**
+ * The tree of a draft, as the preview draws it.
+ */
+export type PreviewTree = {
+  /**
+   * Where the root of the tree comes from.
+   */
+  root: PreviewRoot;
+  /**
+   * The tree as an Auspice document, with the divergence of every node and no dates.
+   */
+  auspice: AuspiceDocument;
+};
+
+/**
+ * Where the root of a preview tree comes from.
+ */
+export type PreviewRoot = 'regression' | 'input';
+
+/**
+ * Auspice JSON of a run, with the color scales the app displays.
+ */
+export type AuspiceDocument = {
+  [key: string]: unknown;
 };
 
 /**
@@ -1309,6 +1340,10 @@ export type RunError = {
    * The errors that caused `message`, outermost first.
    */
   causes: Array<string>;
+  /**
+   * Keys of the settings whose command-line flags the error and its causes name, in the order they name them.
+   */
+  settings: Array<string>;
 };
 
 /**
@@ -1971,13 +2006,6 @@ export type OutputProblem = {
    * Why the file could not be read.
    */
   message: string;
-};
-
-/**
- * Auspice JSON of a run, with the color scales the app displays.
- */
-export type AuspiceDocument = {
-  [key: string]: unknown;
 };
 
 /**
@@ -2810,6 +2838,11 @@ export type CommandSettings = {
    */
   groups: Array<string>;
   /**
+   * Sections of the settings form in display order, one per purpose: the settings of the purpose that the app does not
+   * set, by group.
+   */
+  sections: Array<SettingSection>;
+  /**
    * The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
    */
   main_rows: Array<MainSettingRow>;
@@ -2857,6 +2890,24 @@ export type InputSlot = {
  * How much a run of the app needs an input file.
  */
 export type InputNeed = 'required' | 'recommended' | 'optional';
+
+/**
+ * One section of the settings form: the settings of one purpose.
+ */
+export type SettingSection = {
+  /**
+   * Purpose of the settings of the section.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Heading of the section, for example `Output format`.
+   */
+  title: string;
+  /**
+   * Groups of the section, in the order of `groups`; each has a setting of the purpose that the app does not set.
+   */
+  groups: Array<string>;
+};
 
 /**
  * One row of the main settings: one or more settings that the form shows and edits together.
@@ -3011,6 +3062,11 @@ export type SettingSpec = {
    */
   purpose: SettingPurpose;
   /**
+   * Whether the app sets the setting for every run, as it does for the output files and their selection, so that
+   * the form does not offer it and comparisons of configurations skip it.
+   */
+  set_by_app: boolean;
+  /**
    * What the setting names: a file, or a value.
    */
   role: SettingRole;
@@ -3088,6 +3144,10 @@ export type SettingOption = {
    * The value, as the configuration spells it.
    */
   value: string;
+  /**
+   * Name of the value as the form shows it, for example `Least squares`.
+   */
+  label: string;
   /**
    * Description of the value, when it has one.
    */
@@ -6314,7 +6374,7 @@ export type ClockPreviewError = ClockPreviewErrors[keyof ClockPreviewErrors];
 
 export type ClockPreviewResponses = {
   /**
-   * The root-to-tip regression of a draft, computed as a `clock` run computes it, without a run.
+   * The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.
    */
   200: ClockPreview;
 };

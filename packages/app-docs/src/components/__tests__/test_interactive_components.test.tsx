@@ -199,6 +199,10 @@ const SETTINGS: CommandSettings = {
   ],
   uses_dates: true,
   groups: ["Input data", "Molecular clock"],
+  sections: [
+    { purpose: "data", title: "Input data", groups: ["Input data"] },
+    { purpose: "analysis", title: "Analysis", groups: ["Molecular clock"] },
+  ],
   main_rows: [],
   choices: [],
   settings: [TREE, CLOCK_RATE, CLOCK_FILTER],
@@ -207,6 +211,7 @@ const SETTINGS: CommandSettings = {
 function spec(fields: Pick<SettingSpec, "key" | "label" | "flag" | "group"> & Partial<SettingSpec>): SettingSpec {
   return {
     purpose: "analysis",
+    set_by_app: false,
     role: "setting",
     kind: "number",
     nullable: true,

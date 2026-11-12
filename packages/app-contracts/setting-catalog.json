@@ -73,6 +73,44 @@
         "Tree ordering",
         "Reproducibility"
       ],
+      "sections": [
+        {
+          "purpose": "data",
+          "title": "Input data",
+          "groups": [
+            "Input data"
+          ]
+        },
+        {
+          "purpose": "analysis",
+          "title": "Analysis",
+          "groups": [
+            "Molecular clock",
+            "Rooting",
+            "Branch lengths",
+            "Dating",
+            "Polytomies",
+            "Coalescent prior",
+            "Substitution model",
+            "Ancestral reconstruction"
+          ]
+        },
+        {
+          "purpose": "output",
+          "title": "Output format",
+          "groups": [
+            "Output"
+          ]
+        },
+        {
+          "purpose": "ordering",
+          "title": "Tree ordering and reproducibility",
+          "groups": [
+            "Tree ordering",
+            "Reproducibility"
+          ]
+        }
+      ],
       "main_rows": [
         {
           "label": "Clock rate",
@@ -356,6 +394,7 @@
           "flag": "--alignment",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "list",
           "nullable": false,
@@ -377,6 +416,7 @@
           "flag": "--partition",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "records",
           "nullable": false,
@@ -424,34 +464,42 @@
               "options": [
                 {
                   "value": "jc69",
+                  "label": "JC69",
                   "help": ""
                 },
                 {
                   "value": "k80",
+                  "label": "K80",
                   "help": ""
                 },
                 {
                   "value": "f81",
+                  "label": "F81",
                   "help": ""
                 },
                 {
                   "value": "hky85",
+                  "label": "HKY85",
                   "help": ""
                 },
                 {
                   "value": "t92",
+                  "label": "T92",
                   "help": ""
                 },
                 {
                   "value": "tn93",
+                  "label": "TN93",
                   "help": ""
                 },
                 {
                   "value": "jtt92",
+                  "label": "JTT92",
                   "help": ""
                 },
                 {
                   "value": "infer",
+                  "label": "Infer GTR",
                   "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
                 }
               ],
@@ -511,6 +559,7 @@
           "flag": "--tree",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -531,56 +580,69 @@
           "flag": "--newick-dialect",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "classic,plain",
+              "label": "Classic Newick, plain",
               "help": ""
             },
             {
               "value": "classic,beast",
+              "label": "Classic Newick, BEAST",
               "help": ""
             },
             {
               "value": "classic,nhx",
+              "label": "Classic Newick, NHX",
               "help": ""
             },
             {
               "value": "classic,mrbayes",
+              "label": "Classic Newick, MrBayes",
               "help": ""
             },
             {
               "value": "enewick,plain",
+              "label": "Extended Newick, plain",
               "help": ""
             },
             {
               "value": "enewick,beast",
+              "label": "Extended Newick, BEAST",
               "help": ""
             },
             {
               "value": "enewick,nhx",
+              "label": "Extended Newick, NHX",
               "help": ""
             },
             {
               "value": "enewick,mrbayes",
+              "label": "Extended Newick, MrBayes",
               "help": ""
             },
             {
               "value": "rich,plain",
+              "label": "Rich Newick, plain",
               "help": ""
             },
             {
               "value": "rich,beast",
+              "label": "Rich Newick, BEAST",
               "help": ""
             },
             {
               "value": "rich,nhx",
+              "label": "Rich Newick, NHX",
               "help": ""
             },
             {
               "value": "rich,mrbayes",
+              "label": "Rich Newick, MrBayes",
               "help": ""
             }
           ],
@@ -601,6 +663,7 @@
           "flag": "--allow-missing-sequences",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -622,6 +685,7 @@
           "flag": "--metadata",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -642,6 +706,7 @@
           "flag": "--metadata-id-columns",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -667,6 +732,7 @@
           "flag": "--metadata-delimiters",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -692,6 +758,7 @@
           "flag": "--date-column",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "text",
           "nullable": true,
@@ -712,6 +779,7 @@
           "flag": "--date-format",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "text",
           "nullable": false,
@@ -733,6 +801,7 @@
           "flag": "--sequence-length",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": true,
@@ -754,20 +823,24 @@
           "flag": "--alphabet",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "nuc",
+              "label": "Nucleotide",
               "help": ""
             },
             {
               "value": "aa",
+              "label": "Amino acid",
               "help": ""
             },
             {
               "value": "aa-no-stop",
+              "label": "Amino acid without stop",
               "help": ""
             }
           ],
@@ -787,6 +860,7 @@
           "flag": "--zero-based",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -808,6 +882,7 @@
           "flag": "--clock-rate",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -830,6 +905,7 @@
           "flag": "--clock-std-dev",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -850,6 +926,7 @@
           "flag": "--relax",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -877,6 +954,7 @@
           "flag": "--clock-filter",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": false,
@@ -898,6 +976,7 @@
           "flag": "--allow-negative-rate",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -919,6 +998,7 @@
           "flag": "--prune-filtered-tips",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -940,6 +1020,7 @@
           "flag": "--prune-undated-tips",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -961,6 +1042,7 @@
           "flag": "--keep-tips",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -982,6 +1064,7 @@
           "flag": "--keep-tips-file",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -1002,24 +1085,29 @@
           "flag": "--reroot",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "least-squares",
+              "label": "Least squares",
               "help": "Minimizes the residuals of the root-to-tip regression on the sampling dates"
             },
             {
               "value": "min-dev",
+              "label": "Minimum deviation",
               "help": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint"
             },
             {
               "value": "oldest",
+              "label": "Oldest tip",
               "help": "Roots at the middle of the branch above the oldest dated tip"
             },
             {
               "value": "midpoint",
+              "label": "Midpoint",
               "help": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips"
             }
           ],
@@ -1042,6 +1130,7 @@
           "flag": "--outgroup",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -1070,6 +1159,7 @@
           "flag": "--keep-root",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1094,20 +1184,24 @@
           "flag": "--branch-length-mode",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "auto",
+              "label": "Automatic",
               "help": "`input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site, `marginal` otherwise"
             },
             {
               "value": "input",
+              "label": "Input",
               "help": "Keep the branch lengths of the input tree"
             },
             {
               "value": "marginal",
+              "label": "Marginal",
               "help": "Estimate the branch lengths from the alignment by marginal ancestral reconstruction"
             }
           ],
@@ -1128,6 +1222,7 @@
           "flag": "--max-iter",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": false,
@@ -1150,6 +1245,7 @@
           "flag": "--no-collapse-short-branches",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1171,6 +1267,7 @@
           "flag": "--no-indels",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1192,6 +1289,7 @@
           "flag": "--confidence",
           "group": "Dating",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1213,6 +1311,7 @@
           "flag": "--max-grid-points",
           "group": "Dating",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": true,
@@ -1236,6 +1335,7 @@
           "flag": "--keep-polytomies",
           "group": "Polytomies",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1257,16 +1357,19 @@
           "flag": "--coalescent",
           "group": "Coalescent prior",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum-or-text",
           "nullable": true,
           "options": [
             {
               "value": "opt",
+              "label": "Optimized constant",
               "help": ""
             },
             {
               "value": "skyline",
+              "label": "Skyline",
               "help": ""
             }
           ],
@@ -1288,6 +1391,7 @@
           "flag": "--n-skyline",
           "group": "Coalescent prior",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": true,
@@ -1310,6 +1414,7 @@
           "flag": "--skyline-stiffness",
           "group": "Coalescent prior",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -1331,6 +1436,7 @@
           "flag": "--coalescent-confidence",
           "group": "Coalescent prior",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -1352,6 +1458,7 @@
           "flag": "--gen-per-year",
           "group": "Coalescent prior",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -1373,40 +1480,49 @@
           "flag": "--model",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "jc69",
+              "label": "JC69",
               "help": ""
             },
             {
               "value": "k80",
+              "label": "K80",
               "help": ""
             },
             {
               "value": "f81",
+              "label": "F81",
               "help": ""
             },
             {
               "value": "hky85",
+              "label": "HKY85",
               "help": ""
             },
             {
               "value": "t92",
+              "label": "T92",
               "help": ""
             },
             {
               "value": "tn93",
+              "label": "TN93",
               "help": ""
             },
             {
               "value": "jtt92",
+              "label": "JTT92",
               "help": ""
             },
             {
               "value": "infer",
+              "label": "Infer GTR",
               "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
             }
           ],
@@ -1429,6 +1545,7 @@
           "flag": "--model-params",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -1452,16 +1569,19 @@
           "flag": "--partition-rates",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "estimate",
+              "label": "Estimate",
               "help": "Estimate one relative rate per partition, normalized to a site-weighted mean of 1."
             },
             {
               "value": "equal",
+              "label": "Equal",
               "help": "Fix the relative rate of every partition at 1."
             }
           ],
@@ -1482,20 +1602,24 @@
           "flag": "--representation",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "auto",
+              "label": "Automatic",
               "help": "Let TreeTime choose the representation; it chooses sparse"
             },
             {
               "value": "dense",
+              "label": "Dense",
               "help": "Probabilities of every state at every alignment position"
             },
             {
               "value": "sparse",
+              "label": "Sparse",
               "help": "Only the variable positions"
             }
           ],
@@ -1516,20 +1640,24 @@
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "only-terminal",
+              "label": "Only terminal gaps",
               "help": ""
             },
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "none",
+              "label": "None",
               "help": ""
             }
           ],
@@ -1550,6 +1678,7 @@
           "flag": "--include-leaves",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1571,6 +1700,7 @@
           "flag": "--reconstruct-tip-states",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1592,6 +1722,7 @@
           "flag": "--report-ambiguous",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1613,6 +1744,7 @@
           "flag": "--impute-missing-data",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -1634,6 +1766,7 @@
           "flag": "--output-all",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1654,20 +1787,24 @@
           "flag": "--newick-annotations",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "plain",
+              "label": "Plain",
               "help": ""
             },
             {
               "value": "beast",
+              "label": "BEAST",
               "help": ""
             },
             {
               "value": "nhx",
+              "label": "NHX",
               "help": ""
             }
           ],
@@ -1688,6 +1825,7 @@
           "flag": "--output-tree-nwk",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1708,6 +1846,7 @@
           "flag": "--output-tree-nexus",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1728,6 +1867,7 @@
           "flag": "--output-tree-auspice",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1748,6 +1888,7 @@
           "flag": "--output-tree-mat-pb",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1768,6 +1909,7 @@
           "flag": "--output-tree-mat-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1788,6 +1930,7 @@
           "flag": "--output-tree-graph-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1808,6 +1951,7 @@
           "flag": "--output-tree-dot",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1828,76 +1972,94 @@
           "flag": "--output-selection",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "nwk",
+              "label": "Newick",
               "help": ""
             },
             {
               "value": "nexus",
+              "label": "Nexus",
               "help": ""
             },
             {
               "value": "auspice",
+              "label": "Auspice",
               "help": ""
             },
             {
               "value": "mat-pb",
+              "label": "MAT protobuf",
               "help": ""
             },
             {
               "value": "mat-json",
+              "label": "MAT JSON",
               "help": ""
             },
             {
               "value": "graph-json",
+              "label": "Graph JSON",
               "help": ""
             },
             {
               "value": "dot",
+              "label": "DOT",
               "help": ""
             },
             {
               "value": "node-data",
+              "label": "Node data",
               "help": ""
             },
             {
               "value": "model",
+              "label": "Model",
               "help": ""
             },
             {
               "value": "sequences",
+              "label": "Sequences",
               "help": ""
             },
             {
               "value": "clock-model",
+              "label": "Clock model",
               "help": ""
             },
             {
               "value": "rtt",
+              "label": "Root-to-tip",
               "help": ""
             },
             {
               "value": "dates",
+              "label": "Dates",
               "help": ""
             },
             {
               "value": "tracelog",
+              "label": "Trace log",
               "help": ""
             },
             {
               "value": "coalescent",
+              "label": "Coalescent",
               "help": ""
             },
             {
               "value": "coalescent-json",
+              "label": "Coalescent JSON",
               "help": ""
             }
           ],
@@ -1918,16 +2080,19 @@
           "flag": "--divergence-units",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mutations-per-site",
+              "label": "Mutations per site",
               "help": ""
             },
             {
               "value": "mutations",
+              "label": "Mutations",
               "help": ""
             }
           ],
@@ -1948,6 +2113,7 @@
           "flag": "--output-node-data",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1968,6 +2134,7 @@
           "flag": "--output-model",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -1988,6 +2155,7 @@
           "flag": "--output-sequences",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2008,6 +2176,7 @@
           "flag": "--output-clock-model",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2028,6 +2197,7 @@
           "flag": "--output-rtt",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2048,6 +2218,7 @@
           "flag": "--output-dates",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2068,6 +2239,7 @@
           "flag": "--output-tracelog",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2088,6 +2260,7 @@
           "flag": "--output-coalescent",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2108,6 +2281,7 @@
           "flag": "--output-coalescent-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2128,6 +2302,7 @@
           "flag": "--ambiguity-threshold",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -2149,12 +2324,14 @@
           "flag": "--ambiguity-outputs",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "sequences",
+              "label": "Sequences",
               "help": "Reconstructed nucleotide FASTA"
             }
           ],
@@ -2175,52 +2352,64 @@
           "flag": "--topology-order",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "keep",
+              "label": "Input order",
               "help": ""
             },
             {
               "value": "descendant-count",
+              "label": "Descendant count",
               "help": ""
             },
             {
               "value": "descendant-count-reverse",
+              "label": "Descendant count, reversed",
               "help": ""
             },
             {
               "value": "height",
+              "label": "Height",
               "help": ""
             },
             {
               "value": "height-reverse",
+              "label": "Height, reversed",
               "help": ""
             },
             {
               "value": "divergence",
+              "label": "Divergence",
               "help": ""
             },
             {
               "value": "divergence-reverse",
+              "label": "Divergence, reversed",
               "help": ""
             },
             {
               "value": "label",
+              "label": "Label",
               "help": ""
             },
             {
               "value": "label-reverse",
+              "label": "Label, reversed",
               "help": ""
             },
             {
               "value": "target-order",
+              "label": "Target order",
               "help": ""
             },
             {
               "value": "target-order-reverse",
+              "label": "Target order, reversed",
               "help": ""
             }
           ],
@@ -2240,6 +2429,7 @@
           "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -2262,6 +2452,7 @@
           "flag": "--topology-order-list",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -2284,16 +2475,19 @@
           "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mean",
+              "label": "Mean",
               "help": ""
             },
             {
               "value": "median",
+              "label": "Median",
               "help": ""
             }
           ],
@@ -2314,6 +2508,7 @@
           "flag": "--seed",
           "group": "Reproducibility",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": true,
@@ -2379,6 +2574,37 @@
         "Rooting",
         "Output",
         "Tree ordering"
+      ],
+      "sections": [
+        {
+          "purpose": "data",
+          "title": "Input data",
+          "groups": [
+            "Input data"
+          ]
+        },
+        {
+          "purpose": "analysis",
+          "title": "Analysis",
+          "groups": [
+            "Molecular clock",
+            "Rooting"
+          ]
+        },
+        {
+          "purpose": "output",
+          "title": "Output format",
+          "groups": [
+            "Output"
+          ]
+        },
+        {
+          "purpose": "ordering",
+          "title": "Tree ordering and reproducibility",
+          "groups": [
+            "Tree ordering"
+          ]
+        }
       ],
       "main_rows": [
         {
@@ -2517,6 +2743,7 @@
           "flag": "--tree",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -2537,56 +2764,69 @@
           "flag": "--newick-dialect",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "classic,plain",
+              "label": "Classic Newick, plain",
               "help": ""
             },
             {
               "value": "classic,beast",
+              "label": "Classic Newick, BEAST",
               "help": ""
             },
             {
               "value": "classic,nhx",
+              "label": "Classic Newick, NHX",
               "help": ""
             },
             {
               "value": "classic,mrbayes",
+              "label": "Classic Newick, MrBayes",
               "help": ""
             },
             {
               "value": "enewick,plain",
+              "label": "Extended Newick, plain",
               "help": ""
             },
             {
               "value": "enewick,beast",
+              "label": "Extended Newick, BEAST",
               "help": ""
             },
             {
               "value": "enewick,nhx",
+              "label": "Extended Newick, NHX",
               "help": ""
             },
             {
               "value": "enewick,mrbayes",
+              "label": "Extended Newick, MrBayes",
               "help": ""
             },
             {
               "value": "rich,plain",
+              "label": "Rich Newick, plain",
               "help": ""
             },
             {
               "value": "rich,beast",
+              "label": "Rich Newick, BEAST",
               "help": ""
             },
             {
               "value": "rich,nhx",
+              "label": "Rich Newick, NHX",
               "help": ""
             },
             {
               "value": "rich,mrbayes",
+              "label": "Rich Newick, MrBayes",
               "help": ""
             }
           ],
@@ -2607,6 +2847,7 @@
           "flag": "--metadata",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -2627,6 +2868,7 @@
           "flag": "--metadata-id-columns",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -2652,6 +2894,7 @@
           "flag": "--metadata-delimiters",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -2677,6 +2920,7 @@
           "flag": "--date-column",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "text",
           "nullable": true,
@@ -2697,6 +2941,7 @@
           "flag": "--date-format",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "text",
           "nullable": false,
@@ -2718,6 +2963,7 @@
           "flag": "--clock-filter",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": false,
@@ -2739,6 +2985,7 @@
           "flag": "--allow-negative-rate",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -2760,6 +3007,7 @@
           "flag": "--prune-filtered-tips",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -2781,6 +3029,7 @@
           "flag": "--prune-undated-tips",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -2802,6 +3051,7 @@
           "flag": "--keep-tips",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -2823,6 +3073,7 @@
           "flag": "--keep-tips-file",
           "group": "Molecular clock",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -2843,24 +3094,29 @@
           "flag": "--reroot",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "least-squares",
+              "label": "Least squares",
               "help": "Minimizes the residuals of the root-to-tip regression on the sampling dates"
             },
             {
               "value": "min-dev",
+              "label": "Minimum deviation",
               "help": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint"
             },
             {
               "value": "oldest",
+              "label": "Oldest tip",
               "help": "Roots at the middle of the branch above the oldest dated tip"
             },
             {
               "value": "midpoint",
+              "label": "Midpoint",
               "help": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips"
             }
           ],
@@ -2883,6 +3139,7 @@
           "flag": "--outgroup",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -2911,6 +3168,7 @@
           "flag": "--keep-root",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -2935,6 +3193,7 @@
           "flag": "--output-all",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -2955,20 +3214,24 @@
           "flag": "--newick-annotations",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "plain",
+              "label": "Plain",
               "help": ""
             },
             {
               "value": "beast",
+              "label": "BEAST",
               "help": ""
             },
             {
               "value": "nhx",
+              "label": "NHX",
               "help": ""
             }
           ],
@@ -2989,6 +3252,7 @@
           "flag": "--output-tree-nwk",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3009,6 +3273,7 @@
           "flag": "--output-tree-nexus",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3029,6 +3294,7 @@
           "flag": "--output-tree-auspice",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3049,6 +3315,7 @@
           "flag": "--output-tree-mat-pb",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3069,6 +3336,7 @@
           "flag": "--output-tree-mat-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3089,6 +3357,7 @@
           "flag": "--output-tree-graph-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3109,6 +3378,7 @@
           "flag": "--output-tree-dot",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3129,52 +3399,64 @@
           "flag": "--output-selection",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "nwk",
+              "label": "Newick",
               "help": ""
             },
             {
               "value": "nexus",
+              "label": "Nexus",
               "help": ""
             },
             {
               "value": "auspice",
+              "label": "Auspice",
               "help": ""
             },
             {
               "value": "mat-pb",
+              "label": "MAT protobuf",
               "help": ""
             },
             {
               "value": "mat-json",
+              "label": "MAT JSON",
               "help": ""
             },
             {
               "value": "graph-json",
+              "label": "Graph JSON",
               "help": ""
             },
             {
               "value": "dot",
+              "label": "DOT",
               "help": ""
             },
             {
               "value": "clock-model",
+              "label": "Clock model",
               "help": ""
             },
             {
               "value": "rtt",
+              "label": "Root-to-tip",
               "help": ""
             },
             {
               "value": "rtt-chart",
+              "label": "Root-to-tip chart",
               "help": ""
             }
           ],
@@ -3195,6 +3477,7 @@
           "flag": "--output-clock-model",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3215,6 +3498,7 @@
           "flag": "--output-rtt",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3235,6 +3519,7 @@
           "flag": "--output-rtt-chart",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -3255,52 +3540,64 @@
           "flag": "--topology-order",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "keep",
+              "label": "Input order",
               "help": ""
             },
             {
               "value": "descendant-count",
+              "label": "Descendant count",
               "help": ""
             },
             {
               "value": "descendant-count-reverse",
+              "label": "Descendant count, reversed",
               "help": ""
             },
             {
               "value": "height",
+              "label": "Height",
               "help": ""
             },
             {
               "value": "height-reverse",
+              "label": "Height, reversed",
               "help": ""
             },
             {
               "value": "divergence",
+              "label": "Divergence",
               "help": ""
             },
             {
               "value": "divergence-reverse",
+              "label": "Divergence, reversed",
               "help": ""
             },
             {
               "value": "label",
+              "label": "Label",
               "help": ""
             },
             {
               "value": "label-reverse",
+              "label": "Label, reversed",
               "help": ""
             },
             {
               "value": "target-order",
+              "label": "Target order",
               "help": ""
             },
             {
               "value": "target-order-reverse",
+              "label": "Target order, reversed",
               "help": ""
             }
           ],
@@ -3320,6 +3617,7 @@
           "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -3342,6 +3640,7 @@
           "flag": "--topology-order-list",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -3364,16 +3663,19 @@
           "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mean",
+              "label": "Mean",
               "help": ""
             },
             {
               "value": "median",
+              "label": "Median",
               "help": ""
             }
           ],
@@ -3441,6 +3743,38 @@
         "Tree ordering",
         "Reproducibility"
       ],
+      "sections": [
+        {
+          "purpose": "data",
+          "title": "Input data",
+          "groups": [
+            "Input data"
+          ]
+        },
+        {
+          "purpose": "analysis",
+          "title": "Analysis",
+          "groups": [
+            "Substitution model",
+            "Ancestral reconstruction"
+          ]
+        },
+        {
+          "purpose": "output",
+          "title": "Output format",
+          "groups": [
+            "Output"
+          ]
+        },
+        {
+          "purpose": "ordering",
+          "title": "Tree ordering and reproducibility",
+          "groups": [
+            "Tree ordering",
+            "Reproducibility"
+          ]
+        }
+      ],
       "main_rows": [
         {
           "label": "Ancestral method",
@@ -3504,6 +3838,7 @@
           "flag": "--alignment",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "list",
           "nullable": false,
@@ -3525,6 +3860,7 @@
           "flag": "--partition",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "records",
           "nullable": false,
@@ -3572,34 +3908,42 @@
               "options": [
                 {
                   "value": "jc69",
+                  "label": "JC69",
                   "help": ""
                 },
                 {
                   "value": "k80",
+                  "label": "K80",
                   "help": ""
                 },
                 {
                   "value": "f81",
+                  "label": "F81",
                   "help": ""
                 },
                 {
                   "value": "hky85",
+                  "label": "HKY85",
                   "help": ""
                 },
                 {
                   "value": "t92",
+                  "label": "T92",
                   "help": ""
                 },
                 {
                   "value": "tn93",
+                  "label": "TN93",
                   "help": ""
                 },
                 {
                   "value": "jtt92",
+                  "label": "JTT92",
                   "help": ""
                 },
                 {
                   "value": "infer",
+                  "label": "Infer GTR",
                   "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
                 }
               ],
@@ -3659,6 +4003,7 @@
           "flag": "--tree",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -3679,56 +4024,69 @@
           "flag": "--newick-dialect",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "classic,plain",
+              "label": "Classic Newick, plain",
               "help": ""
             },
             {
               "value": "classic,beast",
+              "label": "Classic Newick, BEAST",
               "help": ""
             },
             {
               "value": "classic,nhx",
+              "label": "Classic Newick, NHX",
               "help": ""
             },
             {
               "value": "classic,mrbayes",
+              "label": "Classic Newick, MrBayes",
               "help": ""
             },
             {
               "value": "enewick,plain",
+              "label": "Extended Newick, plain",
               "help": ""
             },
             {
               "value": "enewick,beast",
+              "label": "Extended Newick, BEAST",
               "help": ""
             },
             {
               "value": "enewick,nhx",
+              "label": "Extended Newick, NHX",
               "help": ""
             },
             {
               "value": "enewick,mrbayes",
+              "label": "Extended Newick, MrBayes",
               "help": ""
             },
             {
               "value": "rich,plain",
+              "label": "Rich Newick, plain",
               "help": ""
             },
             {
               "value": "rich,beast",
+              "label": "Rich Newick, BEAST",
               "help": ""
             },
             {
               "value": "rich,nhx",
+              "label": "Rich Newick, NHX",
               "help": ""
             },
             {
               "value": "rich,mrbayes",
+              "label": "Rich Newick, MrBayes",
               "help": ""
             }
           ],
@@ -3749,6 +4107,7 @@
           "flag": "--allow-missing-sequences",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -3770,20 +4129,24 @@
           "flag": "--alphabet",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "nuc",
+              "label": "Nucleotide",
               "help": ""
             },
             {
               "value": "aa",
+              "label": "Amino acid",
               "help": ""
             },
             {
               "value": "aa-no-stop",
+              "label": "Amino acid without stop",
               "help": ""
             }
           ],
@@ -3803,6 +4166,7 @@
           "flag": "--zero-based",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -3824,6 +4188,7 @@
           "flag": "--annotation",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -3844,6 +4209,7 @@
           "flag": "--translations",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input-template",
           "kind": "text",
           "nullable": true,
@@ -3864,6 +4230,7 @@
           "flag": "--cds-selection",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -3885,40 +4252,49 @@
           "flag": "--model",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "jc69",
+              "label": "JC69",
               "help": ""
             },
             {
               "value": "k80",
+              "label": "K80",
               "help": ""
             },
             {
               "value": "f81",
+              "label": "F81",
               "help": ""
             },
             {
               "value": "hky85",
+              "label": "HKY85",
               "help": ""
             },
             {
               "value": "t92",
+              "label": "T92",
               "help": ""
             },
             {
               "value": "tn93",
+              "label": "TN93",
               "help": ""
             },
             {
               "value": "jtt92",
+              "label": "JTT92",
               "help": ""
             },
             {
               "value": "infer",
+              "label": "Infer GTR",
               "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
             }
           ],
@@ -3941,6 +4317,7 @@
           "flag": "--model-params",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -3964,16 +4341,19 @@
           "flag": "--aa-model",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "infer",
+              "label": "Infer GTR",
               "help": "Infer an amino-acid GTR from the data over the stop-inclusive alphabet. Matches augur."
             },
             {
               "value": "jtt92",
+              "label": "JTT92",
               "help": "Jones-Taylor-Thornton 1992 empirical 20-amino-acid model (no stop codon). Stop codons and any other out-of-alphabet characters in the input are mapped to the unknown state `X`."
             }
           ],
@@ -3994,16 +4374,19 @@
           "flag": "--method-anc",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "marginal",
+              "label": "Marginal",
               "help": ""
             },
             {
               "value": "parsimony",
+              "label": "Parsimony",
               "help": ""
             }
           ],
@@ -4024,20 +4407,24 @@
           "flag": "--representation",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "auto",
+              "label": "Automatic",
               "help": "Let TreeTime choose the representation; it chooses sparse"
             },
             {
               "value": "dense",
+              "label": "Dense",
               "help": "Probabilities of every state at every alignment position"
             },
             {
               "value": "sparse",
+              "label": "Sparse",
               "help": "Only the variable positions"
             }
           ],
@@ -4058,20 +4445,24 @@
           "flag": "--sample-from-profile",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "argmax",
+              "label": "Most likely state",
               "help": ""
             },
             {
               "value": "root",
+              "label": "Sample at the root",
               "help": ""
             },
             {
               "value": "all",
+              "label": "All",
               "help": ""
             }
           ],
@@ -4092,20 +4483,24 @@
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "only-terminal",
+              "label": "Only terminal gaps",
               "help": ""
             },
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "none",
+              "label": "None",
               "help": ""
             }
           ],
@@ -4126,6 +4521,7 @@
           "flag": "--include-leaves",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -4147,6 +4543,7 @@
           "flag": "--reconstruct-tip-states",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -4168,6 +4565,7 @@
           "flag": "--report-ambiguous",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -4189,6 +4587,7 @@
           "flag": "--impute-missing-data",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -4210,6 +4609,7 @@
           "flag": "--aa-root-sequence",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -4230,6 +4630,7 @@
           "flag": "--output-all",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4250,20 +4651,24 @@
           "flag": "--newick-annotations",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "plain",
+              "label": "Plain",
               "help": ""
             },
             {
               "value": "beast",
+              "label": "BEAST",
               "help": ""
             },
             {
               "value": "nhx",
+              "label": "NHX",
               "help": ""
             }
           ],
@@ -4284,6 +4689,7 @@
           "flag": "--output-tree-nwk",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4304,6 +4710,7 @@
           "flag": "--output-tree-nexus",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4324,6 +4731,7 @@
           "flag": "--output-tree-auspice",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4344,6 +4752,7 @@
           "flag": "--output-tree-mat-pb",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4364,6 +4773,7 @@
           "flag": "--output-tree-mat-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4384,6 +4794,7 @@
           "flag": "--output-tree-graph-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4404,6 +4815,7 @@
           "flag": "--output-tree-dot",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4424,56 +4836,69 @@
           "flag": "--output-selection",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "nwk",
+              "label": "Newick",
               "help": ""
             },
             {
               "value": "nexus",
+              "label": "Nexus",
               "help": ""
             },
             {
               "value": "auspice",
+              "label": "Auspice",
               "help": ""
             },
             {
               "value": "mat-pb",
+              "label": "MAT protobuf",
               "help": ""
             },
             {
               "value": "mat-json",
+              "label": "MAT JSON",
               "help": ""
             },
             {
               "value": "graph-json",
+              "label": "Graph JSON",
               "help": ""
             },
             {
               "value": "dot",
+              "label": "DOT",
               "help": ""
             },
             {
               "value": "node-data",
+              "label": "Node data",
               "help": ""
             },
             {
               "value": "model",
+              "label": "Model",
               "help": ""
             },
             {
               "value": "sequences",
+              "label": "Sequences",
               "help": ""
             },
             {
               "value": "translations",
+              "label": "Translations",
               "help": ""
             }
           ],
@@ -4494,6 +4919,7 @@
           "flag": "--output-node-data",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4514,6 +4940,7 @@
           "flag": "--output-model",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4534,6 +4961,7 @@
           "flag": "--output-sequences",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4554,6 +4982,7 @@
           "flag": "--output-translations",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -4574,6 +5003,7 @@
           "flag": "--ambiguity-threshold",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -4595,20 +5025,24 @@
           "flag": "--ambiguity-outputs",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "sequences",
+              "label": "Sequences",
               "help": "Reconstructed nucleotide FASTA"
             },
             {
               "value": "translations",
+              "label": "Translations",
               "help": "Reconstructed amino-acid FASTA of each CDS"
             },
             {
               "value": "node-data",
+              "label": "Node data",
               "help": "Node sequences in the augur node data"
             }
           ],
@@ -4629,52 +5063,64 @@
           "flag": "--topology-order",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "keep",
+              "label": "Input order",
               "help": ""
             },
             {
               "value": "descendant-count",
+              "label": "Descendant count",
               "help": ""
             },
             {
               "value": "descendant-count-reverse",
+              "label": "Descendant count, reversed",
               "help": ""
             },
             {
               "value": "height",
+              "label": "Height",
               "help": ""
             },
             {
               "value": "height-reverse",
+              "label": "Height, reversed",
               "help": ""
             },
             {
               "value": "divergence",
+              "label": "Divergence",
               "help": ""
             },
             {
               "value": "divergence-reverse",
+              "label": "Divergence, reversed",
               "help": ""
             },
             {
               "value": "label",
+              "label": "Label",
               "help": ""
             },
             {
               "value": "label-reverse",
+              "label": "Label, reversed",
               "help": ""
             },
             {
               "value": "target-order",
+              "label": "Target order",
               "help": ""
             },
             {
               "value": "target-order-reverse",
+              "label": "Target order, reversed",
               "help": ""
             }
           ],
@@ -4694,6 +5140,7 @@
           "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -4716,6 +5163,7 @@
           "flag": "--topology-order-list",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -4738,16 +5186,19 @@
           "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mean",
+              "label": "Mean",
               "help": ""
             },
             {
               "value": "median",
+              "label": "Median",
               "help": ""
             }
           ],
@@ -4768,6 +5219,7 @@
           "flag": "--seed",
           "group": "Reproducibility",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": true,
@@ -4836,6 +5288,39 @@
         "Ancestral reconstruction",
         "Output",
         "Tree ordering"
+      ],
+      "sections": [
+        {
+          "purpose": "data",
+          "title": "Input data",
+          "groups": [
+            "Input data"
+          ]
+        },
+        {
+          "purpose": "analysis",
+          "title": "Analysis",
+          "groups": [
+            "Rooting",
+            "Branch lengths",
+            "Substitution model",
+            "Ancestral reconstruction"
+          ]
+        },
+        {
+          "purpose": "output",
+          "title": "Output format",
+          "groups": [
+            "Output"
+          ]
+        },
+        {
+          "purpose": "ordering",
+          "title": "Tree ordering and reproducibility",
+          "groups": [
+            "Tree ordering"
+          ]
+        }
       ],
       "main_rows": [
         {
@@ -5010,6 +5495,7 @@
           "flag": "--alignment",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "list",
           "nullable": false,
@@ -5031,6 +5517,7 @@
           "flag": "--partition",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "records",
           "nullable": false,
@@ -5078,34 +5565,42 @@
               "options": [
                 {
                   "value": "jc69",
+                  "label": "JC69",
                   "help": ""
                 },
                 {
                   "value": "k80",
+                  "label": "K80",
                   "help": ""
                 },
                 {
                   "value": "f81",
+                  "label": "F81",
                   "help": ""
                 },
                 {
                   "value": "hky85",
+                  "label": "HKY85",
                   "help": ""
                 },
                 {
                   "value": "t92",
+                  "label": "T92",
                   "help": ""
                 },
                 {
                   "value": "tn93",
+                  "label": "TN93",
                   "help": ""
                 },
                 {
                   "value": "jtt92",
+                  "label": "JTT92",
                   "help": ""
                 },
                 {
                   "value": "infer",
+                  "label": "Infer GTR",
                   "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
                 }
               ],
@@ -5165,6 +5660,7 @@
           "flag": "--tree",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -5185,56 +5681,69 @@
           "flag": "--newick-dialect",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "classic,plain",
+              "label": "Classic Newick, plain",
               "help": ""
             },
             {
               "value": "classic,beast",
+              "label": "Classic Newick, BEAST",
               "help": ""
             },
             {
               "value": "classic,nhx",
+              "label": "Classic Newick, NHX",
               "help": ""
             },
             {
               "value": "classic,mrbayes",
+              "label": "Classic Newick, MrBayes",
               "help": ""
             },
             {
               "value": "enewick,plain",
+              "label": "Extended Newick, plain",
               "help": ""
             },
             {
               "value": "enewick,beast",
+              "label": "Extended Newick, BEAST",
               "help": ""
             },
             {
               "value": "enewick,nhx",
+              "label": "Extended Newick, NHX",
               "help": ""
             },
             {
               "value": "enewick,mrbayes",
+              "label": "Extended Newick, MrBayes",
               "help": ""
             },
             {
               "value": "rich,plain",
+              "label": "Rich Newick, plain",
               "help": ""
             },
             {
               "value": "rich,beast",
+              "label": "Rich Newick, BEAST",
               "help": ""
             },
             {
               "value": "rich,nhx",
+              "label": "Rich Newick, NHX",
               "help": ""
             },
             {
               "value": "rich,mrbayes",
+              "label": "Rich Newick, MrBayes",
               "help": ""
             }
           ],
@@ -5255,6 +5764,7 @@
           "flag": "--allow-missing-sequences",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5276,20 +5786,24 @@
           "flag": "--alphabet",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "nuc",
+              "label": "Nucleotide",
               "help": ""
             },
             {
               "value": "aa",
+              "label": "Amino acid",
               "help": ""
             },
             {
               "value": "aa-no-stop",
+              "label": "Amino acid without stop",
               "help": ""
             }
           ],
@@ -5309,6 +5823,7 @@
           "flag": "--zero-based",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5330,16 +5845,19 @@
           "flag": "--reroot",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "min-dev",
+              "label": "Minimum deviation",
               "help": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint"
             },
             {
               "value": "midpoint",
+              "label": "Midpoint",
               "help": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips"
             }
           ],
@@ -5362,6 +5880,7 @@
           "flag": "--outgroup",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -5390,6 +5909,7 @@
           "flag": "--keep-root",
           "group": "Rooting",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5414,6 +5934,7 @@
           "flag": "--max-iter",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "integer",
           "nullable": false,
@@ -5436,6 +5957,7 @@
           "flag": "--tolerance",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": false,
@@ -5457,6 +5979,7 @@
           "flag": "--damping",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": false,
@@ -5478,20 +6001,24 @@
           "flag": "--initial-branch-lengths",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "auto",
+              "label": "Automatic",
               "help": "Estimate only the branches with a missing or invalid length, and keep the valid input lengths"
             },
             {
               "value": "always",
+              "label": "Always",
               "help": "Estimate every branch length, replacing the input lengths"
             },
             {
               "value": "never",
+              "label": "Never",
               "help": "Keep the input branch lengths; the run fails when a branch has a missing or invalid length"
             }
           ],
@@ -5512,16 +6039,19 @@
           "flag": "--optimizer",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "brent",
+              "label": "Brent",
               "help": "Brent's method on sqrt(t)"
             },
             {
               "value": "newton",
+              "label": "Newton",
               "help": "Newton-Raphson on sqrt(t)"
             }
           ],
@@ -5542,6 +6072,7 @@
           "flag": "--no-collapse-short-branches",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5563,6 +6094,7 @@
           "flag": "--no-merge-shared-mutations",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5584,6 +6116,7 @@
           "flag": "--no-hoist-reversions",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5605,6 +6138,7 @@
           "flag": "--no-indels",
           "group": "Branch lengths",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -5626,40 +6160,49 @@
           "flag": "--model",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "jc69",
+              "label": "JC69",
               "help": ""
             },
             {
               "value": "k80",
+              "label": "K80",
               "help": ""
             },
             {
               "value": "f81",
+              "label": "F81",
               "help": ""
             },
             {
               "value": "hky85",
+              "label": "HKY85",
               "help": ""
             },
             {
               "value": "t92",
+              "label": "T92",
               "help": ""
             },
             {
               "value": "tn93",
+              "label": "TN93",
               "help": ""
             },
             {
               "value": "jtt92",
+              "label": "JTT92",
               "help": ""
             },
             {
               "value": "infer",
+              "label": "Infer GTR",
               "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
             }
           ],
@@ -5682,6 +6225,7 @@
           "flag": "--model-params",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -5705,16 +6249,19 @@
           "flag": "--partition-rates",
           "group": "Substitution model",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "estimate",
+              "label": "Estimate",
               "help": "Estimate one relative rate per partition, normalized to a site-weighted mean of 1."
             },
             {
               "value": "equal",
+              "label": "Equal",
               "help": "Fix the relative rate of every partition at 1."
             }
           ],
@@ -5735,20 +6282,24 @@
           "flag": "--representation",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "auto",
+              "label": "Automatic",
               "help": "Let TreeTime choose the representation; it chooses sparse"
             },
             {
               "value": "dense",
+              "label": "Dense",
               "help": "Probabilities of every state at every alignment position"
             },
             {
               "value": "sparse",
+              "label": "Sparse",
               "help": "Only the variable positions"
             }
           ],
@@ -5769,20 +6320,24 @@
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "only-terminal",
+              "label": "Only terminal gaps",
               "help": ""
             },
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "none",
+              "label": "None",
               "help": ""
             }
           ],
@@ -5803,6 +6358,7 @@
           "flag": "--output-all",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5823,20 +6379,24 @@
           "flag": "--newick-annotations",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "plain",
+              "label": "Plain",
               "help": ""
             },
             {
               "value": "beast",
+              "label": "BEAST",
               "help": ""
             },
             {
               "value": "nhx",
+              "label": "NHX",
               "help": ""
             }
           ],
@@ -5857,6 +6417,7 @@
           "flag": "--output-tree-nwk",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5877,6 +6438,7 @@
           "flag": "--output-tree-nexus",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5897,6 +6459,7 @@
           "flag": "--output-tree-auspice",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5917,6 +6480,7 @@
           "flag": "--output-tree-mat-pb",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5937,6 +6501,7 @@
           "flag": "--output-tree-mat-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5957,6 +6522,7 @@
           "flag": "--output-tree-graph-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5977,6 +6543,7 @@
           "flag": "--output-tree-dot",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -5997,48 +6564,59 @@
           "flag": "--output-selection",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "nwk",
+              "label": "Newick",
               "help": ""
             },
             {
               "value": "nexus",
+              "label": "Nexus",
               "help": ""
             },
             {
               "value": "auspice",
+              "label": "Auspice",
               "help": ""
             },
             {
               "value": "mat-pb",
+              "label": "MAT protobuf",
               "help": ""
             },
             {
               "value": "mat-json",
+              "label": "MAT JSON",
               "help": ""
             },
             {
               "value": "graph-json",
+              "label": "Graph JSON",
               "help": ""
             },
             {
               "value": "dot",
+              "label": "DOT",
               "help": ""
             },
             {
               "value": "node-data",
+              "label": "Node data",
               "help": ""
             },
             {
               "value": "model",
+              "label": "Model",
               "help": ""
             }
           ],
@@ -6059,16 +6637,19 @@
           "flag": "--divergence-units",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mutations-per-site",
+              "label": "Mutations per site",
               "help": ""
             },
             {
               "value": "mutations",
+              "label": "Mutations",
               "help": ""
             }
           ],
@@ -6089,6 +6670,7 @@
           "flag": "--output-node-data",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6109,6 +6691,7 @@
           "flag": "--output-model",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6129,52 +6712,64 @@
           "flag": "--topology-order",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "keep",
+              "label": "Input order",
               "help": ""
             },
             {
               "value": "descendant-count",
+              "label": "Descendant count",
               "help": ""
             },
             {
               "value": "descendant-count-reverse",
+              "label": "Descendant count, reversed",
               "help": ""
             },
             {
               "value": "height",
+              "label": "Height",
               "help": ""
             },
             {
               "value": "height-reverse",
+              "label": "Height, reversed",
               "help": ""
             },
             {
               "value": "divergence",
+              "label": "Divergence",
               "help": ""
             },
             {
               "value": "divergence-reverse",
+              "label": "Divergence, reversed",
               "help": ""
             },
             {
               "value": "label",
+              "label": "Label",
               "help": ""
             },
             {
               "value": "label-reverse",
+              "label": "Label, reversed",
               "help": ""
             },
             {
               "value": "target-order",
+              "label": "Target order",
               "help": ""
             },
             {
               "value": "target-order-reverse",
+              "label": "Target order, reversed",
               "help": ""
             }
           ],
@@ -6194,6 +6789,7 @@
           "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -6216,6 +6812,7 @@
           "flag": "--topology-order-list",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -6238,16 +6835,19 @@
           "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mean",
+              "label": "Mean",
               "help": ""
             },
             {
               "value": "median",
+              "label": "Median",
               "help": ""
             }
           ],
@@ -6314,6 +6914,37 @@
         "Output",
         "Tree ordering"
       ],
+      "sections": [
+        {
+          "purpose": "data",
+          "title": "Input data",
+          "groups": [
+            "Input data"
+          ]
+        },
+        {
+          "purpose": "analysis",
+          "title": "Analysis",
+          "groups": [
+            "Ancestral reconstruction",
+            "Pruning"
+          ]
+        },
+        {
+          "purpose": "output",
+          "title": "Output format",
+          "groups": [
+            "Output"
+          ]
+        },
+        {
+          "purpose": "ordering",
+          "title": "Tree ordering and reproducibility",
+          "groups": [
+            "Tree ordering"
+          ]
+        }
+      ],
       "main_rows": [
         {
           "label": "Collapse short",
@@ -6372,6 +7003,7 @@
           "flag": "--alignment",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "list",
           "nullable": false,
@@ -6393,6 +7025,7 @@
           "flag": "--tree",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -6413,56 +7046,69 @@
           "flag": "--newick-dialect",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "classic,plain",
+              "label": "Classic Newick, plain",
               "help": ""
             },
             {
               "value": "classic,beast",
+              "label": "Classic Newick, BEAST",
               "help": ""
             },
             {
               "value": "classic,nhx",
+              "label": "Classic Newick, NHX",
               "help": ""
             },
             {
               "value": "classic,mrbayes",
+              "label": "Classic Newick, MrBayes",
               "help": ""
             },
             {
               "value": "enewick,plain",
+              "label": "Extended Newick, plain",
               "help": ""
             },
             {
               "value": "enewick,beast",
+              "label": "Extended Newick, BEAST",
               "help": ""
             },
             {
               "value": "enewick,nhx",
+              "label": "Extended Newick, NHX",
               "help": ""
             },
             {
               "value": "enewick,mrbayes",
+              "label": "Extended Newick, MrBayes",
               "help": ""
             },
             {
               "value": "rich,plain",
+              "label": "Rich Newick, plain",
               "help": ""
             },
             {
               "value": "rich,beast",
+              "label": "Rich Newick, BEAST",
               "help": ""
             },
             {
               "value": "rich,nhx",
+              "label": "Rich Newick, NHX",
               "help": ""
             },
             {
               "value": "rich,mrbayes",
+              "label": "Rich Newick, MrBayes",
               "help": ""
             }
           ],
@@ -6483,6 +7129,7 @@
           "flag": "--allow-missing-sequences",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -6504,20 +7151,24 @@
           "flag": "--alphabet",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "nuc",
+              "label": "Nucleotide",
               "help": ""
             },
             {
               "value": "aa",
+              "label": "Amino acid",
               "help": ""
             },
             {
               "value": "aa-no-stop",
+              "label": "Amino acid without stop",
               "help": ""
             }
           ],
@@ -6537,6 +7188,7 @@
           "flag": "--zero-based",
           "group": "Input data",
           "purpose": "data",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -6558,20 +7210,24 @@
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "only-terminal",
+              "label": "Only terminal gaps",
               "help": ""
             },
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "none",
+              "label": "None",
               "help": ""
             }
           ],
@@ -6592,6 +7248,7 @@
           "flag": "--collapse-short",
           "group": "Pruning",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "number",
           "nullable": true,
@@ -6612,6 +7269,7 @@
           "flag": "--collapse-empty",
           "group": "Pruning",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -6633,6 +7291,7 @@
           "flag": "--merge-shared-mutations",
           "group": "Pruning",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "switch",
           "nullable": false,
@@ -6654,6 +7313,7 @@
           "flag": "--remove",
           "group": "Pruning",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "setting",
           "kind": "list",
           "nullable": false,
@@ -6675,6 +7335,7 @@
           "flag": "--remove-file",
           "group": "Pruning",
           "purpose": "analysis",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -6695,6 +7356,7 @@
           "flag": "--output-all",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6715,20 +7377,24 @@
           "flag": "--newick-annotations",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "plain",
+              "label": "Plain",
               "help": ""
             },
             {
               "value": "beast",
+              "label": "BEAST",
               "help": ""
             },
             {
               "value": "nhx",
+              "label": "NHX",
               "help": ""
             }
           ],
@@ -6749,6 +7415,7 @@
           "flag": "--output-tree-nwk",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6769,6 +7436,7 @@
           "flag": "--output-tree-nexus",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6789,6 +7457,7 @@
           "flag": "--output-tree-auspice",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6809,6 +7478,7 @@
           "flag": "--output-tree-mat-pb",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6829,6 +7499,7 @@
           "flag": "--output-tree-mat-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6849,6 +7520,7 @@
           "flag": "--output-tree-graph-json",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6869,6 +7541,7 @@
           "flag": "--output-tree-dot",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "output",
           "kind": "text",
           "nullable": true,
@@ -6889,40 +7562,49 @@
           "flag": "--output-selection",
           "group": "Output",
           "purpose": "output",
+          "set_by_app": true,
           "role": "setting",
           "kind": "enum-list",
           "nullable": false,
           "options": [
             {
               "value": "all",
+              "label": "All",
               "help": ""
             },
             {
               "value": "nwk",
+              "label": "Newick",
               "help": ""
             },
             {
               "value": "nexus",
+              "label": "Nexus",
               "help": ""
             },
             {
               "value": "auspice",
+              "label": "Auspice",
               "help": ""
             },
             {
               "value": "mat-pb",
+              "label": "MAT protobuf",
               "help": ""
             },
             {
               "value": "mat-json",
+              "label": "MAT JSON",
               "help": ""
             },
             {
               "value": "graph-json",
+              "label": "Graph JSON",
               "help": ""
             },
             {
               "value": "dot",
+              "label": "DOT",
               "help": ""
             }
           ],
@@ -6943,52 +7625,64 @@
           "flag": "--topology-order",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": true,
           "options": [
             {
               "value": "keep",
+              "label": "Input order",
               "help": ""
             },
             {
               "value": "descendant-count",
+              "label": "Descendant count",
               "help": ""
             },
             {
               "value": "descendant-count-reverse",
+              "label": "Descendant count, reversed",
               "help": ""
             },
             {
               "value": "height",
+              "label": "Height",
               "help": ""
             },
             {
               "value": "height-reverse",
+              "label": "Height, reversed",
               "help": ""
             },
             {
               "value": "divergence",
+              "label": "Divergence",
               "help": ""
             },
             {
               "value": "divergence-reverse",
+              "label": "Divergence, reversed",
               "help": ""
             },
             {
               "value": "label",
+              "label": "Label",
               "help": ""
             },
             {
               "value": "label-reverse",
+              "label": "Label, reversed",
               "help": ""
             },
             {
               "value": "target-order",
+              "label": "Target order",
               "help": ""
             },
             {
               "value": "target-order-reverse",
+              "label": "Target order, reversed",
               "help": ""
             }
           ],
@@ -7008,6 +7702,7 @@
           "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -7030,6 +7725,7 @@
           "flag": "--topology-order-list",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "input",
           "kind": "text",
           "nullable": true,
@@ -7052,16 +7748,19 @@
           "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "purpose": "ordering",
+          "set_by_app": false,
           "role": "setting",
           "kind": "enum",
           "nullable": false,
           "options": [
             {
               "value": "mean",
+              "label": "Mean",
               "help": ""
             },
             {
               "value": "median",
+              "label": "Median",
               "help": ""
             }
           ],
