@@ -6,12 +6,14 @@ use crate::runs::package_reader::{PackageFile, PackageReader, is_inside, outside
 use crate::runs::record::{InputSet, RunInput, RunRecord};
 use crate::runs::run_paths::{INPUTS_DIR, OUT_DIR, map_path_values};
 use crate::runs::store::EVENTS_FILE;
+use deser::Deserialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use schemars::JsonSchema;
 use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{Seek, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
 use treetime_utils::make_internal_report;
@@ -70,6 +72,30 @@ impl PackageImport {
     file.rewind().wrap_err("When reading the run package")?;
     import_run(&runs, &staging, file, limit)
   }
+}
+
+pub fn import_package_file(runs: &RunManager, path: &Path, limit: usize) -> Result<RunRecord, Report> {
+  let file = File::open(path).wrap_err_with(|| format!("When opening '{}'", path.display()))?;
+  let size = file
+    .metadata()
+    .wrap_err_with(|| format!("When reading '{}'", path.display()))?
+    .len();
+  if size > u64::try_from(limit)? {
+    return Err(Report::new(PackageTooLarge {
+      limit: format_size(limit),
+    }));
+  }
+  let staging = runs.store().staging_dir()?;
+  import_run(runs, &staging, file, limit)
+}
+
+/// A run package to import from a file on disk.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
+pub struct ImportFileRequest {
+  /// Absolute path of the run package.
+  pub path: PathBuf,
 }
 
 fn import_run(manager: &RunManager, staging: &TempDir, file: File, limit: usize) -> Result<RunRecord, Report> {

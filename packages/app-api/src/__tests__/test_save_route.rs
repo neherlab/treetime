@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_routes::tests::helpers::{app, request};
-  use helpers::{finished_run, local_host};
+  use helpers::{finished_run, local_host, local_renderer};
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::fs;
@@ -51,6 +51,48 @@ mod tests {
       .unwrap();
     let source = fs::read_to_string(host.app.runs_dir.path().join(&id).join("out").join("ancestral.nwk")).unwrap();
     assert_eq!((200, source), (status, tree));
+  }
+
+  #[tokio::test]
+  async fn test_save_route_package_imports_from_its_path_as_a_new_run() {
+    let host = local_host();
+    let id = finished_run(&host.app).await;
+    let target = tempdir().unwrap();
+    let destination = target.path().join("run.zip");
+    request(
+      &host.app,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(json!({ "destination": destination })),
+    )
+    .await;
+    let (status, imported) = request(
+      &host.app,
+      "POST",
+      "/api/runs/import-file",
+      Some(json!({ "path": destination })),
+    )
+    .await;
+    assert_eq!(
+      (200, json!("ok"), true),
+      (status, imported["status"].clone(), imported["id"] != json!(id))
+    );
+  }
+
+  #[tokio::test]
+  async fn test_save_route_import_of_a_file_that_is_not_a_run_package_is_an_invalid_request() {
+    let host = local_renderer();
+    let target = tempdir().unwrap();
+    let path = target.path().join("notes.zip");
+    fs::write(&path, "not a zip archive").unwrap();
+    let (status, error) = request(
+      &host.app,
+      "POST",
+      "/api/runs/import-file",
+      Some(json!({ "path": path })),
+    )
+    .await;
+    assert_eq!((400, json!("invalid_request")), (status, error["code"].clone()));
   }
 
   #[tokio::test]
@@ -140,7 +182,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_save_route_is_absent_from_the_renderer_router_of_a_local_app() {
-    let renderer = helpers::local_renderer();
+    let renderer = local_renderer();
     let target = tempdir().unwrap();
     let (status, error) = request(
       &renderer.app,

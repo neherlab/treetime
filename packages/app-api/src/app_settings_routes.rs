@@ -9,7 +9,8 @@ use aide::axum::routing::{get_with, post_with, put_with};
 use app_backend::app_settings::settings::{AnalysisSettings, AppSettings, UiSettings, Workspace, WorkspaceUpdate};
 use app_backend::app_settings::workspace::{active_workspace, prepare_workspace};
 use app_backend::examples_download::{ExamplesDownloadStatus, ExamplesFolder, read_examples_folder};
-use app_backend::runs::record::SaveRunRequest;
+use app_backend::runs::package_import::{ImportFileRequest, import_package_file};
+use app_backend::runs::record::{RunRecord, SaveRunRequest};
 use axum::extract::State;
 use eyre::Report;
 use std::sync::Arc;
@@ -80,6 +81,15 @@ pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
           .response_with::<409, AppError, _>(|response| {
             response.description("A download runs already, or the examples folder is not empty")
           })
+      }),
+    )
+    .api_route(
+      "/api/runs/import-file",
+      post_with(runs_import_file, |op| {
+        op.id("runsImportFile").description(
+          "Import a run package from a file on disk, with the checks and the size limit of `/api/runs/import`. \
+           Only local apps serve this path.",
+        )
       }),
     )
     .api_route(
@@ -160,6 +170,17 @@ async fn examples_download_start(
   blocking(&state, move |local| local.examples.start(&runs))
     .await
     .map(Accepted)
+}
+
+async fn runs_import_file(
+  State(state): State<Arc<AppState>>,
+  ApiJson(request): ApiJson<ImportFileRequest>,
+) -> Result<ApiJson<RunRecord>, AppError> {
+  let runs = Arc::clone(&state.runs);
+  let limit = state.config.max_upload_size;
+  blocking(&state, move |_| import_package_file(&runs, &request.path, limit))
+    .await
+    .map(ApiJson)
 }
 
 async fn runs_save(
