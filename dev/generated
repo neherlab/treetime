@@ -50,7 +50,7 @@ produce_openapi() {
 
 produce_catalog() {
   mkdir -p "${1}/packages/app-contracts"
-  cargo run --locked --quiet -p app-api --bin generate-setting-catalog -- "${1}/packages/app-contracts/setting-catalog.json" >&2
+  cargo run --locked --quiet -p app-cli --bin generate-setting-catalog -- "${1}/packages/app-contracts/setting-catalog.json" >&2
   printf 'packages/app-contracts/setting-catalog.json\n'
 }
 
