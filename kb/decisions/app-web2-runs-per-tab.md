@@ -41,3 +41,6 @@ A store that outlives the page stays possible later: the record and the package 
 
 - [kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](../issues/M-web2-wasm-panic-loses-the-back-end-state.md)
 - [kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](../issues/M-app-runs-folder-grows-without-retention-or-quota.md)
+- [kb/issues/N-web2-run-package-import-read-whole-before-checks.md](../issues/N-web2-run-package-import-read-whole-before-checks.md)
+- [kb/issues/N-web2-downloads-held-in-page-memory-without-save-file-picker.md](../issues/N-web2-downloads-held-in-page-memory-without-save-file-picker.md)
+- [kb/issues/N-web2-uploaded-files-held-whole-in-tab-memory.md](../issues/N-web2-uploaded-files-held-whole-in-tab-memory.md)
