@@ -6,9 +6,6 @@
 "parallel_vecs:packages/app-commands/src/commands/timetree/run.rs" = 1
 "stringified_error:packages/app-commands/src/commands/timetree/args.rs" = 1
 
-[app_napi]
-"parallel_vecs:packages/app-napi/src/commands/timetree.rs" = 1
-
 [app_output]
 "reimplemented_helper:packages/app-output/src/__tests__/test_tree_output.rs" = 4
 
