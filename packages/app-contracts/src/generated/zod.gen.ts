@@ -882,29 +882,6 @@ export const zUiTheme = z.union([
 ]);
 
 /**
- * Where an input file of the form came from.
- */
-export const zUiDraftOrigin = z.union([
-  z.literal('dataset'),
-  z.literal('example'),
-  z.literal('upload'),
-  z.literal('local'),
-  z.literal('run'),
-  z.literal('config')
-]);
-
-/**
- * Origin of an input file of the form.
- */
-export const zUiDraftSource = z.strictObject({
-  label: z.string(),
-  origin: zUiDraftOrigin,
-  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
-  run_id: zJobId.optional(),
-  example: z.string().optional()
-});
-
-/**
  * Which settings the form shows.
  */
 export const zUiSettingsView = z.union([
@@ -921,46 +898,11 @@ export const zUiCodeFormat = z.union([
 ]);
 
 /**
- * The unfinished analysis form: the command, its settings, and how the form is shown.
- */
-export const zUiDraft = z.strictObject({
-  command: zAppCommand,
-  config: zSparseConfig,
-  sources: z.record(z.string(), zUiDraftSource),
-  from_run_id: zJobId.optional(),
-  upload_run_id: zJobId.optional(),
-  choices: z.array(zActiveChoice),
-  view: zUiSettingsView,
-  search: z.string(),
-  changed_only: z.boolean(),
-  code_format: zUiCodeFormat
-});
-
-/**
- * Preferences of the user interface. Unset preferences take the defaults of the user interface.
- */
-export const zUiSettings = z.strictObject({
-  theme: zUiTheme.optional(),
-  sidebar_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).optional(),
-  draft: zUiDraft.optional()
-});
-
-/**
  * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
  * it.
  */
 export const zAnalysisSettings = z.strictObject({
   max_grid_points: z.int().gte(1000).lte(9007199254740991).optional()
-});
-
-/**
- * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
- * setting is optional.
- */
-export const zAppSettings = z.strictObject({
-  paths: zAppPathSettings.optional(),
-  ui: zUiSettings.optional(),
-  analysis: zAnalysisSettings.optional()
 });
 
 /**
@@ -1780,6 +1722,7 @@ export const zCheckConfigResponseInvalid = z.object({
   messages: z.array(z.string()),
   checks: z.array(zRunCheck),
   choices: z.array(zActiveChoice),
+  effective: z.array(zEffectiveValue),
   status: z.literal('invalid')
 });
 
@@ -2353,6 +2296,107 @@ export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventExamplesDownload,
   zAppEventResync
 ]);
+
+/**
+ * A file of an example dataset in the data folder of the back end.
+ */
+export const zUiDraftOriginDataset = z.object({
+  kind: z.literal('dataset')
+});
+
+/**
+ * A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file
+ * again when the uploaded copy is gone.
+ */
+export const zUiDraftOriginExample = z.object({
+  path: z.string(),
+  kind: z.literal('example')
+});
+
+/**
+ * A file uploaded to TreeTime.
+ */
+export const zUiDraftOriginUpload = z.object({
+  kind: z.literal('upload')
+});
+
+/**
+ * A file on the computer that runs TreeTime.
+ */
+export const zUiDraftOriginLocal = z.object({
+  kind: z.literal('local')
+});
+
+/**
+ * An input of an earlier run.
+ */
+export const zUiDraftOriginRun = z.object({
+  kind: z.literal('run')
+});
+
+/**
+ * A path from a loaded configuration file.
+ */
+export const zUiDraftOriginConfig = z.object({
+  kind: z.literal('config')
+});
+
+/**
+ * Where an input file of the form came from.
+ */
+export const zUiDraftOrigin = z.discriminatedUnion('kind', [
+  zUiDraftOriginDataset,
+  zUiDraftOriginExample,
+  zUiDraftOriginUpload,
+  zUiDraftOriginLocal,
+  zUiDraftOriginRun,
+  zUiDraftOriginConfig
+]);
+
+/**
+ * Origin of an input file of the form.
+ */
+export const zUiDraftSource = z.strictObject({
+  label: z.string(),
+  origin: zUiDraftOrigin,
+  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
+  run_id: zJobId.optional()
+});
+
+/**
+ * The unfinished analysis form: the command, its settings, and how the form is shown.
+ */
+export const zUiDraft = z.strictObject({
+  command: zAppCommand,
+  config: zSparseConfig,
+  sources: z.record(z.string(), zUiDraftSource),
+  from_run_id: zJobId.optional(),
+  upload_run_id: zJobId.optional(),
+  choices: z.array(zActiveChoice),
+  view: zUiSettingsView,
+  search: z.string(),
+  changed_only: z.boolean(),
+  code_format: zUiCodeFormat
+});
+
+/**
+ * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+ */
+export const zUiSettings = z.strictObject({
+  theme: zUiTheme.optional(),
+  sidebar_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).optional(),
+  draft: zUiDraft.optional()
+});
+
+/**
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+ * setting is optional.
+ */
+export const zAppSettings = z.strictObject({
+  paths: zAppPathSettings.optional(),
+  ui: zUiSettings.optional(),
+  analysis: zAnalysisSettings.optional()
+});
 
 /**
  * A choice between options; the choice of the command with this name holds the options and their texts.

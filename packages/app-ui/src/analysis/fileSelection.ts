@@ -40,7 +40,7 @@ export function releasedPaths(previous: JsonValue | undefined, next: JsonValue |
 export function draftUploadPaths({ config, sources, upload_run_id }: UiDraft, keys?: ReadonlySet<string>): string[] {
   return Object.entries(sources).flatMap(([key, source]) =>
     upload_run_id !== undefined &&
-    source.origin === "upload" &&
+    source.origin.kind === "upload" &&
     source.run_id === upload_run_id &&
     (keys === undefined || keys.has(key))
       ? pathList(config[key])

@@ -233,7 +233,7 @@ function EarlierRow({
   const actions = useInputActions(command);
 
   const use = useCallback(() => {
-    actions.assignAll(inputs, { origin: "run", run_id: record.id });
+    actions.assignAll(inputs, { origin: { kind: "run" }, run_id: record.id });
     close();
   }, [actions, close, inputs, record.id]);
 

@@ -35,6 +35,7 @@ mod tests {
         ("RunRecord", "command"),
         ("SettingDifference", "kind"),
         ("TerminalEvent", "status"),
+        ("UiDraftOrigin", "kind"),
       ],
       discriminated(&doc)
     );

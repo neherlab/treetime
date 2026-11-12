@@ -42,7 +42,10 @@ export function useInputActions(command: AppCommand): InputActions {
       const source = sources[key];
       const value = getValues(key);
 
-      return source?.origin === "upload" && source.run_id === runId && runId === upload_run_id && value !== undefined
+      return source?.origin.kind === "upload" &&
+        source.run_id === runId &&
+        runId === upload_run_id &&
+        value !== undefined
         ? pathList(value)
         : [];
     },
@@ -116,7 +119,7 @@ export function useInputActions(command: AppCommand): InputActions {
         const stored = selected.map((file) => ({ name: file.name, path: host.pathForFile(file), size: file.size }));
 
         if (isCurrent()) {
-          assignPending(key, stored, list, { origin: "local" }, epoch);
+          assignPending(key, stored, list, { origin: { kind: "local" } }, epoch);
         }
 
         return;
@@ -145,7 +148,7 @@ export function useInputActions(command: AppCommand): InputActions {
         return;
       }
 
-      assignPending(key, stored, list, { origin: "upload", run_id: runId }, epoch);
+      assignPending(key, stored, list, { origin: { kind: "upload" }, run_id: runId }, epoch);
     },
     [assignPending, command, host, pendingUploadPaths, releaseFromPendingRun, uploadFiles, uploadRun],
   );
@@ -169,7 +172,7 @@ export function useInputActions(command: AppCommand): InputActions {
       const [first] = paths;
 
       if (first !== undefined) {
-        assign(key, list ? paths : first, { label: paths.map(baseName).join(", "), origin: "local" });
+        assign(key, list ? paths : first, { label: paths.map(baseName).join(", "), origin: { kind: "local" } });
       }
     },
     [assign, host],

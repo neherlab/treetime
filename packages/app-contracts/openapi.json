@@ -4411,11 +4411,6 @@
             "description": "The run the file came from: the run that received the upload, or the earlier run whose input the file is. The\nform drops the file when this run no longer exists, because the file may be stored in the folder of that run.",
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
-          },
-          "example": {
-            "description": "Path of the example file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`,\nfor the `example` origin: the form fetches the file again when the uploaded copy is gone.",
-            "type": "string",
-            "x-unset": true
           }
         },
         "additionalProperties": false,
@@ -4428,36 +4423,35 @@
         "description": "Where an input file of the form came from.",
         "oneOf": [
           {
-            "description": "A file of an example dataset in the data folder of the back end.",
-            "type": "string",
-            "const": "dataset"
+            "$ref": "#/components/schemas/UiDraftOriginDataset"
           },
           {
-            "description": "A file of an example dataset, fetched from the example index and uploaded to TreeTime; `example` keeps its path.",
-            "type": "string",
-            "const": "example"
+            "$ref": "#/components/schemas/UiDraftOriginExample"
           },
           {
-            "description": "A file uploaded to TreeTime.",
-            "type": "string",
-            "const": "upload"
+            "$ref": "#/components/schemas/UiDraftOriginUpload"
           },
           {
-            "description": "A file on the computer that runs TreeTime.",
-            "type": "string",
-            "const": "local"
+            "$ref": "#/components/schemas/UiDraftOriginLocal"
           },
           {
-            "description": "An input of an earlier run.",
-            "type": "string",
-            "const": "run"
+            "$ref": "#/components/schemas/UiDraftOriginRun"
           },
           {
-            "description": "A path from a loaded configuration file.",
-            "type": "string",
-            "const": "config"
+            "$ref": "#/components/schemas/UiDraftOriginConfig"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "dataset": "#/components/schemas/UiDraftOriginDataset",
+            "example": "#/components/schemas/UiDraftOriginExample",
+            "upload": "#/components/schemas/UiDraftOriginUpload",
+            "local": "#/components/schemas/UiDraftOriginLocal",
+            "run": "#/components/schemas/UiDraftOriginRun",
+            "config": "#/components/schemas/UiDraftOriginConfig"
+          }
+        }
       },
       "UiSettingsView": {
         "description": "Which settings the form shows.",
@@ -7550,6 +7544,13 @@
               "$ref": "#/components/schemas/ActiveChoice"
             }
           },
+          "effective": {
+            "description": "The value the run uses for each setting that the configuration leaves at its default, as a short text, when the\nconfiguration could be merged over the defaults.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffectiveValue"
+            }
+          },
           "status": {
             "type": "string",
             "const": "invalid"
@@ -7563,7 +7564,8 @@
           "problems",
           "messages",
           "checks",
-          "choices"
+          "choices",
+          "effective"
         ]
       },
       "RunConfigResponseValid": {
@@ -8881,6 +8883,89 @@
         "required": [
           "state",
           "message"
+        ]
+      },
+      "UiDraftOriginDataset": {
+        "description": "A file of an example dataset in the data folder of the back end.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "dataset"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginExample": {
+        "description": "A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file\nagain when the uploaded copy is gone.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "example"
+          }
+        },
+        "required": [
+          "kind",
+          "path"
+        ]
+      },
+      "UiDraftOriginUpload": {
+        "description": "A file uploaded to TreeTime.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "upload"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginLocal": {
+        "description": "A file on the computer that runs TreeTime.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "local"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginRun": {
+        "description": "An input of an earlier run.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "run"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginConfig": {
+        "description": "A path from a loaded configuration file.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "config"
+          }
+        },
+        "required": [
+          "kind"
         ]
       },
       "RowControlChoice": {

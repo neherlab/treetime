@@ -114,7 +114,7 @@ export function useDatasetLoader() {
           inputs.map((input) => {
             const { key, value, label } = localInputAssignment(examples.folder, input);
 
-            return { key, value, source: { label, origin: "dataset" } };
+            return { key, value, source: { label, origin: { kind: "dataset" } } };
           }),
           release,
         );
@@ -155,7 +155,7 @@ export function useDatasetLoader() {
 
           return value === undefined
             ? []
-            : [{ key: input.key, value, source: { ...storedSource(file), origin: "upload", run_id: runId } }];
+            : [{ key: input.key, value, source: { ...storedSource(file), origin: { kind: "upload" }, run_id: runId } }];
         }),
         release,
       );

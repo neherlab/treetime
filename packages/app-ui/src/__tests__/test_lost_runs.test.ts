@@ -19,8 +19,8 @@ const DRAFT: UiDraft = {
     metadata: "/treetime/runs/r2/inputs/dates.tsv",
   },
   sources: {
-    tree: { label: "tree.nwk", origin: "upload", run_id: "r1" },
-    metadata: { label: "dates.tsv", origin: "run", run_id: "r2" },
+    tree: { label: "tree.nwk", origin: { kind: "upload" }, run_id: "r1" },
+    metadata: { label: "dates.tsv", origin: { kind: "run" }, run_id: "r2" },
   },
   upload_run_id: "r1",
 };
@@ -32,7 +32,7 @@ describe("lost runs of a draft", () => {
     const expected: UiDraft = {
       ...FRESH,
       config: { ...FRESH.config, metadata: "/treetime/runs/r2/inputs/dates.tsv" },
-      sources: { metadata: { label: "dates.tsv", origin: "run", run_id: "r2" } },
+      sources: { metadata: { label: "dates.tsv", origin: { kind: "run" }, run_id: "r2" } },
     };
 
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({

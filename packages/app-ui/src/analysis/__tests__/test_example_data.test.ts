@@ -129,9 +129,9 @@ describe("example data", () => {
         alignment: ["/up/2"],
       },
       sources: {
-        metadata: { label: "metadata.tsv", size: 7, origin: "upload", run_id: "r1" },
-        tree: { label: "tree.nwk", size: 7, origin: "upload", run_id: "r1" },
-        alignment: { label: "aln.fasta.xz", size: 7, origin: "upload", run_id: "r1" },
+        metadata: { label: "metadata.tsv", size: 7, origin: { kind: "upload" }, run_id: "r1" },
+        tree: { label: "tree.nwk", size: 7, origin: { kind: "upload" }, run_id: "r1" },
+        alignment: { label: "aln.fasta.xz", size: 7, origin: { kind: "upload" }, run_id: "r1" },
       },
     });
   });

@@ -178,20 +178,21 @@ pub struct UiDraftSource {
   /// The run the file came from: the run that received the upload, or the earlier run whose input the file is. The
   /// form drops the file when this run no longer exists, because the file may be stored in the folder of that run.
   pub run_id: Option<JobId>,
-  /// Path of the example file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`,
-  /// for the `example` origin: the form fetches the file again when the uploaded copy is gone.
-  pub example: Option<String>,
 }
 
 /// Where an input file of the form came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "lowercase")]
-#[deser(rename_all = "lowercase")]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(tag = "kind", rename_all = "kebab-case")]
+#[deser(tag = "kind", rename_all = "kebab-case")]
 pub enum UiDraftOrigin {
   /// A file of an example dataset in the data folder of the back end.
   Dataset,
-  /// A file of an example dataset, fetched from the example index and uploaded to TreeTime; `example` keeps its path.
-  Example,
+  /// A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file
+  /// again when the uploaded copy is gone.
+  Example {
+    /// Path of the file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`.
+    path: String,
+  },
   /// A file uploaded to TreeTime.
   Upload,
   /// A file on the computer that runs TreeTime.

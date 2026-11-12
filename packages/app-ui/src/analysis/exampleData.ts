@@ -90,7 +90,7 @@ export function uploadedConfigInputs(
 ): UploadedInputs {
   const uploaded = inputs.flatMap(({ input, stored }) => {
     const value = storedValue(stored, input.list);
-    const source: UiDraftSource = { ...storedSource(stored), origin: "upload", run_id: runId };
+    const source: UiDraftSource = { ...storedSource(stored), origin: { kind: "upload" }, run_id: runId };
 
     return value === undefined ? [] : [{ key: input.key, value, source }];
   });

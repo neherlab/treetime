@@ -43,7 +43,7 @@ describe("restore preferences", () => {
   const draft = {
     ...freshDraft("clock"),
     config: { ...freshDraft("clock").config, tree: "/treetime/runs/r1/inputs/tree.nwk" },
-    sources: { tree: { label: "tree.nwk", origin: "upload" as const, run_id: "r1" } },
+    sources: { tree: { label: "tree.nwk", origin: { kind: "upload" as const }, run_id: "r1" } },
     upload_run_id: "r1",
   };
 

@@ -78,7 +78,11 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
     async (example: ExampleIndex, file: IndexedFile) => {
       if (example.origin === "local") {
         const path = localExamplePath(example.folder, file.path);
-        actions.assign(settingKey, list ? [path] : path, { label: file.path, origin: "dataset", size: file.size });
+        actions.assign(settingKey, list ? [path] : path, {
+          label: file.path,
+          origin: { kind: "dataset" },
+          size: file.size,
+        });
 
         return;
       }

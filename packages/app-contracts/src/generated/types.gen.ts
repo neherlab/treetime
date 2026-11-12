@@ -1962,17 +1962,24 @@ export type UiDraftSource = {
    * form drops the file when this run no longer exists, because the file may be stored in the folder of that run.
    */
   run_id?: JobId;
-  /**
-   * Path of the example file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`,
-   * for the `example` origin: the form fetches the file again when the uploaded copy is gone.
-   */
-  example?: string;
 };
 
 /**
  * Where an input file of the form came from.
  */
-export type UiDraftOrigin = 'dataset' | 'example' | 'upload' | 'local' | 'run' | 'config';
+export type UiDraftOrigin = ({
+  kind: 'dataset';
+} & UiDraftOriginDataset) | ({
+  kind: 'example';
+} & UiDraftOriginExample) | ({
+  kind: 'upload';
+} & UiDraftOriginUpload) | ({
+  kind: 'local';
+} & UiDraftOriginLocal) | ({
+  kind: 'run';
+} & UiDraftOriginRun) | ({
+  kind: 'config';
+} & UiDraftOriginConfig);
 
 /**
  * Which settings the form shows.
@@ -4449,6 +4456,11 @@ export type CheckConfigResponseInvalid = {
    * merged over the defaults.
    */
   choices: Array<ActiveChoice>;
+  /**
+   * The value the run uses for each setting that the configuration leaves at its default, as a short text, when the
+   * configuration could be merged over the defaults.
+   */
+  effective: Array<EffectiveValue>;
   status: 'invalid';
 };
 
@@ -5228,6 +5240,53 @@ export type ExamplesDownloadFailed = {
    */
   message: string;
   state: 'failed';
+};
+
+/**
+ * A file of an example dataset in the data folder of the back end.
+ */
+export type UiDraftOriginDataset = {
+  kind: 'dataset';
+};
+
+/**
+ * A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file
+ * again when the uploaded copy is gone.
+ */
+export type UiDraftOriginExample = {
+  /**
+   * Path of the file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`.
+   */
+  path: string;
+  kind: 'example';
+};
+
+/**
+ * A file uploaded to TreeTime.
+ */
+export type UiDraftOriginUpload = {
+  kind: 'upload';
+};
+
+/**
+ * A file on the computer that runs TreeTime.
+ */
+export type UiDraftOriginLocal = {
+  kind: 'local';
+};
+
+/**
+ * An input of an earlier run.
+ */
+export type UiDraftOriginRun = {
+  kind: 'run';
+};
+
+/**
+ * A path from a loaded configuration file.
+ */
+export type UiDraftOriginConfig = {
+  kind: 'config';
 };
 
 /**

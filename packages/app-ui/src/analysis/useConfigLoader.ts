@@ -98,7 +98,9 @@ export function useConfigLoader() {
 }
 
 function previousSource(previous: UiDraftSource | undefined, unchanged: boolean, paths: string[]): UiDraftSource {
-  return previous !== undefined && unchanged ? previous : { label: paths.map(baseName).join(", "), origin: "config" };
+  return previous !== undefined && unchanged
+    ? previous
+    : { label: paths.map(baseName).join(", "), origin: { kind: "config" } };
 }
 
 function inputSettings(command: AppCommand, config: SparseConfig): SparseConfig {
