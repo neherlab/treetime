@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
+import { useTabWorkStore } from "../notices/leaveGuard";
 
 export function useImportRun(): (file: File) => Promise<RunRecord | undefined> {
   const { client } = useApiContext();
@@ -12,6 +13,8 @@ export function useImportRun(): (file: File) => Promise<RunRecord | undefined> {
 
   return useCallback(
     async (file: File) => {
+      const endImport = useTabWorkStore.getState().startImport();
+
       try {
         const { data: record } = await runsImport({ client, body: file, throwOnError: true });
         await navigate({ to: "/runs/$id/results", params: { id: record.id } });
@@ -21,6 +24,8 @@ export function useImportRun(): (file: File) => Promise<RunRecord | undefined> {
         toast.add({ title: `${file.name} cannot be imported`, description: errorMessage(error) });
 
         return undefined;
+      } finally {
+        endImport();
       }
     },
     [client, navigate],

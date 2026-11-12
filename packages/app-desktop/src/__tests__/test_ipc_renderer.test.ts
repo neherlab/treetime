@@ -55,9 +55,9 @@ describe("ipc_renderer preload host", () => {
     createPreloadHost(ipc, { getPathForFile: () => "" }).onBackendStopped((stop) => {
       stops.push(stop);
     });
-    ipc.emit("treetime:backend-stopped", { reason: "crashed", restarts: true });
+    ipc.emit("treetime:backend-stopped", { reason: "crashed", restarts: true, requested: false });
 
-    expect(stops).toStrictEqual([{ reason: "crashed", restarts: true }]);
+    expect(stops).toStrictEqual([{ reason: "crashed", restarts: true, requested: false }]);
   });
 
   test("the path of a dropped file comes from the file utilities of Electron", () => {
@@ -93,7 +93,7 @@ describe("ipc_renderer window connection", () => {
     const received: FetchPort[] = [];
 
     target.emit({ source: target, data: { channel: BACKEND_PORT_CHANNEL }, ports: [fakeFetchPort()] });
-    host.stop({ reason: "crashed", restarts: true });
+    host.stop({ reason: "crashed", restarts: true, requested: false });
     connection.onPort((next) => {
       received.push(next);
     });
@@ -125,9 +125,9 @@ describe("ipc_renderer window connection", () => {
     connection.onStopped((stop) => {
       stops.push(stop);
     });
-    host.stop({ reason: "crashed", restarts: false });
+    host.stop({ reason: "crashed", restarts: false, requested: false });
 
-    expect(stops).toStrictEqual([{ reason: "crashed", restarts: false }]);
+    expect(stops).toStrictEqual([{ reason: "crashed", restarts: false, requested: false }]);
   });
 });
 

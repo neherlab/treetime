@@ -277,7 +277,7 @@ describe("port_fetch back end stops", () => {
     backend.reply({ kind: "head", seq: 1, status: 200, headers: [] });
     const open = await streaming;
 
-    backend.stop({ reason: "the back end stopped with exit code 1 and restarts", restarts: true });
+    backend.stop({ reason: "the back end stopped with exit code 1 and restarts", restarts: true, requested: false });
     await expect(pending).rejects.toThrow(new TypeError("the back end stopped with exit code 1 and restarts"));
     await expect(open.text()).rejects.toThrow("the back end stopped with exit code 1 and restarts");
     const later = portFetch(`${ORIGIN}/api/version`);
@@ -298,7 +298,7 @@ describe("port_fetch back end stops", () => {
     const backend = fakeBackend({ connected: true });
     const portFetch = createPortFetch(backend.connection);
 
-    backend.stop({ reason: "the back end stopped too often", restarts: false });
+    backend.stop({ reason: "the back end stopped too often", restarts: false, requested: false });
 
     await expect(portFetch(`${ORIGIN}/api/version`)).rejects.toThrow("the back end stopped too often");
     expect(backend.posted).toStrictEqual([]);
@@ -315,7 +315,7 @@ describe("port_fetch back end stops", () => {
       causes: ["denied"],
     };
 
-    backend.stop({ reason: "the back end could not start", restarts: false, error });
+    backend.stop({ reason: "the back end could not start", restarts: false, requested: false, error });
 
     const expected = new ApiError(500, error);
 
@@ -327,11 +327,31 @@ describe("port_fetch back end stops", () => {
     expect(rejections.map((rejection) => rejection instanceof ApiError && rejection.status)).toStrictEqual([500, 500]);
   });
 
+  test("the stop listener hears each stop, and the open requests fail with it", async () => {
+    const backend = fakeBackend({ connected: true });
+    const heard: BackendStopped[] = [];
+
+    const portFetch = createPortFetch(backend.connection, (stop) => {
+      heard.push(stop);
+    });
+
+    const pending = portFetch(`${ORIGIN}/api/version`);
+    await sent(backend, 1);
+
+    const crash: BackendStopped = { reason: "crashed", restarts: true, requested: false };
+    const failure: BackendStopped = { reason: "the back end stopped too often", restarts: false, requested: false };
+    backend.stop(crash);
+    backend.stop(failure);
+
+    await expect(pending).rejects.toThrow(new TypeError("crashed"));
+    expect(heard).toStrictEqual([crash, failure]);
+  });
+
   test("a new port after a stop without restart accepts requests again", async () => {
     const backend = fakeBackend({ connected: true });
     const portFetch = createPortFetch(backend.connection);
 
-    backend.stop({ reason: "the back end stopped too often", restarts: false });
+    backend.stop({ reason: "the back end stopped too often", restarts: false, requested: false });
     backend.connect();
     void portFetch(`${ORIGIN}/api/version`);
     await sent(backend, 1);

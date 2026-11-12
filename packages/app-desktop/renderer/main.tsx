@@ -5,6 +5,7 @@ import {
   App,
   ErrorBoundary,
   PreferencesProvider,
+  publishBackendStop,
   QueryProvider,
   ThemeProvider,
 } from "@neherlab/app-ui";
@@ -27,7 +28,10 @@ const host = window.treetimeHost;
 
 const connection = windowFetchConnection(window, host);
 
-const client = createApiClient({ baseUrl: globalThis.location.origin, fetch: createPortFetch(connection) });
+const client = createApiClient({
+  baseUrl: globalThis.location.origin,
+  fetch: createPortFetch(connection, publishBackendStop),
+});
 
 const preferences = apiPreferencesStorage(client);
 

@@ -82,7 +82,7 @@ describe("ipc_main events and ports", () => {
 
   test("an event goes to the prefixed channel after its schema check", () => {
     const contents = fakeContents();
-    const stop: BackendStopped = { reason: "crashed", restarts: false };
+    const stop: BackendStopped = { reason: "crashed", restarts: false, requested: false };
 
     emit(contents, "backend-stopped", stop);
 

@@ -37,7 +37,7 @@ describe("host_port connection", () => {
     connection.connect(mainFetchPort(first));
     const portFetch = createPortFetch(connection);
 
-    connection.stop({ reason: "the back end restarts", restarts: true });
+    connection.stop({ reason: "the back end restarts", restarts: true, requested: false });
     const saved = portFetch(`${ORIGIN}/api/runs/r1/save`, { method: "POST", body: "{}" });
     const second = fakeMainPort();
     connection.connect(mainFetchPort(second));
@@ -55,7 +55,12 @@ describe("host_port connection", () => {
     const portFetch = createPortFetch(connection);
     const error = { code: "internal_error", message: "When opening the runs folder '/r'", causes: [] } as const;
 
-    connection.stop({ reason: "the back end could not start", restarts: false, error: { ...error, causes: [] } });
+    connection.stop({
+      reason: "the back end could not start",
+      restarts: false,
+      requested: false,
+      error: { ...error, causes: [] },
+    });
 
     await expect(portFetch(`${ORIGIN}/api/runs/r1/save`, { method: "POST", body: "{}" })).rejects.toStrictEqual(
       new ApiError(500, { ...error, causes: [] }),

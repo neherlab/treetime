@@ -18,6 +18,8 @@ export type PortMessageOf<R extends BlobPortRequest> = { kind: "request"; reques
 
 export type PortFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+export type StopListener = (stop: BackendStopped) => void;
+
 const SERVER_ERROR_STATUS = 500;
 
 const MISSING_HEAD = "the back end ended the exchange without a response head";
@@ -26,8 +28,8 @@ const MALFORMED_REPLY = "the back end sent a malformed message";
 
 const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
-export function createPortFetch(connection: FetchConnection): PortFetch {
-  const client = new PortClient(connection);
+export function createPortFetch(connection: FetchConnection, onStop: StopListener = ignoreStop): PortFetch {
+  const client = new PortClient(connection, onStop);
 
   return async (input, init) => {
     const request = new Request(input, init);
@@ -40,8 +42,11 @@ export function createPortFetch(connection: FetchConnection): PortFetch {
   };
 }
 
-export function createBlobPortFetch(connection: FetchConnection<BlobPortRequest>): PortFetch {
-  const client = new PortClient(connection);
+export function createBlobPortFetch(
+  connection: FetchConnection<BlobPortRequest>,
+  onStop: StopListener = ignoreStop,
+): PortFetch {
+  const client = new PortClient(connection, onStop);
 
   return async (input, init) => {
     const request = new Request(input, init);
@@ -75,8 +80,10 @@ class PortClient<R extends BlobPortRequest> {
   private readonly exchanges = new Map<number, Exchange>();
   private nextSeq = 0;
   private failure: Error | undefined;
+  private readonly onStop: StopListener;
 
-  constructor(connection: FetchConnection<R>) {
+  constructor(connection: FetchConnection<R>, onStop: StopListener) {
+    this.onStop = onStop;
     connection.onPort((port) => {
       this.connect(port);
     });
@@ -215,7 +222,8 @@ class PortClient<R extends BlobPortRequest> {
     }
   }
 
-  private stop({ reason, restarts, error: startError }: BackendStopped): void {
+  private stop(stop: BackendStopped): void {
+    const { reason, restarts, error: startError } = stop;
     this.port = undefined;
     const error = startError === undefined ? new TypeError(reason) : new ApiError(SERVER_ERROR_STATUS, startError);
 
@@ -229,6 +237,8 @@ class PortClient<R extends BlobPortRequest> {
         exchange.fail(error);
       }
     }
+
+    this.onStop(stop);
   }
 }
 
@@ -246,6 +256,8 @@ function response(
 
   return new Response(new ReadableStream<Uint8Array>({ start, cancel }), init);
 }
+
+function ignoreStop(): void {}
 
 function abortReason(signal: AbortSignal): Error {
   const reason: unknown = signal.reason;

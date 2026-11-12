@@ -5,6 +5,7 @@ import {
   browserPreferencesStorage,
   ErrorBoundary,
   PreferencesProvider,
+  publishBackendStop,
   QueryProvider,
   reloadOnChunkError,
   ThemeProvider,
@@ -31,7 +32,7 @@ const connection = new WorkerConnection(browserWorkerHost(jobs));
 
 const client = createApiClient({
   baseUrl: globalThis.location.origin,
-  fetch: createBlobPortFetch(connection),
+  fetch: createBlobPortFetch(connection, publishBackendStop),
 });
 
 const preferences = browserPreferencesStorage(globalThis.localStorage, globalThis.sessionStorage);

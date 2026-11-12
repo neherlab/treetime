@@ -34,6 +34,7 @@ export const HOST_EVENTS = {
   "backend-stopped": z.strictObject({
     reason: z.string(),
     restarts: z.boolean(),
+    requested: z.boolean(),
     error: zErrorResponse.optional(),
   }),
 } as const;

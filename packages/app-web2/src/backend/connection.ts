@@ -115,7 +115,7 @@ export class WorkerConnection implements FetchConnection<BlobPortRequest> {
       return;
     }
 
-    this.#end(running, { reason: `the back end stopped and restarts: ${message}`, restarts: true });
+    this.#end(running, { reason: `the back end stopped and restarts: ${message}`, restarts: true, requested: false });
     this.#start();
   }
 
@@ -125,7 +125,7 @@ export class WorkerConnection implements FetchConnection<BlobPortRequest> {
     }
 
     this.#stopped = true;
-    this.#end(running, { reason: `the back end could not start: ${message}`, restarts: false });
+    this.#end(running, { reason: `the back end could not start: ${message}`, restarts: false, requested: false });
   }
 
   #end(running: RunningWorker, stop: BackendStopped): void {
