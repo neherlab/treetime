@@ -28,6 +28,7 @@ import { toggledChoice } from "../components/toggleChoice";
 import { dayLabel, formatBytes, headlineText } from "../format";
 import { COMMANDS, commandSettings } from "../settings/catalog";
 import { useShellStore } from "../store/shell";
+import { comparePair } from "./comparePair";
 import { RunActionsMenu, useRunActions } from "./runActions";
 import { groupRuns, type RunEntry } from "./runList";
 import { StatusIcon, statusLabel } from "./StatusIcon";
@@ -225,8 +226,7 @@ function SelectionFooter({ runs }: { runs: readonly RunSummary[] }) {
   const clearSelection = useShellStore((state) => state.clearSelection);
   const actions = useRunActions();
   const selected = useMemo(() => runs.filter((run) => selectedIds.includes(run.id)), [runs, selectedIds]);
-  const [first, second] = selected;
-  const comparable = selected.length === 2 && selected.every((run) => run.status === "ok");
+  const pair = useMemo(() => comparePair(selectedIds, runs), [runs, selectedIds]);
   const onDelete = useCallback(() => actions.remove(selected), [actions, selected]);
 
   useHotkey("Escape", clearSelection, { enabled: selected.length > 0 });
@@ -241,12 +241,8 @@ function SelectionFooter({ runs }: { runs: readonly RunSummary[] }) {
         <span className="text-muted-foreground flex-1" aria-live="polite">
           {selected.length === 1 ? "1 run selected" : `${selected.length} runs selected`}
         </span>
-        {comparable && first !== undefined && second !== undefined && (
-          <Button
-            size="xs"
-            nativeButton={false}
-            render={<Link to="/compare/$a/$b" params={{ a: first.id, b: second.id }} />}
-          >
+        {pair !== undefined && (
+          <Button size="xs" nativeButton={false} render={<Link to="/compare/$a/$b" params={pair} />}>
             Compare
           </Button>
         )}

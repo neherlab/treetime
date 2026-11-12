@@ -26,6 +26,7 @@ import { useThemeChoice } from "../preferences/useThemeChoice";
 import { commandSettings } from "../settings/catalog";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
+import { comparePair } from "./comparePair";
 import {
   datasetPaletteItems,
   matchingPaletteItems,
@@ -201,12 +202,12 @@ function usePaletteItems(): PaletteItem[] {
       );
     }
 
-    const [first, second, ...others] = selectedIds;
+    const pair = comparePair(selectedIds, runs);
 
-    if (first !== undefined && second !== undefined && others.length === 0) {
+    if (pair !== undefined) {
       items.push(
         paletteItem("Action", "action-compare", "Compare selected runs", "", () =>
-          navigate({ to: "/compare/$a/$b", params: { a: first, b: second } }),
+          navigate({ to: "/compare/$a/$b", params: pair }),
         ),
       );
     }
