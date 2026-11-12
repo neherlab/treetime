@@ -1,7 +1,7 @@
 ---
 title: Die TreeTime-App
 description: Einen Datensatz öffnen, sein Uhrsignal prüfen, eine Analyse ausführen und das Ergebnis in der Web-App oder der Desktop-App lesen.
-sourceHash: 717e591adba37177
+sourceHash: 3b4a6c6d05f978a5
 ---
 
 Die TreeTime-App führt die Analysen des Befehlszeilenprogramms `treetime` mit Ihren eigenen Daten oder mit einem Beispieldatensatz aus. Zwei Apps teilen eine Oberfläche:
@@ -23,7 +23,7 @@ Der übliche Arbeitsablauf:
 
 Die Startseite öffnet sich, wenn Sie die App unter ihrer Adresse öffnen.
 
-- **Ablagefläche**: legen Sie hier den Baum, das Alignment und die Metadaten ab, oder klicken Sie auf „Choose files“. Die App liest den Inhalt jeder Datei, um ihre Art zu bestimmen: die Dateiendung ist nur ein Hinweis. Sie legt jede Datei in ihr Eingabefeld und öffnet die Optionen einer neuen Analyse. Eine Datei, die die App nicht zuordnen kann, bleibt draußen, und ein Hinweis nennt für jede solche Datei den Grund. Unter der Schaltfläche listet die App die Formate, die jede Eingabe annimmt
+- **Ablagefläche**: legen Sie hier den Baum, das Alignment und die Metadaten ab, oder klicken Sie auf „Choose files“. Die App liest den Anfang jeder Datei, bevor etwas hochgeladen wird: eine Zip-Datei wird als Laufpaket importiert, eine Datei, die sich als TreeTime-Konfiguration lesen lässt, wird in die Optionen geladen, und jede andere Datei ist eine Eingabe. Sie liest den Inhalt jeder Eingabe, um ihre Art zu bestimmen: die Dateiendung ist nur ein Hinweis. Sie legt jede Eingabe in ihr Feld und öffnet die Optionen einer neuen Analyse. Eine Datei, die die App nicht zuordnen kann, bleibt draußen, und ein Hinweis nennt für jede solche Datei den Grund. Unter der Schaltfläche listet die App die Formate, die jede Eingabe annimmt
 - **Konfiguration**: eine YAML-Konfiguration auf der Ablagefläche lädt ihre Einstellungen in die Optionen, wie „Load config (YAML)“ im [Optionsmenü](/app/workspace#optionsmenü)
 - **Laufpaket**: ein Laufpaket (`.zip`) auf der Ablagefläche importiert den Lauf mit seinen Ergebnissen; siehe [Laufpaket](/app/export#laufpaket)
 - **Beispiele**: eine Karte pro Beispieldatensatz, mit dem Organismus und dem Segment, der Zahl der Proben, dem Datumsbereich und der Sequenzlänge. „Open“ öffnet den Datensatz in einer neuen Analyse, mit dem Zeitbaum (Time tree) ausgewählt. In der Desktop-App ohne Beispiele bietet die Galerie an, sie herunterzuladen
@@ -43,6 +43,6 @@ Das Menü eines Eintrags hat diese Aktionen:
 - **Download run package**: siehe [Laufpaket](/app/export#laufpaket)
 - **Delete**: siehe [Läufe löschen](/app/runs#läufe-löschen)
 
-Um mit mehreren Läufen zu arbeiten, wählen Sie „Select“ im Menü eines Eintrags, oder klicken Sie die Einträge mit Strg (Cmd unter macOS) oder Umschalt an. Die Fußzeile der Seitenleiste bietet dann „Compare“ für genau zwei beendete Läufe, „Delete“ und „Clear“.
+Um mit mehreren Läufen zu arbeiten, wählen Sie „Select“ im Menü eines Eintrags, oder klicken Sie die Einträge mit Strg (Cmd unter macOS) oder Umschalt an. Die Fußzeile der Seitenleiste bietet dann „Compare“ für genau zwei beendete Läufe, mit dem zuerst ausgewählten Lauf als Lauf A, „Delete“ und „Clear“.
 
 „New analysis“ oben in der Seitenleiste beginnt eine Analyse mit den Standardeinstellungen und ohne Daten. Die Befehlspalette (Strg+K, Cmd+K unter macOS) findet Läufe, Beispiele und Aktionen nach ihrem Namen.

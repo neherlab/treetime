@@ -7,7 +7,7 @@ A run page shows the result of one run. The options of the run stay in the panel
 
 ## Run header
 
-The header shows the run name, the status, the analysis, the dataset, the date of the run, and its duration. The pencil button next to the name renames the run. The actions of the header:
+The header shows the run name, the status, the analysis, the dataset (the example name, else the file name of the input tree), the date of the run, and its duration. The pencil button next to the name renames the run. The actions of the header:
 
 - **Download**: the run package and the main output files; see [Download menu](/app/export#download-menu)
 - **Command line**: the command and the configuration that repeat the run; see [Command line](/app/export#command-line)
@@ -20,14 +20,14 @@ When the run wrote warnings, one line under the header gives their number and th
 
 The tabs under the header select the view. Each view exports its own data. The selection of a node and the filters of the tree stay when you change the view.
 
-| View       | Content                                                                                                           | Analyses                                      |
-| ---------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Overview   | The main estimates and the tree                                                                                   | All                                           |
-| Clock      | The root-to-tip regression, the residuals, the regression statistics, the clock outliers, and the undated samples | Time tree                                     |
-| Population | The coalescent prior: the skyline or the coalescent time scale, and the coalescent settings                       | Time tree                                     |
-| Model      | The substitution model and the entropy of each site                                                               | Time tree, Ancestral sequences, Optimize tree |
-| Log        | The log of the run, by stage, with a filter, a search, and a copy action                                          | All                                           |
-| Settings   | The settings of the run; "Changed only" shows only the settings that the run changed                              | All                                           |
+| View       | Content                                                                                                                         | Analyses                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Overview   | The main estimates and the tree                                                                                                 | All                                           |
+| Clock      | The root-to-tip regression, the residuals, the regression statistics, the clock outliers, and the undated samples               | Time tree                                     |
+| Population | The coalescent prior: the skyline or the coalescent time scale, and the coalescent settings                                     | Time tree                                     |
+| Model      | The substitution model and the entropy of each site                                                                             | Time tree, Ancestral sequences, Optimize tree |
+| Log        | The log of the run, by stage, with a filter, a search, and a copy action                                                        | All                                           |
+| Settings   | The settings of the run, with a download of its YAML configuration; "Changed only" shows only the settings that the run changed | All                                           |
 
 A run that has not finished shows only Overview, Log, and Settings.
 
@@ -35,7 +35,7 @@ A run that has not finished shows only Overview, Log, and Settings.
 
 The estimates panel shows the root date with its interval and the clock rate with its standard deviation, such as "7.6e-4 per site per year, ± 4.1e-5", then the temporal signal and the number of samples used. "Run details" shows the clock model, the coalescent prior, the log likelihood, the number of iterations, and the duration.
 
-When the run computed no interval for the dates, the panel says "No interval computed" and offers "Compute the interval": this starts a variant of the run with confidence intervals on.
+When the run computed no interval for the dates, the panel says "No interval computed". When the run had confidence intervals off, it also offers "Compute the interval": this starts a variant of the run with confidence intervals on.
 
 The dated tree is the largest element. On a wide screen, the root-to-tip plot sits next to it. A click on a node in the tree or on a point in the plot selects the sample in both, and a side panel shows its details: its date, its clock data, its mutations, and why the clock fit excluded it, if it did.
 
@@ -51,7 +51,7 @@ The Clock view shows the regression statistics as Tempest lists them: the clock 
 
 ## Tree viewer
 
-A toolbar above the tree gives the coloring, the layout, the search, and the zoom to the root. "View options" opens all options of the Auspice viewer, among them the download of the tree as shown.
+A toolbar above the tree gives the coloring, the layout, the search, and the zoom to the root. The search lists the samples whose names match what you type, also with small typing errors, and selects the sample that you pick. "View options" opens all options of the Auspice viewer, among them the download of the tree as shown.
 
 ## Running and failed runs
 

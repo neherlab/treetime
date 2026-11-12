@@ -3,7 +3,7 @@ title: Workspace
 description: The options panel, the input facts, the settings, the checks, and the preview before the first run.
 ---
 
-The workspace shows the options of an analysis on the left and the main area on the right. The same layout serves a new analysis and a run: while you change an assumption, the result that motivated the change stays in view. Drag the border between the two panels to change their widths. On a narrow screen, the options open in a sheet, and the Run button stays in a bar at the bottom.
+The workspace shows the options of an analysis on the left and the main area on the right. The same layout serves a new analysis and a run: while you change an assumption, the result that motivated the change stays in view. Drag the border between the two panels to change their widths; the app keeps the width of the options panel. On a narrow screen, the options open in a sheet, and the Run button stays in a bar at the bottom.
 
 The header of the workspace names the dataset: the example name, or the file names of your data.
 
@@ -42,7 +42,7 @@ The footer at the bottom of the panel checks the options while you edit them. It
 
 The menu button of the options panel offers:
 
-- **Command line**: the options as a `treetime` command and as a YAML configuration; see [Command line](/app/export#command-line). The keyboard shortcut is C
+- **Command line**: the options as a `treetime` command and as a YAML configuration; see [Command line](/app/export#command-line). The keyboard shortcut is Ctrl+Shift+X (Cmd+Shift+X on macOS)
 - **Apply settings from a run**: the settings that a chosen run changed from the defaults replace the settings of the options. The inputs stay. The list shows the ended runs of the same analysis
 - **Load config (YAML)**: load the settings of a YAML configuration file, such as one that `treetime` reads with `--config`
 
@@ -60,4 +60,6 @@ The preview computes trees of up to 5100 tips at once. For a larger tree, "Updat
 
 A click on a run in the history shows its results and its options. The options are read-only until you change one: the first change turns them into a [variant](/app/variants) of the run. A bar above the results then lists the settings that differ from the shown run, such as "Settings changed since this run: coalescent prior, confidence. Run to update." Run starts the variant, and "Revert to this run's settings" puts back the options of the run.
 
-"New analysis" in the sidebar starts from the default settings and no data. "Reset form" empties the form, and the Undo of its notice puts the form back.
+Your own analysis stays aside while a run is shown, and comes back after a variant of the run starts. When you open another run while you edit a variant, the variant goes aside, and the Undo of the notice brings it back.
+
+"New analysis" in the sidebar starts from the default settings and no data. "Reset form" empties the form, and on a run page it brings back your own analysis; the Undo of its notice puts the form back.

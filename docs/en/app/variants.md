@@ -17,7 +17,7 @@ The overview of a variant shows one line with the change of the main estimates a
 
 ## Compare two runs
 
-Open the comparison with "Compare with source" in the menu of a variant, or select two finished runs in the history and click "Compare". The swap button exchanges run A and run B.
+Open the comparison with "Compare with source" in the menu of a variant, or select two finished runs in the history and click "Compare": the first run that you selected is run A. The swap button exchanges run A and run B.
 
 - **Estimates**: the root date, the clock rate, the interval width, the log likelihood, the correlation coefficient r, and the excluded samples of both runs, with the difference in the column "Difference (B - A)". The comparison marks the log likelihoods as not comparable when the runs differ in their data, their coalescent prior, their substitution model, or the topology of their result trees, because then the two values belong to different models
 - **Trees**: whether the trees have the same topology, and how far each shared ancestor moves in time between the two runs

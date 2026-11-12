@@ -22,7 +22,7 @@ The usual work loop:
 
 The start screen opens when you open the app at its address.
 
-- **Drop zone**: drop the tree, the alignment, and the metadata here, or click "Choose files". The app reads the content of each file to find its kind: the file extension is only a hint. It puts each file into its input slot and opens the options of a new analysis. A file that the app cannot place stays out, and a notice gives the reason for each such file. Below the button, the app lists the formats that each input accepts
+- **Drop zone**: drop the tree, the alignment, and the metadata here, or click "Choose files". The app reads the start of each file before anything is uploaded: a zip file imports as a run package, a file that reads as a TreeTime configuration loads into the options, and every other file is an input. It reads the content of each input to find its kind: the file extension is only a hint. It puts each input into its slot and opens the options of a new analysis. A file that the app cannot place stays out, and a notice gives the reason for each such file. Below the button, the app lists the formats that each input accepts
 - **Configuration**: a YAML configuration in the drop zone loads its settings into the options, as "Load config (YAML)" in the [options menu](/app/workspace#options-menu) does
 - **Run package**: a run package (`.zip`) in the drop zone imports the run with its results; see [Run package](/app/export#run-package)
 - **Examples**: one card per example dataset, with the organism and the segment, the number of samples, the date range, and the sequence length. "Open" opens the dataset in a new analysis with the time tree selected. On the desktop app without examples, the gallery offers to download them
@@ -42,6 +42,6 @@ The menu of an entry has these actions:
 - **Download run package**: see [Run package](/app/export#run-package)
 - **Delete**: see [Delete runs](/app/runs#delete-runs)
 
-To act on several runs, choose "Select" in the menu of an entry, or Ctrl+click (Cmd+click on macOS) or Shift+click the entries. The footer of the sidebar then offers "Compare" for exactly two finished runs, "Delete", and "Clear".
+To act on several runs, choose "Select" in the menu of an entry, or Ctrl+click (Cmd+click on macOS) or Shift+click the entries. The footer of the sidebar then offers "Compare" for exactly two finished runs, with the first selected run as run A, "Delete", and "Clear".
 
 "New analysis" at the top of the sidebar starts an analysis with the default settings and no data. The command palette (Ctrl+K, Cmd+K on macOS) finds runs, examples, and actions by name.

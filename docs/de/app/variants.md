@@ -1,7 +1,7 @@
 ---
 title: Varianten und Vergleich
 description: Eine Annahme eines Laufs ändern, den Unterschied zum Quelllauf lesen und zwei Läufe vergleichen.
-sourceHash: 63a3390c1b9e59a8
+sourceHash: 0d4585aa2024da96
 ---
 
 Eine Variante ist ein Lauf aus den Einstellungen eines anderen Laufs, ihrer Quelle, mit einer oder mehreren geänderten Einstellungen. Eine Variante und ihre Quelle bilden eine Arbeitslinie in der [Laufliste](/app#laufliste).
@@ -18,7 +18,7 @@ Die Übersicht einer Variante zeigt eine Zeile mit der Änderung der wichtigsten
 
 ## Zwei Läufe vergleichen
 
-Öffnen Sie den Vergleich mit „Compare with source“ im Menü einer Variante, oder wählen Sie zwei beendete Läufe in der Liste aus und klicken Sie auf „Compare“. Die Tausch-Schaltfläche vertauscht Lauf A und Lauf B.
+Öffnen Sie den Vergleich mit „Compare with source“ im Menü einer Variante, oder wählen Sie zwei beendete Läufe in der Liste aus und klicken Sie auf „Compare“: der Lauf, den Sie zuerst ausgewählt haben, ist Lauf A. Die Tausch-Schaltfläche vertauscht Lauf A und Lauf B.
 
 - **Estimates**: das Datum der Wurzel, die Uhrrate, die Breite des Intervalls, die Log-Likelihood, der Korrelationskoeffizient r und die ausgeschlossenen Proben beider Läufe, mit dem Unterschied in der Spalte „Difference (B - A)“. Der Vergleich markiert die Log-Likelihoods als nicht vergleichbar, wenn die Läufe sich in ihren Daten, ihrem Koaleszenz-Prior, ihrem Substitutionsmodell oder der Topologie ihrer Ergebnisbäume unterscheiden, weil die beiden Werte dann zu verschiedenen Modellen gehören
 - **Trees**: ob die Bäume dieselbe Topologie haben und wie weit sich jeder gemeinsame Vorfahre zwischen den beiden Läufen in der Zeit verschiebt

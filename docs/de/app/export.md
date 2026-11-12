@@ -1,7 +1,7 @@
 ---
 title: Export
 description: Ausgabedateien und Laufpakete herunterladen, ein Laufpaket importieren und einen Lauf mit dem Befehlszeilenprogramm wiederholen.
-sourceHash: 0d28d205941c33b3
+sourceHash: 28ea5e439ca959c7
 ---
 
 ## Download-Menü
@@ -38,7 +38,7 @@ Das Skript führt `treetime` mit der Konfiguration `run.yaml` aus, die die Einga
 
 ## Befehlszeile
 
-„Command line“ (Tastenkürzel C) zeigt den Lauf oder die offenen Optionen als `treetime`-Befehl oder als YAML-Konfiguration, mit einer Kopier-Schaltfläche. Der Befehl enthält die Eingaben, die Einstellungen, die von den Standardwerten abweichen, die Ausgaben, die die App jedem Lauf hinzufügt, und den Startwert des Laufs, mit den Pfaden des Laufpakets. Der Dialog gibt außerdem:
+„Command line“ (Tastenkürzel Strg+Umschalt+X, Cmd+Umschalt+X unter macOS) zeigt den Lauf oder die offenen Optionen als `treetime`-Befehl oder als YAML-Konfiguration, mit einer Kopier-Schaltfläche. Der Befehl enthält die Eingaben, die Einstellungen, die von den Standardwerten abweichen, die Ausgaben, die die App jedem Lauf hinzufügt, und den Startwert des Laufs, mit den Pfaden des Laufpakets. Der Dialog gibt außerdem:
 
 - **Methods**: einen Absatz für den Methodenteil einer Veröffentlichung, mit der Analyse, der TreeTime-Version und den wichtigsten Einstellungen
 - **Citation**: die Veröffentlichung, die für die Analyse zu zitieren ist

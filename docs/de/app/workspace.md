@@ -1,10 +1,10 @@
 ---
 title: Arbeitsbereich
 description: Der Optionsbereich, die Fakten der Eingaben, die Einstellungen, die Prüfungen und die Vorschau vor dem ersten Lauf.
-sourceHash: df681bb662ed270d
+sourceHash: d44c780b01b231e1
 ---
 
-Der Arbeitsbereich zeigt links die Optionen einer Analyse und rechts den Hauptbereich. Dasselbe Layout dient einer neuen Analyse und einem Lauf: während Sie eine Annahme ändern, bleibt das Ergebnis, das zu der Änderung führte, sichtbar. Ziehen Sie die Grenze zwischen den beiden Bereichen, um ihre Breiten zu ändern. Auf einem schmalen Bildschirm öffnen sich die Optionen in einem Einschub, und die Schaltfläche Run bleibt in einer Leiste am unteren Rand.
+Der Arbeitsbereich zeigt links die Optionen einer Analyse und rechts den Hauptbereich. Dasselbe Layout dient einer neuen Analyse und einem Lauf: während Sie eine Annahme ändern, bleibt das Ergebnis, das zu der Änderung führte, sichtbar. Ziehen Sie die Grenze zwischen den beiden Bereichen, um ihre Breiten zu ändern; die App behält die Breite des Optionsbereichs. Auf einem schmalen Bildschirm öffnen sich die Optionen in einem Einschub, und die Schaltfläche Run bleibt in einer Leiste am unteren Rand.
 
 Die Kopfzeile des Arbeitsbereichs nennt den Datensatz: den Namen des Beispiels oder die Dateinamen Ihrer Daten.
 
@@ -43,7 +43,7 @@ Die Fußzeile unten im Bereich prüft die Optionen, während Sie sie bearbeiten.
 
 Die Menü-Schaltfläche des Optionsbereichs bietet:
 
-- **Command line**: die Optionen als `treetime`-Befehl und als YAML-Konfiguration; siehe [Befehlszeile](/app/export#befehlszeile). Das Tastenkürzel ist C
+- **Command line**: die Optionen als `treetime`-Befehl und als YAML-Konfiguration; siehe [Befehlszeile](/app/export#befehlszeile). Das Tastenkürzel ist Strg+Umschalt+X (Cmd+Umschalt+X unter macOS)
 - **Apply settings from a run**: die Einstellungen, die ein gewählter Lauf gegenüber den Standardwerten geändert hat, ersetzen die Einstellungen der Optionen. Die Eingaben bleiben. Die Liste zeigt die beendeten Läufe derselben Analyse
 - **Load config (YAML)**: die Einstellungen einer YAML-Konfigurationsdatei laden, etwa einer, die `treetime` mit `--config` liest
 
@@ -61,4 +61,6 @@ Die Vorschau berechnet Bäume mit bis zu 5100 Blättern sofort. Für einen grö�
 
 Ein Klick auf einen Lauf in der Liste zeigt seine Ergebnisse und seine Optionen. Die Optionen sind schreibgeschützt, bis Sie eine ändern: die erste Änderung macht sie zu einer [Variante](/app/variants) des Laufs. Eine Leiste über den Ergebnissen listet dann die Einstellungen, die vom gezeigten Lauf abweichen, etwa „Settings changed since this run: coalescent prior, confidence. Run to update.“ Run startet die Variante, und „Revert to this run's settings“ stellt die Optionen des Laufs wieder her.
 
-„New analysis“ in der Seitenleiste beginnt mit den Standardeinstellungen und ohne Daten. „Reset form“ leert das Formular, und „Undo“ in seinem Hinweis stellt das Formular wieder her.
+Ihre eigene Analyse bleibt beiseite, solange ein Lauf gezeigt wird, und kommt zurück, nachdem eine Variante des Laufs startet. Wenn Sie einen anderen Lauf öffnen, während Sie eine Variante bearbeiten, kommt die Variante beiseite, und „Undo“ im Hinweis bringt sie zurück.
+
+„New analysis“ in der Seitenleiste beginnt mit den Standardeinstellungen und ohne Daten. „Reset form“ leert das Formular und bringt auf einer Laufseite Ihre eigene Analyse zurück; „Undo“ in seinem Hinweis stellt das Formular wieder her.

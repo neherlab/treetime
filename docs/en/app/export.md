@@ -37,7 +37,7 @@ The script runs `treetime` with the configuration `run.yaml`, which reads the in
 
 ## Command line
 
-"Command line" (keyboard shortcut C) shows the run or the open options as a `treetime` command or as a YAML configuration, with a copy button. The command holds the inputs, the settings that differ from the defaults, the outputs that the app adds to every run, and the seed of the run, with the paths of the run package. The dialog also gives:
+"Command line" (keyboard shortcut Ctrl+Shift+X, Cmd+Shift+X on macOS) shows the run or the open options as a `treetime` command or as a YAML configuration, with a copy button. The command holds the inputs, the settings that differ from the defaults, the outputs that the app adds to every run, and the seed of the run, with the paths of the run package. The dialog also gives:
 
 - **Methods**: a paragraph for the methods section of a paper, with the analysis, the TreeTime version, and the key settings
 - **Citation**: the paper to cite for the analysis
