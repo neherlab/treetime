@@ -83,6 +83,11 @@ pub struct UiSettings {
   #[deser(default)]
   pub sidebar_width: Option<u32>,
 
+  /// Width of the options panel of the analysis workspace in pixels.
+  #[schemars(default)]
+  #[deser(default)]
+  pub options_width: Option<u32>,
+
   /// The unfinished analysis form.
   #[schemars(default)]
   #[deser(default)]
@@ -147,6 +152,9 @@ pub struct UiDraft {
 
   /// The run that holds the uploaded input files of the form.
   pub upload_run_id: Option<JobId>,
+
+  /// Name of the example dataset whose files the form holds, for example `ebola/100`; absent for the user's own files.
+  pub example: Option<String>,
 
   /// The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.
   #[deser(default)]

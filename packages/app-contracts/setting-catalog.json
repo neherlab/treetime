@@ -2,6 +2,7 @@
   "commands": [
     {
       "command": "timetree",
+      "command_line": "treetime timetree",
       "title": "Time tree",
       "description": "Infer a time tree and estimate the clock rate from sampling dates.",
       "inputs": [
@@ -169,6 +170,12 @@
           ],
           "control": {
             "kind": "coalescent",
+            "setting": "coalescent",
+            "skyline_settings": [
+              "n_skyline",
+              "skyline_stiffness"
+            ],
+            "years_suffix": "y",
             "options": [
               {
                 "value": "none",
@@ -226,6 +233,7 @@
           ],
           "control": {
             "kind": "clock-filter",
+            "setting": "clock_filter",
             "off": "Off: all samples stay in the regression.",
             "on": "Samples farther from the regression than the threshold, in interquartile ranges, are ignored."
           }
@@ -264,6 +272,8 @@
           ],
           "control": {
             "kind": "substitution-model",
+            "model_setting": "model",
+            "parameters_setting": "model_params",
             "parameters_example": "kappa=0.2 pis=0.25,0.25,0.25,0.25"
           }
         },
@@ -279,6 +289,24 @@
             "kind": "setting"
           }
         }
+      ],
+      "preview_settings": [
+        "tree",
+        "newick_dialect",
+        "metadata",
+        "metadata_id_columns",
+        "metadata_delimiters",
+        "date_column",
+        "date_format",
+        "clock_filter",
+        "allow_negative_rate",
+        "prune_filtered_tips",
+        "prune_undated_tips",
+        "keep_tips",
+        "keep_tips_file",
+        "reroot",
+        "outgroup",
+        "keep_root"
       ],
       "choices": [
         {
@@ -2528,6 +2556,7 @@
     },
     {
       "command": "clock",
+      "command_line": "treetime clock",
       "title": "Clock signal",
       "description": "Infer the clock rate, assess the temporal signal and flag outliers using root-to-tip regression.",
       "inputs": [
@@ -2640,6 +2669,7 @@
           ],
           "control": {
             "kind": "clock-filter",
+            "setting": "clock_filter",
             "off": "Off: all samples stay in the regression.",
             "on": "Samples farther from the regression than the threshold, in interquartile ranges, are ignored."
           }
@@ -2668,6 +2698,24 @@
             "kind": "setting"
           }
         }
+      ],
+      "preview_settings": [
+        "tree",
+        "newick_dialect",
+        "metadata",
+        "metadata_id_columns",
+        "metadata_delimiters",
+        "date_column",
+        "date_format",
+        "clock_filter",
+        "allow_negative_rate",
+        "prune_filtered_tips",
+        "prune_undated_tips",
+        "keep_tips",
+        "keep_tips_file",
+        "reroot",
+        "outgroup",
+        "keep_root"
       ],
       "choices": [
         {
@@ -3694,6 +3742,7 @@
     },
     {
       "command": "ancestral",
+      "command_line": "treetime ancestral",
       "title": "Ancestral sequences",
       "description": "Infer ancestral sequences and mutations on each branch.",
       "inputs": [
@@ -3802,6 +3851,8 @@
           ],
           "control": {
             "kind": "substitution-model",
+            "model_setting": "model",
+            "parameters_setting": "model_params",
             "parameters_example": "kappa=0.2 pis=0.25,0.25,0.25,0.25"
           }
         },
@@ -3829,6 +3880,10 @@
             "kind": "setting"
           }
         }
+      ],
+      "preview_settings": [
+        "tree",
+        "newick_dialect"
       ],
       "choices": [],
       "settings": [
@@ -5239,6 +5294,7 @@
     },
     {
       "command": "optimize",
+      "command_line": "treetime optimize",
       "title": "Optimize tree",
       "description": "Optimize branch lengths and local topology improvements.",
       "inputs": [
@@ -5419,6 +5475,13 @@
             "kind": "setting"
           }
         }
+      ],
+      "preview_settings": [
+        "tree",
+        "newick_dialect",
+        "reroot",
+        "outgroup",
+        "keep_root"
       ],
       "choices": [
         {
@@ -6866,6 +6929,7 @@
     },
     {
       "command": "prune",
+      "command_line": "treetime prune",
       "title": "Prune tree",
       "description": "Collapse short branches and remove listed samples.",
       "inputs": [
@@ -6994,6 +7058,10 @@
             "kind": "setting"
           }
         }
+      ],
+      "preview_settings": [
+        "tree",
+        "newick_dialect"
       ],
       "choices": [],
       "settings": [

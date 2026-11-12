@@ -236,6 +236,45 @@
         }
       }
     },
+    "/api/stored-inputs": {
+      "post": {
+        "description": "The input paths of a request whose stored copies are gone, because no run references their contents any more.",
+        "operationId": "storedInputs",
+        "requestBody": {
+          "description": "Input paths, for example those of a form, to look up in the store of uploaded inputs.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoredInputsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The inputs of a request that the store of uploaded inputs no longer holds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredInputs"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clock-preview": {
       "post": {
         "description": "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.",
@@ -1704,6 +1743,11 @@
             "description": "Run to compare the configuration with, for example the run whose results the app shows beside the form. The\nanswer then lists the settings whose resolved values differ from those of the run.",
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the configuration reads, for example `ebola/100`; unset for the user's\nown files. The answer names the dataset after it.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "additionalProperties": false,
@@ -2222,11 +2266,16 @@
             "type": "integer",
             "format": "uint",
             "minimum": 0
+          },
+          "text": {
+            "description": "The form as a person reads it: the pattern of a calendar format, such as `YYYY-MM-DD` for `%Y-%m-%d`, or the\nname of the form, such as `decimal years`.",
+            "type": "string"
           }
         },
         "required": [
           "form",
-          "count"
+          "count",
+          "text"
         ]
       },
       "DateForm": {
@@ -2729,6 +2778,24 @@
           "text"
         ]
       },
+      "SettingCommandLine": {
+        "description": "The command-line form of a setting for its value in a configuration.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
+          },
+          "text": {
+            "description": "The flag and its value as a command line takes them, quoted for the shell, for example `--clock-filter 4` or\n`--outgroup 'A/x 1'`; absent when the command line leaves the setting out for this value: a switch that is off,\nan unset value, or an empty list.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
       "SettingDifference": {
         "description": "A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.\nInputs differ when their file contents differ; their paths do not count.",
         "oneOf": [
@@ -3047,6 +3114,39 @@
             "type": "string",
             "const": "input"
           }
+        ]
+      },
+      "StoredInputsRequest": {
+        "description": "Input paths, for example those of a form, to look up in the store of uploaded inputs.",
+        "type": "object",
+        "properties": {
+          "paths": {
+            "description": "Paths of the input files, as the form holds them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "paths"
+        ]
+      },
+      "StoredInputs": {
+        "description": "The inputs of a request that the store of uploaded inputs no longer holds.",
+        "type": "object",
+        "properties": {
+          "missing": {
+            "description": "Paths of the request that name a stored input whose file is gone, because no run references its contents any\nmore, in the order of the request. Paths outside the store, such as files on the computer, are not listed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "missing"
         ]
       },
       "ClockPreviewRequest": {
@@ -3445,6 +3545,11 @@
           "title": {
             "description": "Title of the run.",
             "type": "string"
+          },
+          "dataset": {
+            "description": "Name of the dataset of the run: the example name, for example `ebola/100`, else the file name of the tree input;\nabsent for a run without either.",
+            "type": "string",
+            "x-unset": true
           },
           "command": {
             "description": "Command the run executes.",
@@ -5671,6 +5776,13 @@
             "minimum": 0,
             "x-unset": true
           },
+          "options_width": {
+            "description": "Width of the options panel of the analysis workspace in pixels.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0,
+            "x-unset": true
+          },
           "draft": {
             "description": "The unfinished analysis form.",
             "$ref": "#/components/schemas/UiDraft",
@@ -5722,6 +5834,11 @@
           "upload_run_id": {
             "description": "The run that holds the uploaded input files of the form.",
             "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the form holds, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
             "x-unset": true
           },
           "choices": {
@@ -6212,6 +6329,10 @@
             "description": "The command.",
             "$ref": "#/components/schemas/AppCommand"
           },
+          "command_line": {
+            "description": "The command as the command line runs it, for example `treetime timetree`.",
+            "type": "string"
+          },
           "title": {
             "description": "Name of the analysis as the app shows it, for example `Time tree`.",
             "type": "string"
@@ -6252,6 +6373,13 @@
               "$ref": "#/components/schemas/MainSettingRow"
             }
           },
+          "preview_settings": {
+            "description": "Keys of the settings that the clock preview reads: the input data and analysis settings that the `clock` command\nshares with this command, in catalog order. The preview of a draft changes only when one of them changes.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "choices": {
             "description": "Settings that the form shows as one choice between options.",
             "type": "array",
@@ -6269,6 +6397,7 @@
         },
         "required": [
           "command",
+          "command_line",
           "title",
           "description",
           "inputs",
@@ -6276,6 +6405,7 @@
           "groups",
           "sections",
           "main_rows",
+          "preview_settings",
           "choices",
           "settings"
         ]
@@ -8904,6 +9034,18 @@
               "$ref": "#/components/schemas/EffectiveValue"
             }
           },
+          "command_lines": {
+            "description": "The command-line form of each setting for its value in the configuration, in catalog order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingCommandLine"
+            }
+          },
+          "dataset": {
+            "description": "Name of the dataset: the example of the request, else the file name of the tree input; absent without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "run_differences": {
             "description": "Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and\ninputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output\nfiles and their paths, are not compared. Absent without `run_id`, and when the run executes another command.",
             "type": "array",
@@ -8924,7 +9066,8 @@
           "code",
           "checks",
           "choices",
-          "effective"
+          "effective",
+          "command_lines"
         ]
       },
       "CheckConfigResponseInvalid": {
@@ -8986,6 +9129,18 @@
               "$ref": "#/components/schemas/EffectiveValue"
             }
           },
+          "command_lines": {
+            "description": "The command-line form of each setting for its value in the configuration, in catalog order, when the\nconfiguration could be merged over the defaults.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingCommandLine"
+            }
+          },
+          "dataset": {
+            "description": "Name of the dataset: the example of the request, else the file name of the tree input when the configuration\ncould be merged over the defaults; absent without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "type": "string",
             "const": "invalid"
@@ -9000,7 +9155,8 @@
           "messages",
           "checks",
           "choices",
-          "effective"
+          "effective",
+          "command_lines"
         ]
       },
       "SettingDifferenceSetting": {
@@ -9107,6 +9263,13 @@
             "description": "The command line and the YAML config that reproduce the run.",
             "$ref": "#/components/schemas/ConfigCode"
           },
+          "command_lines": {
+            "description": "The command-line form of each setting of the command for its value in `config`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingCommandLine"
+            }
+          },
           "config_hash": {
             "description": "Hash that a run of this configuration records, to find finished runs with the same settings and input\ncontents; absent when an input cannot be read.",
             "type": "string",
@@ -9132,7 +9295,8 @@
         "required": [
           "status",
           "config",
-          "code"
+          "code",
+          "command_lines"
         ]
       },
       "RunConfigResponseInvalid": {
@@ -9226,9 +9390,18 @@
             "type": "string",
             "x-unset": true
           },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
+          },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
           },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
@@ -9349,6 +9522,7 @@
           "title",
           "renamed",
           "status",
+          "prepared",
           "pinned",
           "group_id",
           "size",
@@ -9385,9 +9559,18 @@
             "type": "string",
             "x-unset": true
           },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
+          },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
           },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
@@ -9508,6 +9691,7 @@
           "title",
           "renamed",
           "status",
+          "prepared",
           "pinned",
           "group_id",
           "size",
@@ -9544,9 +9728,18 @@
             "type": "string",
             "x-unset": true
           },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
+          },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
           },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
@@ -9667,6 +9860,7 @@
           "title",
           "renamed",
           "status",
+          "prepared",
           "pinned",
           "group_id",
           "size",
@@ -9703,9 +9897,18 @@
             "type": "string",
             "x-unset": true
           },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
+          },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
           },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
@@ -9826,6 +10029,7 @@
           "title",
           "renamed",
           "status",
+          "prepared",
           "pinned",
           "group_id",
           "size",
@@ -9862,9 +10066,18 @@
             "type": "string",
             "x-unset": true
           },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
+          },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
           },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
@@ -9985,6 +10198,7 @@
           "title",
           "renamed",
           "status",
+          "prepared",
           "pinned",
           "group_id",
           "size",
@@ -10801,6 +11015,21 @@
         "description": "The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.",
         "type": "object",
         "properties": {
+          "setting": {
+            "description": "Key of the setting that holds the prior: an option name, or a fixed time scale.",
+            "type": "string"
+          },
+          "skyline_settings": {
+            "description": "Keys of the settings of the skyline, which apply only while the skyline is picked.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "years_suffix": {
+            "description": "Unit suffix of a fixed time scale in years, as the setting takes it after the number: `y` in `50y`.",
+            "type": "string"
+          },
           "options": {
             "type": "array",
             "items": {
@@ -10814,6 +11043,9 @@
         },
         "required": [
           "kind",
+          "setting",
+          "skyline_settings",
+          "years_suffix",
           "options"
         ]
       },
@@ -10821,6 +11053,10 @@
         "description": "The clock filter threshold.",
         "type": "object",
         "properties": {
+          "setting": {
+            "description": "Key of the setting that holds the threshold.",
+            "type": "string"
+          },
           "off": {
             "description": "Note while the threshold is 0.",
             "type": "string"
@@ -10836,6 +11072,7 @@
         },
         "required": [
           "kind",
+          "setting",
           "off",
           "on"
         ]
@@ -10844,6 +11081,14 @@
         "description": "The substitution model and its parameters.",
         "type": "object",
         "properties": {
+          "model_setting": {
+            "description": "Key of the setting that holds the model.",
+            "type": "string"
+          },
+          "parameters_setting": {
+            "description": "Key of the setting that holds the parameters of the model.",
+            "type": "string"
+          },
           "parameters_example": {
             "description": "Example of the parameters, as the form shows them in the empty field.",
             "type": "string"
@@ -10855,6 +11100,8 @@
         },
         "required": [
           "kind",
+          "model_setting",
+          "parameters_setting",
           "parameters_example"
         ]
       },

@@ -71,6 +71,7 @@ mod tests {
       ui: UiSettings {
         theme: Some(UiTheme::System),
         sidebar_width: None,
+        options_width: None,
         draft: Some(draft()),
       },
       analysis: AnalysisSettings {
@@ -91,6 +92,7 @@ mod tests {
       ui: UiSettings {
         theme: Some(UiTheme::Dark),
         sidebar_width: Some(300),
+        options_width: None,
         draft: Some(draft()),
       },
       analysis: AnalysisSettings {
@@ -216,6 +218,7 @@ mod tests {
         },
         from_run_id: Some(JobId::random()),
         upload_run_id: None,
+        example: Some(o!("flu/h3n2/20")),
         choices: vec![ActiveChoice {
           choice: ChoiceName::Root,
           option: ChoiceOptionName::Outgroup,

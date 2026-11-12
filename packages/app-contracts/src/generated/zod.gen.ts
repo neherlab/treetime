@@ -169,7 +169,8 @@ export const zDateForm = z.union([
 export const zDateReading = z.object({
   form: zDateForm,
   format: z.string().optional(),
-  count: z.int().gte(0)
+  count: z.int().gte(0),
+  text: z.string()
 });
 
 /**
@@ -315,7 +316,8 @@ export const zCheckConfigRequest = z.strictObject({
   input_facts: zInputFacts.optional(),
   folder: z.string().optional(),
   choices: z.array(zActiveChoice).optional().default([]),
-  run_id: zJobId.optional()
+  run_id: zJobId.optional(),
+  example: z.string().optional()
 });
 
 /**
@@ -403,6 +405,14 @@ export const zRunCheck = z.object({
 export const zEffectiveValue = z.object({
   key: z.string(),
   text: z.string()
+});
+
+/**
+ * The command-line form of a setting for its value in a configuration.
+ */
+export const zSettingCommandLine = z.object({
+  key: z.string(),
+  text: z.string().optional()
 });
 
 /**
@@ -515,6 +525,20 @@ export const zFileRole = z.union([
  */
 export const zFileRoles = z.object({
   files: z.array(zFileRole)
+});
+
+/**
+ * Input paths, for example those of a form, to look up in the store of uploaded inputs.
+ */
+export const zStoredInputsRequest = z.strictObject({
+  paths: z.array(z.string())
+});
+
+/**
+ * The inputs of a request that the store of uploaded inputs no longer holds.
+ */
+export const zStoredInputs = z.object({
+  missing: z.array(z.string())
 });
 
 /**
@@ -649,6 +673,7 @@ export const zRunHeadline = z.object({
 export const zRunSummary = z.object({
   id: zJobId,
   title: z.string(),
+  dataset: z.string().optional(),
   command: zAppCommand,
   status: zRunStatus,
   pinned: z.boolean(),
@@ -2033,6 +2058,8 @@ export const zCheckConfigResponseInvalid = z.object({
   checks: z.array(zRunCheck),
   choices: z.array(zActiveChoice),
   effective: z.array(zEffectiveValue),
+  command_lines: z.array(zSettingCommandLine),
+  dataset: z.string().optional(),
   status: z.literal('invalid')
 });
 
@@ -2091,6 +2118,8 @@ export const zCheckConfigResponseValid = z.object({
   checks: z.array(zRunCheck),
   choices: z.array(zActiveChoice),
   effective: z.array(zEffectiveValue),
+  command_lines: z.array(zSettingCommandLine),
+  dataset: z.string().optional(),
   run_differences: z.array(zSettingDifference).optional(),
   status: z.literal('valid')
 });
@@ -2109,6 +2138,7 @@ export const zCheckConfigResponse = z.discriminatedUnion('status', [
 export const zRunConfigResponseValid = z.object({
   config: zSparseConfig,
   code: zConfigCode,
+  command_lines: z.array(zSettingCommandLine),
   config_hash: z.string().optional(),
   config_hash_error: z.string().optional(),
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
@@ -2193,7 +2223,9 @@ export const zRunRecordTimetree = z.object({
   title: z.string(),
   renamed: z.boolean(),
   example: z.string().optional(),
+  dataset: z.string().optional(),
   status: zRunStatus,
+  prepared: z.boolean(),
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
   group_id: zJobId,
@@ -2222,7 +2254,9 @@ export const zRunRecordOptimize = z.object({
   title: z.string(),
   renamed: z.boolean(),
   example: z.string().optional(),
+  dataset: z.string().optional(),
   status: zRunStatus,
+  prepared: z.boolean(),
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
   group_id: zJobId,
@@ -2251,7 +2285,9 @@ export const zRunRecordPrune = z.object({
   title: z.string(),
   renamed: z.boolean(),
   example: z.string().optional(),
+  dataset: z.string().optional(),
   status: zRunStatus,
+  prepared: z.boolean(),
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
   group_id: zJobId,
@@ -2280,7 +2316,9 @@ export const zRunRecordAncestral = z.object({
   title: z.string(),
   renamed: z.boolean(),
   example: z.string().optional(),
+  dataset: z.string().optional(),
   status: zRunStatus,
+  prepared: z.boolean(),
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
   group_id: zJobId,
@@ -2309,7 +2347,9 @@ export const zRunRecordClock = z.object({
   title: z.string(),
   renamed: z.boolean(),
   example: z.string().optional(),
+  dataset: z.string().optional(),
   status: zRunStatus,
+  prepared: z.boolean(),
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
   group_id: zJobId,
@@ -2821,6 +2861,7 @@ export const zUiDraft = z.strictObject({
   sources: z.record(z.string(), zUiDraftSource),
   from_run_id: zJobId.optional(),
   upload_run_id: zJobId.optional(),
+  example: z.string().optional(),
   choices: z.array(zActiveChoice),
   view: zUiSettingsView,
   search: z.string(),
@@ -2834,6 +2875,7 @@ export const zUiDraft = z.strictObject({
 export const zUiSettings = z.strictObject({
   theme: zUiTheme.optional(),
   sidebar_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).optional(),
+  options_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).optional(),
   draft: zUiDraft.optional()
 });
 
@@ -2867,6 +2909,9 @@ export const zRowControlSwitches = z.object({
  * The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.
  */
 export const zRowControlCoalescent = z.object({
+  setting: z.string(),
+  skyline_settings: z.array(z.string()),
+  years_suffix: z.string(),
   options: z.array(zRowOption),
   kind: z.literal('coalescent')
 });
@@ -2875,6 +2920,7 @@ export const zRowControlCoalescent = z.object({
  * The clock filter threshold.
  */
 export const zRowControlClockFilter = z.object({
+  setting: z.string(),
   off: z.string(),
   on: z.string(),
   kind: z.literal('clock-filter')
@@ -2884,6 +2930,8 @@ export const zRowControlClockFilter = z.object({
  * The substitution model and its parameters.
  */
 export const zRowControlSubstitutionModel = z.object({
+  model_setting: z.string(),
+  parameters_setting: z.string(),
   parameters_example: z.string(),
   kind: z.literal('substitution-model')
 });
@@ -2922,6 +2970,7 @@ export const zMainSettingRow = z.object({
  */
 export const zCommandSettings = z.object({
   command: zAppCommand,
+  command_line: z.string(),
   title: z.string(),
   description: z.string(),
   inputs: z.array(zInputSlot),
@@ -2929,6 +2978,7 @@ export const zCommandSettings = z.object({
   groups: z.array(z.string()),
   sections: z.array(zSettingSection),
   main_rows: z.array(zMainSettingRow),
+  preview_settings: z.array(z.string()),
   choices: z.array(zSettingChoice),
   settings: z.array(zSettingSpec)
 });
@@ -2992,6 +3042,16 @@ export const zFileRolesBody = zFileHeadsRequest;
  * What TreeTime does with each file of a request, in the order of the request.
  */
 export const zFileRolesResponse = zFileRoles;
+
+/**
+ * Input paths, for example those of a form, to look up in the store of uploaded inputs.
+ */
+export const zStoredInputsBody = zStoredInputsRequest;
+
+/**
+ * The inputs of a request that the store of uploaded inputs no longer holds.
+ */
+export const zStoredInputsResponse = zStoredInputs;
 
 /**
  * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.

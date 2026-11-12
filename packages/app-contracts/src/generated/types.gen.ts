@@ -76,6 +76,11 @@ export type CheckConfigRequest = {
    * answer then lists the settings whose resolved values differ from those of the run.
    */
   run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the configuration reads, for example `ebola/100`; unset for the user's
+   * own files. The answer names the dataset after it.
+   */
+  example?: string;
 };
 
 /**
@@ -415,6 +420,11 @@ export type DateReading = {
    * Number of dates read in this form.
    */
   count: number;
+  /**
+   * The form as a person reads it: the pattern of a calendar format, such as `YYYY-MM-DD` for `%Y-%m-%d`, or the
+   * name of the form, such as `decimal years`.
+   */
+  text: string;
 };
 
 /**
@@ -710,6 +720,22 @@ export type EffectiveValue = {
 };
 
 /**
+ * The command-line form of a setting for its value in a configuration.
+ */
+export type SettingCommandLine = {
+  /**
+   * Key of the setting.
+   */
+  key: string;
+  /**
+   * The flag and its value as a command line takes them, quoted for the shell, for example `--clock-filter 4` or
+   * `--outgroup 'A/x 1'`; absent when the command line leaves the setting out for this value: a switch that is off,
+   * an unset value, or an empty list.
+   */
+  text?: string;
+};
+
+/**
  * A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.
  * Inputs differ when their file contents differ; their paths do not count.
  */
@@ -884,6 +910,27 @@ export type FileRoles = {
  * What TreeTime does with a file that the user opened.
  */
 export type FileRole = 'run-package' | 'configuration' | 'input';
+
+/**
+ * Input paths, for example those of a form, to look up in the store of uploaded inputs.
+ */
+export type StoredInputsRequest = {
+  /**
+   * Paths of the input files, as the form holds them.
+   */
+  paths: Array<string>;
+};
+
+/**
+ * The inputs of a request that the store of uploaded inputs no longer holds.
+ */
+export type StoredInputs = {
+  /**
+   * Paths of the request that name a stored input whose file is gone, because no run references its contents any
+   * more, in the order of the request. Paths outside the store, such as files on the computer, are not listed.
+   */
+  missing: Array<string>;
+};
 
 /**
  * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
@@ -1146,6 +1193,11 @@ export type RunSummary = {
    * Title of the run.
    */
   title: string;
+  /**
+   * Name of the dataset of the run: the example name, for example `ebola/100`, else the file name of the tree input;
+   * absent for a run without either.
+   */
+  dataset?: string;
   /**
    * Command the run executes.
    */
@@ -2577,6 +2629,10 @@ export type UiSettings = {
    */
   sidebar_width?: number;
   /**
+   * Width of the options panel of the analysis workspace in pixels.
+   */
+  options_width?: number;
+  /**
    * The unfinished analysis form.
    */
   draft?: UiDraft;
@@ -2610,6 +2666,10 @@ export type UiDraft = {
    * The run that holds the uploaded input files of the form.
    */
   upload_run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the form holds, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
   /**
    * The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.
    */
@@ -2940,6 +3000,10 @@ export type CommandSettings = {
    */
   command: AppCommand;
   /**
+   * The command as the command line runs it, for example `treetime timetree`.
+   */
+  command_line: string;
+  /**
    * Name of the analysis as the app shows it, for example `Time tree`.
    */
   title: string;
@@ -2968,6 +3032,11 @@ export type CommandSettings = {
    * The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
    */
   main_rows: Array<MainSettingRow>;
+  /**
+   * Keys of the settings that the clock preview reads: the input data and analysis settings that the `clock` command
+   * shares with this command, in catalog order. The preview of a draft changes only when one of them changes.
+   */
+  preview_settings: Array<string>;
   /**
    * Settings that the form shows as one choice between options.
    */
@@ -5164,6 +5233,14 @@ export type CheckConfigResponseValid = {
    */
   effective: Array<EffectiveValue>;
   /**
+   * The command-line form of each setting for its value in the configuration, in catalog order.
+   */
+  command_lines: Array<SettingCommandLine>;
+  /**
+   * Name of the dataset: the example of the request, else the file name of the tree input; absent without either.
+   */
+  dataset?: string;
+  /**
    * Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and
    * inputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output
    * files and their paths, are not compared. Absent without `run_id`, and when the run executes another command.
@@ -5214,6 +5291,16 @@ export type CheckConfigResponseInvalid = {
    * configuration could be merged over the defaults.
    */
   effective: Array<EffectiveValue>;
+  /**
+   * The command-line form of each setting for its value in the configuration, in catalog order, when the
+   * configuration could be merged over the defaults.
+   */
+  command_lines: Array<SettingCommandLine>;
+  /**
+   * Name of the dataset: the example of the request, else the file name of the tree input when the configuration
+   * could be merged over the defaults; absent without either.
+   */
+  dataset?: string;
   status: 'invalid';
 };
 
@@ -5292,6 +5379,10 @@ export type RunConfigResponseValid = {
    * The command line and the YAML config that reproduce the run.
    */
   code: ConfigCode;
+  /**
+   * The command-line form of each setting of the command for its value in `config`.
+   */
+  command_lines: Array<SettingCommandLine>;
   /**
    * Hash that a run of this configuration records, to find finished runs with the same settings and input
    * contents; absent when an input cannot be read.
@@ -5372,9 +5463,19 @@ export type RunRecordTimetree = {
    */
   example?: string;
   /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
+  /**
    * State of the run.
    */
   status: RunStatus;
+  /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
   /**
    * Whether the run is pinned in run lists.
    */
@@ -5483,9 +5584,19 @@ export type RunRecordOptimize = {
    */
   example?: string;
   /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
+  /**
    * State of the run.
    */
   status: RunStatus;
+  /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
   /**
    * Whether the run is pinned in run lists.
    */
@@ -5594,9 +5705,19 @@ export type RunRecordPrune = {
    */
   example?: string;
   /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
+  /**
    * State of the run.
    */
   status: RunStatus;
+  /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
   /**
    * Whether the run is pinned in run lists.
    */
@@ -5705,9 +5826,19 @@ export type RunRecordAncestral = {
    */
   example?: string;
   /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
+  /**
    * State of the run.
    */
   status: RunStatus;
+  /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
   /**
    * Whether the run is pinned in run lists.
    */
@@ -5816,9 +5947,19 @@ export type RunRecordClock = {
    */
   example?: string;
   /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
+  /**
    * State of the run.
    */
   status: RunStatus;
+  /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
   /**
    * Whether the run is pinned in run lists.
    */
@@ -6340,6 +6481,18 @@ export type RowControlSwitches = {
  * The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.
  */
 export type RowControlCoalescent = {
+  /**
+   * Key of the setting that holds the prior: an option name, or a fixed time scale.
+   */
+  setting: string;
+  /**
+   * Keys of the settings of the skyline, which apply only while the skyline is picked.
+   */
+  skyline_settings: Array<string>;
+  /**
+   * Unit suffix of a fixed time scale in years, as the setting takes it after the number: `y` in `50y`.
+   */
+  years_suffix: string;
   options: Array<RowOption>;
   kind: 'coalescent';
 };
@@ -6348,6 +6501,10 @@ export type RowControlCoalescent = {
  * The clock filter threshold.
  */
 export type RowControlClockFilter = {
+  /**
+   * Key of the setting that holds the threshold.
+   */
+  setting: string;
   /**
    * Note while the threshold is 0.
    */
@@ -6363,6 +6520,14 @@ export type RowControlClockFilter = {
  * The substitution model and its parameters.
  */
 export type RowControlSubstitutionModel = {
+  /**
+   * Key of the setting that holds the model.
+   */
+  model_setting: string;
+  /**
+   * Key of the setting that holds the parameters of the model.
+   */
+  parameters_setting: string;
   /**
    * Example of the parameters, as the form shows them in the empty field.
    */
@@ -6539,6 +6704,34 @@ export type FileRolesResponses = {
 };
 
 export type FileRolesResponse = FileRolesResponses[keyof FileRolesResponses];
+
+export type StoredInputsData = {
+  /**
+   * Input paths, for example those of a form, to look up in the store of uploaded inputs.
+   */
+  body: StoredInputsRequest;
+  path?: never;
+  query?: never;
+  url: '/api/stored-inputs';
+};
+
+export type StoredInputsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type StoredInputsError = StoredInputsErrors[keyof StoredInputsErrors];
+
+export type StoredInputsResponses = {
+  /**
+   * The inputs of a request that the store of uploaded inputs no longer holds.
+   */
+  200: StoredInputs;
+};
+
+export type StoredInputsResponse = StoredInputsResponses[keyof StoredInputsResponses];
 
 export type ClockPreviewData = {
   /**
