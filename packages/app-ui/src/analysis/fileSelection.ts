@@ -1,6 +1,15 @@
-import type { JsonValue, UiDraft, UiDraftSource } from "@neherlab/app-contracts";
+import type { JsonValue, UiDraft, UiDraftOrigin, UiDraftSource } from "@neherlab/app-contracts";
 
 import { pathList } from "../settings/inputs";
+
+const UPLOADED_ORIGINS: Readonly<Record<UiDraftOrigin["kind"], boolean>> = {
+  dataset: false,
+  example: true,
+  upload: true,
+  local: false,
+  run: false,
+  config: false,
+};
 
 export interface StoredFile {
   name: string;
@@ -40,12 +49,16 @@ export function releasedPaths(previous: JsonValue | undefined, next: JsonValue |
 export function draftUploadPaths({ config, sources, upload_run_id }: UiDraft, keys?: ReadonlySet<string>): string[] {
   return Object.entries(sources).flatMap(([key, source]) =>
     upload_run_id !== undefined &&
-    source.origin.kind === "upload" &&
+    isUploaded(source) &&
     source.run_id === upload_run_id &&
     (keys === undefined || keys.has(key))
       ? pathList(config[key])
       : [],
   );
+}
+
+export function isUploaded(source: UiDraftSource): boolean {
+  return UPLOADED_ORIGINS[source.origin.kind];
 }
 
 export function releasedUploads(previous: UiDraft, next: Pick<UiDraft, "config" | "sources">): string[] {

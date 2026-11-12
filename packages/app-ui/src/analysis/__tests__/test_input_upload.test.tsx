@@ -10,6 +10,7 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { inAct, registerDom } from "../../__tests__/dom";
 import { ApiContext, type ApiContextValue } from "../../api/context";
+import { blankDraftState } from "../../store/__tests__/draftState";
 import { useDraftStore } from "../../store/draft";
 import type { FormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
@@ -44,7 +45,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  useDraftStore.getState().reset("ancestral");
+  useDraftStore.setState(blankDraftState("ancestral"));
 });
 
 afterEach(() => {
@@ -59,7 +60,11 @@ describe("inputs note", () => {
   test("the web app says that files and runs stay in this tab", async () => {
     await render(fakeServer().fetch);
 
-    expect(page().queryByText("Files and runs stay in this browser tab until it reloads or closes")).not.toBeNull();
+    expect(
+      page().queryByText(
+        "Files and runs stay in this browser tab. A reload, a closed tab, or a crash of the computation loses them.",
+      ),
+    ).not.toBeNull();
   });
 });
 
@@ -135,7 +140,7 @@ describe("alignment inputs of the web app", () => {
     const input = page().getByLabelText("Alignment files to upload");
     await user.upload(input, [fasta("ha.fasta", ">A\nACGT\n")]);
     await settingShowing(["/runs/r1/inputs/1/ha.fasta"]);
-    inAct(() => useDraftStore.getState().clearRuns());
+    inAct(() => useDraftStore.getState().finishStart());
 
     await user.upload(input, [fasta("mp.fasta", ">A\nA\n")]);
     await settingShowing(["/runs/r2/inputs/2/mp.fasta"]);
@@ -143,7 +148,7 @@ describe("alignment inputs of the web app", () => {
     expect([server.released, page().queryByText("An earlier upload cannot be removed")]).toStrictEqual([[], null]);
   });
 
-  test("removing the files during an upload keeps the setting empty", async () => {
+  test("removing the files during an upload keeps the setting empty and lets the form drop its upload run", async () => {
     const server = fakeServer({ held: "na.fasta" });
     await render(server.fetch);
     const user = userEvent.setup({ document });
@@ -155,11 +160,12 @@ describe("alignment inputs of the web app", () => {
 
     await user.click(page().getByRole("button", { name: "Remove" }));
     server.resume();
-    await pWaitFor(() => server.released.includes("/runs/r1/inputs/2/na.fasta") || settingText() !== "[]");
+    await pWaitFor(() => server.uploads.some((upload) => upload.startsWith("na.fasta")));
 
-    expect([settingText(), server.released.toSorted()]).toStrictEqual([
+    expect([settingText(), server.released, useDraftStore.getState().draft.upload_run_id]).toStrictEqual([
       "[]",
-      ["/runs/r1/inputs/1/ha.fasta", "/runs/r1/inputs/2/na.fasta"],
+      ["/runs/r1/inputs/1/ha.fasta"],
+      undefined,
     ]);
   });
 
@@ -194,7 +200,7 @@ describe("alignment inputs of the web app", () => {
     await user.upload(input, [fasta("na.fasta", ">A\nAC\n")]);
     await pWaitFor(() => server.holding());
 
-    inAct(() => useDraftStore.getState().clearRuns());
+    inAct(() => useDraftStore.getState().finishStart());
     server.resume();
     await page().findByRole("button", { name: "Replace" });
 
@@ -206,8 +212,8 @@ describe("alignment inputs of the web app", () => {
   });
 
   test.each([
-    ["a reset", () => useDraftStore.getState().reset("ancestral")],
-    ["a start", () => useDraftStore.getState().clearRuns()],
+    ["a reset", () => useDraftStore.getState().discard("reset", "ancestral")],
+    ["a start", () => useDraftStore.getState().finishStart()],
   ])("an upload run created after %s receives no files and assigns nothing", async (_, discard) => {
     const server = fakeServer({ holdCreates: true });
     await render(server.fetch);

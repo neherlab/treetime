@@ -8,6 +8,7 @@ import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
 import { forgetLostRuns, lostFilesMessage } from "./lostRuns";
 import { pendingUpload } from "./pendingUpload";
+import { whileRunBusy } from "./runWork";
 
 export function useStartRun(command: AppCommand) {
   const { client } = useApiContext();
@@ -16,14 +17,18 @@ export function useStartRun(command: AppCommand) {
 
   return useCallback(
     async (config: SparseConfig) => {
-      const { draft, clearRuns, load } = useDraftStore.getState();
+      const { draft, finishStart, load, queueExamples } = useDraftStore.getState();
 
       try {
         const kept = await forgetLostRuns(client, draft);
 
-        if (kept.dropped.length > 0) {
+        if (kept.dropped.length > 0 || kept.examples.length > 0) {
           load(kept.draft);
-          toasts.add(lostFilesMessage(kept.dropped));
+          queueExamples(kept.examples);
+
+          if (kept.dropped.length > 0) {
+            toasts.add(lostFilesMessage(kept.dropped));
+          }
 
           return;
         }
@@ -34,9 +39,11 @@ export function useStartRun(command: AppCommand) {
         const { data: record } =
           upload === undefined
             ? await runsCreate({ client, body: { command, config, defer_start: false }, throwOnError: true })
-            : await runsStart({ client, path: { id: upload.id }, body: { command, config }, throwOnError: true });
+            : await whileRunBusy(upload.id, async () =>
+                runsStart({ client, path: { id: upload.id }, body: { command, config }, throwOnError: true }),
+              );
 
-        clearRuns();
+        finishStart();
         await navigate({ to: "/runs/$id/results", params: { id: record.id } });
       } catch (error: unknown) {
         toasts.add({

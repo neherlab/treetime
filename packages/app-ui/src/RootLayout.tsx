@@ -4,6 +4,7 @@ import { fitSidebarWidth, sidebarWidthOrDefault } from "@neherlab/design/ui/side
 import { TooltipProvider } from "@neherlab/design/ui/tooltip";
 import { Outlet } from "@tanstack/react-router";
 
+import { useDraftSession } from "./analysis/useDraftSession";
 import { useNativeThemeSync } from "./hooks/useNativeThemeSync";
 import { AppSidebar } from "./shell/AppSidebar";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -18,6 +19,7 @@ export const MAIN_SCROLL_ID = "main-scroll";
 export function RootLayout() {
   useNativeThemeSync();
   useGlobalShortcuts();
+  useDraftSession();
   const { getRootProps, getInputProps } = useYamlDrop();
   const { width: viewportWidth } = useViewportSize();
   const storedWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.preferences.sidebar_width));

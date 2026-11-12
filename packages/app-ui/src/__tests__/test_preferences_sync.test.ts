@@ -17,7 +17,7 @@ describe("sync preferences", () => {
     const themes: string[] = [];
     const draft = { ...freshDraft("clock"), search: "rate", from_run_id: "r1" };
 
-    applyPreferences({ theme: "dark", sidebar_width: 400, draft }, (theme) => {
+    applyPreferences({ theme: "dark", sidebar_width: 400, draft }, [], (theme) => {
       themes.push(theme);
     });
 
@@ -31,7 +31,7 @@ describe("sync preferences", () => {
   test("empty preferences keep the defaults and leave the theme alone", () => {
     const themes: string[] = [];
 
-    applyPreferences({}, (theme) => {
+    applyPreferences({}, [], (theme) => {
       themes.push(theme);
     });
 
@@ -53,6 +53,24 @@ describe("restore preferences", () => {
     await expect(restorePreferences(server.client(), { theme: "dark", draft }, failTest)).resolves.toStrictEqual({
       preferences: { theme: "dark", draft: freshDraft("clock") },
       dropped: ["tree.nwk"],
+      examples: [],
+    });
+  });
+
+  test("a saved form fetches the files of an example again in place of dropping them", async () => {
+    const server = new FakeServer({});
+
+    const example = {
+      ...draft,
+      sources: {
+        tree: { label: "tree.nwk", origin: { kind: "example" as const, path: "ebola/100/tree.nwk" }, run_id: "r1" },
+      },
+    };
+
+    await expect(restorePreferences(server.client(), { draft: example }, failTest)).resolves.toStrictEqual({
+      preferences: { draft: freshDraft("clock") },
+      dropped: [],
+      examples: [{ key: "tree", list: false, path: "ebola/100/tree.nwk" }],
     });
   });
 
@@ -62,6 +80,7 @@ describe("restore preferences", () => {
     await expect(restorePreferences(server.client(), { sidebar_width: 300 }, failTest)).resolves.toStrictEqual({
       preferences: { sidebar_width: 300 },
       dropped: [],
+      examples: [],
     });
     expect(server.keys()).toStrictEqual([]);
   });
@@ -78,7 +97,7 @@ describe("restore preferences", () => {
     });
 
     expect([restored, failures]).toStrictEqual([
-      { preferences: { draft }, dropped: [] },
+      { preferences: { draft }, dropped: [], examples: [] },
       ["the runs of the saved form could not be checked: the server is down"],
     ]);
   });

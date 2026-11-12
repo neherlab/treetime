@@ -1,0 +1,224 @@
+import type { RunRecord, UiDraft } from "@neherlab/app-contracts";
+
+import { useDraftStore } from "../draft";
+import { heldUploadRuns, isPristine, ownDraft, releasedUploadRuns, runOptionsDraft } from "../draftRules";
+import { freshDraft } from "../draftSchema";
+import { blankDraftState } from "./draftState";
+
+const FRESH = freshDraft("timetree");
+
+const OWN: UiDraft = {
+  ...FRESH,
+  config: { ...FRESH.config, tree: "/runs/.inputs/a/tree.nwk", clock_rate: 0.001 },
+  sources: { tree: { label: "tree.nwk", origin: { kind: "upload" }, size: 10, run_id: "u1" } },
+  upload_run_id: "u1",
+  search: "rate",
+};
+
+const RUN: RunRecord = {
+  id: "r1",
+  title: "Baseline",
+  command: "timetree",
+  config: { tree: "inputs/tree.nwk", clock_filter: 3, output_all: "out" },
+  status: "ok",
+  pinned: false,
+  group_id: "r1",
+  size: 30,
+  seed: 4_242,
+  created_at: "2026-11-12T08:00:00Z",
+  treetime_version: "1.0.0",
+  inputs: [{ setting: "tree", path: "inputs/tree.nwk", size: 10, sha256: "a" }],
+  uploads: [],
+  changed_settings: ["clock_filter"],
+  headline: {},
+  output_files: [],
+  warnings: [],
+};
+
+const RUN_OPTIONS = runOptionsDraft(RUN, { tree: "/runs/.inputs/a/tree.nwk", clock_filter: 3 }, OWN);
+
+beforeEach(() => {
+  useDraftStore.setState({ ...blankDraftState("timetree"), draft: OWN, epoch: 0 });
+});
+
+describe("options of a shown run", () => {
+  test("hold the inputs and changed settings of the run, its seed, and the display of the own draft", () => {
+    expect(RUN_OPTIONS).toStrictEqual({
+      ...FRESH,
+      config: { ...FRESH.config, tree: "/runs/.inputs/a/tree.nwk", clock_filter: 3, seed: 4_242 },
+      sources: { tree: { label: "tree.nwk", origin: { kind: "run" }, run_id: "r1" } },
+      from_run_id: "r1",
+      search: "rate",
+    });
+  });
+
+  test("showing a run parks the own draft, and leaving the run restores it unchanged", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    const viewed = useDraftStore.getState();
+    useDraftStore.getState().leaveRun();
+    const left = useDraftStore.getState();
+
+    expect([viewed.draft, ownDraft(viewed), left.draft, left.viewing, left.undo]).toStrictEqual([
+      RUN_OPTIONS,
+      OWN,
+      OWN,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  test("an edit that leaves the settings as they are keeps the run read-only", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().setConfig({ ...RUN_OPTIONS.config });
+
+    expect(useDraftStore.getState().viewing?.runId).toBe("r1");
+  });
+
+  test("the first edit turns the options into a variant draft of the run with its seed, in the same form", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    const { epoch } = useDraftStore.getState();
+    useDraftStore.getState().setConfig({ ...RUN_OPTIONS.config, coalescent: "skyline" });
+    const state = useDraftStore.getState();
+
+    expect([state.draft, state.viewing, state.epoch, state.undo?.reason]).toStrictEqual([
+      { ...RUN_OPTIONS, config: { ...RUN_OPTIONS.config, coalescent: "skyline" } },
+      undefined,
+      epoch,
+      "replaced",
+    ]);
+  });
+
+  test("undo of the first edit shows the run read-only again with the own draft parked", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().pickChoice({ choice: "root", option: "keep" });
+    const token = useDraftStore.getState().undo?.token ?? Symbol("missing");
+    useDraftStore.getState().undoDiscard(token, "r1");
+    const state = useDraftStore.getState();
+
+    expect([state.draft, state.viewing, state.undo]).toStrictEqual([
+      RUN_OPTIONS,
+      { runId: "r1", parked: OWN },
+      undefined,
+    ]);
+  });
+
+  test("a variant of a pristine draft offers no undo", () => {
+    useDraftStore.setState({ draft: FRESH });
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().setConfig({ ...RUN_OPTIONS.config, coalescent: "skyline" });
+
+    expect(useDraftStore.getState().undo).toBeUndefined();
+  });
+
+  test("a draft that is already a variant of the shown run stays editable", () => {
+    const variant = { ...RUN_OPTIONS, config: { ...RUN_OPTIONS.config, coalescent: "skyline" } };
+    useDraftStore.setState({ draft: variant });
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+
+    expect([useDraftStore.getState().draft, useDraftStore.getState().viewing]).toStrictEqual([variant, undefined]);
+  });
+});
+
+describe("reset with undo", () => {
+  test("reset starts from the defaults with the display kept, and undo restores the draft", () => {
+    useDraftStore.getState().discard("reset", "clock");
+    const reset = useDraftStore.getState();
+    useDraftStore.getState().undoDiscard(reset.undo?.token ?? Symbol("missing"), undefined);
+    const undone = useDraftStore.getState();
+
+    expect([reset.draft, reset.undo?.reason, undone.draft, undone.undo]).toStrictEqual([
+      { ...freshDraft("clock"), search: "rate" },
+      "reset",
+      OWN,
+      undefined,
+    ]);
+  });
+
+  test("a reset of a pristine draft offers no undo", () => {
+    useDraftStore.setState({ draft: FRESH });
+    useDraftStore.getState().discard("reset", "timetree");
+
+    expect(useDraftStore.getState().undo).toBeUndefined();
+  });
+
+  test("undo of a new analysis started from a shown run restores the own draft, without the run it no longer shows", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().discard("new", "timetree");
+    useDraftStore.getState().undoDiscard(useDraftStore.getState().undo?.token ?? Symbol("missing"), undefined);
+    const state = useDraftStore.getState();
+
+    expect([state.draft, state.viewing]).toStrictEqual([OWN, undefined]);
+  });
+
+  test("an undo token of an earlier discard changes nothing", () => {
+    useDraftStore.getState().discard("reset", "timetree");
+    const stale = useDraftStore.getState().undo?.token ?? Symbol("missing");
+    useDraftStore.getState().undoDiscard(stale, undefined);
+    useDraftStore.getState().undoDiscard(stale, undefined);
+
+    expect(useDraftStore.getState().draft).toStrictEqual(OWN);
+  });
+});
+
+describe("upload runs of the form", () => {
+  test("a pristine draft holds no upload run, the own draft holds its run", () => {
+    expect([isPristine(FRESH), isPristine(OWN), [...heldUploadRuns(useDraftStore.getState())]]).toStrictEqual([
+      true,
+      false,
+      ["u1"],
+    ]);
+  });
+
+  test("showing a run and leaving it release no upload run", () => {
+    const before = useDraftStore.getState();
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    const viewed = useDraftStore.getState();
+    useDraftStore.getState().leaveRun();
+
+    expect([releasedUploadRuns(before, viewed), releasedUploadRuns(viewed, useDraftStore.getState())]).toStrictEqual([
+      [],
+      [],
+    ]);
+  });
+
+  test("a discard releases the upload run only when its undo closes", () => {
+    const before = useDraftStore.getState();
+    useDraftStore.getState().discard("reset", "timetree");
+    const discarded = useDraftStore.getState();
+    useDraftStore.getState().dropUndo(discarded.undo?.token ?? Symbol("missing"));
+
+    expect([
+      releasedUploadRuns(before, discarded),
+      releasedUploadRuns(discarded, useDraftStore.getState()),
+    ]).toStrictEqual([[], ["u1"]]);
+  });
+
+  test("removing the last uploaded file releases the upload run", () => {
+    const before = useDraftStore.getState();
+    useDraftStore.getState().setSource("tree", undefined);
+    const after = useDraftStore.getState();
+
+    expect([after.draft.upload_run_id, releasedUploadRuns(before, after)]).toStrictEqual([undefined, ["u1"]]);
+  });
+
+  test("removing a file while another file is chosen keeps the upload run", () => {
+    useDraftStore.getState().claimSelections(["alignment"], Symbol("pick"));
+    useDraftStore.getState().setSource("tree", undefined);
+
+    expect(useDraftStore.getState().draft.upload_run_id).toBe("u1");
+  });
+
+  test("replacing every upload with files of the computer releases the upload run", () => {
+    const before = useDraftStore.getState();
+
+    useDraftStore.getState().assignInputs(
+      {
+        config: { ...OWN.config, tree: "/data/tree.nwk" },
+        sources: { tree: { label: "tree.nwk", origin: { kind: "local" } } },
+      },
+      ["tree"],
+    );
+
+    expect(releasedUploadRuns(before, useDraftStore.getState())).toStrictEqual(["u1"]);
+  });
+});

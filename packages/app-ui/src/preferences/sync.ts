@@ -4,18 +4,25 @@ import { Debouncer } from "@tanstack/react-pacer";
 
 import { forgetLostRuns } from "../analysis/lostRuns";
 import { useDraftStore } from "../store/draft";
+import { ownDraft } from "../store/draftRules";
+import type { QueuedExample } from "../store/draftSchema";
 import { usePreferencesStore } from "../store/preferences";
 import type { PreferencesStorage } from "./storage";
 
 const SAVE_DELAY_MS = 300;
 
-export function applyPreferences(loaded: UiSettings, setTheme: (theme: string) => void): void {
+export function applyPreferences(
+  loaded: UiSettings,
+  examples: readonly QueuedExample[],
+  setTheme: (theme: string) => void,
+): void {
   const { draft, ...preferences } = loaded;
 
   usePreferencesStore.getState().load(preferences);
 
   if (draft !== undefined) {
     useDraftStore.getState().load(draft);
+    useDraftStore.getState().queueExamples(examples);
   }
 
   if (preferences.theme !== undefined) {
@@ -29,27 +36,28 @@ export async function restorePreferences(
   reportFailure: (message: string) => void,
 ): Promise<RestoredPreferences> {
   if (loaded.draft === undefined) {
-    return { preferences: loaded, dropped: [] };
+    return { preferences: loaded, dropped: [], examples: [] };
   }
 
   try {
-    const { draft, dropped } = await forgetLostRuns(client, loaded.draft);
+    const { draft, dropped, examples } = await forgetLostRuns(client, loaded.draft);
 
-    return { preferences: { ...loaded, draft }, dropped };
+    return { preferences: { ...loaded, draft }, dropped, examples };
   } catch (error: unknown) {
     reportFailure(`the runs of the saved form could not be checked: ${errorMessage(error)}`);
 
-    return { preferences: loaded, dropped: [] };
+    return { preferences: loaded, dropped: [], examples: [] };
   }
 }
 
 export interface RestoredPreferences {
   preferences: UiSettings;
   dropped: string[];
+  examples: QueuedExample[];
 }
 
 export function currentPreferences(): UiSettings {
-  return { ...usePreferencesStore.getState().preferences, draft: useDraftStore.getState().draft };
+  return { ...usePreferencesStore.getState().preferences, draft: ownDraft(useDraftStore.getState()) };
 }
 
 export class PreferencesSaver {

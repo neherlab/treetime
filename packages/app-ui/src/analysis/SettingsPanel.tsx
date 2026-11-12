@@ -1,59 +1,25 @@
-import type {
-  ActiveChoice,
-  AppCommand,
-  RunCheck,
-  SettingSpec,
-  SparseConfig,
-  UiSettingsView,
-} from "@neherlab/app-contracts";
+import type { AppCommand, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
 import { Badge } from "@neherlab/design/ui/badge";
-import { Card } from "@neherlab/design/ui/card";
 import { Checkbox } from "@neherlab/design/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { Empty, EmptyDescription } from "@neherlab/design/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
 import { Label } from "@neherlab/design/ui/label";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
 
-import { OptionToggle } from "../components/OptionToggle";
 import { commandSettings } from "../settings/catalog";
 import { isChanged } from "../settings/config";
 import { groupedSpecs } from "../settings/groups";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
-import { MainSettings } from "./MainSettings";
 import { SettingField } from "./SettingField";
 
-export function SettingsPanel({
-  command,
-  config,
-  checks,
-  reported,
-  checked,
-}: {
-  command: AppCommand;
-  config: SparseConfig;
-  checks: readonly RunCheck[] | undefined;
-  reported: readonly ActiveChoice[] | undefined;
-  checked: SparseConfig | undefined;
-}) {
-  const view = useDraftStore((state) => state.draft.view);
+export function AllSettingsPanel({ command, config }: { command: AppCommand; config: SparseConfig }) {
   const search = useDraftStore((state) => state.draft.search);
   const changedOnly = useDraftStore((state) => state.draft.changed_only);
   const update = useDraftStore((state) => state.update);
-  const total = commandSettings(command).settings.filter((spec) => spec.role !== "output").length;
-
-  const views = useMemo(
-    () => [
-      { value: "main" as const, label: "Main settings" },
-      { value: "all" as const, label: `All ${total} settings` },
-    ],
-    [total],
-  );
-
-  const onView = useCallback((next: UiSettingsView) => update({ view: next }), [update]);
 
   const onSearch = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => update({ search: event.target.value }),
@@ -63,40 +29,27 @@ export function SettingsPanel({
   const onChangedOnly = useCallback((checked: boolean) => update({ changed_only: checked }), [update]);
 
   return (
-    <Card size="sm" className="gap-0 py-0">
+    <div className="@container">
       <div className="flex flex-wrap items-center gap-2.5 border-b px-3.5 py-2.5">
-        <OptionToggle label="Settings view" value={view} onChange={onView} options={views} />
-        {view === "all" ? (
-          <>
-            <InputGroup className="h-8 min-w-44 flex-1">
-              <InputGroupAddon>
-                <Search aria-hidden />
-              </InputGroupAddon>
-              <InputGroupInput
-                type="search"
-                value={search}
-                onChange={onSearch}
-                placeholder="Search settings by name, flag or description"
-                aria-label="Search settings"
-              />
-            </InputGroup>
-            <div className="flex items-center gap-2">
-              <Checkbox id="settings-changed-only" checked={changedOnly} onCheckedChange={onChangedOnly} />
-              <Label htmlFor="settings-changed-only">Changed only</Label>
-            </div>
-          </>
-        ) : (
-          <span className="text-muted-foreground text-xs">
-            Every setting is also under All settings, with its CLI flag and help text.
-          </span>
-        )}
+        <InputGroup className="h-8 min-w-44 flex-1">
+          <InputGroupAddon>
+            <Search aria-hidden />
+          </InputGroupAddon>
+          <InputGroupInput
+            type="search"
+            value={search}
+            onChange={onSearch}
+            placeholder="Search settings by name, flag or description"
+            aria-label="Search settings"
+          />
+        </InputGroup>
+        <div className="flex items-center gap-2">
+          <Checkbox id="settings-changed-only" checked={changedOnly} onCheckedChange={onChangedOnly} />
+          <Label htmlFor="settings-changed-only">Changed only</Label>
+        </div>
       </div>
-      {view === "main" ? (
-        <MainSettings command={command} config={config} checks={checks} reported={reported} checked={checked} />
-      ) : (
-        <AllSettings command={command} config={config} search={search} changedOnly={changedOnly} />
-      )}
-    </Card>
+      <AllSettings command={command} config={config} search={search} changedOnly={changedOnly} />
+    </div>
   );
 }
 

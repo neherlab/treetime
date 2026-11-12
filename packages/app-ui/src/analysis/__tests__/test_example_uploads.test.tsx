@@ -26,6 +26,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { ApiContext, type ApiContextValue } from "../../api/context";
+import { blankDraftState } from "../../store/__tests__/draftState";
 import { useDraftStore } from "../../store/draft";
 import { type FormConfig, fromFormConfig, toFormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
@@ -174,7 +175,7 @@ describe("example data of the web apps", () => {
       ["aln.fasta.xz:4", "metadata.tsv:9", "tree.nwk:11"],
       JSON.stringify("/runs/r1/inputs/tree.nwk"),
       JSON.stringify(["/runs/r1/inputs/aln.fasta.xz"]),
-      { label: "metadata.tsv", size: 9, origin: { kind: "upload" }, run_id: "r1" },
+      { label: "metadata.tsv", size: 9, origin: { kind: "example", path: "zika/20/metadata.tsv" }, run_id: "r1" },
     ]);
   });
 
@@ -189,7 +190,7 @@ describe("example data of the web apps", () => {
       [
         ["tree.nwk:11", "metadata.tsv:9", "aln.fasta.xz:4"],
         JSON.stringify("/runs/r1/inputs/tree.nwk"),
-        { label: "tree.nwk", size: 11, origin: { kind: "upload" }, run_id: "r1" },
+        { label: "tree.nwk", size: 11, origin: { kind: "example", path: "zika/20/tree.nwk" }, run_id: "r1" },
       ],
     );
   });
@@ -223,9 +224,19 @@ describe("example data of the web apps", () => {
         keep_tips_file: "/runs/r1/inputs/keep_tips.txt",
       },
       {
-        tree: { label: "tree.nwk", size: 11, origin: { kind: "upload" }, run_id: "r1" },
-        metadata: { label: "metadata.tsv", size: 9, origin: { kind: "upload" }, run_id: "r1" },
-        keep_tips_file: { label: "keep_tips.txt", size: 14, origin: { kind: "upload" }, run_id: "r1" },
+        tree: { label: "tree.nwk", size: 11, origin: { kind: "example", path: "zika/20/tree.nwk" }, run_id: "r1" },
+        metadata: {
+          label: "metadata.tsv",
+          size: 9,
+          origin: { kind: "example", path: "zika/20/metadata.tsv" },
+          run_id: "r1",
+        },
+        keep_tips_file: {
+          label: "keep_tips.txt",
+          size: 14,
+          origin: { kind: "example", path: "zika/keep_tips.txt" },
+          run_id: "r1",
+        },
       },
     ]);
   });
@@ -502,7 +513,7 @@ function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected:
 
 async function render(server: ReturnType<typeof fakeServer>, command: AppCommand) {
   Object.assign(globalThis, { fetch: server.fetch });
-  useDraftStore.getState().reset(command);
+  useDraftStore.setState(blankDraftState(command));
   const api = apiContext(server.fetch);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const root = createRootRoute({ component: DraftPage });

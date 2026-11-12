@@ -3,6 +3,7 @@ import type {
   AppCommand,
   ChoiceName,
   ChoiceOptionName,
+  EffectiveValue,
   JsonValue,
   MainSettingRow,
   RowControl,
@@ -42,10 +43,15 @@ const CLOCK_FILTER_STEP = 0.5;
 
 const NO_CHECKS: readonly RunCheck[] = [];
 
+const NO_EFFECTIVE: readonly EffectiveValue[] = [];
+
+const EFFECTIVE_SHOWN: ReadonlySet<RowControl["kind"]> = new Set(["choice", "setting"]);
+
 interface RowContext {
   command: AppCommand;
   config: SparseConfig;
   checks: readonly RunCheck[];
+  effective: ReadonlyMap<string, string>;
   specs: ReadonlyMap<string, SettingSpec>;
   choices: readonly SettingChoice[];
   reported: readonly ActiveChoice[] | undefined;
@@ -63,12 +69,14 @@ export function MainSettings({
   checks,
   reported,
   checked,
+  effective,
 }: {
   command: AppCommand;
   config: SparseConfig;
   checks: readonly RunCheck[] | undefined;
   reported: readonly ActiveChoice[] | undefined;
   checked: SparseConfig | undefined;
+  effective: readonly EffectiveValue[] | undefined;
 }) {
   const { setValue } = useFormContext<FormConfig>();
   const settings = commandSettings(command);
@@ -93,6 +101,7 @@ export function MainSettings({
       command,
       config,
       checks: checks ?? NO_CHECKS,
+      effective: new Map((effective ?? NO_EFFECTIVE).map(({ key, text }) => [key, text])),
       specs,
       choices: settings.choices,
       reported,
@@ -119,10 +128,10 @@ export function MainSettings({
       },
       example: (key) => specs.get(key)?.examples[0],
     };
-  }, [checked, checks, command, config, reported, setValue, settings]);
+  }, [checked, checks, command, config, effective, reported, setValue, settings]);
 
   return (
-    <div className="py-1">
+    <div>
       {settings.main_rows.map((row) => (
         <Row key={row.label} context={context} row={row} />
       ))}
@@ -443,8 +452,13 @@ function MainRow({ context, row, children }: { context: RowContext; row: MainSet
   const changed = specs.some((spec) => isChanged(context.config, spec));
   const checks = context.checks.filter((check) => check.settings.some((setting) => keys.includes(setting)));
 
+  const effective =
+    changed || !EFFECTIVE_SHOWN.has(row.control.kind)
+      ? undefined
+      : keys.map((key) => context.effective.get(key)).find((text) => text !== undefined);
+
   return (
-    <div className="grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 @xl:grid-cols-[12.5rem_minmax(0,1fr)]">
+    <div className="grid gap-2.5 border-t py-3 first:border-t-0 @2xl:grid-cols-[12.5rem_minmax(0,1fr)]">
       <div className="grid content-start gap-0.5">
         <span className="flex items-center gap-1.5 font-bold">
           {row.label}
@@ -455,6 +469,7 @@ function MainRow({ context, row, children }: { context: RowContext; row: MainSet
           )}
         </span>
         {row.description !== undefined && <span className="text-muted-foreground text-xs">{row.description}</span>}
+        {effective !== undefined && <span className="text-xs">{effective}</span>}
       </div>
       <div className="grid justify-items-start gap-2">
         {children}

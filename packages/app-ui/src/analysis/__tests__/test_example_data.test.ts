@@ -114,7 +114,7 @@ describe("example data", () => {
     );
   });
 
-  test("a config replaces each input it reads with the uploads, lists as lists", () => {
+  test("a config replaces each input it reads with the uploads, lists as lists, and keeps the example path of each", () => {
     const uploaded = [...configInputs(CLOCK), ...configInputs(TIMETREE)].map((input, index) => ({
       input,
       stored: input.paths.map((path) => ({
@@ -131,9 +131,19 @@ describe("example data", () => {
         alignment: ["/up/2"],
       },
       sources: {
-        metadata: { label: "metadata.tsv", size: 7, origin: { kind: "upload" }, run_id: "r1" },
-        tree: { label: "tree.nwk", size: 7, origin: { kind: "upload" }, run_id: "r1" },
-        alignment: { label: "aln.fasta.xz", size: 7, origin: { kind: "upload" }, run_id: "r1" },
+        metadata: {
+          label: "metadata.tsv",
+          size: 7,
+          origin: { kind: "example", path: "zika/20/metadata.tsv" },
+          run_id: "r1",
+        },
+        tree: { label: "tree.nwk", size: 7, origin: { kind: "example", path: "zika/20/tree.nwk" }, run_id: "r1" },
+        alignment: {
+          label: "aln.fasta.xz",
+          size: 7,
+          origin: { kind: "example", path: "flu/h3n2/20/aln.fasta.xz" },
+          run_id: "r1",
+        },
       },
     });
   });

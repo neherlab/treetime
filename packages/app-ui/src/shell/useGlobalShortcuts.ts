@@ -3,6 +3,7 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
+import { useNewAnalysis } from "../analysis/useDraftSession";
 import { useApi } from "../api/hooks";
 import { PALETTE_HOTKEY } from "../hotkeys";
 import { useShellStore } from "../store/shell";
@@ -12,6 +13,7 @@ export const RUN_FILTER_ID = "run-filter";
 
 export function useGlobalShortcuts() {
   const navigate = useNavigate();
+  const newAnalysis = useNewAnalysis();
   const currentId = useParams({ strict: false, select: (params) => params.id });
   const { data } = useApi((context) => runsList(context));
   const runFilter = useShellStore((state) => state.runFilter);
@@ -32,7 +34,7 @@ export function useGlobalShortcuts() {
   );
 
   useHotkey(PALETTE_HOTKEY, () => setPaletteOpen(true));
-  useHotkey("N", () => void navigate({ to: "/new" }));
+  useHotkey("N", newAnalysis);
   useHotkey("/", () => document.getElementById(RUN_FILTER_ID)?.focus());
   useHotkey("[", () => step(-1));
   useHotkey("]", () => step(1));

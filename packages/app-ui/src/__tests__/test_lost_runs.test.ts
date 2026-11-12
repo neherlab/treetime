@@ -38,6 +38,7 @@ describe("lost runs of a draft", () => {
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
       draft: expected,
       dropped: ["tree.nwk"],
+      examples: [],
       runs: new Map([["r2", R2]]),
     });
     expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r1", "GET /api/runs/r2"]);
@@ -49,6 +50,7 @@ describe("lost runs of a draft", () => {
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
       draft: DRAFT,
       dropped: [],
+      examples: [],
       runs: new Map([
         ["r1", R1],
         ["r2", R2],
@@ -62,6 +64,7 @@ describe("lost runs of a draft", () => {
     await expect(forgetLostRuns(server.client(), FRESH)).resolves.toStrictEqual({
       draft: FRESH,
       dropped: [],
+      examples: [],
       runs: new Map(),
     });
     expect(server.keys()).toStrictEqual([]);

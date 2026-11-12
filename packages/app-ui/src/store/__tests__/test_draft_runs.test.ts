@@ -51,16 +51,20 @@ describe("runs of a draft", () => {
       search: "rate",
     };
 
-    expect(forgetRuns(DRAFT, new Set(["r1"]))).toStrictEqual({ draft: expected, dropped: ["tree.nwk", "aln.fasta"] });
+    expect(forgetRuns(DRAFT, new Set(["r1"]))).toStrictEqual({
+      draft: expected,
+      dropped: ["tree.nwk", "aln.fasta"],
+      examples: [],
+    });
   });
 
   test("forgetting the earlier run drops the form's link to it and no file", () => {
     const { from_run_id: _fromRun, ...expected } = DRAFT;
 
-    expect(forgetRuns(DRAFT, new Set(["r3"]))).toStrictEqual({ draft: expected, dropped: [] });
+    expect(forgetRuns(DRAFT, new Set(["r3"]))).toStrictEqual({ draft: expected, dropped: [], examples: [] });
   });
 
   test("forgetting no run keeps the draft", () => {
-    expect(forgetRuns(DRAFT, new Set())).toStrictEqual({ draft: DRAFT, dropped: [] });
+    expect(forgetRuns(DRAFT, new Set())).toStrictEqual({ draft: DRAFT, dropped: [], examples: [] });
   });
 });

@@ -1,33 +1,33 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, JobId } from "@neherlab/app-contracts";
 import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } from "@neherlab/app-contracts/client";
 import { Button } from "@neherlab/design/ui/button";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { keepPreviousData } from "@tanstack/react-query";
+import { Outlet } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { useApi } from "../api/hooks";
-import { PageHeading, PageShell } from "../components/PageShell";
 import { RUN_HOTKEY } from "../hotkeys";
 import { commandSettings } from "../settings/catalog";
 import { COMMAND_VERBS } from "../settings/commands";
-import { changedSpecs, normalizeConfig } from "../settings/config";
+import { normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { ChecksPanel } from "./ChecksPanel";
-import { CodePanel } from "./CodePanel";
-import { CommandCards } from "./CommandCards";
+import { RunFooter } from "./ChecksPanel";
 import { configResolver } from "./configResolver";
+import { datasetLabel } from "./datasetLabel";
 import { fromFormConfig, toFormConfig, type FormConfig } from "./formValues";
-import { InputsSection } from "./InputsSection";
-import { SettingsPanel } from "./SettingsPanel";
+import { OptionsPanel } from "./OptionsPanel";
 import { useStartRun } from "./useStartRun";
+import { WorkspaceContext, type WorkspaceView } from "./workspaceContext";
+import { WorkspaceLayout } from "./WorkspaceLayout";
 
 const CHECK_DEBOUNCE = { wait: 400 };
 
-export function DraftForm({ command }: { command: AppCommand }) {
+export function DraftForm({ command, shownRunId }: { command: AppCommand; shownRunId: JobId | undefined }) {
   const specs = commandSettings(command).settings;
   const [initial] = useState(() => normalizeConfig(specs, useDraftStore.getState().draft.config));
 
@@ -38,6 +38,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
   });
 
   const setConfig = useDraftStore((state) => state.setConfig);
+  const readOnly = useDraftStore((state) => state.viewing !== undefined);
   const watched = useWatch({ control: form.control });
 
   const config = useMemo(() => normalizeConfig(specs, fromFormConfig(watched)), [specs, watched]);
@@ -80,15 +81,13 @@ export function DraftForm({ command }: { command: AppCommand }) {
     () =>
       form.subscribe({
         formState: { values: true },
-        callback: ({ values }) => setConfig(fromFormConfig(values)),
+        callback: ({ values }) => setConfig(normalizeConfig(specs, fromFormConfig(values))),
       }),
-    [form, setConfig],
+    [form, setConfig, specs],
   );
 
   const checks = check?.checks;
   const checked = check === undefined || checkPending ? undefined : settled;
-  const code = runConfig?.status === "valid" ? runConfig.code : null;
-
   const configHash = runConfig?.status === "valid" ? runConfig.config_hash : undefined;
 
   const duplicate = useMemo(
@@ -99,114 +98,82 @@ export function DraftForm({ command }: { command: AppCommand }) {
     [command, configHash, runList],
   );
 
-  const changed = changedSpecs(specs, config);
-
   const submit = useMemo(
     () => form.handleSubmit((values) => startRun(normalizeConfig(specs, fromFormConfig(values)))),
     [form, specs, startRun],
   );
 
   const onSubmit = useCallback((event: React.SubmitEvent) => void submit(event), [submit]);
+  const run = useCallback(() => void submit(), [submit]);
 
-  useHotkey(RUN_HOTKEY, () => void submit());
+  useHotkey(RUN_HOTKEY, run);
+
+  const workspace = useMemo(
+    (): WorkspaceView => ({ command, shownRunId, readOnly, settled, facts, check, run }),
+    [check, command, facts, readOnly, run, settled, shownRunId],
+  );
 
   return (
-    <PageShell className="max-w-[92.5rem]">
-      <PageHeader />
-      <FormProvider {...form}>
-        <form
-          noValidate
-          onSubmit={onSubmit}
-          className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 @4xl:grid-cols-[minmax(0,1fr)_25rem]"
-        >
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-            <Step number={1} title="Analysis">
-              <CommandCards command={command} config={config} />
-            </Step>
-            <Step number={2} title="Data">
-              <InputsSection command={command} facts={facts} />
-            </Step>
-            <Step
-              number={3}
-              title="Settings"
-              hint={changed.length === 0 ? "All defaults" : `${changed.length} changed`}
-            >
-              <SettingsPanel
+    <FormProvider {...form}>
+      <WorkspaceContext value={workspace}>
+        <WorkspaceLayout
+          title={<WorkspaceTitle />}
+          description={<WorkspaceDescription shownRunId={shownRunId} />}
+          actions={<ResetButton />}
+          panel={
+            <form noValidate onSubmit={onSubmit} aria-label="Options">
+              <OptionsPanel
                 command={command}
                 config={config}
                 checks={checks}
                 reported={check?.choices}
                 checked={checked}
+                facts={facts}
+                effective={check?.effective}
               />
-            </Step>
-          </div>
-          <aside className="grid gap-4 @4xl:sticky @4xl:top-5">
-            <CodePanel command={command} code={code} />
-            <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} />
-          </aside>
-        </form>
-      </FormProvider>
-    </PageShell>
+            </form>
+          }
+          footer={<RunFooter checks={checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} onRun={run} />}
+          main={<Outlet />}
+        />
+      </WorkspaceContext>
+    </FormProvider>
   );
 }
 
-function PageHeader() {
+function WorkspaceTitle() {
+  const label = useDraftStore((state) => datasetLabel(state.draft));
+
+  return label ?? "New analysis";
+}
+
+function WorkspaceDescription({ shownRunId }: { shownRunId: JobId | undefined }) {
+  const viewing = useDraftStore((state) => state.viewing?.runId);
   const fromRunId = useDraftStore((state) => state.draft.from_run_id);
-  const command = useDraftStore((state) => state.draft.command);
-  const reset = useDraftStore((state) => state.reset);
   const { data: runList } = useApi((context) => runsList(context));
-  const fromRun = runList?.runs.find((run) => run.id === fromRunId);
-  const fromTitle = fromRun?.title ?? fromRunId ?? "";
-  const resetForm = useCallback(() => reset(command), [command, reset]);
-  const otherCommand = fromRun !== undefined && fromRun.command !== command;
+  const titleOf = (id: JobId) => runList?.runs.find((run) => run.id === id)?.title ?? id;
 
-  return (
-    <PageHeading
-      title={fromRunId === undefined || otherCommand ? "New analysis" : "Edit and run again"}
-      description={pageDescription(fromRunId === undefined, otherCommand, fromTitle)}
-      actions={
-        <Button type="button" variant="ghost" onClick={resetForm}>
-          <RotateCcw aria-hidden />
-          Reset form
-        </Button>
-      }
-    />
-  );
+  const text =
+    viewing === undefined
+      ? fromRunId === undefined
+        ? undefined
+        : fromRunId === shownRunId
+          ? "Variant of this run"
+          : `Variant of "${titleOf(fromRunId)}"`
+      : `Options of "${titleOf(viewing)}". An edit starts a variant of this run.`;
+
+  return text === undefined ? null : <p className="text-muted-foreground text-xs">{text}</p>;
 }
 
-function pageDescription(fresh: boolean, otherCommand: boolean, fromTitle: string): string {
-  if (fresh) {
-    return "Choose an analysis, add the data, check the settings, run.";
-  }
+function ResetButton() {
+  const command = useDraftStore((state) => state.draft.command);
+  const discard = useDraftStore((state) => state.discard);
+  const reset = useCallback(() => discard("reset", command), [command, discard]);
 
-  return otherCommand
-    ? `Inputs and shared settings copied from "${fromTitle}". The original run stays unchanged.`
-    : `Settings copied from "${fromTitle}". The original run stays unchanged.`;
-}
-
-function Step({
-  number,
-  title,
-  hint,
-  children,
-}: {
-  number: number;
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
   return (
-    <section aria-labelledby={`step-${number}`} className="@container grid gap-2.5">
-      <div className="flex items-baseline gap-2.5 border-b pb-1.5">
-        <span className="text-primary font-mono text-sm font-bold" aria-hidden>
-          {String(number).padStart(2, "0")}
-        </span>
-        <h2 id={`step-${number}`} className="font-heading text-base font-bold">
-          {title}
-        </h2>
-        {hint !== undefined && <span className="text-muted-foreground text-sm">{hint}</span>}
-      </div>
-      {children}
-    </section>
+    <Button type="button" variant="ghost" size="sm" onClick={reset}>
+      <RotateCcw aria-hidden />
+      Reset form
+    </Button>
   );
 }

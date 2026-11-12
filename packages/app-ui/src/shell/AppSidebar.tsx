@@ -17,12 +17,13 @@ import {
   SidebarMenuItem,
 } from "@neherlab/design/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
 import Plus from "~icons/lucide/plus";
 import Search from "~icons/lucide/search";
 
+import { useNewAnalysis } from "../analysis/useDraftSession";
 import { useApi } from "../api/hooks";
 import { toggledChoice } from "../components/toggleChoice";
 import { headlineText } from "../format";
@@ -89,8 +90,7 @@ export function AppSidebar() {
 }
 
 function NewAnalysisButton() {
-  const navigate = useNavigate();
-  const openNew = useCallback(() => void navigate({ to: "/new" }), [navigate]);
+  const openNew = useNewAnalysis();
 
   return (
     <Button className="w-full" onClick={openNew}>

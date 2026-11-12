@@ -73,7 +73,13 @@ describe("edit and run again", () => {
   });
 
   test("keeps the seed that a time tree run drew, so the new run repeats its random step", () => {
-    const record: RunRecord = { ...RECORD, command: "timetree", seed: 4_242, changed_settings: [] };
+    const record: RunRecord = {
+      ...RECORD,
+      command: "timetree",
+      config: { tree: "inputs/tree.nwk" },
+      seed: 4_242,
+      changed_settings: [],
+    };
 
     expect(rerunDraft(record, { tree: "/runs/.inputs/a/tree.nwk" }).config["seed"]).toBe(4_242);
   });

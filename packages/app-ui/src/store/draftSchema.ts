@@ -50,10 +50,27 @@ export function forgetRuns(draft: UiDraft, lost: ReadonlySet<JobId>): ForgottenR
     forgotten.from_run_id = fromRun;
   }
 
-  return { draft: forgotten, dropped: dropped.map(([, source]) => source.label) };
+  const lists = new Set<string>(
+    commandSettings(draft.command).inputs.flatMap((slot) => (slot.list ? [slot.kind] : [])),
+  );
+
+  return {
+    draft: forgotten,
+    dropped: dropped.flatMap(([, source]) => (source.origin.kind === "example" ? [] : [source.label])),
+    examples: dropped.flatMap(([key, { origin }]) =>
+      origin.kind === "example" ? [{ key, list: lists.has(key), path: origin.path }] : [],
+    ),
+  };
 }
 
 export interface ForgottenRuns {
   draft: UiDraft;
   dropped: string[];
+  examples: QueuedExample[];
+}
+
+export interface QueuedExample {
+  key: string;
+  list: boolean;
+  path: string;
 }

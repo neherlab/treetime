@@ -9,6 +9,7 @@ import { applyDraftInputs } from "./draftInputs";
 import {
   draftUploadPaths,
   filesForSetting,
+  isUploaded,
   releasedPaths,
   type StoredFile,
   storedSource,
@@ -42,7 +43,8 @@ export function useInputActions(command: AppCommand): InputActions {
       const source = sources[key];
       const value = getValues(key);
 
-      return source?.origin.kind === "upload" &&
+      return source !== undefined &&
+        isUploaded(source) &&
         source.run_id === runId &&
         runId === upload_run_id &&
         value !== undefined

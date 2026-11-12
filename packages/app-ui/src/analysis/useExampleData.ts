@@ -1,13 +1,15 @@
-import type { AppCommand, IndexedDataset } from "@neherlab/app-contracts";
+import { type AppCommand, errorMessage, type IndexedDataset } from "@neherlab/app-contracts";
 import { examples } from "@neherlab/app-contracts/client";
+import { toast } from "@neherlab/design/ui/toast";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
 import { inputSettingKeys } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
+import type { QueuedExample } from "../store/draftSchema";
 import { applyDraftInputs } from "./draftInputs";
 import {
   type ConfigInput,
@@ -103,7 +105,8 @@ export function useExampleConfigLoader() {
 
 export function useDatasetLoader() {
   const navigate = useNavigate();
-  const { uploadRun, uploadFiles, release, releaseFromPendingRun } = useRunUploads();
+  const { release } = useRunUploads();
+  const uploadExampleInputs = useExampleInputsUpload();
 
   return useCallback(
     async (examples: ExampleIndex, dataset: IndexedDataset, command: AppCommand) => {
@@ -123,17 +126,57 @@ export function useDatasetLoader() {
         return;
       }
 
+      if (await uploadExampleInputs(inputs, command)) {
+        await navigate({ to: "/new" });
+      }
+    },
+    [navigate, release, uploadExampleInputs],
+  );
+}
+
+export function useQueuedExamples(): void {
+  const queued = useDraftStore((state) => state.queuedExamples);
+  const command = useDraftStore((state) => state.draft.command);
+  const uploadExampleInputs = useExampleInputsUpload();
+
+  useEffect(() => {
+    if (queued.length === 0) {
+      return;
+    }
+
+    useDraftStore.getState().takeQueuedExamples();
+    void refetchExamples(uploadExampleInputs, queued, command);
+  }, [command, queued, uploadExampleInputs]);
+}
+
+async function refetchExamples(
+  upload: (inputs: readonly QueuedExample[], command: AppCommand) => Promise<boolean>,
+  queued: readonly QueuedExample[],
+  command: AppCommand,
+): Promise<void> {
+  try {
+    await upload(queued, command);
+  } catch (error: unknown) {
+    toast.add({ title: "The example files cannot be fetched again", description: errorMessage(error) });
+  }
+}
+
+function useExampleInputsUpload() {
+  const { uploadRun, uploadFiles, release, releaseFromPendingRun } = useRunUploads();
+
+  return useCallback(
+    async (inputs: readonly QueuedExample[], command: AppCommand): Promise<boolean> => {
       const isCurrent = claimInputs(inputs.map((input) => input.key));
       const files = await Promise.all(inputs.map(async (input) => fetchExampleFile(exampleDataBase(), input.path)));
 
       if (!isCurrent()) {
-        return;
+        return false;
       }
 
       const runId = await uploadRun(command);
 
       if (!isCurrent(runId)) {
-        return;
+        return false;
       }
 
       const replaced = new Set(inputs.map((input) => input.key));
@@ -145,7 +188,7 @@ export function useDatasetLoader() {
           stored.map((file) => file.path),
         );
 
-        return;
+        return false;
       }
 
       applyDraftInputs(
@@ -155,13 +198,20 @@ export function useDatasetLoader() {
 
           return value === undefined
             ? []
-            : [{ key: input.key, value, source: { ...storedSource(file), origin: { kind: "upload" }, run_id: runId } }];
+            : [
+                {
+                  key: input.key,
+                  value,
+                  source: { ...storedSource(file), origin: { kind: "example", path: input.path }, run_id: runId },
+                },
+              ];
         }),
         release,
       );
-      await navigate({ to: "/new" });
+
+      return true;
     },
-    [navigate, release, releaseFromPendingRun, uploadFiles, uploadRun],
+    [release, releaseFromPendingRun, uploadFiles, uploadRun],
   );
 }
 

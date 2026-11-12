@@ -7,6 +7,7 @@ import {
   type IndexedFile,
   type InputKind,
   type SparseConfig,
+  type UiDraftOrigin,
   type UiDraftSource,
   zDataIndex,
 } from "@neherlab/app-contracts";
@@ -98,7 +99,7 @@ export function uploadedConfigInputs(
 ): UploadedInputs {
   const uploaded = inputs.flatMap(({ input, stored }) => {
     const value = storedValue(stored, input.list);
-    const source: UiDraftSource = { ...storedSource(stored), origin: { kind: "upload" }, run_id: runId };
+    const source: UiDraftSource = { ...storedSource(stored), origin: exampleOrigin(input.paths), run_id: runId };
 
     return value === undefined ? [] : [{ key: input.key, value, source }];
   });
@@ -107,6 +108,12 @@ export function uploadedConfigInputs(
     replace_inputs: Object.fromEntries(uploaded.map(({ key, value }) => [key, value])),
     sources: Object.fromEntries(uploaded.map(({ key, source }) => [key, source])),
   };
+}
+
+function exampleOrigin(paths: readonly string[]): UiDraftOrigin {
+  const [path, ...others] = paths;
+
+  return path === undefined || others.length > 0 ? { kind: "upload" } : { kind: "example", path };
 }
 
 export function matchingExampleFiles(files: readonly IndexedFile[], query: string): IndexedFile[] {

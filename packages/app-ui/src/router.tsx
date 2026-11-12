@@ -1,6 +1,8 @@
 import { createRootRoute, createRoute, createRouter, Navigate } from "@tanstack/react-router";
 
-import { NewAnalysisPage } from "./analysis/NewAnalysisPage";
+import { DraftMain } from "./analysis/DraftMain";
+import { WorkspaceRoute } from "./analysis/Workspace";
+import { WORKSPACE_MAIN_ID } from "./analysis/WorkspaceLayout";
 import { NotFoundPage } from "./NotFoundPage";
 import { MAIN_SCROLL_ID, RootLayout } from "./RootLayout";
 import { ComparePage } from "./runs/ComparePage";
@@ -10,9 +12,11 @@ const rootRoute = createRootRoute({ component: RootLayout });
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: IndexRedirect });
 
-const newRoute = createRoute({ getParentRoute: () => rootRoute, path: "/new", component: NewAnalysisPage });
+const workspaceRoute = createRoute({ getParentRoute: () => rootRoute, id: "workspace", component: WorkspaceRoute });
 
-const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$id", component: RunLayout });
+const newRoute = createRoute({ getParentRoute: () => workspaceRoute, path: "/new", component: DraftMain });
+
+const runRoute = createRoute({ getParentRoute: () => workspaceRoute, path: "/runs/$id", component: RunLayout });
 
 const runIndexRoute = createRoute({ getParentRoute: () => runRoute, path: "/", component: RunRedirect });
 
@@ -26,8 +30,10 @@ const compareRoute = createRoute({ getParentRoute: () => rootRoute, path: "/comp
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  newRoute,
-  runRoute.addChildren([runIndexRoute, runResultsRoute, runSettingsRoute, runLogRoute]),
+  workspaceRoute.addChildren([
+    newRoute,
+    runRoute.addChildren([runIndexRoute, runResultsRoute, runSettingsRoute, runLogRoute]),
+  ]),
   compareRoute,
 ]);
 
@@ -36,7 +42,7 @@ export const router = createRouter({
   defaultPreload: "intent",
   defaultNotFoundComponent: NotFoundPage,
   scrollRestoration: true,
-  scrollToTopSelectors: [`#${MAIN_SCROLL_ID}`],
+  scrollToTopSelectors: [`#${MAIN_SCROLL_ID}`, `#${WORKSPACE_MAIN_ID}`],
 });
 
 declare module "@tanstack/react-router" {

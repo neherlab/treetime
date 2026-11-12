@@ -7,6 +7,7 @@ import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
 import { type StoredFile, storeInOrder } from "./fileSelection";
 import { pendingUploadRun } from "./pendingUpload";
+import { whileRunBusy } from "./runWork";
 
 export interface RunUploads {
   uploadRun: (command: AppCommand) => Promise<string>;
@@ -89,24 +90,26 @@ export function useRunUploads(): RunUploads {
 
   const uploadFiles = useCallback(
     async (runId: string, files: readonly File[], replaces: readonly string[]) =>
-      storeInOrder(
-        files,
-        async (file) => {
-          const { data: uploaded } = await runsUploadInput({
-            client,
-            path: { id: runId, name: file.name },
-            query: { replaces: [...replaces] },
-            body: file,
-            throwOnError: true,
-          });
+      whileRunBusy(runId, async () =>
+        storeInOrder(
+          files,
+          async (file) => {
+            const { data: uploaded } = await runsUploadInput({
+              client,
+              path: { id: runId, name: file.name },
+              query: { replaces: [...replaces] },
+              body: file,
+              throwOnError: true,
+            });
 
-          return { name: file.name, path: uploaded.path, size: uploaded.size };
-        },
-        (partial) =>
-          releaseFromPendingRun(
-            runId,
-            partial.map((file) => file.path),
-          ),
+            return { name: file.name, path: uploaded.path, size: uploaded.size };
+          },
+          (partial) =>
+            releaseFromPendingRun(
+              runId,
+              partial.map((file) => file.path),
+            ),
+        ),
       ),
     [client, releaseFromPendingRun],
   );

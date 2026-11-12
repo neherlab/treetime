@@ -10,7 +10,14 @@ export async function forgetLostRuns(client: ApiClient, draft: UiDraft): Promise
   const runs = new Map(records.flatMap((record) => (record === undefined ? [] : [[record.id, record] as const])));
   const lost = new Set(ids.filter((id) => !runs.has(id)));
 
-  return { ...(lost.size === 0 ? { draft, dropped: [] } : forgetRuns(draft, lost)), runs };
+  return { ...(lost.size === 0 ? { draft, dropped: [], examples: [] } : forgetRuns(draft, lost)), runs };
+}
+
+export function reloadedFilesMessage(labels: readonly string[]) {
+  return {
+    title: "The files of the form belonged to the previous page; choose them again",
+    description: labels.join(", "),
+  };
 }
 
 export function lostFilesMessage(labels: readonly string[]) {

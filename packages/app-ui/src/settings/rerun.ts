@@ -17,8 +17,9 @@ export function rerunDraft(record: RunRecord, settings: SparseConfig): RerunDraf
   const kept = new Set(specs.flatMap((spec) => (spec.role === "input" || changed.has(spec.key) ? [spec.key] : [])));
 
   const picked = Object.fromEntries(Object.entries(settings).filter(([key]) => kept.has(key)));
-  const seeded = specs.some((spec) => spec.key === SEED_KEY) && record.seed !== undefined;
-  const config = normalizeConfig(specs, seeded ? { ...picked, [SEED_KEY]: record.seed } : picked);
+  const { seed } = record;
+  const seeded = seed !== undefined && specs.some((spec) => spec.key === SEED_KEY);
+  const config = normalizeConfig(specs, seeded ? { ...picked, [SEED_KEY]: seed } : picked);
 
   const inputLabels = Object.fromEntries(
     runInputAssignments(record.command, record.inputs).map((input) => [input.key, input.label]),

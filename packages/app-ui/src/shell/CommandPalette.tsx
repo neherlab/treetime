@@ -19,6 +19,7 @@ import { appConfigs, type AppConfig } from "../analysis/exampleData";
 import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis/ExamplesDownload";
 import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
+import { useNewAnalysis } from "../analysis/useDraftSession";
 import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
 import { useApi } from "../api/hooks";
 import { nextTheme } from "../chrome/ThemeCycleButton";
@@ -138,6 +139,7 @@ function itemTitle(item: PaletteItem): string {
 
 function usePaletteItems(): PaletteItem[] {
   const navigate = useNavigate();
+  const newAnalysis = useNewAnalysis();
   const { data: runList } = useApi((context) => runsList(context));
   const { data: examples } = useExampleIndex();
   const command = useDraftStore((state) => state.draft.command);
@@ -187,7 +189,7 @@ function usePaletteItems(): PaletteItem[] {
 
   return useMemo(() => {
     const items: PaletteItem[] = [
-      paletteItem("Action", "action-new", "New analysis", "", () => navigate({ to: "/new" })),
+      paletteItem("Action", "action-new", "New analysis", "", newAnalysis),
       paletteItem("Action", "action-theme", "Change theme", "System, light or dark", () =>
         chooseTheme(nextTheme(theme)),
       ),
@@ -283,6 +285,7 @@ function usePaletteItems(): PaletteItem[] {
     loadDataset,
     loadExample,
     navigate,
+    newAnalysis,
     runList,
     setWorkspaceOpen,
     startDownload,
