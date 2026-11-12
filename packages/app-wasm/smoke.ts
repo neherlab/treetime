@@ -4,7 +4,14 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { zRunList, zRunRecord, zRunsFilesResponse, zUploadedInput, zVersionInfo } from "@neherlab/app-contracts";
+import {
+  zErrorResponse,
+  zRunList,
+  zRunRecord,
+  zRunsFilesResponse,
+  zUploadedInput,
+  zVersionInfo,
+} from "@neherlab/app-contracts";
 import * as z from "zod";
 
 import type createModule from "./pkg/app_wasm.js";
@@ -24,6 +31,12 @@ const RUN_INPUT_PATHS = ["inputs/aln.fasta.xz", "inputs/tree.nwk"];
 const KEEP_ALIVE_INTERVAL_MS = 1000;
 
 const UPLOAD_SLICE_SIZE = 256;
+
+const CENTRAL_DIRECTORY_SIGNATURE = 0x02_01_4b_50;
+
+const CENTRAL_DIRECTORY_SIZE_OFFSET = 24;
+
+const OVERSIZED_ENTRY_BYTES = 0x7f_ff_ff_f0;
 
 const moduleSchema = z.object({
   // oxlint-disable-next-line unicorn/no-instanceof-builtins -- the imported module belongs to this realm, so instanceof Function is reliable
@@ -46,7 +59,9 @@ const backend = new wasm.Backend();
 
 await checkNewBackend();
 
-await checkAncestralRun();
+const ancestralRun = await checkAncestralRun();
+
+await checkPackageImport(ancestralRun);
 
 await checkCancelledRun();
 
@@ -74,7 +89,7 @@ async function checkNewBackend(): Promise<void> {
   parse(zVersionInfo, version);
 }
 
-async function checkAncestralRun(): Promise<void> {
+async function checkAncestralRun(): Promise<string> {
   const created = parse(
     zRunRecord,
     await call("POST", "/api/runs", encode({ command: "ancestral", config: {}, defer_start: true }), JSON_HEADERS),
@@ -132,6 +147,36 @@ async function checkAncestralRun(): Promise<void> {
     ],
     text(started),
   );
+
+  return created.id;
+}
+
+async function checkPackageImport(id: string): Promise<void> {
+  const runPackage = await call("GET", `/api/runs/${id}/package`);
+  const slices = slicesOf(runPackage.body);
+  const imported = await call("POST", "/api/runs/import", slices, BYTES_HEADERS);
+  const oversized = await call("POST", "/api/runs/import", slicesOf(declaredOversized(runPackage.body)), BYTES_HEADERS);
+
+  assert.ok(slices.length > 2, "the import body spans several slices");
+  assert.deepEqual(
+    [imported.status, parse(zRunRecord, imported).status, oversized.status, parse(zErrorResponse, oversized).code],
+    [200, "ok", 413, "upload_too_large"],
+    `${text(imported)} ${text(oversized)}`,
+  );
+}
+
+function declaredOversized(zip: Uint8Array): Uint8Array {
+  const patched = Uint8Array.from(zip);
+  const view = new DataView(patched.buffer);
+
+  const entry = patched.findIndex(
+    (_, index) => index + 4 <= patched.length && view.getUint32(index, true) === CENTRAL_DIRECTORY_SIGNATURE,
+  );
+
+  assert.ok(entry >= 0, "the run package has a central directory");
+  view.setUint32(entry + CENTRAL_DIRECTORY_SIZE_OFFSET, OVERSIZED_ENTRY_BYTES, true);
+
+  return patched;
 }
 
 async function checkCancelledRun(): Promise<void> {
@@ -363,13 +408,15 @@ async function uploadBytes(id: string, name: string, bytes: Uint8Array): Promise
 }
 
 async function uploadInSlices(id: string, name: string, bytes: Uint8Array): Promise<z.infer<typeof zUploadedInput>> {
-  const slices = Array.from({ length: Math.ceil(bytes.length / UPLOAD_SLICE_SIZE) }, (_, index) =>
-    bytes.subarray(index * UPLOAD_SLICE_SIZE, (index + 1) * UPLOAD_SLICE_SIZE),
-  );
-
-  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, slices, BYTES_HEADERS);
+  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, slicesOf(bytes), BYTES_HEADERS);
 
   return parse(zUploadedInput, response);
+}
+
+function slicesOf(bytes: Uint8Array): Uint8Array[] {
+  return Array.from({ length: Math.ceil(bytes.length / UPLOAD_SLICE_SIZE) }, (_, index) =>
+    bytes.subarray(index * UPLOAD_SLICE_SIZE, (index + 1) * UPLOAD_SLICE_SIZE),
+  );
 }
 
 async function call(
