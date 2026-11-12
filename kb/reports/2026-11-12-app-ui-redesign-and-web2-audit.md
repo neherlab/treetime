@@ -100,7 +100,7 @@ Grouped by screen. The defects of single behaviors are in [Defects](#defects).
 - **No crash notice.** When the back-end worker stops, `PortClient.stop()` [packages/app-ui/src/port-fetch.ts#L213](../../packages/app-ui/src/port-fetch.ts#L213) fails the open requests and nothing shows the stop ([kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](../issues/M-web2-wasm-panic-loses-the-back-end-state.md)). The decision file of web2 states that this notice exists
 - **The page reloads by itself** after an error while loading a code chunk (`reloadOnChunkError()`, [packages/app-ui/src/chunk-reload.ts](../../packages/app-ui/src/chunk-reload.ts)), which loses every run of the tab. This is rare in production, because the publish script keeps old assets
 - **No leave warning**: no `beforeunload` guard exists
-- **The `jobs` URL parameter is lost** at the first redirect ([kb/issues/N-web2-jobs-parameter-lost-after-navigation.md](../issues/N-web2-jobs-parameter-lost-after-navigation.md)), and the thread count of the back end appears only in the console
+- **The `jobs` URL parameter is lost** at the first redirect, and the thread count of the back end appears only in the console
 
 ### Reproducibility and export
 
