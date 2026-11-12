@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::{sparse, unconfined};
+  use crate::__tests__::test_support::tests::{sparse, unconfined, upload_bytes};
   use crate::results::run_results::run_results;
   use crate::runs::__tests__::test_run_storage::tests::helpers::{ZIKA, run_with_uploads, start_from};
   use crate::runs::app_events::AppChange;
@@ -408,6 +408,67 @@ mod tests {
         "When opening '{}': No such file or directory (os error 2)",
         removed.display()
       )
+    );
+  }
+
+  #[test]
+  fn test_run_package_of_a_translations_template_reads_the_uploaded_annotation_of_the_run() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let data = data_dir().join("rsv/a/20").canonicalize().unwrap();
+    let created = runs
+      .create(&CreateRunRequest {
+        command: AppCommand::Ancestral,
+        config: sparse(json!({})),
+        defer_start: true,
+        source_run_id: None,
+        example: None,
+      })
+      .unwrap();
+    let annotation = indoc! {"
+      ##gff-version 3
+      EPI_ISL_412866\tfeature\tCDS\t4652\t5617\t.\t+\t0\tName=G
+      EPI_ISL_412866\tfeature\tCDS\t5697\t7421\t.\t+\t0\tName=F
+    "};
+    let uploaded = upload_bytes(
+      &runs,
+      &created.id,
+      "annotation.gff3",
+      &[],
+      annotation.as_bytes(),
+      1 << 24,
+    )
+    .unwrap();
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(json!({
+        "tree": data.join("tree.nwk"),
+        "alignment": [data.join("aln.fasta.xz")],
+        "translations": data.join("translations/{cds}.fasta.xz"),
+        "annotation": uploaded.path,
+        "cds_selection": ["F", "G"],
+      }))),
+      source_run_id: None,
+      example: None,
+    };
+    runs.start(&created.id, &request, unconfined()).unwrap().run();
+    let record = runs.get(&created.id).unwrap();
+
+    let translations = package_entries(&package_bytes(&runs, &created.id))
+      .into_iter()
+      .filter_map(|(name, _, _)| {
+        name
+          .split_once("/inputs/translations/")
+          .map(|(_, file)| file.to_owned())
+      })
+      .sorted()
+      .collect_vec();
+
+    assert_eq!(
+      (RunStatus::Ok, vec!["F.fasta.xz".to_owned(), "G.fasta.xz".to_owned()]),
+      (record.status, translations),
+      "{:?}",
+      record.error
     );
   }
 

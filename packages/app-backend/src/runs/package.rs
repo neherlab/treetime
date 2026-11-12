@@ -8,7 +8,7 @@ use crate::runs::input_store::{set_sha256, validate_upload_name};
 use crate::runs::inputs::file_sha256;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{InputSet, RunInput, RunRecord};
-use crate::runs::run_paths::{INPUTS_DIR, OUT_DIR, map_path_values, path_strings, resolve_path};
+use crate::runs::run_paths::{INPUTS_DIR, OUT_DIR, map_path_values, path_strings, resolve_path, resolve_settings};
 use crate::runs::store::{EVENTS_FILE, RUN_FILE, record_text};
 use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::aa_node_data::{cds_names, translation_path};
@@ -43,7 +43,8 @@ pub fn export_run(manager: &RunManager, id: &JobId) -> Result<RunPackage, Report
   let run_dir = manager.store().run_dir(id);
   let command = record.config.command();
   let mut settings = record.config.settings()?;
-  let paths = PackagePaths::of(command, &settings, &record.inputs)?;
+  let resolved = resolve_settings(&record, &run_dir, manager.input_store())?;
+  let paths = PackagePaths::of(command, &settings, &resolved, &record.inputs)?;
   let inputs = package_inputs(manager, &run_dir, &record, &paths)?;
   map_path_values(command, &mut settings, |path| paths.package(path))?;
   let code = config_code(command, &settings)?;
@@ -264,7 +265,12 @@ struct PackagePaths {
 }
 
 impl PackagePaths {
-  fn of(command: AppCommand, settings: &Map<String, Value>, inputs: &[RunInput]) -> Result<Self, Report> {
+  fn of(
+    command: AppCommand,
+    settings: &Map<String, Value>,
+    resolved: &Map<String, Value>,
+    inputs: &[RunInput],
+  ) -> Result<Self, Report> {
     let mut taken: BTreeSet<PathBuf> = inputs
       .iter()
       .filter(|input| input.path.is_relative())
@@ -289,7 +295,7 @@ impl PackagePaths {
           if let Value::String(template) = value
             && Path::new(template).is_absolute()
           {
-            moved.extend(template_paths(&property.key, template, settings)?);
+            moved.extend(template_paths(&property.key, template, resolved)?);
           }
         },
         Some(PathRole::Output) | None => {},
@@ -323,9 +329,9 @@ fn free_input_path(taken: &BTreeSet<PathBuf>, path: &Path) -> Result<PathBuf, Re
 fn template_paths(
   setting: &str,
   template: &str,
-  settings: &Map<String, Value>,
+  resolved: &Map<String, Value>,
 ) -> Result<Vec<(PathBuf, PathBuf)>, Report> {
-  let cdses = cds_names(settings)?;
+  let cdses = cds_names(resolved)?;
   let expanded = cdses.iter().map(|cds| translation_path(template, cds)).collect_vec();
   let base = Path::new(template)
     .ancestors()
