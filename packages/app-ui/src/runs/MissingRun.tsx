@@ -47,7 +47,7 @@ export function MissingRun() {
       <EmptyContent className="flex-row justify-center">
         <input {...getInputProps()} aria-label="Run package to import" />
         <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
-          Open the run list
+          Open the start page
         </Button>
         <Button type="button" variant="outline" onClick={choosePackage}>
           Import a run package
