@@ -1,4 +1,4 @@
-import { runsArchive, runsFile, type ApiClient } from "@neherlab/app-contracts/client";
+import { runsFile, runsPackage, type ApiClient } from "@neherlab/app-contracts/client";
 
 import type { Host, SaveRunReply } from "../host";
 
@@ -35,7 +35,7 @@ export async function saveRunOutput(
 
   const { data } =
     path === undefined
-      ? await runsArchive({ client, path: { id }, parseAs: "blob", throwOnError: true })
+      ? await runsPackage({ client, path: { id }, parseAs: "blob", throwOnError: true })
       : await runsFile({ client, path: { id }, query: { path }, parseAs: "blob", throwOnError: true });
 
   const url = objectUrls.createObjectURL(data);

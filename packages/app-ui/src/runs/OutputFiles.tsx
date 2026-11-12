@@ -27,7 +27,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
 
   const downloadArchive = useCallback(async () => {
     setBusy(true);
-    await save({ id: record.id, name: downloadName(record.title, ".zip") }, "The archive cannot be downloaded");
+    await save({ id: record.id, name: downloadName(record.title, ".zip") }, "The run package cannot be downloaded");
     setBusy(false);
   }, [record.id, record.title, save]);
 
@@ -42,7 +42,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
       actions={
         <Button type="button" variant="outline" size="sm" onClick={onArchive} disabled={busy || files === undefined}>
           {busy ? <Spinner /> : <Download aria-hidden />}
-          Download all (.zip)
+          Run package (.zip)
         </Button>
       }
     >

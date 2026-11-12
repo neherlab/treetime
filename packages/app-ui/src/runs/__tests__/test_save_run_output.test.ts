@@ -67,8 +67,8 @@ describe("save run output in a browser", () => {
     ]);
   });
 
-  test("an output without a path downloads the run archive", async () => {
-    const server = fakeServer({ "/api/runs/r1/archive": "PK" });
+  test("an output without a path downloads the run package", async () => {
+    const server = fakeServer({ "/api/runs/r1/package": "PK" });
     const objectUrls = new FakeObjectUrls();
     const timers = new FakeTimers();
     const downloads: Download[] = [];
@@ -87,13 +87,13 @@ describe("save run output in a browser", () => {
     );
 
     expect([server.requested, await objectUrls.contents(downloads)]).toStrictEqual([
-      ["/api/runs/r1/archive"],
+      ["/api/runs/r1/package"],
       [{ url: "blob:treetime/0", name: "run.zip", content: "PK" }],
     ]);
   });
 
   test("the object URL stays valid after the click and is revoked when its timer fires", async () => {
-    const server = fakeServer({ "/api/runs/r1/archive": "PK" });
+    const server = fakeServer({ "/api/runs/r1/package": "PK" });
     const objectUrls = new FakeObjectUrls();
     const timers = new FakeTimers();
     const urls: string[] = [];
