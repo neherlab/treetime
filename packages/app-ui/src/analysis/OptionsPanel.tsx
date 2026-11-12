@@ -178,7 +178,7 @@ function DetectedFactRow({ command, fact }: { command: AppCommand; fact: Detecte
 function AllSettings({ command, config }: { command: AppCommand; config: SparseConfig }) {
   const open = useDraftStore((state) => state.draft.view === "all");
   const update = useDraftStore((state) => state.update);
-  const total = commandSettings(command).settings.filter((spec) => spec.role !== "output").length;
+  const total = commandSettings(command).settings.filter((spec) => !spec.set_by_app).length;
   const onOpenChange = useCallback((next: boolean) => update({ view: next ? "all" : "main" }), [update]);
   const openAll = useCallback(() => update({ view: "all" }), [update]);
 

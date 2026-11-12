@@ -44,7 +44,7 @@ export function normalizeConfig(specs: readonly SettingSpec[], config: SparseCon
   for (const spec of specs) {
     const value = config[spec.key];
 
-    if (value !== undefined && spec.role !== "output") {
+    if (value !== undefined && !spec.set_by_app) {
       normalized = withSetting(normalized, spec.key, cloneJson(value));
     }
   }

@@ -6,7 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { inAct, registerDom } from "../../__tests__/dom";
 import { LocaleProvider, type Locale } from "../../i18n/locale";
-import { defaultText, SettingHelp, SettingSummary } from "../help";
+import { commandLineText, defaultText, SettingHelp } from "../help";
 
 const TREE_DIALECT: SettingSpec = {
   key: "newick_dialect",
@@ -14,6 +14,7 @@ const TREE_DIALECT: SettingSpec = {
   flag: "--newick-dialect",
   group: "Input data",
   purpose: "data",
+  set_by_app: false,
   role: "setting",
   kind: "text",
   nullable: false,
@@ -71,18 +72,15 @@ describe("setting help", () => {
   });
 });
 
-describe("setting summary", () => {
-  test.each<[Locale, string]>([
-    ["en", "Default: classic,beast"],
-    ["de", "Standard: classic,beast"],
-  ])("shows the label, the flag, and the default in %s", (locale, expected) => {
-    render(<SettingSummary spec={TREE_DIALECT} label={<h3>Newick dialect</h3>} />, locale);
-
-    expect([
-      page().getByRole("heading").textContent,
-      page().getByText("--newick-dialect").tagName,
-      page().getByText(expected).tagName,
-    ]).toStrictEqual(["Newick dialect", "CODE", "SPAN"]);
+describe("command line of a setting", () => {
+  test.each<[string, SettingSpec, JsonValue | undefined, string]>([
+    ["a value", { ...TREE_DIALECT, kind: "enum" }, "rich,nhx", "--newick-dialect rich,nhx"],
+    ["a number", { ...TREE_DIALECT, flag: "--clock-filter", kind: "number" }, 4, "--clock-filter 4"],
+    ["a list", { ...TREE_DIALECT, flag: "--relax", kind: "list" }, [1, 0.5], "--relax 1 0.5"],
+    ["a switch", { ...TREE_DIALECT, flag: "--keep-root", kind: "switch" }, true, "--keep-root"],
+    ["no value", TREE_DIALECT, undefined, "--newick-dialect DIALECT"],
+  ])("shows %s", (_name, spec, value, expected) => {
+    expect(commandLineText(spec, value)).toBe(expected);
   });
 });
 

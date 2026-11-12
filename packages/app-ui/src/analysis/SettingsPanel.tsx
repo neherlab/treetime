@@ -1,17 +1,15 @@
-import type { AppCommand, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
+import type { AppCommand, SparseConfig } from "@neherlab/app-contracts";
 import { Badge } from "@neherlab/design/ui/badge";
 import { Checkbox } from "@neherlab/design/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { Empty, EmptyDescription } from "@neherlab/design/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
 import { Label } from "@neherlab/design/ui/label";
 import { useCallback } from "react";
-import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
 
 import { commandSettings } from "../settings/catalog";
 import { isChanged } from "../settings/config";
-import { groupedSpecs } from "../settings/groups";
+import { settingSections, type SettingSectionView } from "../settings/groups";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
 import { SettingField } from "./SettingField";
@@ -65,12 +63,10 @@ function AllSettings({
   changedOnly: boolean;
 }) {
   const settings = commandSettings(command);
-  const specs = settings.settings;
-  const groups = groupedSpecs(settings, matchingSpecs(specs, config, search, changedOnly));
-  const allGroups = groupedSpecs(settings, specs);
-  const filtering = search.trim() !== "" || changedOnly;
+  const sections = settingSections(settings, matchingSpecs(settings.settings, config, search, changedOnly));
+  const allSections = settingSections(settings, settings.settings);
 
-  if (groups.length === 0) {
+  if (sections.length === 0) {
     return (
       <Empty className="py-10">
         <EmptyDescription>
@@ -84,98 +80,76 @@ function AllSettings({
 
   return (
     <div>
-      <nav aria-label="Setting groups" className="flex flex-wrap gap-1 border-b px-3.5 py-2">
-        {groups.map(([group]) => {
-          const changed =
-            allGroups.find(([candidate]) => candidate === group)?.[1].filter((spec) => isChanged(config, spec))
-              .length ?? 0;
+      <nav aria-label="Setting sections" className="flex flex-wrap gap-1 border-b px-3.5 py-2">
+        {sections.map(({ purpose, title }) => {
+          const changed = changedCount(
+            config,
+            allSections.find((candidate) => candidate.purpose === purpose),
+          );
 
           return (
             <Badge
-              key={group}
+              key={purpose}
               variant="outline"
               render={
-                <a
-                  href={`#group-${groupAnchor(group)}`}
-                  aria-label={changed > 0 ? `${group}, ${changed} changed` : group}
-                />
+                <a href={`#section-${purpose}`} aria-label={changed > 0 ? `${title}, ${changed} changed` : title} />
               }
             >
-              {group}
+              {title}
               {changed > 0 && <span className="text-primary">{changed} changed</span>}
             </Badge>
           );
         })}
       </nav>
-      {groups.map(([group, members]) => (
-        <SettingGroup
-          key={`${group}:${String(filtering)}`}
-          command={command}
-          config={config}
-          group={group}
-          members={members}
-          filtering={filtering}
-        />
+      {sections.map((section) => (
+        <SettingSection key={section.purpose} command={command} config={config} section={section} />
       ))}
     </div>
   );
 }
 
-function SettingGroup({
+function SettingSection({
   command,
   config,
-  group,
-  members,
-  filtering,
+  section,
 }: {
   command: AppCommand;
   config: SparseConfig;
-  group: string;
-  members: readonly SettingSpec[];
-  filtering: boolean;
+  section: SettingSectionView;
 }) {
-  const editable = members.filter((spec) => spec.role !== "output");
-  const outputs = members.filter((spec) => spec.role === "output");
-  const changed = members.filter((spec) => isChanged(config, spec)).length;
+  const specs = section.groups.flatMap((group) => group.specs);
+  const changed = changedCount(config, section);
+  const headed = section.groups.length > 1 || section.groups.some((group) => group.group !== section.title);
 
   return (
-    <Collapsible
-      id={`group-${groupAnchor(group)}`}
-      defaultOpen={filtering || outputs.length === 0}
-      className="scroll-mt-4 border-b last:border-b-0"
+    <section
+      id={`section-${section.purpose}`}
+      aria-label={section.title}
+      className="scroll-mt-4 border-b pb-2 last:border-b-0"
     >
-      <CollapsibleTrigger className="group/trigger hover:bg-muted/50 flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-bold">
-        <ChevronRight
-          aria-hidden
-          className="text-muted-foreground size-4 transition-transform group-data-panel-open/trigger:rotate-90"
-        />
-        {group}
+      <h3 className="flex items-baseline gap-2 px-3.5 pt-3 pb-1.5 font-bold">
+        {section.title}
         <span className="text-muted-foreground text-xs font-normal">
-          {members.length} {members.length === 1 ? "setting" : "settings"}
+          {specs.length} {specs.length === 1 ? "setting" : "settings"}
         </span>
-        {changed > 0 && <span className="text-primary text-xs">{changed} changed</span>}
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        {editable.map((spec) => (
-          <SettingField key={spec.key} command={command} spec={spec} config={config} />
-        ))}
-        {outputs.length > 0 && (
-          <Collapsible className="px-7.5 pt-1.5 pb-2.5">
-            <CollapsibleTrigger className="text-muted-foreground hover:text-foreground text-xs">
-              {outputs.length} file paths, set by the app for each run
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              {outputs.map((spec) => (
-                <SettingField key={spec.key} command={command} spec={spec} config={config} />
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+        {changed > 0 && <span className="text-primary text-xs font-normal">{changed} changed</span>}
+      </h3>
+      {section.groups.map(({ group, specs: members }) => (
+        <div key={group}>
+          {headed && (
+            <h4 className="text-muted-foreground px-3.5 pt-2 pb-1 text-xs font-bold tracking-wide uppercase">
+              {group}
+            </h4>
+          )}
+          {members.map((spec) => (
+            <SettingField key={spec.key} command={command} spec={spec} config={config} />
+          ))}
+        </div>
+      ))}
+    </section>
   );
 }
 
-function groupAnchor(group: string): string {
-  return group.toLowerCase().replaceAll(/\W+/gu, "-");
+function changedCount(config: SparseConfig, section: SettingSectionView | undefined): number {
+  return (section?.groups ?? []).flatMap((group) => group.specs).filter((spec) => isChanged(config, spec)).length;
 }

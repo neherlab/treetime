@@ -1,9 +1,12 @@
 import type { JsonValue, SettingSpec } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@neherlab/design/ui/popover";
 import type { ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import Info from "~icons/lucide/info";
 
 import { m, useLocale, type Locale } from "../i18n/locale";
 import { documentedDefault } from "./config";
@@ -37,6 +40,80 @@ export function SettingSummary({ spec, label }: { spec: SettingSpec; label: Reac
           {m.settings_default({ value: defaultText(documentedDefault(spec), locale) }, { locale })}
         </span>
       )}
+    </div>
+  );
+}
+
+export function SettingHelpPopover({ spec, value }: { spec: SettingSpec; value: JsonValue | undefined }) {
+  const locale = useLocale();
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={m.settings_about({ label: spec.label }, { locale })}
+            className="text-muted-foreground"
+          />
+        }
+      >
+        <Info aria-hidden />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="grid w-96 max-w-[calc(100vw-2rem)] gap-2.5">
+        <span className="font-bold">{spec.label}</span>
+        <div className="text-muted-foreground grid gap-1.5">
+          <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={BLOCK_COMPONENTS}>
+            {[spec.help, spec.more].filter((text) => text !== "").join("\n\n")}
+          </Markdown>
+        </div>
+        {spec.options.length > 0 && (
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+            {spec.options.map((option) => (
+              <div key={option.value} className="contents">
+                <dt>
+                  {option.label} <code className={CODE_CLASS}>{option.value}</code>
+                </dt>
+                <dd className="text-muted-foreground">{option.help}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <p className="text-xs">
+          {m.settings_command_line({}, { locale })}: <code className={CODE_CLASS}>{commandLineText(spec, value)}</code>
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function commandLineText(spec: SettingSpec, value: JsonValue | undefined): string {
+  if (value === undefined || value === null || isJsonObject(value) || spec.kind === "records") {
+    return [spec.flag, ...spec.value_names].join(" ");
+  }
+
+  if (value === true || value === false) {
+    return spec.flag;
+  }
+
+  const values = Array.isArray(value) ? value : [value];
+
+  return values.length === 0
+    ? spec.flag
+    : [
+        spec.flag,
+        ...values.map((item) => (isJsonObject(item) || Array.isArray(item) ? JSON.stringify(item) : String(item))),
+      ].join(" ");
+}
+
+export function SettingHelpText({ spec }: { spec: SettingSpec }) {
+  return (
+    <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
+      <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={INLINE_COMPONENTS}>
+        {spec.help}
+      </Markdown>
     </div>
   );
 }

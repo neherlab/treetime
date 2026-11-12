@@ -14,7 +14,7 @@ import { Switch } from "@neherlab/design/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import { cn } from "cn";
-import { useCallback, useMemo, useState } from "react";
+import { use, useCallback, useMemo, useState } from "react";
 import { GridList, GridListItem } from "react-aria-components";
 import { useController, useWatch } from "react-hook-form";
 import Plus from "~icons/lucide/plus";
@@ -27,6 +27,7 @@ import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";
 import { PathPicker } from "./PathPicker";
+import { WorkspaceContext } from "./workspaceContext";
 
 const CONTROL_HEIGHT = "h-8";
 
@@ -55,6 +56,7 @@ interface EditorProps {
   value: JsonValue | undefined;
   set: (next: JsonValue) => void;
   unset: () => void;
+  unsetLabel: string;
   onKeyDown: ((event: React.KeyboardEvent) => void) | undefined;
   onBlur: (() => void) | undefined;
   invalid: boolean;
@@ -84,19 +86,6 @@ export function SettingControl({
   label: string;
   className?: string | undefined;
 }) {
-  if (spec.role === "output") {
-    return (
-      <Input
-        id={settingFieldId(spec.key)}
-        type="text"
-        disabled
-        aria-label={label}
-        placeholder="Set by the app for each run"
-        className={cn(CONTROL_HEIGHT, className)}
-      />
-    );
-  }
-
   if (spec.role === "input") {
     return <PathControl command={command} spec={spec} label={label} className={className} />;
   }
@@ -131,6 +120,7 @@ function PathControl({ command, spec, label, className }: ControlProps) {
 
 function ValueControl({ spec, label, className }: ControlProps) {
   const { value, set, unset, onBlur, invalid } = useSetting(spec);
+  const effective = use(WorkspaceContext)?.check?.effective.find((candidate) => candidate.key === spec.key)?.text;
   const Editor = EDITORS[spec.kind];
 
   return (
@@ -141,6 +131,7 @@ function ValueControl({ spec, label, className }: ControlProps) {
       value={value}
       set={set}
       unset={unset}
+      unsetLabel={effective ?? unsetText(spec)}
       onBlur={onBlur}
       onKeyDown={undefined}
       invalid={invalid}
@@ -162,7 +153,7 @@ function SwitchEditor({ id, label, value, set, onKeyDown, className }: EditorPro
   );
 }
 
-function EnumEditor({ id, label, setting, value, set, unset, invalid, onKeyDown, className }: EditorProps) {
+function EnumEditor({ id, label, setting, value, set, unset, unsetLabel, invalid, onKeyDown, className }: EditorProps) {
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => (event.target.value === "" ? unset() : set(event.target.value)),
     [set, unset],
@@ -179,10 +170,10 @@ function EnumEditor({ id, label, setting, value, set, unset, invalid, onKeyDown,
       onKeyDown={onKeyDown}
       className={className}
     >
-      {setting.nullable && <NativeSelectOption value="">{unsetText(setting)}</NativeSelectOption>}
+      {setting.nullable && <NativeSelectOption value="">{unsetLabel}</NativeSelectOption>}
       {setting.options.map((option) => (
         <NativeSelectOption key={option.value} value={option.value} title={option.help}>
-          {option.value}
+          {option.label}
         </NativeSelectOption>
       ))}
     </NativeSelect>
@@ -196,6 +187,7 @@ function EnumOrTextEditor({
   value,
   set,
   unset,
+  unsetLabel,
   onBlur,
   invalid,
   onKeyDown,
@@ -234,10 +226,10 @@ function EnumOrTextEditor({
         onChange={onSelect}
         onKeyDown={onKeyDown}
       >
-        {setting.nullable && <NativeSelectOption value="">{unsetText(setting)}</NativeSelectOption>}
+        {setting.nullable && <NativeSelectOption value="">{unsetLabel}</NativeSelectOption>}
         {setting.options.map((option) => (
           <NativeSelectOption key={option.value} value={option.value} title={option.help}>
-            {option.value}
+            {option.label}
           </NativeSelectOption>
         ))}
         <NativeSelectOption value={FREE_VALUE}>Value</NativeSelectOption>
@@ -259,7 +251,19 @@ function EnumOrTextEditor({
   );
 }
 
-function NumberEditor({ id, label, setting, value, set, unset, onBlur, invalid, onKeyDown, className }: EditorProps) {
+function NumberEditor({
+  id,
+  label,
+  setting,
+  value,
+  set,
+  unset,
+  unsetLabel,
+  onBlur,
+  invalid,
+  onKeyDown,
+  className,
+}: EditorProps) {
   const onValueChange = useCallback(
     (next: number | string | undefined) => (next === undefined ? unset() : set(next)),
     [set, unset],
@@ -271,7 +275,7 @@ function NumberEditor({ id, label, setting, value, set, unset, onBlur, invalid, 
       aria-label={label}
       aria-invalid={invalid}
       value={value}
-      placeholder={setting.nullable ? unsetText(setting) : ""}
+      placeholder={setting.nullable ? unsetLabel : ""}
       onValueChange={onValueChange}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
@@ -280,7 +284,19 @@ function NumberEditor({ id, label, setting, value, set, unset, onBlur, invalid, 
   );
 }
 
-function TextEditor({ id, label, setting, value, set, unset, onBlur, invalid, onKeyDown, className }: EditorProps) {
+function TextEditor({
+  id,
+  label,
+  setting,
+  value,
+  set,
+  unset,
+  unsetLabel,
+  onBlur,
+  invalid,
+  onKeyDown,
+  className,
+}: EditorProps) {
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
       event.target.value === "" && setting.nullable ? unset() : set(event.target.value),
@@ -294,7 +310,7 @@ function TextEditor({ id, label, setting, value, set, unset, onBlur, invalid, on
       aria-label={label}
       aria-invalid={invalid}
       value={value === undefined ? "" : scalarText(value)}
-      placeholder={setting.nullable ? unsetText(setting) : ""}
+      placeholder={setting.nullable ? unsetLabel : ""}
       onChange={onChange}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
@@ -366,14 +382,10 @@ function EnumListEditor({ id, label, setting, value, set, onKeyDown, className }
 
 function EnumListOption({ option }: { option: SettingOption }) {
   return (
-    <ToggleGroupItem value={option.value} title={option.help} className="h-7 px-2 font-mono text-xs">
-      {option.value}
+    <ToggleGroupItem value={option.value} title={option.help} className="h-7 px-2 text-xs">
+      {option.label}
     </ToggleGroupItem>
   );
-}
-
-function unsetText(setting: EditedSetting): string {
-  return setting.documented_default === undefined ? "Not set" : `Default: ${scalarText(setting.documented_default)}`;
 }
 
 function RecordsEditor({ id, label, setting, value, set, unset, invalid, className }: EditorProps) {
@@ -501,6 +513,7 @@ function RecordField({
         value={row.record[field.key]}
         set={set}
         unset={unset}
+        unsetLabel={unsetText(setting)}
         onBlur={undefined}
         onKeyDown={keepKeysInField}
         invalid={false}
@@ -508,6 +521,10 @@ function RecordField({
       />
     </div>
   );
+}
+
+function unsetText(setting: EditedSetting): string {
+  return setting.documented_default === undefined ? "Not set" : `Default: ${scalarText(setting.documented_default)}`;
 }
 
 function renderNoEntries() {

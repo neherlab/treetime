@@ -14,12 +14,13 @@ const COALESCENT: SettingSpec = {
   flag: "--coalescent",
   group: "Coalescent prior",
   purpose: "analysis",
+  set_by_app: false,
   role: "setting",
   kind: "enum-or-text",
   nullable: true,
   options: [
-    { value: "opt", help: "" },
-    { value: "skyline", help: "" },
+    { value: "opt", label: "Optimized constant", help: "" },
+    { value: "skyline", label: "Skyline", help: "" },
   ],
   item_kind: "string",
   fields: [],
@@ -36,12 +37,13 @@ const MODEL: SettingSpec = {
   flag: "--model",
   group: "Substitution model",
   purpose: "analysis",
+  set_by_app: false,
   role: "setting",
   kind: "enum",
   nullable: true,
   options: [
-    { value: "infer", help: "" },
-    { value: "jc69", help: "" },
+    { value: "infer", label: "Infer GTR", help: "" },
+    { value: "jc69", label: "JC69", help: "" },
   ],
   item_kind: "string",
   fields: [],
@@ -70,8 +72,8 @@ describe("coalescent prior control", () => {
     ["an unset prior", undefined, "Not set", null],
     ["a time scale in substitutions per site", 0.01, "Value", "0.01"],
     ["a time scale with a unit", "10y", "Value", "10y"],
-    ["a fitted constant time scale", "opt", "opt", null],
-    ["a skyline", "skyline", "skyline", null],
+    ["a fitted constant time scale", "opt", "Optimized constant", null],
+    ["a skyline", "skyline", "Skyline", null],
   ])("shows %s", (_, value, option, text) => {
     render(value);
 

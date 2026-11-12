@@ -220,7 +220,7 @@ function usePaletteItems(): PaletteItem[] {
     }
 
     for (const spec of commandSettings(command).settings) {
-      if (spec.role !== "output") {
+      if (!spec.set_by_app) {
         items.push(
           paletteItem(
             "Setting",

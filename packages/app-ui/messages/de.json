@@ -62,5 +62,7 @@
   "docs_version_banner": "Dies ist die Doku von TreeTime {current}. Empfohlen ist die Version {preferred}.",
   "docs_version_banner_link": "Diese Seite in {preferred} öffnen",
   "docs_locale_en": "English",
-  "docs_locale_de": "Deutsch"
+  "docs_locale_de": "Deutsch",
+  "settings_about": "Über {label}",
+  "settings_command_line": "Befehlszeile"
 }

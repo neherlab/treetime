@@ -61,10 +61,10 @@ describe("edit and run again", () => {
     });
   });
 
-  test("keeps an output selection that the run chose", () => {
+  test("leaves the output selection to the app, which sets it for every run", () => {
     const draft = rerunDraft({ ...RECORD, changed_settings: ["keep_root", "output_selection"] }, SETTINGS);
 
-    expect(draft.config["output_selection"]).toStrictEqual(["nwk", "auspice"]);
+    expect(draft.config["output_selection"]).toStrictEqual(DEFAULT_CLOCK_CONFIG["output_selection"]);
   });
 
   test("leaves a setting that the run left at its default to the default of the new draft", () => {
