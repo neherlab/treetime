@@ -1,4 +1,4 @@
-import { colorOptions, genotypeColorBy, layoutOptions, tipNames } from "../toolbar";
+import { colorOptions, genotypeColorBy, layoutOptions, tipMatches, tipNames } from "../toolbar";
 
 const COLORINGS = {
   num_date: { title: "Date", type: "continuous" },
@@ -36,5 +36,23 @@ describe("viewer toolbar", () => {
         { name: "A", hasChildren: false },
       ]),
     ).toStrictEqual(["A", "B"]);
+  });
+});
+
+describe("sample search of the viewer toolbar", () => {
+  const tips = ["EBOV/KGH/2014", "EBOV/SLE/2015", "MPXV/USA/2022"];
+
+  test("an empty query lists no sample", () => {
+    expect(tipMatches(tips, "  ")).toStrictEqual([]);
+  });
+
+  test("a query matches the sample names fuzzily", () => {
+    expect(tipMatches(tips, "ebov sle")).toStrictEqual(["EBOV/SLE/2015"]);
+  });
+
+  test("a query that matches thousands of samples lists the first fifty", () => {
+    const many = Array.from({ length: 4500 }, (_, index) => `sample-${String(index).padStart(4, "0")}`);
+
+    expect(tipMatches(many, "sample")).toStrictEqual(many.slice(0, 50));
   });
 });

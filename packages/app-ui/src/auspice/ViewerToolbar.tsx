@@ -1,16 +1,22 @@
 import { Button } from "@neherlab/design/ui/button";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+} from "@neherlab/design/ui/combobox";
 import { NativeSelect, NativeSelectOption } from "@neherlab/design/ui/native-select";
 import { changeLayout } from "auspice/src/actions/layout";
-import { useCallback, useId, useMemo, type Ref } from "react";
+import { useCallback, useMemo, useState, type Ref } from "react";
 import Maximize from "~icons/lucide/maximize";
-import Search from "~icons/lucide/search";
 import SlidersHorizontal from "~icons/lucide/sliders-horizontal";
 
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { colorTreeBy, focusNode, showWholeTree, useAuspiceSelector } from "./store-hooks";
-import { colorOptions, layoutOptions, tipNames } from "./toolbar";
+import { colorOptions, layoutOptions, tipMatches, tipNames } from "./toolbar";
 
 export function ViewerToolbar({
   store,
@@ -31,12 +37,13 @@ export function ViewerToolbar({
   const distanceMeasures = useAuspiceSelector(store, selectDistanceMeasures);
   const nodes = useAuspiceSelector(store, selectNodes);
   const zoomed = useAuspiceSelector(store, selectZoomed);
-  const tipListId = useId();
+  const [query, setQuery] = useState("");
 
   const colors = useMemo(() => colorOptions(colorings, colorBy), [colorBy, colorings]);
   const layouts = useMemo(() => layoutOptions(distanceMeasures), [distanceMeasures]);
   const tips = useMemo(() => tipNames(nodes), [nodes]);
   const tipSet = useMemo(() => new Set(tips), [tips]);
+  const matches = useMemo(() => tipMatches(tips, query), [query, tips]);
 
   const onColorBy = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => colorTreeBy(store, event.target.value),
@@ -48,38 +55,22 @@ export function ViewerToolbar({
     [store],
   );
 
-  const onSearch = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const name = event.target.value.trim();
+  const onQuery = useCallback(
+    (value: string) => {
+      setQuery(value);
 
-      if (tipSet.has(name)) {
-        focusNode(store, name);
+      if (tipSet.has(value)) {
+        focusNode(store, value);
       }
     },
     [store, tipSet],
-  );
-
-  const onSearchKey = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      const name = event.currentTarget.value.trim();
-
-      if (event.key === "Enter" && name !== "") {
-        event.preventDefault();
-        const match = tipSet.has(name) ? name : tips.find((tip) => tip.toLowerCase().includes(name.toLowerCase()));
-
-        if (match !== undefined) {
-          focusNode(store, match);
-        }
-      }
-    },
-    [store, tipSet, tips],
   );
 
   const onZoomOut = useCallback(() => showWholeTree(store), [store]);
   const onOptions = useCallback(() => onSidebarOpen(!sidebarOpen), [onSidebarOpen, sidebarOpen]);
 
   return (
-    <div role="toolbar" aria-label="Tree view" className="flex flex-wrap items-center gap-1.5">
+    <fieldset aria-label="Tree view" className="flex min-w-0 flex-wrap items-center gap-1.5">
       <NativeSelect size="sm" aria-label="Color by" value={colorBy} onChange={onColorBy} className="w-44">
         {colors.map((option) => (
           <NativeSelectOption key={option.value} value={option.value}>
@@ -94,26 +85,19 @@ export function ViewerToolbar({
           </NativeSelectOption>
         ))}
       </NativeSelect>
-      <InputGroup className="h-8 w-56">
-        <InputGroupAddon>
-          <Search aria-hidden />
-        </InputGroupAddon>
-        <InputGroupInput
-          type="search"
-          list={tipListId}
-          onChange={onSearch}
-          onKeyDown={onSearchKey}
-          placeholder="Find a sample"
-          aria-label="Find a sample in the tree"
-        />
-      </InputGroup>
-      <datalist id={tipListId}>
-        {tips.map((tip) => (
-          <option key={tip} value={tip}>
-            {tip}
-          </option>
-        ))}
-      </datalist>
+      <Combobox items={tips} filteredItems={matches} value={query} onValueChange={onQuery} autoHighlight>
+        <ComboboxInput className="w-56" placeholder="Find a sample" aria-label="Find a sample in the tree" />
+        <ComboboxPopup>
+          <ComboboxEmpty>No sample matches</ComboboxEmpty>
+          <ComboboxList>
+            {(tip: string) => (
+              <ComboboxItem key={tip} value={tip}>
+                {tip}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxPopup>
+      </Combobox>
       <Button type="button" variant="ghost" size="sm" onClick={onZoomOut} disabled={!zoomed}>
         <Maximize aria-hidden />
         Zoom to root
@@ -131,7 +115,7 @@ export function ViewerToolbar({
         <SlidersHorizontal aria-hidden />
         View options
       </Button>
-    </div>
+    </fieldset>
   );
 }
 

@@ -1,6 +1,9 @@
+import { fuzzyFilter } from "../fuzzy";
 import type { AuspiceColoring } from "./state";
 
 export const GENOTYPE_COLORING = "gt";
+
+const TIP_MATCH_LIMIT = 50;
 
 const GENOTYPE_COLOR_BY = /^gt-(.+)_(\d+(?:,\d+)*)$/u;
 
@@ -35,6 +38,12 @@ export function layoutOptions(distanceMeasures: readonly string[]): ToolbarOptio
 
 export function tipNames(nodes: readonly { name: string; hasChildren: boolean }[] | null): string[] {
   return (nodes ?? []).flatMap((node) => (node.hasChildren ? [] : [node.name])).toSorted();
+}
+
+export function tipMatches(tips: readonly string[], query: string): string[] {
+  const trimmed = query.trim();
+
+  return trimmed === "" ? [] : fuzzyFilter(tips, trimmed, (tip) => tip).slice(0, TIP_MATCH_LIMIT);
 }
 
 export function genotypeColorBy(position: number): string {
