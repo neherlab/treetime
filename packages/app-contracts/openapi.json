@@ -2930,13 +2930,18 @@
             "minimum": 0
           },
           "clock": {
-            "description": "Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does\nnot set `beyond_limit`, when the draft has no metadata, and when the draft's command uses no dates.",
+            "description": "Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does\nnot set `beyond_limit`, when the draft has no metadata, when the draft's command uses no dates, and when the\nregression fails.",
             "$ref": "#/components/schemas/ClockResults",
             "x-unset": true
           },
           "tree": {
             "description": "The tree in divergence units, without dates; absent when the tree has more tips than `tip_limit` and the request\ndoes not set `beyond_limit`.",
             "$ref": "#/components/schemas/PreviewTree",
+            "x-unset": true
+          },
+          "problem": {
+            "description": "Why the root-to-tip regression failed, as the CLI prints the error; the tree then has the root of the input tree\nfile.",
+            "type": "string",
             "x-unset": true
           }
         },
@@ -3235,7 +3240,7 @@
             "const": "regression"
           },
           {
-            "description": "The root of the input tree file, because the preview runs no regression.",
+            "description": "The root of the input tree file, because the preview has no regression: the draft has no dates, or the regression\nfailed.",
             "type": "string",
             "const": "input"
           }
@@ -3324,8 +3329,15 @@
             "x-unset": true
           },
           "config_hash": {
-            "description": "Hash that identifies runs with the same settings and input contents.",
+            "description": "Hash that identifies runs with the same settings and input contents, leaving out the seed: runs with the same\nhash have the same settings when they have the same `seed`.",
             "type": "string",
+            "x-unset": true
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
             "x-unset": true
           },
           "changed_settings": {
@@ -4790,15 +4802,15 @@
             "format": "uint",
             "minimum": 0
           },
-          "same_config_hash": {
-            "description": "Whether both runs have the same configuration hash: the same settings on the same input contents.",
+          "same_config": {
+            "description": "Whether both runs have the same settings, the seed of the random step included, on the same input contents.",
             "type": "boolean"
           }
         },
         "required": [
           "differences",
           "compared",
-          "same_config_hash"
+          "same_config"
         ]
       },
       "EstimateDelta": {
@@ -8883,6 +8895,13 @@
             "type": "string",
             "x-unset": true
           },
+          "seed": {
+            "description": "Seed that the configuration sets for its random step; absent when it sets none, so that the run draws one, and\nwhen the run has no random step. A finished run with the same `config_hash` has the settings of this\nconfiguration when the configuration sets no seed or the seed of that run.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "status": {
             "type": "string",
             "const": "valid"
@@ -9054,7 +9073,7 @@
             }
           },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -9205,7 +9224,7 @@
             }
           },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -9356,7 +9375,7 @@
             }
           },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -9507,7 +9526,7 @@
             }
           },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -9658,7 +9677,7 @@
             }
           },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },

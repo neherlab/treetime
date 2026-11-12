@@ -627,6 +627,7 @@ export const zRunSummary = z.object({
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
   config_hash: z.string().optional(),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   package_name: z.string()
@@ -2028,7 +2029,7 @@ export const zSettingDifference = z.discriminatedUnion('kind', [
 export const zSettingsComparison = z.object({
   differences: z.array(zSettingDifference),
   compared: z.int().gte(0),
-  same_config_hash: z.boolean()
+  same_config: z.boolean()
 });
 
 /**
@@ -2061,6 +2062,7 @@ export const zRunConfigResponseValid = z.object({
   code: zConfigCode,
   config_hash: z.string().optional(),
   config_hash_error: z.string().optional(),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   status: z.literal('valid')
 });
 
@@ -2133,7 +2135,8 @@ export const zClockPreview = z.object({
   tips: z.int().gte(0),
   tip_limit: z.int().gte(0),
   clock: zClockResults.optional(),
-  tree: zPreviewTree.optional()
+  tree: zPreviewTree.optional(),
+  problem: z.string().optional()
 });
 
 export const zRunRecordTimetree = z.object({

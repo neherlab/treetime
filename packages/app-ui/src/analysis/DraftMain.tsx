@@ -136,6 +136,12 @@ function ClockPreviewPanel({ command, config }: { command: AppCommand; config: S
 
   return (
     <div className="grid gap-4">
+      {preview.problem !== undefined && (
+        <Alert>
+          <AlertTitle>No root-to-tip regression</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap">{preview.problem}</AlertDescription>
+        </Alert>
+      )}
       {preview.clock !== undefined && (
         <Panel figure title="Root-to-tip regression" hint="Dated samples; red points are clock-filter outliers">
           <PreviewStatistics statistics={preview.clock.statistics} />

@@ -31,36 +31,42 @@ pub fn clock_preview(request: &ClockPreviewRequest) -> Result<ClockPreview, Repo
   };
   let parsed = tree_read_file(tree, config.newick_dialect.newick_dialect.dialect())?;
   let tips = parsed.graph.num_leaves();
-  let preview = |clock, tree| ClockPreview {
+  let preview = |clock, tree, problem| ClockPreview {
     tips,
     tip_limit: CLOCK_PREVIEW_TIP_LIMIT,
     clock,
     tree,
+    problem,
   };
   if tips > CLOCK_PREVIEW_TIP_LIMIT && !request.beyond_limit {
-    return Ok(preview(None, None));
+    return Ok(preview(None, None, None));
   }
-  if !request.command.uses_dates() || config.metadata.metadata.is_none() {
-    let tree = PreviewTree {
+  let input_tree = || -> Result<PreviewTree, Report> {
+    Ok(PreviewTree {
       root: PreviewRoot::Input,
       auspice: display_auspice(input_tree_view(&parsed)?)?,
-    };
-    return Ok(preview(None, Some(tree)));
-  }
-  let ClockRegression {
-    clock_model,
-    regression_results,
-    tip_names,
-    tree,
-  } = clock_regression(*config, &NoopCancel, &NoopProgress, &NoopProgress)
-    .map_err(|report| invalid(report_to_string(&report)))?;
-  let tip_names: BTreeSet<&str> = tip_names.iter().map(String::as_str).collect();
-  let clock = clock_results_of_tips(Some(&tip_names), Some(&clock_model), Some(&regression_results));
-  let tree = PreviewTree {
-    root: PreviewRoot::Regression,
-    auspice: display_auspice(tree)?,
+    })
   };
-  Ok(preview(Some(clock), Some(tree)))
+  if !request.command.uses_dates() || config.metadata.metadata.is_none() {
+    return Ok(preview(None, Some(input_tree()?), None));
+  }
+  match clock_regression(*config, &NoopCancel, &NoopProgress, &NoopProgress) {
+    Ok(ClockRegression {
+      clock_model,
+      regression_results,
+      tip_names,
+      tree,
+    }) => {
+      let tip_names: BTreeSet<&str> = tip_names.iter().map(String::as_str).collect();
+      let clock = clock_results_of_tips(Some(&tip_names), Some(&clock_model), Some(&regression_results));
+      let tree = PreviewTree {
+        root: PreviewRoot::Regression,
+        auspice: display_auspice(tree)?,
+      };
+      Ok(preview(Some(clock), Some(tree), None))
+    },
+    Err(report) => Ok(preview(None, Some(input_tree()?), Some(report_to_string(&report)))),
+  }
 }
 
 /// The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
@@ -90,11 +96,15 @@ pub struct ClockPreview {
   /// Largest tree, in tips, whose preview the back end computes without `beyond_limit`.
   pub tip_limit: usize,
   /// Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does
-  /// not set `beyond_limit`, when the draft has no metadata, and when the draft's command uses no dates.
+  /// not set `beyond_limit`, when the draft has no metadata, when the draft's command uses no dates, and when the
+  /// regression fails.
   pub clock: Option<ClockResults>,
   /// The tree in divergence units, without dates; absent when the tree has more tips than `tip_limit` and the request
   /// does not set `beyond_limit`.
   pub tree: Option<PreviewTree>,
+  /// Why the root-to-tip regression failed, as the CLI prints the error; the tree then has the root of the input tree
+  /// file.
+  pub problem: Option<String>,
 }
 
 /// The tree of a draft, as the preview draws it.
@@ -113,7 +123,8 @@ pub struct PreviewTree {
 pub enum PreviewRoot {
   /// The root that the root-to-tip regression places, as in `clock`.
   Regression,
-  /// The root of the input tree file, because the preview runs no regression.
+  /// The root of the input tree file, because the preview has no regression: the draft has no dates, or the regression
+  /// failed.
   Input,
 }
 

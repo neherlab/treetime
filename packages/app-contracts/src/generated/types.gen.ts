@@ -879,7 +879,8 @@ export type ClockPreview = {
   tip_limit: number;
   /**
    * Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does
-   * not set `beyond_limit`, when the draft has no metadata, and when the draft's command uses no dates.
+   * not set `beyond_limit`, when the draft has no metadata, when the draft's command uses no dates, and when the
+   * regression fails.
    */
   clock?: ClockResults;
   /**
@@ -887,6 +888,11 @@ export type ClockPreview = {
    * does not set `beyond_limit`.
    */
   tree?: PreviewTree;
+  /**
+   * Why the root-to-tip regression failed, as the CLI prints the error; the tree then has the root of the input tree
+   * file.
+   */
+  problem?: string;
 };
 
 /**
@@ -1137,9 +1143,14 @@ export type RunSummary = {
    */
   duration_seconds?: number;
   /**
-   * Hash that identifies runs with the same settings and input contents.
+   * Hash that identifies runs with the same settings and input contents, leaving out the seed: runs with the same
+   * hash have the same settings when they have the same `seed`.
    */
   config_hash?: string;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step.
+   */
+  seed?: number;
   /**
    * Setting keys whose values differ from the command defaults.
    */
@@ -2069,9 +2080,9 @@ export type SettingsComparison = {
    */
   compared: number;
   /**
-   * Whether both runs have the same configuration hash: the same settings on the same input contents.
+   * Whether both runs have the same settings, the seed of the random step included, on the same input contents.
    */
-  same_config_hash: boolean;
+  same_config: boolean;
 };
 
 /**
@@ -5198,6 +5209,12 @@ export type RunConfigResponseValid = {
    * Why `config_hash` is absent.
    */
   config_hash_error?: string;
+  /**
+   * Seed that the configuration sets for its random step; absent when it sets none, so that the run draws one, and
+   * when the run has no random step. A finished run with the same `config_hash` has the settings of this
+   * configuration when the configuration sets no seed or the seed of that run.
+   */
+  seed?: number;
   status: 'valid';
 };
 
@@ -5319,8 +5336,9 @@ export type RunRecordTimetree = {
    */
   uploads: Array<StoredInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -5424,8 +5442,9 @@ export type RunRecordOptimize = {
    */
   uploads: Array<StoredInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -5529,8 +5548,9 @@ export type RunRecordPrune = {
    */
   uploads: Array<StoredInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -5634,8 +5654,9 @@ export type RunRecordAncestral = {
    */
   uploads: Array<StoredInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -5739,8 +5760,9 @@ export type RunRecordClock = {
    */
   uploads: Array<StoredInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**

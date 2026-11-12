@@ -10,8 +10,13 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
+  use std::fs;
   use tempfile::tempdir;
   use treetime_utils::assert_error;
+
+  const NO_POSITIVE_RATE: &str = "The clock fit of the outlier filter requires a positive clock rate, also with \
+    --allow-negative-rate. Run with --clock-filter=0 to skip the outlier filter: Clock rate is negative for all root \
+    positions. The data may lack temporal signal. Please specify --clock-rate explicitly.";
 
   #[rustfmt::skip]
   #[rstest]
@@ -114,6 +119,45 @@ mod tests {
         tree.root,
         clades(root).iter().map(Vec::len).max().unwrap_or(0),
         root.node_attrs.div
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::identical_sampling_dates( "((a:0.1,b:0.2):0.05,(c:0.3,d:0.4):0.05);", Some("name\tdate\na\t2000\nb\t2000\nc\t2000\nd\t2000\n"), NO_POSITIVE_RATE)]
+  #[case::unreadable_metadata(      "((a:0.1,b:0.2):0.05,(c:0.3,d:0.4):0.05);", None,                                                         "When reading dates: When opening file '<metadata>': No such file or directory (os error 2)")]
+  #[case::no_positive_rate(         "(a:0.4,b:0.3,c:0.2,d:0.1);",               Some("name\tdate\na\t2000\nb\t2001\nc\t2002\nd\t2003\n"), NO_POSITIVE_RATE)]
+  #[trace]
+  fn test_clock_preview_draws_the_input_tree_when_the_regression_fails(
+    #[case] newick: &str,
+    #[case] metadata: Option<&str>,
+    #[case] problem: &str,
+  ) {
+    let dir = tempdir().unwrap();
+    let tree = dir.path().join("tree.nwk");
+    let metadata_path = dir.path().join("metadata.tsv");
+    fs::write(&tree, format!("{newick}\n")).unwrap();
+    if let Some(metadata) = metadata {
+      fs::write(&metadata_path, metadata).unwrap();
+    }
+    let problem = problem.replace("<metadata>", &metadata_path.to_string_lossy());
+    let preview = clock_preview(&ClockPreviewRequest {
+      command: AppCommand::Clock,
+      config: sparse(json!({ "tree": tree, "metadata": metadata_path })),
+      beyond_limit: false,
+    })
+    .unwrap();
+    let tree = preview.tree.unwrap();
+
+    assert_eq!(
+      (4, true, PreviewRoot::Input, 4, Some(problem.as_str())),
+      (
+        preview.tips,
+        preview.clock.is_none(),
+        tree.root,
+        clades(&tree.auspice.0.tree).iter().map(Vec::len).max().unwrap_or(0),
+        preview.problem.as_deref()
       )
     );
   }

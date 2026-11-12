@@ -7,7 +7,7 @@ const STATISTIC_DIGITS = 3;
 
 export const PREVIEW_ROOT_CAPTIONS: Readonly<Record<PreviewRoot, string>> = {
   regression: "Divergence from the root that the root-to-tip regression places",
-  input: "Divergence from the root of the input tree; the preview runs no root-to-tip regression without dates",
+  input: "Divergence from the root of the input tree, without a root-to-tip regression",
 };
 
 export function inputFactRows({ tree, alignments, metadata, tips_without_metadata }: InputFacts): FactRow[] {
