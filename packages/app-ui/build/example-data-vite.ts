@@ -21,13 +21,11 @@ export function exampleData(dir: string = DATA_DIR): Plugin[] {
 }
 
 export function parseDataIndex(text: string, exists: (path: string) => boolean): DataIndex {
-  const parsed = zDataIndex.safeParse(JSON.parse(text));
+  const index: unknown = JSON.parse(text);
 
-  if (!parsed.success) {
-    throw new Error(`The example data index does not match the DataIndex schema: ${parsed.error.message}`);
-  }
+  assertDataIndex(index);
 
-  const paths = parsed.data.files.map((file) => file.path);
+  const paths = index.files.map((file) => file.path);
   const outside = paths.filter((path) => !isDataPath(path));
 
   if (outside.length > 0) {
@@ -42,7 +40,15 @@ export function parseDataIndex(text: string, exists: (path: string) => boolean):
     );
   }
 
-  return parsed.data;
+  return index;
+}
+
+function assertDataIndex(value: unknown): asserts value is DataIndex {
+  const parsed = zDataIndex.safeParse(value);
+
+  if (!parsed.success) {
+    throw new Error(`The example data index does not match the DataIndex schema: ${parsed.error.message}`);
+  }
 }
 
 export function exampleDataTargets(dir: string, index: DataIndex) {

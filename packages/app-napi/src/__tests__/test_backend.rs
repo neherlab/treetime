@@ -475,7 +475,12 @@ mod tests {
     let examples = root.path().join("examples");
     let index = json!({
       "files": [{ "path": "zika/20/tree.nwk", "size": 11 }],
-      "datasets": [{ "name": "zika/20", "inputs": [{ "kind": "tree", "path": "zika/20/tree.nwk" }] }],
+      "datasets": [{
+        "name": "zika/20",
+        "inputs": [{ "kind": "tree", "path": "zika/20/tree.nwk" }],
+        "organism": "Zika virus",
+        "samples": 20,
+      }],
       "configs": [],
       "pipelines": [],
     });

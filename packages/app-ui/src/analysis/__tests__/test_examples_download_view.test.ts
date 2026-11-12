@@ -5,7 +5,9 @@ import { examplesDownloadView } from "../examplesDownloadView";
 
 const INDEX: DataIndex = {
   files: [{ path: "zika/20/tree.nwk", size: 11 }],
-  datasets: [{ name: "zika/20", inputs: [{ kind: "tree", path: "zika/20/tree.nwk" }] }],
+  datasets: [
+    { name: "zika/20", organism: "Zika virus", samples: 20, inputs: [{ kind: "tree", path: "zika/20/tree.nwk" }] },
+  ],
   configs: [],
   pipelines: [],
 };

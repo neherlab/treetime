@@ -31,8 +31,16 @@ export function exampleDataUrl(base: string, path: string): string {
 export async function fetchExampleIndex(base: string, signal?: AbortSignal): Promise<DataIndex> {
   const response = await fetchExampleData(base, DATA_INDEX_FILE, signal);
 
+  const index: unknown = await response.json();
+
+  assertDataIndex(index);
+
+  return index;
+}
+
+function assertDataIndex(value: unknown): asserts value is DataIndex {
   // oxlint-disable-next-line custom/no-contract-parse -- the index is a static file of the app, which the generated client does not fetch
-  return zDataIndex.parse(await response.json());
+  zDataIndex.parse(value);
 }
 
 export async function fetchExampleFile(base: string, path: string): Promise<File> {

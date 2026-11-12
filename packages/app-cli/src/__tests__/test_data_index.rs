@@ -15,19 +15,31 @@ mod tests {
     let data_dir = tempdir().unwrap();
     fs::create_dir_all(data_dir.path().join("a")).unwrap();
     fs::write(data_dir.path().join("a/tree.nwk"), "(A,B);\n").unwrap();
-    let index = generate_data_index(data_dir.path(), "a/tree.nwk\0index.json\0").unwrap();
+    fs::write(data_dir.path().join("a/README.md"), "---\norganism: Zika virus\n---\n").unwrap();
+    let index = generate_data_index(data_dir.path(), "a/tree.nwk\0a/README.md\0index.json\0").unwrap();
     assert_eq!(
       DataIndex {
-        files: vec![IndexedFile {
-          path: o!("a/tree.nwk"),
-          size: 7,
-        }],
+        files: vec![
+          IndexedFile {
+            path: o!("a/README.md"),
+            size: 29,
+          },
+          IndexedFile {
+            path: o!("a/tree.nwk"),
+            size: 7,
+          },
+        ],
         datasets: vec![IndexedDataset {
           name: o!("a"),
           inputs: vec![IndexedInput {
             kind: InputKind::Tree,
             path: o!("a/tree.nwk"),
           }],
+          organism: o!("Zika virus"),
+          segment: None,
+          samples: 2,
+          dates: None,
+          sequence_length: None,
         }],
         configs: vec![],
         pipelines: vec![],

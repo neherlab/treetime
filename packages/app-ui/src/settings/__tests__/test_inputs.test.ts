@@ -55,6 +55,7 @@ describe("slot facts", () => {
       },
     ],
     metadata: { rows: 86, columns: ["name", "date"], id_column: "name", date_column: "date" },
+    detected: {},
     problems: [{ input: "tree" as const, message: "bad" }],
   };
 

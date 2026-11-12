@@ -15,6 +15,8 @@ import {
 
 const ZIKA_20: IndexedDataset = {
   name: "zika/20",
+  organism: "Zika virus",
+  samples: 20,
   inputs: [
     { kind: "tree", path: "zika/20/tree.nwk" },
     { kind: "alignment", path: "zika/20/aln.fasta.xz" },

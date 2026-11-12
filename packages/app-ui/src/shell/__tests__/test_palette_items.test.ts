@@ -15,13 +15,21 @@ const ITEMS = [
 const DATASETS: IndexedDataset[] = [
   {
     name: "zika/20",
+    organism: "Zika virus",
+    samples: 20,
     inputs: [
       { kind: "tree", path: "zika/20/tree.nwk" },
       { kind: "alignment", path: "zika/20/aln.fasta.xz" },
       { kind: "metadata", path: "zika/20/metadata.tsv" },
     ],
   },
-  { name: "flu/h3n2/20", inputs: [{ kind: "alignment", path: "flu/h3n2/20/aln.fasta.xz" }] },
+  {
+    name: "flu/h3n2/20",
+    organism: "Influenza A virus (H3N2)",
+    segment: "NA",
+    samples: 19,
+    inputs: [{ kind: "alignment", path: "flu/h3n2/20/aln.fasta.xz" }],
+  },
 ];
 
 describe("command palette items", () => {

@@ -6,7 +6,7 @@
     },
     {
       "path": "dengue/100/README.md",
-      "size": 825
+      "size": 859
     },
     {
       "path": "dengue/100/aln.fasta.xz",
@@ -25,6 +25,10 @@
       "size": 3658
     },
     {
+      "path": "dengue/1000/README.md",
+      "size": 231
+    },
+    {
       "path": "dengue/1000/aln.fasta.xz",
       "size": 292308
     },
@@ -38,7 +42,7 @@
     },
     {
       "path": "dengue/20/README.md",
-      "size": 821
+      "size": 855
     },
     {
       "path": "dengue/20/aln.fasta.xz",
@@ -51,6 +55,10 @@
     {
       "path": "dengue/20/tree.nwk",
       "size": 698
+    },
+    {
+      "path": "dengue/2000/README.md",
+      "size": 231
     },
     {
       "path": "dengue/2000/aln.fasta.xz",
@@ -109,6 +117,10 @@
       "size": 64458
     },
     {
+      "path": "dengue/500/README.md",
+      "size": 230
+    },
+    {
       "path": "dengue/500/aln.fasta.xz",
       "size": 167436
     },
@@ -122,7 +134,7 @@
     },
     {
       "path": "ebola/100/README.md",
-      "size": 808
+      "size": 841
     },
     {
       "path": "ebola/100/aln.fasta.xz",
@@ -138,7 +150,7 @@
     },
     {
       "path": "ebola/20/README.md",
-      "size": 804
+      "size": 837
     },
     {
       "path": "ebola/20/aln.fasta.xz",
@@ -166,7 +178,7 @@
     },
     {
       "path": "ebola/362/README.md",
-      "size": 551
+      "size": 584
     },
     {
       "path": "ebola/362/aln.fasta.xz",
@@ -221,6 +233,10 @@
       "size": 15735
     },
     {
+      "path": "flu/h3n2/20/README.md",
+      "size": 269
+    },
+    {
       "path": "flu/h3n2/20/aln.fasta.xz",
       "size": 1716
     },
@@ -245,6 +261,10 @@
       "size": 1567
     },
     {
+      "path": "flu/h3n2/200/README.md",
+      "size": 270
+    },
+    {
       "path": "flu/h3n2/200/aln.fasta.xz",
       "size": 7908
     },
@@ -266,7 +286,7 @@
     },
     {
       "path": "flu/h3n2/500/README.md",
-      "size": 564
+      "size": 624
     },
     {
       "path": "flu/h3n2/500/aln.fasta.xz",
@@ -334,7 +354,7 @@
     },
     {
       "path": "lassa/L/20/README.md",
-      "size": 815
+      "size": 861
     },
     {
       "path": "lassa/L/20/aln.fasta.xz",
@@ -353,6 +373,10 @@
       "size": 698
     },
     {
+      "path": "lassa/L/200/README.md",
+      "size": 242
+    },
+    {
       "path": "lassa/L/200/aln.fasta.xz",
       "size": 81816
     },
@@ -365,6 +389,10 @@
       "size": 6047
     },
     {
+      "path": "lassa/L/50/README.md",
+      "size": 241
+    },
+    {
       "path": "lassa/L/50/aln.fasta.xz",
       "size": 24632
     },
@@ -375,6 +403,10 @@
     {
       "path": "lassa/L/50/tree.nwk",
       "size": 1295
+    },
+    {
+      "path": "lassa/L/500/README.md",
+      "size": 242
     },
     {
       "path": "lassa/L/500/aln.fasta.xz",
@@ -426,7 +458,7 @@
     },
     {
       "path": "mpox/clade-ii/100/README.md",
-      "size": 838
+      "size": 870
     },
     {
       "path": "mpox/clade-ii/100/aln.fasta.xz",
@@ -443,6 +475,10 @@
     {
       "path": "mpox/clade-ii/100/tree.nwk",
       "size": 3658
+    },
+    {
+      "path": "mpox/clade-ii/1000/README.md",
+      "size": 234
     },
     {
       "path": "mpox/clade-ii/1000/aln.fasta.xz",
@@ -462,7 +498,7 @@
     },
     {
       "path": "mpox/clade-ii/20/README.md",
-      "size": 834
+      "size": 866
     },
     {
       "path": "mpox/clade-ii/20/aln.fasta.xz",
@@ -482,7 +518,7 @@
     },
     {
       "path": "mpox/clade-ii/2000/README.md",
-      "size": 550
+      "size": 582
     },
     {
       "path": "mpox/clade-ii/2000/aln.fasta.xz",
@@ -1261,6 +1297,10 @@
       "size": 65613
     },
     {
+      "path": "mpox/clade-ii/500/README.md",
+      "size": 233
+    },
+    {
       "path": "mpox/clade-ii/500/aln.fasta.xz",
       "size": 142824
     },
@@ -1298,7 +1338,7 @@
     },
     {
       "path": "rsv/a/100/README.md",
-      "size": 814
+      "size": 865
     },
     {
       "path": "rsv/a/100/aln.fasta.xz",
@@ -1321,6 +1361,10 @@
       "size": 3658
     },
     {
+      "path": "rsv/a/1000/README.md",
+      "size": 264
+    },
+    {
       "path": "rsv/a/1000/aln.fasta.xz",
       "size": 174816
     },
@@ -1338,7 +1382,7 @@
     },
     {
       "path": "rsv/a/20/README.md",
-      "size": 1192
+      "size": 1243
     },
     {
       "path": "rsv/a/20/aln.fasta.xz",
@@ -1402,7 +1446,7 @@
     },
     {
       "path": "rsv/a/2000/README.md",
-      "size": 400
+      "size": 451
     },
     {
       "path": "rsv/a/2000/aln.fasta.xz",
@@ -1505,6 +1549,10 @@
       "size": 65942
     },
     {
+      "path": "rsv/a/500/README.md",
+      "size": 263
+    },
+    {
       "path": "rsv/a/500/aln.fasta.xz",
       "size": 98616
     },
@@ -1522,7 +1570,7 @@
     },
     {
       "path": "sc2/2844/README.md",
-      "size": 1646
+      "size": 1678
     },
     {
       "path": "sc2/2844/aln.fasta.xz",
@@ -1547,6 +1595,10 @@
     {
       "path": "sc2/2844/tree.nwk",
       "size": 120520
+    },
+    {
+      "path": "sc2/5100/README.md",
+      "size": 227
     },
     {
       "path": "sc2/5100/aln.fasta.xz",
@@ -1630,11 +1682,11 @@
     },
     {
       "path": "subsample",
-      "size": 12554
+      "size": 13231
     },
     {
       "path": "tb/100/README.md",
-      "size": 794
+      "size": 842
     },
     {
       "path": "tb/100/aln.fasta.xz",
@@ -1647,6 +1699,10 @@
     {
       "path": "tb/100/tree.nwk",
       "size": 3073
+    },
+    {
+      "path": "tb/149/README.md",
+      "size": 254
     },
     {
       "path": "tb/149/aln.fasta.xz",
@@ -1706,7 +1762,7 @@
     },
     {
       "path": "tb/20/README.md",
-      "size": 794
+      "size": 842
     },
     {
       "path": "tb/20/aln.fasta.xz",
@@ -1734,7 +1790,7 @@
     },
     {
       "path": "zika/20/README.md",
-      "size": 798
+      "size": 830
     },
     {
       "path": "zika/20/aln.fasta.xz",
@@ -1762,7 +1818,7 @@
     },
     {
       "path": "zika/86/README.md",
-      "size": 650
+      "size": 682
     },
     {
       "path": "zika/86/aln.fasta.xz",
@@ -1849,7 +1905,20 @@
           "kind": "metadata",
           "path": "dengue/100/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Dengue virus",
+      "samples": 100,
+      "dates": {
+        "earliest": {
+          "year": 1944.0013661202186,
+          "date": "1944-01-01"
+        },
+        "latest": {
+          "year": 2024.2363387978141,
+          "date": "2024-03-27"
+        }
+      },
+      "sequence_length": 10723
     },
     {
       "name": "dengue/1000",
@@ -1866,7 +1935,20 @@
           "kind": "metadata",
           "path": "dengue/1000/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Dengue virus",
+      "samples": 971,
+      "dates": {
+        "earliest": {
+          "year": 1944.0013661202186,
+          "date": "1944-01-01"
+        },
+        "latest": {
+          "year": 2024.5642076502731,
+          "date": "2024-07-25"
+        }
+      },
+      "sequence_length": 10723
     },
     {
       "name": "dengue/20",
@@ -1883,7 +1965,20 @@
           "kind": "metadata",
           "path": "dengue/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Dengue virus",
+      "samples": 20,
+      "dates": {
+        "earliest": {
+          "year": 1944.0013661202186,
+          "date": "1944-01-01"
+        },
+        "latest": {
+          "year": 2022.4890410958903,
+          "date": "2022-06-28"
+        }
+      },
+      "sequence_length": 10723
     },
     {
       "name": "dengue/2000",
@@ -1900,7 +1995,20 @@
           "kind": "metadata",
           "path": "dengue/2000/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Dengue virus",
+      "samples": 1954,
+      "dates": {
+        "earliest": {
+          "year": 1944.0013661202186,
+          "date": "1944-01-01"
+        },
+        "latest": {
+          "year": 2024.5642076502731,
+          "date": "2024-07-25"
+        }
+      },
+      "sequence_length": 10723
     },
     {
       "name": "dengue/500",
@@ -1917,7 +2025,20 @@
           "kind": "metadata",
           "path": "dengue/500/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Dengue virus",
+      "samples": 457,
+      "dates": {
+        "earliest": {
+          "year": 1944.0013661202186,
+          "date": "1944-01-01"
+        },
+        "latest": {
+          "year": 2024.386612021858,
+          "date": "2024-05-21"
+        }
+      },
+      "sequence_length": 10723
     },
     {
       "name": "ebola/100",
@@ -1934,7 +2055,20 @@
           "kind": "metadata",
           "path": "ebola/100/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Ebola virus",
+      "samples": 100,
+      "dates": {
+        "earliest": {
+          "year": 2014.21,
+          "date": "2014-03-18"
+        },
+        "latest": {
+          "year": 2016.22,
+          "date": "2016-03-21"
+        }
+      },
+      "sequence_length": 19006
     },
     {
       "name": "ebola/20",
@@ -1951,7 +2085,20 @@
           "kind": "metadata",
           "path": "ebola/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Ebola virus",
+      "samples": 20,
+      "dates": {
+        "earliest": {
+          "year": 2014.21,
+          "date": "2014-03-18"
+        },
+        "latest": {
+          "year": 2015.69,
+          "date": "2015-09-09"
+        }
+      },
+      "sequence_length": 19006
     },
     {
       "name": "ebola/362",
@@ -1968,7 +2115,20 @@
           "kind": "metadata",
           "path": "ebola/362/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Ebola virus",
+      "samples": 362,
+      "dates": {
+        "earliest": {
+          "year": 2014.21,
+          "date": "2014-03-18"
+        },
+        "latest": {
+          "year": 2016.25,
+          "date": "2016-04-01"
+        }
+      },
+      "sequence_length": 19006
     },
     {
       "name": "flu/h3n2/20",
@@ -1985,7 +2145,21 @@
           "kind": "metadata",
           "path": "flu/h3n2/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Influenza A virus (H3N2)",
+      "segment": "NA",
+      "samples": 19,
+      "dates": {
+        "earliest": {
+          "year": 2000.13415469,
+          "date": "2000-02-19"
+        },
+        "latest": {
+          "year": 2013.40520192,
+          "date": "2013-05-28"
+        }
+      },
+      "sequence_length": 1407
     },
     {
       "name": "flu/h3n2/200",
@@ -2002,7 +2176,21 @@
           "kind": "metadata",
           "path": "flu/h3n2/200/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Influenza A virus (H3N2)",
+      "segment": "NA",
+      "samples": 198,
+      "dates": {
+        "earliest": {
+          "year": 1968.00273785,
+          "date": "1968-01-02"
+        },
+        "latest": {
+          "year": 2013.07939767,
+          "date": "2013-01-29"
+        }
+      },
+      "sequence_length": 1407
     },
     {
       "name": "flu/h3n2/500",
@@ -2019,7 +2207,21 @@
           "kind": "metadata",
           "path": "flu/h3n2/500/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Influenza A virus (H3N2)",
+      "segment": "NA",
+      "samples": 476,
+      "dates": {
+        "earliest": {
+          "year": 1968.00273785,
+          "date": "1968-01-02"
+        },
+        "latest": {
+          "year": 2013.64065708,
+          "date": "2013-08-22"
+        }
+      },
+      "sequence_length": 1407
     },
     {
       "name": "lassa/L/20",
@@ -2036,7 +2238,21 @@
           "kind": "metadata",
           "path": "lassa/L/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Lassa virus",
+      "segment": "L",
+      "samples": 20,
+      "dates": {
+        "earliest": {
+          "year": 1976.1653005464482,
+          "date": "1976-03-01"
+        },
+        "latest": {
+          "year": 2022.672602739726,
+          "date": "2022-09-03"
+        }
+      },
+      "sequence_length": 7889
     },
     {
       "name": "lassa/L/200",
@@ -2053,7 +2269,21 @@
           "kind": "metadata",
           "path": "lassa/L/200/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Lassa virus",
+      "segment": "L",
+      "samples": 184,
+      "dates": {
+        "earliest": {
+          "year": 1976.1653005464482,
+          "date": "1976-03-01"
+        },
+        "latest": {
+          "year": 2023.2753424657535,
+          "date": "2023-04-11"
+        }
+      },
+      "sequence_length": 8619
     },
     {
       "name": "lassa/L/50",
@@ -2070,7 +2300,21 @@
           "kind": "metadata",
           "path": "lassa/L/50/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Lassa virus",
+      "segment": "L",
+      "samples": 40,
+      "dates": {
+        "earliest": {
+          "year": 1976.1653005464482,
+          "date": "1976-03-01"
+        },
+        "latest": {
+          "year": 2023.2753424657535,
+          "date": "2023-04-11"
+        }
+      },
+      "sequence_length": 7889
     },
     {
       "name": "lassa/L/500",
@@ -2087,7 +2331,21 @@
           "kind": "metadata",
           "path": "lassa/L/500/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Lassa virus",
+      "segment": "L",
+      "samples": 414,
+      "dates": {
+        "earliest": {
+          "year": 1976.1653005464482,
+          "date": "1976-03-01"
+        },
+        "latest": {
+          "year": 2023.2753424657535,
+          "date": "2023-04-11"
+        }
+      },
+      "sequence_length": 10402
     },
     {
       "name": "mpox/clade-ii/100",
@@ -2104,7 +2362,20 @@
           "kind": "metadata",
           "path": "mpox/clade-ii/100/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mpox virus",
+      "samples": 100,
+      "dates": {
+        "earliest": {
+          "year": 2017.7493150684932,
+          "date": "2017-10-01"
+        },
+        "latest": {
+          "year": 2024.6024590163934,
+          "date": "2024-08-08"
+        }
+      },
+      "sequence_length": 197209
     },
     {
       "name": "mpox/clade-ii/1000",
@@ -2121,7 +2392,20 @@
           "kind": "metadata",
           "path": "mpox/clade-ii/1000/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mpox virus",
+      "samples": 959,
+      "dates": {
+        "earliest": {
+          "year": 2017.7493150684932,
+          "date": "2017-10-01"
+        },
+        "latest": {
+          "year": 2024.6161202185792,
+          "date": "2024-08-13"
+        }
+      },
+      "sequence_length": 197209
     },
     {
       "name": "mpox/clade-ii/20",
@@ -2138,7 +2422,20 @@
           "kind": "metadata",
           "path": "mpox/clade-ii/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mpox virus",
+      "samples": 20,
+      "dates": {
+        "earliest": {
+          "year": 2017.7712328767122,
+          "date": "2017-10-09"
+        },
+        "latest": {
+          "year": 2024.4986338797814,
+          "date": "2024-07-01"
+        }
+      },
+      "sequence_length": 197209
     },
     {
       "name": "mpox/clade-ii/2000",
@@ -2155,7 +2452,20 @@
           "kind": "metadata",
           "path": "mpox/clade-ii/2000/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mpox virus",
+      "samples": 1989,
+      "dates": {
+        "earliest": {
+          "year": 2017.7493150684932,
+          "date": "2017-10-01"
+        },
+        "latest": {
+          "year": 2024.6161202185792,
+          "date": "2024-08-13"
+        }
+      },
+      "sequence_length": 197209
     },
     {
       "name": "mpox/clade-ii/500",
@@ -2172,7 +2482,20 @@
           "kind": "metadata",
           "path": "mpox/clade-ii/500/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mpox virus",
+      "samples": 463,
+      "dates": {
+        "earliest": {
+          "year": 2017.7493150684932,
+          "date": "2017-10-01"
+        },
+        "latest": {
+          "year": 2024.6161202185792,
+          "date": "2024-08-13"
+        }
+      },
+      "sequence_length": 197209
     },
     {
       "name": "rsv/a/100",
@@ -2189,7 +2512,20 @@
           "kind": "metadata",
           "path": "rsv/a/100/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Respiratory syncytial virus A",
+      "samples": 100,
+      "dates": {
+        "earliest": {
+          "year": 1956.0013661202186,
+          "date": "1956-01-01"
+        },
+        "latest": {
+          "year": 2024.110655737705,
+          "date": "2024-02-10"
+        }
+      },
+      "sequence_length": 15225
     },
     {
       "name": "rsv/a/1000",
@@ -2206,7 +2542,20 @@
           "kind": "metadata",
           "path": "rsv/a/1000/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Respiratory syncytial virus A",
+      "samples": 967,
+      "dates": {
+        "earliest": {
+          "year": 1956.0013661202186,
+          "date": "1956-01-01"
+        },
+        "latest": {
+          "year": 2024.2718579234972,
+          "date": "2024-04-09"
+        }
+      },
+      "sequence_length": 15225
     },
     {
       "name": "rsv/a/20",
@@ -2223,7 +2572,20 @@
           "kind": "metadata",
           "path": "rsv/a/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Respiratory syncytial virus A",
+      "samples": 20,
+      "dates": {
+        "earliest": {
+          "year": 1956.0013661202186,
+          "date": "1956-01-01"
+        },
+        "latest": {
+          "year": 2023.6013698630136,
+          "date": "2023-08-08"
+        }
+      },
+      "sequence_length": 15225
     },
     {
       "name": "rsv/a/2000",
@@ -2240,7 +2602,20 @@
           "kind": "metadata",
           "path": "rsv/a/2000/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Respiratory syncytial virus A",
+      "samples": 1999,
+      "dates": {
+        "earliest": {
+          "year": 1956.0013661202186,
+          "date": "1956-01-01"
+        },
+        "latest": {
+          "year": 2024.2937158469945,
+          "date": "2024-04-17"
+        }
+      },
+      "sequence_length": 15225
     },
     {
       "name": "rsv/a/500",
@@ -2257,7 +2632,20 @@
           "kind": "metadata",
           "path": "rsv/a/500/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Respiratory syncytial virus A",
+      "samples": 460,
+      "dates": {
+        "earliest": {
+          "year": 1956.0013661202186,
+          "date": "1956-01-01"
+        },
+        "latest": {
+          "year": 2024.282786885246,
+          "date": "2024-04-13"
+        }
+      },
+      "sequence_length": 15225
     },
     {
       "name": "sc2/2844",
@@ -2274,7 +2662,20 @@
           "kind": "metadata",
           "path": "sc2/2844/metadata.tsv.xz"
         }
-      ]
+      ],
+      "organism": "SARS-CoV-2",
+      "samples": 2504,
+      "dates": {
+        "earliest": {
+          "year": 2019.9849315068493,
+          "date": "2019-12-26"
+        },
+        "latest": {
+          "year": 2022.527397260274,
+          "date": "2022-07-12"
+        }
+      },
+      "sequence_length": 29903
     },
     {
       "name": "sc2/5100",
@@ -2291,7 +2692,20 @@
           "kind": "metadata",
           "path": "sc2/5100/metadata.tsv.xz"
         }
-      ]
+      ],
+      "organism": "SARS-CoV-2",
+      "samples": 5100,
+      "dates": {
+        "earliest": {
+          "year": 2019.9849315068493,
+          "date": "2019-12-26"
+        },
+        "latest": {
+          "year": 2026.36301369863,
+          "date": "2026-05-13"
+        }
+      },
+      "sequence_length": 29903
     },
     {
       "name": "tb/100",
@@ -2308,7 +2722,20 @@
           "kind": "metadata",
           "path": "tb/100/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mycobacterium tuberculosis",
+      "samples": 89,
+      "dates": {
+        "earliest": {
+          "year": 1991.0013698630137,
+          "date": "1991-01-01"
+        },
+        "latest": {
+          "year": 2099.9986301369863,
+          "date": "2099-12-31"
+        }
+      },
+      "sequence_length": 216
     },
     {
       "name": "tb/149",
@@ -2325,7 +2752,20 @@
           "kind": "metadata",
           "path": "tb/149/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mycobacterium tuberculosis",
+      "samples": 149,
+      "dates": {
+        "earliest": {
+          "year": 1991.0013698630137,
+          "date": "1991-01-01"
+        },
+        "latest": {
+          "year": 2099.9986301369863,
+          "date": "2099-12-31"
+        }
+      },
+      "sequence_length": 216
     },
     {
       "name": "tb/20",
@@ -2342,7 +2782,20 @@
           "kind": "metadata",
           "path": "tb/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Mycobacterium tuberculosis",
+      "samples": 18,
+      "dates": {
+        "earliest": {
+          "year": 1991.0013698630137,
+          "date": "1991-01-01"
+        },
+        "latest": {
+          "year": 2013.9986301369863,
+          "date": "2013-12-31"
+        }
+      },
+      "sequence_length": 216
     },
     {
       "name": "zika/20",
@@ -2359,7 +2812,20 @@
           "kind": "metadata",
           "path": "zika/20/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Zika virus",
+      "samples": 20,
+      "dates": {
+        "earliest": {
+          "year": 2013.8150684931506,
+          "date": "2013-10-25"
+        },
+        "latest": {
+          "year": 2016.4494535519125,
+          "date": "2016-06-13"
+        }
+      },
+      "sequence_length": 10807
     },
     {
       "name": "zika/86",
@@ -2376,7 +2842,20 @@
           "kind": "metadata",
           "path": "zika/86/metadata.tsv"
         }
-      ]
+      ],
+      "organism": "Zika virus",
+      "samples": 86,
+      "dates": {
+        "earliest": {
+          "year": 2013.8150684931506,
+          "date": "2013-10-25"
+        },
+        "latest": {
+          "year": 2016.4986338797814,
+          "date": "2016-07-01"
+        }
+      },
+      "sequence_length": 10807
     }
   ],
   "configs": [
