@@ -3,28 +3,22 @@ import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@neherlab/design/ui/popover";
 import type { ReactNode } from "react";
-import Markdown, { type Components } from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
 import Info from "~icons/lucide/info";
 
 import { m, useLocale, type Locale } from "../i18n/locale";
+import { type MarkdownComponents, MarkdownText } from "../markdown";
 import { documentedDefault } from "./config";
 import { isJsonObject } from "./json";
 import { formatList } from "./lists";
 
-const REMARK_PLUGINS = [remarkGfm, remarkHtmlAsText];
-
-const REHYPE_PLUGINS = [rehypeSanitize];
-
 const CODE_CLASS = "bg-muted text-foreground rounded-sm px-1 py-px font-mono text-[0.92em]";
 
-const INLINE_COMPONENTS: Components = {
+const INLINE_COMPONENTS: MarkdownComponents = {
   p: ({ children }) => <span>{children}</span>,
   code: ({ children }) => <code className={CODE_CLASS}>{children}</code>,
 };
 
-const BLOCK_COMPONENTS: Components = {
+const BLOCK_COMPONENTS: MarkdownComponents = {
   p: ({ children }) => <p className="mt-1.5">{children}</p>,
   code: ({ children }) => <code className={CODE_CLASS}>{children}</code>,
 };
@@ -65,9 +59,10 @@ export function SettingHelpPopover({ spec, value }: { spec: SettingSpec; value: 
       <PopoverContent align="start" className="grid w-96 max-w-[calc(100vw-2rem)] gap-2.5">
         <span className="font-bold">{spec.label}</span>
         <div className="text-muted-foreground grid gap-1.5">
-          <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={BLOCK_COMPONENTS}>
-            {[spec.help, spec.more].filter((text) => text !== "").join("\n\n")}
-          </Markdown>
+          <MarkdownText
+            text={[spec.help, spec.more].filter((text) => text !== "").join("\n\n")}
+            components={BLOCK_COMPONENTS}
+          />
         </div>
         {spec.options.length > 0 && (
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
@@ -111,9 +106,7 @@ export function commandLineText(spec: SettingSpec, value: JsonValue | undefined)
 export function SettingHelpText({ spec }: { spec: SettingSpec }) {
   return (
     <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
-      <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={INLINE_COMPONENTS}>
-        {spec.help}
-      </Markdown>
+      <MarkdownText text={spec.help} components={INLINE_COMPONENTS} />
     </div>
   );
 }
@@ -123,18 +116,14 @@ export function SettingHelp({ spec }: { spec: SettingSpec }) {
 
   return (
     <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
-      <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={INLINE_COMPONENTS}>
-        {spec.help}
-      </Markdown>
+      <MarkdownText text={spec.help} components={INLINE_COMPONENTS} />
       {spec.more !== "" && (
         <Collapsible className="inline">
           <CollapsibleTrigger className="text-primary ml-1 underline-offset-4 hover:underline">
             {m.settings_more({}, { locale })}
           </CollapsibleTrigger>
           <CollapsibleContent hiddenUntilFound>
-            <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={BLOCK_COMPONENTS}>
-              {spec.more}
-            </Markdown>
+            <MarkdownText text={spec.more} components={BLOCK_COMPONENTS} />
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -160,23 +149,4 @@ export function defaultText(value: JsonValue | undefined, locale: Locale): strin
   }
 
   return isJsonObject(value) ? JSON.stringify(value) : String(value);
-}
-
-function remarkHtmlAsText() {
-  return htmlAsText;
-}
-
-function htmlAsText(node: MarkdownNode): void {
-  if (node.type === "html") {
-    node.type = "text";
-  }
-
-  for (const child of node.children ?? []) {
-    htmlAsText(child);
-  }
-}
-
-interface MarkdownNode {
-  type: string;
-  children?: MarkdownNode[];
 }

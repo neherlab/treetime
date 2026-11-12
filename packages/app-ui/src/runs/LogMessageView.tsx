@@ -1,15 +1,10 @@
 import { memo, type ReactNode } from "react";
-import Markdown, { type Components } from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
 
-const REMARK_PLUGINS = [remarkGfm, remarkHtmlAsText];
-
-const REHYPE_PLUGINS = [rehypeSanitize];
+import { type MarkdownComponents, MarkdownText } from "../markdown";
 
 const heading = ({ children }: { children?: ReactNode }) => <span className="font-bold">{children}</span>;
 
-const LOG_COMPONENTS: Components = {
+const LOG_COMPONENTS: MarkdownComponents = {
   p: ({ children }) => <span>{children}</span>,
   h1: heading,
   h2: heading,
@@ -40,28 +35,5 @@ const LOG_COMPONENTS: Components = {
 };
 
 export const LogMessageView = memo(function LogMessageView({ message }: { message: string }) {
-  return (
-    <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={LOG_COMPONENTS}>
-      {message}
-    </Markdown>
-  );
+  return <MarkdownText text={message} components={LOG_COMPONENTS} />;
 });
-
-function remarkHtmlAsText() {
-  return htmlAsText;
-}
-
-function htmlAsText(node: MarkdownNode): void {
-  if (node.type === "html") {
-    node.type = "text";
-  }
-
-  for (const child of node.children ?? []) {
-    htmlAsText(child);
-  }
-}
-
-interface MarkdownNode {
-  type: string;
-  children?: MarkdownNode[];
-}

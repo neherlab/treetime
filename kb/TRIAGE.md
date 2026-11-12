@@ -216,5 +216,4 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](issues/M-web2-wasm-panic-loses-the-back-end-state.md)**: build the WebAssembly back end with `panic = "unwind"` once wasm-bindgen supports it on Emscripten
 - **[kb/issues/N-web2-run-package-import-read-whole-before-checks.md](issues/N-web2-run-package-import-read-whole-before-checks.md)**: stream the import body into the run store on wasm as uploads do
 - **[kb/issues/N-app-ui-run-dataset-label-computed-in-typescript.md](issues/N-app-ui-run-dataset-label-computed-in-typescript.md)**: carry the dataset label of `dataset_label()` in the run record and the config check
-- **[kb/issues/N-app-ui-markdown-plugin-duplicated-in-log-and-setting-help.md](issues/N-app-ui-markdown-plugin-duplicated-in-log-and-setting-help.md)**: move the Markdown plugins into one shared module of `app-ui`
 - **[kb/issues/N-app-ui-options-panel-width-not-saved.md](issues/N-app-ui-options-panel-width-not-saved.md)**: keep the width of the options panel as a preference beside the sidebar width
