@@ -1,4 +1,5 @@
 import type {
+  LikelihoodMismatch,
   RunComparison,
   RunRecord,
   SettingDifference,
@@ -28,6 +29,15 @@ import { baseName } from "../settings/inputs";
 import type { RunTree } from "./CompareTrees";
 import { DateIntervals } from "./DateIntervals";
 import { ShiftPlot } from "./ShiftPlot";
+
+const SIDE_LABELS = { first: "A", second: "B" } as const;
+
+const MISMATCH_LABELS: Readonly<Record<LikelihoodMismatch, string>> = {
+  data: "different data",
+  "substitution-model": "different substitution model",
+  "coalescent-prior": "different coalescent prior",
+  topology: "different tree topology",
+};
 
 const CompareTrees = lazy(async () => ({ default: (await import("./CompareTrees")).CompareTrees }));
 
@@ -92,6 +102,15 @@ function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
         ))}
       {comparison !== undefined && (
         <>
+          {!comparison.same_analysis && (
+            <Alert>
+              <AlertTitle>Different analyses</AlertTitle>
+              <AlertDescription>
+                A is {commandSettings(left.command).title}, B is {commandSettings(right.command).title}. The runs have
+                no settings or estimates to compare.
+              </AlertDescription>
+            </Alert>
+          )}
           {timetrees && <TimetreeEstimatesComparison left={left} right={right} comparison={comparison} />}
           <SettingsDifferences left={left} right={right} settings={comparison.settings ?? undefined} />
         </>
@@ -171,7 +190,7 @@ function figureRun(record: RunRecord) {
   return { id: record.id, title: record.title, command: record.command };
 }
 
-function RunPicker({ current, other, side }: { current: RunRecord; other: RunRecord; side: "first" | "second" }) {
+function RunPicker({ current, other, side }: { current: RunRecord; other: RunRecord; side: Side }) {
   const { data } = useApi((context) => runsList(context));
   const navigate = useNavigate();
   const runs = useMemo(() => (data?.runs ?? []).filter((run) => run.id !== other.id), [data, other.id]);
@@ -187,19 +206,22 @@ function RunPicker({ current, other, side }: { current: RunRecord; other: RunRec
   );
 
   return (
-    <NativeSelect
-      size="sm"
-      aria-label={side === "first" ? "First run" : "Second run"}
-      value={current.id}
-      onChange={onChange}
-      className="max-w-[min(18rem,100%)] font-bold"
-    >
-      {runs.map((run) => (
-        <NativeSelectOption key={run.id} value={run.id}>
-          {run.title} ({commandSettings(run.command).title})
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-muted-foreground font-bold">{SIDE_LABELS[side]}</span>
+      <NativeSelect
+        size="sm"
+        aria-label={side === "first" ? "Run A" : "Run B"}
+        value={current.id}
+        onChange={onChange}
+        className="max-w-[min(18rem,100%)] font-bold"
+      >
+        {runs.map((run) => (
+          <NativeSelectOption key={run.id} value={run.id}>
+            {run.title} ({commandSettings(run.command).title})
+          </NativeSelectOption>
+        ))}
+      </NativeSelect>
+    </span>
   );
 }
 
@@ -212,7 +234,15 @@ function SettingsDifferences({
   right: RunRecord;
   settings: SettingsComparison | undefined;
 }) {
-  const differences = settings?.differences ?? [];
+  const differences = useMemo(() => {
+    const appSet = new Set(
+      commandSettings(left.command)
+        .settings.filter((spec) => spec.set_by_app)
+        .map((spec) => spec.key),
+    );
+
+    return (settings?.differences ?? []).filter((difference) => !appSet.has(difference.key));
+  }, [left.command, settings]);
 
   return (
     <Panel
@@ -233,10 +263,10 @@ function SettingsDifferences({
             <TableRow>
               <TableHead>Setting</TableHead>
               <TableHead>
-                <RunLink record={left} />
+                <RunLink side="first" record={left} />
               </TableHead>
               <TableHead>
-                <RunLink record={right} />
+                <RunLink side="second" record={right} />
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -277,15 +307,18 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
   );
 }
 
-function RunLink({ record }: { record: RunRecord }) {
+function RunLink({ side, record }: { side: Side; record: RunRecord }) {
   return (
-    <Link
-      to="/runs/$id/results"
-      params={{ id: record.id }}
-      className="text-primary font-bold underline-offset-4 hover:underline"
-    >
-      {record.title}
-    </Link>
+    <>
+      <span className="text-muted-foreground mr-1.5">{SIDE_LABELS[side]}</span>
+      <Link
+        to="/runs/$id/results"
+        params={{ id: record.id }}
+        className="text-primary font-bold underline-offset-4 hover:underline"
+      >
+        {record.title}
+      </Link>
+    </>
   );
 }
 
@@ -350,12 +383,12 @@ function TimetreeEstimatesComparison({
               <TableRow>
                 <TableHead>Estimate</TableHead>
                 <TableHead>
-                  <RunLink record={left} />
+                  <RunLink side="first" record={left} />
                 </TableHead>
                 <TableHead>
-                  <RunLink record={right} />
+                  <RunLink side="second" record={right} />
                 </TableHead>
-                <TableHead>Difference</TableHead>
+                <TableHead>Difference (B - A)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -394,9 +427,11 @@ function TimetreeEstimatesComparison({
                 first={likelihoodText(a)}
                 second={likelihoodText(b)}
                 difference={
-                  likelihoodChange === undefined
-                    ? "-"
-                    : `${likelihoodChange > 0 ? "+" : ""}${likelihoodChange.toFixed(1)}`
+                  estimates.log_likelihood_mismatches.length > 0
+                    ? notComparableText(estimates.log_likelihood_mismatches)
+                    : likelihoodChange === undefined
+                      ? "-"
+                      : `${likelihoodChange > 0 ? "+" : ""}${likelihoodChange.toFixed(1)}`
                 }
               />
             </TableBody>
@@ -485,3 +520,9 @@ function likelihoodText(estimates: TimetreeEstimates): string {
 function signedCount(count: number): string {
   return count === 0 ? "0" : `${count > 0 ? "+" : ""}${count}`;
 }
+
+function notComparableText(mismatches: readonly LikelihoodMismatch[]): string {
+  return `not comparable: ${mismatches.map((mismatch) => MISMATCH_LABELS[mismatch]).join(", ")}`;
+}
+
+type Side = keyof typeof SIDE_LABELS;
