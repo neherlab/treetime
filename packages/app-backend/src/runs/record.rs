@@ -1,18 +1,23 @@
 use crate::command::OutputFile;
 use crate::job::JobId;
 use crate::runs::headline::RunHeadline;
+use crate::runs::input_store::StoredInput;
+use crate::runs::run_paths::INPUTS_DIR;
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
 use app_commands::json_value::SparseConfig;
 use chrono::{DateTime, Utc};
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 use strum_macros::Display;
 use treetime::progress::RunWarning;
 use treetime_schema::skip_serializing_optionals;
 
-/// Durable record of one command run, stored as `run.json` in the run's folder.
+/// Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+/// the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+/// `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+/// read from elsewhere keep their absolute paths.
 #[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -22,7 +27,7 @@ pub struct RunRecord {
   /// Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
   pub title: String,
   /// Command of the run and its configuration, with every default filled in. After the run starts, the configuration
-  /// also holds the outputs the run layer adds.
+  /// also holds the outputs the run layer adds and the seed the run used.
   #[schemars(flatten)]
   #[deser(flatten)]
   pub config: CommandConfig,
@@ -30,6 +35,18 @@ pub struct RunRecord {
   pub status: RunStatus,
   /// Whether the run is pinned in run lists.
   pub pinned: bool,
+  /// Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+  /// since.
+  pub source_run_id: Option<JobId>,
+  /// Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+  /// of the earliest run with the same input contents, else the run's own id.
+  pub group_id: JobId,
+  /// Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+  /// last read of the record.
+  pub size: usize,
+  /// Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+  /// the seed the run drew when the configuration sets none.
+  pub seed: Option<u64>,
   /// Time the run was created.
   #[schemars(with = "String")]
   pub created_at: DateTime<Utc>,
@@ -43,8 +60,10 @@ pub struct RunRecord {
   pub duration_seconds: Option<f64>,
   /// Version of TreeTime that ran the command.
   pub treetime_version: String,
-  /// Input files the run read.
+  /// Input files the run read. Before the run starts, the uploaded inputs its configuration names.
   pub inputs: Vec<RunInput>,
+  /// Files uploaded for the run before it started; the run drops them when it starts.
+  pub uploads: Vec<StoredInput>,
   /// SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
   /// paths removed. Two runs with equal hashes used the same settings on the same input contents.
   pub config_hash: Option<String>,
@@ -68,6 +87,9 @@ impl RunRecord {
       command: self.config.command(),
       status: self.status,
       pinned: self.pinned,
+      source_run_id: self.source_run_id.clone(),
+      group_id: self.group_id.clone(),
+      size: self.size,
       created_at: self.created_at,
       finished_at: self.finished_at,
       duration_seconds: self.duration_seconds,
@@ -83,12 +105,25 @@ impl RunRecord {
 pub struct RunInput {
   /// Dot-separated key path of the setting that names the file.
   pub setting: String,
-  /// Path of the file, as the run read it.
+  /// Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file, the
+  /// absolute path for a file read from elsewhere.
   pub path: PathBuf,
   /// Size of the file in bytes.
   pub size: usize,
   /// SHA-256 of the file contents, as lowercase hexadecimal.
   pub sha256: String,
+}
+
+impl RunInput {
+  pub fn stored(&self) -> Option<StoredInput> {
+    let mut components = self.path.components();
+    let is_upload = components.next() == Some(Component::Normal(INPUTS_DIR.as_ref()));
+    let name = self.path.file_name()?.to_str()?;
+    is_upload.then(|| StoredInput {
+      sha256: self.sha256.clone(),
+      name: name.to_owned(),
+    })
+  }
 }
 
 /// Error of a failed run.
@@ -124,6 +159,12 @@ pub struct RunSummary {
   pub status: RunStatus,
   /// Whether the run is pinned.
   pub pinned: bool,
+  /// Run whose settings this run started from. The source may have been deleted since.
+  pub source_run_id: Option<JobId>,
+  /// Group of related runs in the run history.
+  pub group_id: JobId,
+  /// Size of the run in bytes: its output files and the uploaded inputs that no other run references.
+  pub size: usize,
   /// Time the run was created.
   #[schemars(with = "String")]
   pub created_at: DateTime<Utc>,
@@ -162,6 +203,7 @@ pub enum RunStatus {
 
 /// Request to create a run.
 #[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CreateRunRequest {
@@ -174,6 +216,10 @@ pub struct CreateRunRequest {
   #[schemars(default)]
   #[deser(default)]
   pub defer_start: bool,
+  /// Run whose settings the new run starts from, such as the source of a variant.
+  #[schemars(default)]
+  #[deser(default)]
+  pub source_run_id: Option<JobId>,
 }
 
 /// Request to start a created run.
@@ -191,6 +237,10 @@ pub struct StartRunRequest {
   #[schemars(default)]
   #[deser(default)]
   pub config: Option<SparseConfig>,
+  /// Run whose settings the run starts from; replaces the one given at creation.
+  #[schemars(default)]
+  #[deser(default)]
+  pub source_run_id: Option<JobId>,
 }
 
 /// Answer to a cancellation request.

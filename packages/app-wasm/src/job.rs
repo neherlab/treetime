@@ -4,10 +4,12 @@ use app_backend::runs::errors::invalid;
 use app_backend::runs::files::{FileChunks, list_run_files, resolve_run_file};
 use app_backend::runs::inputs::file_sha256;
 use app_backend::runs::lifecycle::{JobInput, RunJob, RunOutcome, compute_run};
+use app_backend::runs::run_paths::OUT_DIR;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use js_sys::{Function, Promise};
 use log::error;
+use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -140,14 +142,14 @@ impl Job {
 
   #[wasm_bindgen(js_name = outputFiles)]
   pub fn output_files(&self) -> Result<Vec<String>, JsError> {
-    list_run_files(&self.job.out_dir, &[])
+    list_run_files(Path::new(OUT_DIR), &[])
       .map(|files| files.into_iter().map(|file| file.path).collect_vec())
       .map_err(|report| js_error(&report))
   }
 
   #[wasm_bindgen(js_name = readOutput)]
   pub fn read_output(&self, path: &str) -> Result<ChunkReader, JsError> {
-    resolve_run_file(&self.job.out_dir, path)
+    resolve_run_file(Path::new(OUT_DIR), path)
       .and_then(|path| FileChunks::open(&path))
       .map(ChunkReader::from)
       .map_err(|report| js_error(&report))
@@ -176,11 +178,15 @@ fn open_job(job_json: &str, jobs: u32) -> Result<RunJob, Report> {
     return Err(invalid("a run worker needs at least 1 thread, got 0"));
   }
   let job: RunJob = json_read_str(job_json).wrap_err("When reading the job of a run worker")?;
+  fs::create_dir_all(&job.run_dir).wrap_err_with(|| format!("When creating '{}'", job.run_dir.display()))?;
+  env::set_current_dir(&job.run_dir)
+    .wrap_err_with(|| format!("When entering the run folder '{}'", job.run_dir.display()))?;
   let folders = job
     .inputs
     .iter()
     .filter_map(|input| input.path.parent())
-    .chain([job.out_dir.as_path()])
+    .filter(|folder| !folder.as_os_str().is_empty())
+    .chain([Path::new(OUT_DIR)])
     .unique();
   for folder in folders {
     fs::create_dir_all(folder).wrap_err_with(|| format!("When creating '{}'", folder.display()))?;
@@ -215,7 +221,7 @@ fn compute(
     start()?;
     check_inputs(job)
   }) {
-    Ok(()) => compute_run(job, &cancel, emit),
+    Ok(()) => compute_run(&job.id, job.command, &job.config.0, Path::new(OUT_DIR), &cancel, emit),
     Err(terminal) => RunOutcome {
       terminal,
       warnings: vec![],

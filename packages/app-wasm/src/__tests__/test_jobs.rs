@@ -22,7 +22,7 @@ mod tests {
       panic!("expected one order, got {orders:?}");
     };
     let job: RunJob = json_read_str(order.job.as_deref().unwrap()).unwrap();
-    let paths = vec![run.alignment.clone(), run.tree.clone()];
+    let paths = vec![PathBuf::from("inputs/aln.fasta.xz"), PathBuf::from("inputs/tree.nwk")];
     assert_eq!(
       (
         "start",
@@ -38,6 +38,23 @@ mod tests {
       )
     );
     assert_eq!(Vec::<JobOrder>::new(), run.jobs.take_orders().unwrap());
+  }
+
+  #[tokio::test]
+  async fn test_jobs_input_of_a_job_reads_the_uploaded_file() {
+    let run = started_run().await;
+    let read = |path: &str| -> Vec<u8> {
+      run
+        .jobs
+        .read_input(&run.id, path)
+        .unwrap()
+        .flat_map(Result::unwrap)
+        .collect()
+    };
+    assert_eq!(
+      (fs::read(&run.tree).unwrap(), fs::read(&run.alignment).unwrap()),
+      (read("inputs/tree.nwk"), read("inputs/aln.fasta.xz"))
+    );
   }
 
   #[tokio::test]

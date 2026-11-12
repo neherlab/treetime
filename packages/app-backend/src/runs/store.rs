@@ -3,7 +3,9 @@ use crate::job::{JobEvent, JobId, TerminalEvent};
 use crate::runs::errors::not_found;
 use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
-use crate::runs::record::{RunRecord, RunStatus};
+use crate::runs::input_store::InputStore;
+use crate::runs::record::{RunInput, RunRecord, RunStatus};
+use crate::runs::run_paths::OUT_DIR;
 use app_commands::command_config::CommandConfig;
 use chrono::{DateTime, TimeZone, Utc};
 use eyre::{Report, WrapErr};
@@ -21,8 +23,6 @@ use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
 const RUN_FILE: &str = "run.json";
 const EVENTS_FILE: &str = "events.jsonl";
-const INPUTS_DIR: &str = "inputs";
-const OUT_DIR: &str = "out";
 const DEFAULT_TITLE_FORMAT: &str = "Run %Y-%m-%d %H:%M";
 
 #[derive(Clone, Debug)]
@@ -43,8 +43,8 @@ impl RunStore {
     self.root.join(id.as_str())
   }
 
-  pub fn inputs_dir(&self, id: &JobId) -> PathBuf {
-    self.run_dir(id).join(INPUTS_DIR)
+  pub fn input_store(&self) -> InputStore {
+    InputStore::new(&self.root)
   }
 
   pub fn out_dir(&self, id: &JobId) -> PathBuf {
@@ -55,29 +55,37 @@ impl RunStore {
     self.run_dir(id).join(EVENTS_FILE)
   }
 
-  pub fn create(&self, config: CommandConfig) -> Result<RunRecord, Report> {
-    let id = JobId::random();
+  pub fn create(&self, run: NewRun) -> Result<RunRecord, Report> {
+    let NewRun {
+      id,
+      config,
+      inputs,
+      source_run_id,
+    } = run;
     fs::create_dir_all(&self.root)
       .wrap_err_with(|| format!("When creating the runs directory '{}'", self.root.display()))?;
     let dir = self.run_dir(&id);
     create_new_dir(&dir).wrap_err_with(|| format!("When creating the run directory '{}'", dir.display()))?;
-    for sub in [INPUTS_DIR, OUT_DIR] {
-      fs::create_dir_all(dir.join(sub))
-        .wrap_err_with(|| format!("When creating the directory '{}'", dir.join(sub).display()))?;
-    }
+    fs::create_dir_all(dir.join(OUT_DIR))
+      .wrap_err_with(|| format!("When creating the directory '{}'", dir.join(OUT_DIR).display()))?;
     let created_at = Utc::now();
     let record = RunRecord {
+      group_id: id.clone(),
       id,
       title: default_title(&created_at),
       config,
       status: RunStatus::Created,
       pinned: false,
+      source_run_id,
+      size: 0,
+      seed: None,
       created_at,
       started_at: None,
       finished_at: None,
       duration_seconds: None,
       treetime_version: version_info().version.to_owned(),
-      inputs: vec![],
+      inputs,
+      uploads: vec![],
       config_hash: None,
       changed_settings: vec![],
       headline: RunHeadline::default(),
@@ -126,8 +134,9 @@ impl RunStore {
     )
   }
 
-  pub fn input_dirs(&self) -> Result<Vec<PathBuf>, Report> {
-    Ok(self.run_ids()?.iter().map(|id| self.inputs_dir(id)).collect())
+  pub fn remove(&self, id: &JobId) -> Result<(), Report> {
+    let dir = self.run_dir(id);
+    fs::remove_dir_all(&dir).wrap_err_with(|| format!("When removing the run folder '{}'", dir.display()))
   }
 
   pub fn remove_unstarted(&self, created_before: DateTime<Utc>) -> Result<Vec<JobId>, Report> {
@@ -136,8 +145,9 @@ impl RunStore {
       if record.status != RunStatus::Created || record.created_at >= created_before {
         continue;
       }
-      let dir = self.run_dir(&record.id);
-      fs::remove_dir_all(&dir).wrap_err_with(|| format!("When removing the unstarted run '{}'", dir.display()))?;
+      self
+        .remove(&record.id)
+        .wrap_err_with(|| format!("When removing the unstarted run `{}`", record.id.as_str()))?;
       removed.push(record.id);
     }
     Ok(removed)
@@ -183,6 +193,13 @@ impl RunStore {
     }
     Ok(ids)
   }
+}
+
+pub struct NewRun {
+  pub id: JobId,
+  pub config: CommandConfig,
+  pub inputs: Vec<RunInput>,
+  pub source_run_id: Option<JobId>,
 }
 
 pub fn default_title<Tz: TimeZone>(created_at: &DateTime<Tz>) -> String

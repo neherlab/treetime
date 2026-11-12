@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::command::config_from_settings;
-  use crate::runs::store::{RunStore, default_title};
+  use crate::job::JobId;
+  use crate::runs::store::{NewRun, RunStore, default_title};
   use app_commands::command::AppCommand;
   use chrono::{FixedOffset, TimeZone};
   use pretty_assertions::assert_eq;
@@ -34,10 +35,15 @@ mod tests {
     fs::remove_dir_all(root.path().join("app")).unwrap();
 
     let record = store
-      .create(config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap())
+      .create(NewRun {
+        id: JobId::random(),
+        config: config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap(),
+        inputs: vec![],
+        source_run_id: None,
+      })
       .unwrap();
 
-    assert!(store.run_dir(&record.id).join("inputs").is_dir());
+    assert!(store.run_dir(&record.id).join("out").is_dir());
     assert_eq!(
       vec![record.id],
       store.list().unwrap().into_iter().map(|run| run.id).collect::<Vec<_>>()

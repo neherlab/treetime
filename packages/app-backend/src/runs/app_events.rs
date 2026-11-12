@@ -176,6 +176,11 @@ pub enum AppChange {
     /// The run after the change.
     run: RunSummary,
   },
+  /// A run was deleted, with its folder and the uploaded inputs that no other run references.
+  RunRemoved {
+    /// Id of the deleted run.
+    id: JobId,
+  },
   /// The download of the example datasets progressed, finished, or failed.
   ExamplesDownload {
     /// The download after the change.

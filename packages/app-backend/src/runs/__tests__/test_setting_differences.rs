@@ -124,18 +124,24 @@ mod tests {
     use std::path::PathBuf;
 
     pub(super) fn record(settings: &Value, inputs: Vec<RunInput>) -> RunRecord {
+      let id = JobId::random();
       RunRecord {
-        id: JobId::random(),
+        group_id: id.clone(),
+        id,
         title: "run".to_owned(),
         config: config_from_settings(AppCommand::Timetree, settings).unwrap(),
         status: RunStatus::Ok,
         pinned: false,
+        source_run_id: None,
+        size: 0,
+        seed: None,
         created_at: DateTime::UNIX_EPOCH,
         started_at: None,
         finished_at: None,
         duration_seconds: None,
         treetime_version: "1.0.0".to_owned(),
         inputs,
+        uploads: vec![],
         config_hash: None,
         changed_settings: vec![],
         headline: RunHeadline::default(),

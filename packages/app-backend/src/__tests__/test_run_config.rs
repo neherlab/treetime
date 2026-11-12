@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
+  use crate::runs::input_store::InputStore;
   use app_commands::command::AppCommand;
-  use helpers::{ZIKA_METADATA, ZIKA_TREE, resolve};
+  use helpers::{ZIKA_METADATA, ZIKA_TREE, resolve, resolve_in};
   use pretty_assertions::assert_eq;
   use serde_json::json;
+  use std::fs;
   use std::path::Path;
+  use tempfile::tempdir;
 
   #[test]
   fn test_run_config_adds_the_run_outputs_to_the_chosen_selection() {
@@ -99,11 +102,39 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_run_config_names_an_uploaded_input_by_its_path_in_the_run_folder() {
+    let root = tempdir().unwrap();
+    let store = InputStore::new(root.path());
+    let tree = fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(ZIKA_TREE)).unwrap();
+    let upload = store.store("tree.nwk", &mut &tree[..], 1 << 20, 1 << 20).unwrap();
+    let tree = store.path(&store.commit(upload).unwrap());
+
+    let response = resolve_in(
+      &store,
+      AppCommand::Clock,
+      json!({ "tree": tree, "metadata": Path::new(env!("CARGO_MANIFEST_DIR")).join(ZIKA_METADATA) }),
+    );
+
+    assert_eq!(
+      (json!("inputs/tree.nwk"), true),
+      (
+        response["config"]["tree"].clone(),
+        response["code"]["command_line_text"]
+          .as_str()
+          .unwrap()
+          .contains("--tree inputs/tree.nwk"),
+      )
+    );
+  }
+
   mod helpers {
     use crate::__tests__::test_support::tests::sparse;
     use crate::run_config::{RunConfigRequest, run_config};
+    use crate::runs::input_store::InputStore;
     use app_commands::command::AppCommand;
     use serde_json::Value;
+    use std::path::Path;
     use treetime_utils::io::json::to_json_value;
 
     pub(super) const ZIKA_TREE: &str = "../../data/zika/20/tree.nwk";
@@ -111,12 +142,17 @@ mod tests {
     pub(super) const ZIKA_METADATA: &str = "../../data/zika/20/metadata.tsv";
 
     pub(super) fn resolve(command: AppCommand, config: Value) -> Value {
+      resolve_in(&InputStore::new(Path::new("/nonexistent-runs")), command, config)
+    }
+
+    pub(super) fn resolve_in(store: &InputStore, command: AppCommand, config: Value) -> Value {
       let response = run_config(
         &RunConfigRequest {
           command,
           config: sparse(config),
         },
         Box::new(|_config: &mut Value| Ok(())),
+        store,
       );
       to_json_value(&response).unwrap()
     }

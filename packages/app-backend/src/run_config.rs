@@ -1,7 +1,9 @@
 use crate::command::AppCommandExt;
 use crate::config::code::{ConfigCode, config_code};
+use crate::runs::input_store::InputStore;
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::ConfigHook;
+use crate::runs::run_paths::PortablePaths;
 use app_commands::command::AppCommand;
 use app_commands::config::source::{ConfigProblem, InvalidConfig};
 use app_commands::json_value::SparseConfig;
@@ -16,17 +18,21 @@ use treetime_utils::make_error;
 
 pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
 
-pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigResponse {
-  let resolved = request
-    .command
+pub fn run_config(request: &RunConfigRequest, confine: ConfigHook, store: &InputStore) -> RunConfigResponse {
+  let command = request.command;
+  let resolved = command
     .prepare_run(
       &Value::Object(request.config.0.clone()),
       Path::new(RUN_CONFIG_OUTPUT_DIR),
     )
-    .and_then(|prepared| Ok((config_code(request.command, &prepared.config)?, prepared.config)));
+    .and_then(|prepared| {
+      let mut config = prepared.config.clone();
+      PortablePaths::of_settings(command, &config, store)?.apply(command, &mut config)?;
+      Ok((config_code(command, &config)?, config, prepared.config))
+    });
   match resolved {
-    Ok((code, config)) => {
-      let (config_hash, config_hash_error) = match config_hash(request.command, &config, confine) {
+    Ok((code, config, requested)) => {
+      let (config_hash, config_hash_error) = match config_hash(command, &requested, confine) {
         Ok(hash) => (Some(hash), None),
         Err(report) => (None, Some(format!("{report:#}"))),
       };
@@ -61,8 +67,8 @@ pub struct RunConfigRequest {
 pub enum RunConfigResponse {
   /// The configuration is accepted.
   Valid {
-    /// The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
-    /// `output_all` set to `out`.
+    /// The configuration as the run records it, with every default filled in, the outputs the run layer adds,
+    /// `output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.
     config: SparseConfig,
     /// The command line and the YAML config that reproduce the run.
     code: ConfigCode,

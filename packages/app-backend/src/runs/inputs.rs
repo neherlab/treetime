@@ -62,7 +62,7 @@ pub struct HashedInputs {
 }
 
 pub fn sha256_hex(bytes: &[u8]) -> Result<String, Report> {
-  Ok(hex(&Sha256::digest(bytes))?)
+  Ok(hex_digest(&Sha256::digest(bytes))?)
 }
 
 fn hash_path_values(setting: &str, value: &mut Value, inputs: &mut Vec<RunInput>) -> Result<(), Report> {
@@ -107,10 +107,10 @@ pub fn file_sha256(path: &Path) -> Result<(usize, String), Report> {
     hasher.update(&buffer[..read]);
     size += read;
   }
-  Ok((size, hex(&hasher.finalize())?))
+  Ok((size, hex_digest(&hasher.finalize())?))
 }
 
-fn hex(bytes: &[u8]) -> Result<String, fmt::Error> {
+pub fn hex_digest(bytes: &[u8]) -> Result<String, fmt::Error> {
   bytes.iter().try_fold(String::new(), |mut hex, byte| {
     write!(hex, "{byte:02x}")?;
     Ok(hex)

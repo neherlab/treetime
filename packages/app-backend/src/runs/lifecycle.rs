@@ -1,13 +1,14 @@
 use crate::command::AppCommandExt;
 use crate::command::config_from_settings;
 use crate::command::run_command;
-use crate::command::{CommandOutcome, OutputFile};
+use crate::command::{CommandOutcome, OutputAlignment, OutputFile};
 use crate::job::{JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job, run_job_step};
 use crate::runs::errors::invalid;
 use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::{ActiveRun, ConfigHook, RunManager};
 use crate::runs::record::{RunError, RunInput, RunRecord, RunStatus};
+use crate::runs::run_paths::{OUT_DIR, PortablePaths, resolve_settings};
 use crate::runs::warnings::WarningCollector;
 use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
@@ -16,23 +17,34 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use log::{error, info};
-use serde_json::Value;
+use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 use treetime::cancel::Cancel;
 use treetime::progress::RunWarning;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::make_error;
 
 const NO_ERROR_LINES: &str = "the run worker stopped without an error message";
 
-pub fn compute_run(job: &RunJob, cancel: &dyn Cancel, emit: impl Fn(JobEvent) + Send + Sync) -> RunOutcome {
+const SEED_KEY: &str = "seed";
+
+const MAX_DRAWN_SEED: u64 = (1 << 53) - 1;
+
+pub fn compute_run(
+  id: &JobId,
+  command: AppCommand,
+  config: &Map<String, Value>,
+  out_dir: &Path,
+  cancel: &dyn Cancel,
+  emit: impl Fn(JobEvent) + Send + Sync,
+) -> RunOutcome {
   let progress = JobProgress::new(emit);
   let log = WarningCollector::new(&progress);
-  let terminal = run_job(&job.id, cancel, || {
-    let prepared = job
-      .command
-      .prepare_run(&Value::Object(job.config.0.clone()), &job.out_dir)?;
+  let terminal = run_job(id, cancel, || {
+    let prepared = command.prepare_run(&Value::Object(config.clone()), out_dir)?;
     run_command(&prepared.args, cancel, &progress, &log)
   });
   RunOutcome {
@@ -65,7 +77,14 @@ impl StartedRun {
   pub fn run(self) -> TerminalEvent {
     match self.prepare() {
       Prepared::Ready(prepared) => {
-        let outcome = compute_run(&prepared.job, &prepared.run.token, |event| prepared.emit(event));
+        let outcome = compute_run(
+          &prepared.job.id,
+          prepared.job.command,
+          &prepared.local_config,
+          &prepared.job.out_dir(),
+          &prepared.run.token,
+          |event| prepared.emit(event),
+        );
         prepared.complete(outcome)
       },
       Prepared::Ended(terminal) => terminal,
@@ -82,7 +101,7 @@ impl StartedRun {
     let clock = Instant::now();
     let id = record.id.clone();
     let command = record.config.command();
-    let out_dir = manager.store().out_dir(&id);
+    let run_dir = manager.store().run_dir(&id);
     append_event(
       &run,
       &id,
@@ -94,13 +113,49 @@ impl StartedRun {
       },
     );
     let job = run_job_step(&id, &run.token, || {
-      let mut config = Value::Object(record.config.settings()?);
+      let store = manager.input_store();
+      let mut config = Value::Object(resolve_settings(
+        command,
+        &record.config.settings()?,
+        &record.inputs,
+        &run_dir,
+        store,
+      )?);
       hook(&mut config)?;
-      let prepared = command.prepare_run(&config, &out_dir)?;
+      let Value::Object(settings) = &config else {
+        return make_error!("a command configuration must be a mapping of settings");
+      };
+      let paths = PortablePaths::of_settings(command, settings, store)?.in_run(&run_dir);
+      let prepared = command.prepare_run(&config, &run_dir.join(OUT_DIR))?;
       let hashed = hash_inputs(command, &prepared.config)?;
       let requested = requested_outputs(&config);
-      let resolved = config_from_settings(command, &Value::Object(prepared.config.clone()))?;
-      let inputs = job_inputs(&hashed.inputs);
+      let seed = prepared.args.random_step().map(|_| {
+        prepared
+          .args
+          .seed()
+          .unwrap_or_else(|| rand::random_range(0..=MAX_DRAWN_SEED))
+      });
+      let mut local_config = prepared.config.clone();
+      if let Some(seed) = seed {
+        local_config.insert(SEED_KEY.to_owned(), Value::from(seed));
+      }
+      let mut portable = local_config.clone();
+      paths.apply(command, &mut portable)?;
+      let resolved = config_from_settings(command, &Value::Object(portable.clone()))?;
+      let sources = hashed
+        .inputs
+        .iter()
+        .map(|input| (paths.portable(&input.path), input.path.clone()))
+        .collect::<BTreeMap<_, _>>();
+      let inputs = hashed
+        .inputs
+        .into_iter()
+        .map(|input| RunInput {
+          path: paths.portable(&input.path),
+          ..input
+        })
+        .collect_vec();
+      let group_id = derivation_group(&manager, &record, &inputs)?;
       manager.modify(&id, |record| {
         record.config = resolved;
         record.changed_settings = prepared
@@ -109,32 +164,48 @@ impl StartedRun {
           .filter(|key| requested.is_some() || key.as_str() != OUTPUT_SELECTION_KEY)
           .cloned()
           .collect();
-        record.inputs = hashed.inputs;
+        record.inputs = inputs.clone();
         record.config_hash = Some(hashed.config_hash);
+        record.seed = seed;
+        record.group_id = group_id;
         Ok(())
       })?;
       run.token.check()?;
-      Ok(RunJob {
-        id: id.clone(),
-        command,
-        config: SparseConfig(prepared.config),
-        out_dir: out_dir.clone(),
-        inputs,
+      Ok(PreparedJob {
+        job: RunJob {
+          id: id.clone(),
+          command,
+          config: SparseConfig(portable),
+          run_dir: run_dir.clone(),
+          inputs: job_inputs(&inputs),
+        },
+        local_config,
+        sources,
+        paths,
       })
     });
     match job {
-      Ok(job) => Prepared::Ready(PreparedRun {
+      Ok(PreparedJob {
+        job,
+        local_config,
+        sources,
+        paths,
+      }) => Prepared::Ready(Box::new(PreparedRun {
         manager,
         run,
         clock,
         job,
-      }),
+        local_config,
+        sources,
+        paths,
+      })),
       Err(terminal) => {
         let ended = RunEnd {
           manager: &manager,
           run: &run,
           id: &id,
-          out_dir: &out_dir,
+          run_dir: &run_dir,
+          paths: None,
           clock,
         };
         Prepared::Ended(ended.record(RunOutcome {
@@ -147,7 +218,7 @@ impl StartedRun {
 }
 
 pub enum Prepared {
-  Ready(PreparedRun),
+  Ready(Box<PreparedRun>),
   Ended(TerminalEvent),
 }
 
@@ -156,11 +227,18 @@ pub struct PreparedRun {
   run: Arc<ActiveRun>,
   clock: Instant,
   job: RunJob,
+  local_config: Map<String, Value>,
+  sources: BTreeMap<PathBuf, PathBuf>,
+  paths: PortablePaths,
 }
 
 impl PreparedRun {
   pub fn job(&self) -> &RunJob {
     &self.job
+  }
+
+  pub fn input_source(&self, path: &Path) -> Option<&Path> {
+    self.sources.get(path).map(PathBuf::as_path)
   }
 
   pub fn is_cancelled(&self) -> bool {
@@ -184,7 +262,8 @@ impl PreparedRun {
       manager: &self.manager,
       run: &self.run,
       id: &self.job.id,
-      out_dir: &self.job.out_dir,
+      run_dir: &self.job.run_dir,
+      paths: Some(&self.paths),
       clock: self.clock,
     };
     ended.record(outcome)
@@ -219,8 +298,14 @@ pub struct RunJob {
   pub id: JobId,
   pub command: AppCommand,
   pub config: SparseConfig,
-  pub out_dir: PathBuf,
+  pub run_dir: PathBuf,
   pub inputs: Vec<JobInput>,
+}
+
+impl RunJob {
+  pub fn out_dir(&self) -> PathBuf {
+    self.run_dir.join(OUT_DIR)
+  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -236,11 +321,19 @@ pub struct RunOutcome {
   pub warnings: Vec<RunWarning>,
 }
 
+struct PreparedJob {
+  job: RunJob,
+  local_config: Map<String, Value>,
+  sources: BTreeMap<PathBuf, PathBuf>,
+  paths: PortablePaths,
+}
+
 struct RunEnd<'a> {
   manager: &'a RunManager,
   run: &'a ActiveRun,
   id: &'a JobId,
-  out_dir: &'a Path,
+  run_dir: &'a Path,
+  paths: Option<&'a PortablePaths>,
   clock: Instant,
 }
 
@@ -248,39 +341,41 @@ impl RunEnd<'_> {
   fn record(&self, outcome: RunOutcome) -> TerminalEvent {
     let RunOutcome { terminal, warnings } = outcome;
     let duration = self.clock.elapsed().as_secs_f64();
-    let finished = self.manager.modify(self.id, |record| {
-      record.finished_at = Some(Utc::now());
-      record.warnings = warnings;
-      record.duration_seconds = Some(duration);
-      match &terminal {
-        TerminalEvent::Ok { result, .. } => {
-          record.status = RunStatus::Ok;
-          record.output_files = relative_outputs(result, self.out_dir);
-          record.headline = run_headline(record, self.out_dir).unwrap_or_else(|err| {
-            error!(
-              "When reading the headline results of run {}: {err:#}",
-              record.id.as_str()
-            );
-            RunHeadline::default()
-          });
-        },
-        TerminalEvent::Error { message, causes, .. } => {
-          record.status = RunStatus::Error;
-          record.error = Some(RunError {
-            message: message.clone(),
-            causes: causes.clone(),
-          });
-        },
-        TerminalEvent::Cancelled { .. } => record.status = RunStatus::Cancelled,
-        TerminalEvent::Interrupted { .. } => record.status = RunStatus::Interrupted,
+    let out_dir = self.run_dir.join(OUT_DIR);
+    self.manager.finish(self.id, || {
+      let finished = self.manager.modify(self.id, |record| {
+        record.finished_at = Some(Utc::now());
+        record.warnings = warnings;
+        record.duration_seconds = Some(duration);
+        match &terminal {
+          TerminalEvent::Ok { result, .. } => {
+            record.status = RunStatus::Ok;
+            record.output_files = relative_outputs(result, self.run_dir, self.paths);
+            record.headline = run_headline(record, &out_dir).unwrap_or_else(|err| {
+              error!(
+                "When reading the headline results of run {}: {err:#}",
+                record.id.as_str()
+              );
+              RunHeadline::default()
+            });
+          },
+          TerminalEvent::Error { message, causes, .. } => {
+            record.status = RunStatus::Error;
+            record.error = Some(RunError {
+              message: message.clone(),
+              causes: causes.clone(),
+            });
+          },
+          TerminalEvent::Cancelled { .. } => record.status = RunStatus::Cancelled,
+          TerminalEvent::Interrupted { .. } => record.status = RunStatus::Interrupted,
+        }
+        Ok(())
+      });
+      if let Err(err) = finished {
+        error!("When recording the end of run {}: {err:#}", self.id.as_str());
       }
-      Ok(())
+      append_event(self.run, self.id, JobEvent::Terminal { data: terminal.clone() });
     });
-    if let Err(err) = finished {
-      error!("When recording the end of run {}: {err:#}", self.id.as_str());
-    }
-    append_event(self.run, self.id, JobEvent::Terminal { data: terminal.clone() });
-    self.manager.finish(self.id);
     match json_write_str(&terminal, JsonPretty(false)) {
       Ok(text) => info!("Run {} ended: {text}", self.id.as_str()),
       Err(err) => error!(
@@ -310,14 +405,53 @@ fn job_inputs(inputs: &[RunInput]) -> Vec<JobInput> {
     .collect_vec()
 }
 
-fn relative_outputs(outcome: &CommandOutcome, out_dir: &Path) -> Vec<OutputFile> {
+fn relative_outputs(outcome: &CommandOutcome, run_dir: &Path, paths: Option<&PortablePaths>) -> Vec<OutputFile> {
   outcome
     .output_files
     .iter()
-    .map(|file| OutputFile {
-      path: file.path.strip_prefix(out_dir).unwrap_or(&file.path).to_path_buf(),
-      ..file.clone()
+    .map(|file| {
+      let path = file.path.strip_prefix(run_dir).unwrap_or(&file.path);
+      OutputFile {
+        path: path.strip_prefix(OUT_DIR).unwrap_or(path).to_path_buf(),
+        kind: file.kind,
+        alignment: file.alignment.as_ref().map(|alignment| OutputAlignment {
+          number: alignment.number,
+          path: paths.map_or_else(|| alignment.path.clone(), |paths| paths.portable(&alignment.path)),
+        }),
+      }
     })
+    .collect_vec()
+}
+
+fn derivation_group(manager: &RunManager, record: &RunRecord, inputs: &[RunInput]) -> Result<JobId, Report> {
+  let records = manager.store().list()?;
+  if let Some(source) = record
+    .source_run_id
+    .as_ref()
+    .and_then(|source| records.iter().find(|other| &other.id == source))
+  {
+    return Ok(source.group_id.clone());
+  }
+  let digests = input_digests(inputs);
+  if digests.is_empty() {
+    return Ok(record.id.clone());
+  }
+  Ok(
+    records
+      .iter()
+      .filter(|other| other.id != record.id && other.created_at < record.created_at && other.config_hash.is_some())
+      .filter(|other| input_digests(&other.inputs) == digests)
+      .min_by_key(|other| (other.created_at, other.id.clone()))
+      .map_or_else(|| record.id.clone(), |other| other.group_id.clone()),
+  )
+}
+
+fn input_digests(inputs: &[RunInput]) -> Vec<&str> {
+  inputs
+    .iter()
+    .map(|input| input.sha256.as_str())
+    .sorted()
+    .dedup()
     .collect_vec()
 }
 

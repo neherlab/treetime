@@ -4,9 +4,10 @@ mod tests {
   use crate::command::config_from_settings;
   use crate::job::{JobEvent, JobId, TerminalEvent};
   use crate::runs::events::{RunEvent, read_events};
+  use crate::runs::input_store::StoredInput;
   use crate::runs::manager::RunManager;
   use crate::runs::record::{CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
-  use crate::runs::store::{RunStore, default_title};
+  use crate::runs::store::{NewRun, RunStore, default_title};
   use app_commands::command::AppCommand;
   use chrono::{TimeDelta, Utc};
   use helpers::{GatedReader, accept, clock_config, create, event_types, terminal_status, timetree_config};
@@ -16,6 +17,7 @@ mod tests {
   use serde_json::{Value, json};
   use std::collections::BTreeSet;
   use std::fs;
+  use std::path::Path;
   use std::sync::Arc;
   use std::thread;
   use tempfile::tempdir;
@@ -40,7 +42,7 @@ mod tests {
     let record = runs.get(&created.id).unwrap();
     let out_dir = runs.store().out_dir(&created.id);
     assert_eq!(
-      (RunStatus::Ok, json!(out_dir), true, true, vec!["started", "terminal"],),
+      (RunStatus::Ok, json!("out"), true, true, vec!["started", "terminal"],),
       (
         record.status,
         Value::Object(record.config.settings().unwrap())["output_all"].clone(),
@@ -120,7 +122,12 @@ mod tests {
     let tree = json!({ "tree": "t.nwk", "alignment": ["a.fasta"] });
     runs
       .store()
-      .create(config_from_settings(AppCommand::Homoplasy, &tree).unwrap())
+      .create(NewRun {
+        id: JobId::random(),
+        config: config_from_settings(AppCommand::Homoplasy, &tree).unwrap(),
+        inputs: vec![],
+        source_run_id: None,
+      })
       .unwrap();
     assert_eq!(
       vec![clock.id],
@@ -141,7 +148,12 @@ mod tests {
     let tree = json!({ "tree": "t.nwk", "alignment": ["a.fasta"] });
     let record = runs
       .store()
-      .create(config_from_settings(AppCommand::Homoplasy, &tree).unwrap())
+      .create(NewRun {
+        id: JobId::random(),
+        config: config_from_settings(AppCommand::Homoplasy, &tree).unwrap(),
+        inputs: vec![],
+        source_run_id: None,
+      })
       .unwrap();
     assert_error!(
       runs.start(&record.id, &StartRunRequest::default(), accept()),
@@ -158,6 +170,7 @@ mod tests {
         command: AppCommand::Mugration,
         config: sparse(json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" })),
         defer_start: true,
+        source_run_id: None,
       }),
       "the command `mugration` is available in the command-line tool only"
     );
@@ -171,6 +184,7 @@ mod tests {
     let request = StartRunRequest {
       command: Some(AppCommand::Mugration),
       config: None,
+      source_run_id: None,
     };
     assert_error!(
       runs.start(&created.id, &request, accept()).map(|_| ()),
@@ -313,7 +327,7 @@ mod tests {
       .upload_input(&created.id, "tree.nwk", &[], &mut &[b'x'; 700][..], 1024)
       .unwrap();
     assert_eq!(
-      (700, runs.store().inputs_dir(&created.id).join("1/tree.nwk")),
+      (700, runs.input_store().root().join(&uploaded.sha256).join("tree.nwk")),
       (uploaded.size, uploaded.path)
     );
     assert_error!(
@@ -321,11 +335,11 @@ mod tests {
       "the inputs of a run are limited to 1 KiB in total; `metadata.tsv` does not fit"
     );
     assert_eq!(
-      (false, 324),
+      (1, 324),
       (
-        runs.store().inputs_dir(&created.id).join("2").exists(),
+        runs.input_store().keys().unwrap().len(),
         runs
-          .upload_input(&created.id, "metadata.tsv", &[], &mut &[b'x'; 324][..], 1024)
+          .upload_input(&created.id, "metadata.tsv", &[], &mut &[b'y'; 324][..], 1024)
           .unwrap()
           .size
       )
@@ -343,17 +357,57 @@ mod tests {
     let na = runs
       .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nAC\n"[..], 1024)
       .unwrap();
-    let inputs = runs.store().inputs_dir(&created.id);
     assert_eq!(
       (
-        (inputs.join("1/aligned.fasta"), o!(">A\nACGT\n")),
-        (inputs.join("2/aligned.fasta"), o!(">A\nAC\n")),
+        (o!(">A\nACGT\n"), o!(">A\nAC\n")),
         (o!("aligned.fasta"), o!("aligned.fasta")),
+        true,
       ),
       (
-        (ha.path.clone(), fs::read_to_string(&ha.path).unwrap()),
-        (na.path.clone(), fs::read_to_string(&na.path).unwrap()),
+        (
+          fs::read_to_string(&ha.path).unwrap(),
+          fs::read_to_string(&na.path).unwrap()
+        ),
         (ha.name, na.name),
+        ha.path != na.path,
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_run_keeps_two_uploads_with_one_name_apart_in_its_record() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Ancestral, json!({}));
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
+    let upload = |name: &str, bytes: Vec<u8>| {
+      runs
+        .upload_input(&created.id, name, &[], &mut &bytes[..], 1 << 24)
+        .unwrap()
+        .path
+    };
+    let tree = upload("tree.nwk", fs::read(data.join("tree.nwk")).unwrap());
+    let first = upload("aln.fasta.xz", fs::read(data.join("aln.fasta.xz")).unwrap());
+    let second = upload(
+      "aln.fasta.xz",
+      fs::read(data.join("../../ebola/20/aln.fasta.xz")).unwrap(),
+    );
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(json!({ "tree": tree, "alignment": [first, second] }))),
+      source_run_id: None,
+    };
+
+    let started = runs.start(&created.id, &request, accept()).unwrap().record().clone();
+
+    assert_eq!(
+      (
+        json!("inputs/tree.nwk"),
+        json!(["inputs/1/aln.fasta.xz", "inputs/2/aln.fasta.xz"]),
+      ),
+      (
+        Value::Object(started.config.settings().unwrap())["tree"].clone(),
+        Value::Object(started.config.settings().unwrap())["alignment"].clone(),
       )
     );
   }
@@ -386,10 +440,7 @@ mod tests {
 
     runs.release_input(&created.id, &first.path).unwrap();
 
-    assert_eq!(
-      (runs.store().inputs_dir(&created.id).join("2/aligned.fasta"), true),
-      (second.path.clone(), second.path.is_file())
-    );
+    assert_eq!((false, true), (first.path.exists(), second.path.is_file()));
   }
 
   #[test]
@@ -430,6 +481,7 @@ mod tests {
     let request = StartRunRequest {
       command: None,
       config: Some(sparse(clock_config())),
+      source_run_id: None,
     };
 
     let (start, uploaded) = thread::scope(|scope| {
@@ -546,6 +598,7 @@ mod tests {
     let request = StartRunRequest {
       command: None,
       config: Some(sparse(clock_config())),
+      source_run_id: None,
     };
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
 
@@ -573,7 +626,7 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
-    let zika = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
+    let zika = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
     let upload = |name: &str, bytes: Vec<u8>| {
       runs
         .upload_input(&created.id, name, &[], &mut &bytes[..], 1 << 20)
@@ -586,18 +639,20 @@ mod tests {
     let request = StartRunRequest {
       command: None,
       config: Some(sparse(json!({ "tree": tree, "metadata": metadata }))),
+      source_run_id: None,
     };
 
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
 
-    let inputs = runs.store().inputs_dir(&created.id);
-    let remaining = fs::read_dir(&inputs)
-      .unwrap()
-      .map(|entry| entry.unwrap().file_name().into_string().unwrap())
-      .collect::<BTreeSet<_>>();
     assert_eq!(
-      ("ok", btreeset! { o!("2"), o!("3") }, false),
-      (terminal_status(&terminal), remaining, replaced.exists())
+      ("ok", false, true, true, Vec::<StoredInput>::new()),
+      (
+        terminal_status(&terminal),
+        replaced.exists(),
+        tree.is_file(),
+        metadata.is_file(),
+        runs.get(&created.id).unwrap().uploads
+      )
     );
   }
 
@@ -626,7 +681,12 @@ mod tests {
     let root = tempdir().unwrap();
     let store = RunStore::open(root.path()).unwrap();
     let record = store
-      .create(config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap())
+      .create(NewRun {
+        id: JobId::random(),
+        config: config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap(),
+        inputs: vec![],
+        source_run_id: None,
+      })
       .unwrap();
     let dir = store.run_dir(&record.id);
     let names: Vec<String> = fs::read_dir(&dir)
@@ -637,10 +697,7 @@ mod tests {
       .collect();
     let reread: RunRecord = json_read_str(fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
     assert_eq!(
-      (
-        vec!["inputs", "out", "run.json"],
-        default_title(&record.created_at)
-      ),
+      (vec!["out", "run.json"], default_title(&record.created_at)),
       (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
     );
   }
@@ -653,6 +710,7 @@ mod tests {
     let request = StartRunRequest {
       command: Some(AppCommand::Clock),
       config: Some(sparse(clock_config())),
+      source_run_id: None,
     };
     let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
     let record = runs.get(&created.id).unwrap();
@@ -778,6 +836,7 @@ mod tests {
           command,
           config: sparse(config),
           defer_start: true,
+          source_run_id: None,
         })
         .unwrap()
     }

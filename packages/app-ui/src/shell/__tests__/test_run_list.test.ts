@@ -10,6 +10,8 @@ function run(id: string, overrides: Partial<RunSummary>): RunSummary {
     command: "timetree",
     status: "ok",
     pinned: false,
+    group_id: id,
+    size: 0,
     created_at: "2026-09-25T08:00:00Z",
     changed_settings: [],
     headline: {},

@@ -334,6 +334,9 @@ export const zRunSummary = z.object({
   command: zAppCommand,
   status: zRunStatus,
   pinned: z.boolean(),
+  source_run_id: zJobId.optional(),
+  group_id: zJobId,
+  size: z.int().gte(0),
   created_at: z.string(),
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
@@ -356,7 +359,8 @@ export const zRunList = z.object({
 export const zCreateRunRequest = z.strictObject({
   command: zAppCommand,
   config: zSparseConfig,
-  defer_start: z.boolean().optional().default(false)
+  defer_start: z.boolean().optional().default(false),
+  source_run_id: zJobId.optional()
 });
 
 /**
@@ -367,6 +371,14 @@ export const zRunInput = z.object({
   path: z.string(),
   size: z.int().gte(0),
   sha256: z.string()
+});
+
+/**
+ * Key of a file in the input store: the SHA-256 of its contents and its file name.
+ */
+export const zStoredInput = z.object({
+  sha256: z.string(),
+  name: z.string()
 });
 
 /**
@@ -462,7 +474,8 @@ export const zUpdateRunRequest = z.strictObject({
  */
 export const zStartRunRequest = z.strictObject({
   command: zAppCommand.optional(),
-  config: zSparseConfig.optional()
+  config: zSparseConfig.optional(),
+  source_run_id: zJobId.optional()
 });
 
 /**
@@ -852,7 +865,7 @@ export const zStalePath = z.object({
 });
 
 /**
- * A file uploaded into a run's `inputs/` folder.
+ * A file uploaded for a run that has not started.
  */
 export const zUploadedInput = z.object({
   name: z.string(),
@@ -1768,12 +1781,17 @@ export const zRunRecordTimetree = z.object({
   title: z.string(),
   status: zRunStatus,
   pinned: z.boolean(),
+  source_run_id: zJobId.optional(),
+  group_id: zJobId,
+  size: z.int().gte(0),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   created_at: z.string(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
@@ -1789,12 +1807,17 @@ export const zRunRecordOptimize = z.object({
   title: z.string(),
   status: zRunStatus,
   pinned: z.boolean(),
+  source_run_id: zJobId.optional(),
+  group_id: zJobId,
+  size: z.int().gte(0),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   created_at: z.string(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
@@ -1810,12 +1833,17 @@ export const zRunRecordPrune = z.object({
   title: z.string(),
   status: zRunStatus,
   pinned: z.boolean(),
+  source_run_id: zJobId.optional(),
+  group_id: zJobId,
+  size: z.int().gte(0),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   created_at: z.string(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
@@ -1831,12 +1859,17 @@ export const zRunRecordAncestral = z.object({
   title: z.string(),
   status: zRunStatus,
   pinned: z.boolean(),
+  source_run_id: zJobId.optional(),
+  group_id: zJobId,
+  size: z.int().gte(0),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   created_at: z.string(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
@@ -1852,12 +1885,17 @@ export const zRunRecordClock = z.object({
   title: z.string(),
   status: zRunStatus,
   pinned: z.boolean(),
+  source_run_id: zJobId.optional(),
+  group_id: zJobId,
+  size: z.int().gte(0),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   created_at: z.string(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
@@ -1869,7 +1907,10 @@ export const zRunRecordClock = z.object({
 });
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
  */
 export const zRunRecord = z.discriminatedUnion('command', [
   zRunRecordTimetree,
@@ -2215,6 +2256,17 @@ export const zAppEventRunUpdated = z.object({
 });
 
 /**
+ * A run was deleted, with its folder and the uploaded inputs that no other run references.
+ */
+export const zAppEventRunRemoved = z.object({
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
+  time: z.string(),
+  stale: z.array(zStalePath),
+  id: zJobId,
+  kind: z.literal('run-removed')
+});
+
+/**
  * The stream cannot continue after the requested event, because the back end no longer keeps that event or the
  * event belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
@@ -2293,6 +2345,7 @@ export const zAppEventExamplesDownload = z.object({
 export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventRunCreated,
   zAppEventRunUpdated,
+  zAppEventRunRemoved,
   zAppEventExamplesDownload,
   zAppEventResync
 ]);
@@ -2533,16 +2586,26 @@ export const zRunsListResponse = zRunList;
 export const zRunsCreateBody = zCreateRunRequest;
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
  */
 export const zRunsCreateResponse = zRunRecord;
+
+export const zRunsDeletePath = z.object({
+  id: zJobId
+});
 
 export const zRunsGetPath = z.object({
   id: zJobId
 });
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
  */
 export const zRunsGetResponse = zRunRecord;
 
@@ -2560,6 +2623,15 @@ export const zRunsUpdatePath = z.object({
  */
 export const zRunsUpdateResponse = zRunSummary;
 
+export const zRunsSettingsPath = z.object({
+  id: zJobId
+});
+
+/**
+ * Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.
+ */
+export const zRunsSettingsResponse = zSparseConfig;
+
 /**
  * Request to start a created run.
  */
@@ -2570,7 +2642,10 @@ export const zRunsStartPath = z.object({
 });
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
  */
 export const zRunsStartResponse = zRunRecord;
 
@@ -2691,7 +2766,7 @@ export const zRunsUploadInputQuery = z.object({
 });
 
 /**
- * A file uploaded into a run's `inputs/` folder.
+ * A file uploaded for a run that has not started.
  */
 export const zRunsUploadInputResponse = zUploadedInput;
 

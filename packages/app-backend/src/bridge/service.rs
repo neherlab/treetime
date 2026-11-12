@@ -66,7 +66,7 @@ impl AppService {
       config,
     };
     let hook = self.hook(request.command);
-    Ok(run_config(&request, hook))
+    Ok(run_config(&request, hook, self.runs.input_store()))
   }
 
   pub fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {
@@ -108,6 +108,14 @@ impl AppService {
 
   pub fn update_run(&self, id: &JobId, request: UpdateRunRequest) -> Result<RunSummary, Report> {
     self.runs.update(id, request)
+  }
+
+  pub fn delete_run(&self, id: &JobId) -> Result<(), Report> {
+    self.runs.delete(id)
+  }
+
+  pub fn run_settings(&self, id: &JobId) -> Result<SparseConfig, Report> {
+    self.runs.settings(id)
   }
 
   pub fn cancel_run(&self, id: &JobId) -> Result<CancelRunResponse, Report> {

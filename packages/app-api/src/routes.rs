@@ -29,6 +29,7 @@ use app_backend::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
 use app_commands::config::schema::draft2020_settings;
+use app_commands::json_value::SparseConfig;
 use axum::Router;
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, Uri, header};
@@ -193,7 +194,22 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         .patch_with(runs_update, |op| {
           op.id("runsUpdate")
             .description("Change the title or pinned state of a run.")
+        })
+        .delete_with(runs_delete, |op| {
+          op.id("runsDelete").description(
+            "Delete a run that is not computing, with its folder and the uploaded inputs that no other run \
+             references. Cancel a computing run first. A run that is already deleted answers not found.",
+          )
         }),
+    )
+    .api_route(
+      "/api/runs/{id}/settings",
+      get_with(runs_settings, |op| {
+        op.id("runsSettings").description(
+          "Settings of a run, with each input path as requests take it and without the output paths, to start a \
+           new run from the settings of this one.",
+        )
+      }),
     )
     .api_route(
       "/api/runs/{id}/start",
@@ -210,8 +226,8 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       "/api/runs/{id}/inputs",
       delete_with(runs_release_input, |op| {
         op.id("runsReleaseInput").description(
-          "Remove an uploaded file from the `inputs/` folder of a run that has not started. Removing an upload that \
-           is already gone succeeds.",
+          "Remove an uploaded file from a run that has not started; the file stays while another run uses it. \
+           Removing an upload that is already gone succeeds.",
         )
       }),
     )
@@ -263,9 +279,9 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       "/api/events",
       get_with(events, |op| {
         op.id("events").description(
-          "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, \
-           either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now \
-           on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end \
+          "Stream of changes to the runs: `run-created`, `run-updated`, and `run-removed`, each with the REST paths \
+           it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without \
+           `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end \
            no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` \
            event instead.",
         )
@@ -290,8 +306,8 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       put_with(runs_upload_input, |op| {
         op.id("runsUploadInput")
           .description(
-            "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
-             for it in the run's configuration.",
+            "Store a file for a run that has not started; the answer names the path to use for it in the run's \
+             configuration.",
           )
           .response_with::<413, AppError, _>(|response| {
             response.description("The inputs of the run exceed the upload limit")
@@ -368,6 +384,22 @@ async fn runs_update(
   ApiJson(request): ApiJson<UpdateRunRequest>,
 ) -> Result<ApiJson<RunSummary>, AppError> {
   call(&state, move |service| service.update_run(&id, request))
+    .await
+    .map(ApiJson)
+}
+
+async fn runs_delete(
+  State(state): State<Arc<AppState>>,
+  ApiPath(RunPath { id }): ApiPath<RunPath>,
+) -> Result<(), AppError> {
+  call(&state, move |service| service.delete_run(&id)).await
+}
+
+async fn runs_settings(
+  State(state): State<Arc<AppState>>,
+  ApiPath(RunPath { id }): ApiPath<RunPath>,
+) -> Result<ApiJson<SparseConfig>, AppError> {
+  call(&state, move |service| service.run_settings(&id))
     .await
     .map(ApiJson)
 }
@@ -491,7 +523,7 @@ async fn runs_upload_input(
 struct InputPath {
   /// Id of a run that has not started.
   id: JobId,
-  /// File name inside the run's `inputs/` folder.
+  /// File name of the upload.
   name: String,
 }
 

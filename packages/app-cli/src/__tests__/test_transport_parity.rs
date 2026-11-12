@@ -163,10 +163,11 @@ mod tests {
       )
       .unwrap();
       assert!(text.contains("\"status\":\"ok\""), "API run failed: {text}");
-      let request = Request::get(format!("/api/runs/{id}")).body(Body::empty()).unwrap();
-      let record = response_json(router.oneshot(request).await.unwrap()).await;
+      let request = Request::get(format!("/api/runs/{id}/settings"))
+        .body(Body::empty())
+        .unwrap();
       ApiRun {
-        config: record["config"].clone(),
+        config: response_json(router.oneshot(request).await.unwrap()).await,
         out_dir: runs_dir.join(&id).join("out"),
       }
     }

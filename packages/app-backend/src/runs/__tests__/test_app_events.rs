@@ -294,6 +294,7 @@ mod tests {
         command: AppCommand::Clock,
         config: sparse(json!({ "tree": zika.join("tree.nwk"), "metadata": zika.join("metadata.tsv") })),
         defer_start: true,
+        source_run_id: None,
       }
     }
 

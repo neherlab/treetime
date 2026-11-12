@@ -211,7 +211,7 @@
             }
           },
           "200": {
-            "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
             "content": {
               "application/json": {
                 "schema": {
@@ -252,7 +252,7 @@
             }
           },
           "200": {
-            "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,6 +260,38 @@
                 }
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a run that is not computing, with its folder and the uploaded inputs that no other run references. Cancel a computing run first. A run that is already deleted answers not found.",
+        "operationId": "runsDelete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "no content"
           }
         }
       },
@@ -314,6 +346,47 @@
         }
       }
     },
+    "/api/runs/{id}/settings": {
+      "get": {
+        "description": "Settings of a run, with each input path as requests take it and without the output paths, to start a new run from the settings of this one.",
+        "operationId": "runsSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparseConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{id}/start": {
       "post": {
         "description": "Start a created run.",
@@ -354,7 +427,7 @@
             }
           },
           "200": {
-            "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
             "content": {
               "application/json": {
                 "schema": {
@@ -409,7 +482,7 @@
     },
     "/api/runs/{id}/inputs": {
       "delete": {
-        "description": "Remove an uploaded file from the `inputs/` folder of a run that has not started. Removing an upload that is already gone succeeds.",
+        "description": "Remove an uploaded file from a run that has not started; the file stays while another run uses it. Removing an upload that is already gone succeeds.",
         "operationId": "runsReleaseInput",
         "parameters": [
           {
@@ -724,7 +797,7 @@
     },
     "/api/events": {
       "get": {
-        "description": "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` event instead.",
+        "description": "Stream of changes to the runs: `run-created`, `run-updated`, and `run-removed`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` event instead.",
         "operationId": "events",
         "parameters": [
           {
@@ -861,7 +934,7 @@
     },
     "/api/runs/{id}/inputs/{name}": {
       "put": {
-        "description": "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.",
+        "description": "Store a file for a run that has not started; the answer names the path to use for it in the run's configuration.",
         "operationId": "runsUploadInput",
         "parameters": [
           {
@@ -878,10 +951,10 @@
           {
             "in": "path",
             "name": "name",
-            "description": "File name inside the run's `inputs/` folder.",
+            "description": "File name of the upload.",
             "required": true,
             "schema": {
-              "description": "File name inside the run's `inputs/` folder.",
+              "description": "File name of the upload.",
               "type": "string"
             },
             "style": "simple"
@@ -924,7 +997,7 @@
             }
           },
           "200": {
-            "description": "A file uploaded into a run's `inputs/` folder.",
+            "description": "A file uploaded for a run that has not started.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2118,6 +2191,21 @@
             "description": "Whether the run is pinned.",
             "type": "boolean"
           },
+          "source_run_id": {
+            "description": "Run whose settings this run started from. The source may have been deleted since.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
           "created_at": {
             "description": "Time the run was created.",
             "type": "string"
@@ -2156,6 +2244,8 @@
           "command",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "changed_settings",
           "headline"
@@ -2279,6 +2369,11 @@
             "description": "Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.",
             "type": "boolean",
             "default": false
+          },
+          "source_run_id": {
+            "description": "Run whose settings the new run starts from, such as the source of a variant.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
           }
         },
         "additionalProperties": false,
@@ -2288,7 +2383,7 @@
         ]
       },
       "RunRecord": {
-        "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+        "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
         "oneOf": [
           {
             "$ref": "#/components/schemas/RunRecordTimetree"
@@ -2326,7 +2421,7 @@
             "type": "string"
           },
           "path": {
-            "description": "Path of the file, as the run read it.",
+            "description": "Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file, the\nabsolute path for a file read from elsewhere.",
             "type": "string"
           },
           "size": {
@@ -2345,6 +2440,24 @@
           "path",
           "size",
           "sha256"
+        ]
+      },
+      "StoredInput": {
+        "description": "Key of a file in the input store: the SHA-256 of its contents and its file name.",
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "description": "SHA-256 of the file contents, as lowercase hexadecimal.",
+            "type": "string"
+          },
+          "name": {
+            "description": "File name of the upload.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "name"
         ]
       },
       "OutputFile": {
@@ -2545,6 +2658,11 @@
           "config": {
             "description": "Configuration that replaces the one given at creation, for example to point at uploaded inputs.",
             "$ref": "#/components/schemas/SparseConfig",
+            "x-unset": true
+          },
+          "source_run_id": {
+            "description": "Run whose settings the run starts from; replaces the one given at creation.",
+            "$ref": "#/components/schemas/JobId",
             "x-unset": true
           }
         },
@@ -4135,6 +4253,9 @@
             "$ref": "#/components/schemas/AppEventRunUpdated"
           },
           {
+            "$ref": "#/components/schemas/AppEventRunRemoved"
+          },
+          {
             "$ref": "#/components/schemas/AppEventExamplesDownload"
           },
           {
@@ -4146,6 +4267,7 @@
           "mapping": {
             "run-created": "#/components/schemas/AppEventRunCreated",
             "run-updated": "#/components/schemas/AppEventRunUpdated",
+            "run-removed": "#/components/schemas/AppEventRunRemoved",
             "examples-download": "#/components/schemas/AppEventExamplesDownload",
             "resync": "#/components/schemas/AppEventResync"
           }
@@ -4211,15 +4333,15 @@
         }
       },
       "UploadedInput": {
-        "description": "A file uploaded into a run's `inputs/` folder.",
+        "description": "A file uploaded for a run that has not started.",
         "type": "object",
         "properties": {
           "name": {
-            "description": "File name inside the run's `inputs/` folder.",
+            "description": "File name of the upload.",
             "type": "string"
           },
           "path": {
-            "description": "Path to use for the file in the run's configuration.",
+            "description": "Path to use for the file in the configurations of runs, checks, and other requests.",
             "type": "string"
           },
           "size": {
@@ -7573,7 +7695,7 @@
         "type": "object",
         "properties": {
           "config": {
-            "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds, and\n`output_all` set to `out`.",
+            "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds,\n`output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.",
             "$ref": "#/components/schemas/SparseConfig"
           },
           "code": {
@@ -7654,6 +7776,28 @@
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
           },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "created_at": {
             "description": "Time the run was created.",
             "type": "string"
@@ -7679,10 +7823,17 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
             }
           },
           "config_hash": {
@@ -7733,9 +7884,12 @@
           "title",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7763,6 +7917,28 @@
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
           },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "created_at": {
             "description": "Time the run was created.",
             "type": "string"
@@ -7788,10 +7964,17 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
             }
           },
           "config_hash": {
@@ -7842,9 +8025,12 @@
           "title",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7872,6 +8058,28 @@
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
           },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "created_at": {
             "description": "Time the run was created.",
             "type": "string"
@@ -7897,10 +8105,17 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
             }
           },
           "config_hash": {
@@ -7951,9 +8166,12 @@
           "title",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7981,6 +8199,28 @@
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
           },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "created_at": {
             "description": "Time the run was created.",
             "type": "string"
@@ -8006,10 +8246,17 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
             }
           },
           "config_hash": {
@@ -8060,9 +8307,12 @@
           "title",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -8090,6 +8340,28 @@
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
           },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "created_at": {
             "description": "Time the run was created.",
             "type": "string"
@@ -8115,10 +8387,17 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
             }
           },
           "config_hash": {
@@ -8169,9 +8448,12 @@
           "title",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -8734,6 +9016,44 @@
           "stale",
           "kind",
           "run"
+        ]
+      },
+      "AppEventRunRemoved": {
+        "description": "A run was deleted, with its folder and the uploaded inputs that no other run references.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StalePath"
+            }
+          },
+          "id": {
+            "description": "Id of the deleted run.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-removed"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "id"
         ]
       },
       "AppEventExamplesDownload": {

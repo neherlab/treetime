@@ -1,36 +1,34 @@
 use crate::atomic_write::write_atomically;
-use crate::command::{AppCommandExt, config_from_request, ensure_in_apps};
+use crate::command::{AppCommandExt, config_from_request, config_from_settings, ensure_in_apps};
 use crate::job::{CancelToken, JobEvent, JobId, TerminalEvent};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
-use crate::runs::errors::{UploadTooLarge, conflict, invalid};
+use crate::runs::errors::{conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
-use crate::runs::inputs::file_sha256;
+use crate::runs::input_store::{InputStore, StoredInput, validate_upload_name};
 use crate::runs::lifecycle::StartedRun;
 use crate::runs::record::{
-  CreateRunRequest, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest, UpdateRunRequest,
+  CreateRunRequest, RunInput, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
+  UpdateRunRequest,
 };
-use crate::runs::store::RunStore;
+use crate::runs::run_paths::{PortablePaths, resolve_settings};
+use crate::runs::store::{NewRun, RunStore};
+use app_commands::command_config::CommandConfig;
 use app_commands::json_value::SparseConfig;
 use chrono::{TimeDelta, Utc};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use parking_lot::Mutex;
 use schemars::JsonSchema;
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::OsStr;
 use std::fs;
-use std::io::{self, Read, Write};
-use std::path::{Component, Path, PathBuf};
+use std::io::{self, Read};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use treetime_utils::cast::ToF64Exact;
-use treetime_utils::fmt::float::float_to_significant_digits;
-use treetime_utils::make_internal_error;
 use treetime_utils::o;
-
-const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
 
 const APP_EVENT_CAPACITY: usize = 1024;
 
@@ -42,6 +40,7 @@ const UNSTARTED_RUN_LIFETIME: TimeDelta = TimeDelta::days(1);
 
 pub struct RunManager {
   store: RunStore,
+  input_store: InputStore,
   active: Mutex<BTreeMap<JobId, Arc<ActiveRun>>>,
   pub(super) inputs: Mutex<BTreeMap<JobId, Arc<RunInputs>>>,
   records: Mutex<()>,
@@ -57,15 +56,24 @@ impl RunManager {
     store
       .remove_unstarted(Utc::now() - UNSTARTED_RUN_LIFETIME)
       .wrap_err("When removing runs that were created for uploads and never started")?;
+    let input_store = store.input_store();
+    input_store
+      .remove_partial_uploads()
+      .wrap_err("When removing the uploads that a previous process left unfinished")?;
     let first_app_seq =
       u64::try_from(Utc::now().timestamp_micros()).wrap_err("When numbering the app events from the current time")?;
-    Ok(Arc::new(Self {
+    let manager = Arc::new(Self {
       store,
+      input_store,
       active: Mutex::new(BTreeMap::new()),
       inputs: Mutex::new(BTreeMap::new()),
       records: Mutex::new(()),
       app_events: AppEventLog::new(APP_EVENT_CAPACITY, first_app_seq),
-    }))
+    });
+    manager
+      .remove_unreferenced_inputs()
+      .wrap_err("When removing the uploaded inputs that no run references")?;
+    Ok(manager)
   }
 
   pub fn app_events(&self) -> &AppEventLog {
@@ -76,11 +84,14 @@ impl RunManager {
     &self.store
   }
 
+  pub fn input_store(&self) -> &InputStore {
+    &self.input_store
+  }
+
   pub fn list(&self) -> Result<RunList, Report> {
     Ok(RunList {
       runs: self
-        .store
-        .list()?
+        .sized(self.store.list()?)?
         .iter()
         .filter(|record| record.config.command().in_apps())
         .map(RunRecord::summary)
@@ -94,13 +105,37 @@ impl RunManager {
   }
 
   pub fn get(&self, id: &JobId) -> Result<RunRecord, Report> {
-    self.store.read(id)
+    self.with_size(self.store.read(id)?)
+  }
+
+  pub fn settings(&self, id: &JobId) -> Result<SparseConfig, Report> {
+    let record = self.store.read(id)?;
+    let command = record.config.command();
+    let mut settings = resolve_settings(
+      command,
+      &record.config.settings()?,
+      &record.inputs,
+      &self.store.run_dir(id),
+      &self.input_store,
+    )?;
+    command.remove_output_paths(&mut settings)?;
+    Ok(SparseConfig(settings))
   }
 
   pub fn create(&self, request: &CreateRunRequest) -> Result<RunRecord, Report> {
-    let record = self
-      .store
-      .create(config_from_request(request.command, &request.config)?)?;
+    let id = JobId::random();
+    let config = config_from_request(request.command, &request.config)?;
+    let record = {
+      let _records = self.records.lock();
+      let PortableConfig { config, inputs } = self.portable(&id, &config)?;
+      self.store.create(NewRun {
+        id,
+        config,
+        inputs,
+        source_run_id: request.source_run_id.clone(),
+      })?
+    };
+    let record = self.with_size(record)?;
     self.app_events.append(
       AppChange::RunCreated { run: record.summary() },
       run_stale_paths(&record.id),
@@ -127,17 +162,35 @@ impl RunManager {
       }
       let command = request.command.unwrap_or_else(|| record.config.command());
       ensure_in_apps(command)?;
-      if let Some(config) = &request.config {
-        record.config = config_from_request(command, config)?;
-      } else if command != record.config.command() {
-        record.config = config_from_request(command, &SparseConfig(record.config.settings()?))?;
+      let config = match &request.config {
+        Some(config) => config_from_request(command, config)?,
+        None if command != record.config.command() => {
+          let current = resolve_settings(
+            record.config.command(),
+            &record.config.settings()?,
+            &record.inputs,
+            &self.store.run_dir(id),
+            &self.input_store,
+          )?;
+          config_from_request(command, &SparseConfig(current))?
+        },
+        None => record.config.clone(),
+      };
+      if request.config.is_some() || command != record.config.command() {
+        let PortableConfig { config, inputs } = self.portable(id, &config)?;
+        record.config = config;
+        record.inputs = inputs;
       }
-      remove_unused_uploads(&self.store.inputs_dir(id), &record.config.settings()?)?;
+      if let Some(source) = &request.source_run_id {
+        record.source_run_id = Some(source.clone());
+      }
+      record.uploads.clear();
       record.status = RunStatus::Running;
       record.started_at = Some(Utc::now());
       Ok(())
     })?;
     self.inputs.lock().remove(id);
+    self.remove_unreferenced_inputs()?;
     let run = if let Some(run) = active.get(id) {
       Arc::clone(run)
     } else {
@@ -179,6 +232,38 @@ impl RunManager {
     Ok(true)
   }
 
+  pub fn delete(&self, id: &JobId) -> Result<(), Report> {
+    let mut active = self.active.lock();
+    let inputs = self.inputs.lock().get(id).cloned();
+    let _upload = match &inputs {
+      Some(inputs) => Some(
+        inputs
+          .lock
+          .try_lock()
+          .ok_or_else(|| upload_in_progress(id, inputs, "delete"))?,
+      ),
+      None => None,
+    };
+    {
+      let _records = self.records.lock();
+      let record = self.store.read(id)?;
+      if record.status == RunStatus::Running || active.get(id).is_some_and(|run| run.is_started()) {
+        return Err(conflict(format!(
+          "run `{}` is computing; cancel it before deleting it",
+          id.as_str()
+        )));
+      }
+      self.store.remove(id)?;
+    }
+    active.remove(id);
+    self.inputs.lock().remove(id);
+    self.remove_unreferenced_inputs()?;
+    self
+      .app_events
+      .append(AppChange::RunRemoved { id: id.clone() }, run_stale_paths(id));
+    Ok(())
+  }
+
   pub fn subscribe(&self, id: &JobId, from: u64, mut subscriber: Subscriber) -> Result<(), Report> {
     let mut active = self.active.lock();
     if let Some(run) = active.get(id) {
@@ -216,8 +301,13 @@ impl RunManager {
     Ok(record.summary())
   }
 
-  pub fn input_dirs(&self) -> Result<Vec<PathBuf>, Report> {
-    self.store.input_dirs()
+  pub fn input_dirs(&self) -> Vec<PathBuf> {
+    let root = self.input_store.root();
+    if root.is_dir() {
+      vec![root.to_path_buf()]
+    } else {
+      vec![]
+    }
   }
 
   pub fn upload_input(
@@ -244,9 +334,17 @@ impl RunManager {
       return Err(started(id, RELEASE_AFTER_START));
     };
     let _inputs = inputs.lock.lock();
-    self.ensure_unstarted(id, RELEASE_AFTER_START)?;
-    let file = upload_file(&self.store.inputs_dir(id), path).ok_or_else(|| not_an_upload(id, path))?;
-    remove_upload(&file)
+    let key = self.input_store.key_of(path).ok_or_else(|| not_an_upload(id, path))?;
+    {
+      let _records = self.records.lock();
+      let mut record = self.store.read(id)?;
+      if record.status != RunStatus::Created {
+        return Err(started(id, RELEASE_AFTER_START));
+      }
+      record.uploads.retain(|upload| *upload != key);
+      self.store.write(&record)?;
+    }
+    self.remove_unreferenced_inputs()
   }
 
   fn run_inputs(&self, id: &JobId) -> Result<Option<Arc<RunInputs>>, Report> {
@@ -268,55 +366,50 @@ impl RunManager {
     body: &mut dyn Read,
     max_total_size: usize,
   ) -> Result<UploadedInput, Report> {
-    self.ensure_unstarted(id, UPLOAD_AFTER_START)?;
-    let dir = self.store.inputs_dir(id);
+    let record = self.store.read(id)?;
+    if record.status != RunStatus::Created {
+      return Err(started(id, UPLOAD_AFTER_START));
+    }
     let replaced = replaces
       .iter()
-      .map(|path| upload_file(&dir, path).ok_or_else(|| not_an_upload(id, path)))
+      .map(|path| {
+        self
+          .input_store
+          .key_of(path)
+          .filter(|key| record.uploads.contains(key))
+          .ok_or_else(|| not_an_upload(id, path))
+      })
       .collect::<Result<BTreeSet<_>, _>>()?;
-    let replaced_size = replaced.iter().map(|path| file_size(path)).sum::<Result<usize, _>>()?;
-    let allowed = max_total_size.saturating_sub(files_size(&dir)?.saturating_sub(replaced_size));
-    let folder = claim_upload_folder(&dir)?;
-    let target = folder.join(name);
-
-    let written = write_atomically(&target, |file| {
-      let mut buffer = vec![0_u8; UPLOAD_BUFFER_SIZE];
-      let mut size: usize = 0;
-      loop {
-        let read = body.read(&mut buffer).wrap_err("When receiving the upload")?;
-        if read == 0 {
-          return Ok(());
-        }
-        size += read;
-        if size > allowed {
-          return Err(Report::new(UploadTooLarge {
-            limit: format_size(max_total_size),
-            name: name.to_owned(),
-          }));
-        }
-        file.write_all(&buffer[..read]).wrap_err("When storing the upload")?;
+    let retained = record
+      .uploads
+      .iter()
+      .unique()
+      .filter(|key| !replaced.contains(key))
+      .map(|key| stored_size(&self.input_store, key))
+      .sum::<Result<usize, _>>()?;
+    let upload = self
+      .input_store
+      .store(name, body, max_total_size.saturating_sub(retained), max_total_size)?;
+    let size = upload.size();
+    let key = {
+      let _records = self.records.lock();
+      let mut record = self.store.read(id)?;
+      if record.status != RunStatus::Created {
+        return Err(started(id, UPLOAD_AFTER_START));
       }
-    });
-    if let Err(report) = written {
-      return Err(match remove_dir_all_if_exists(&folder) {
-        Ok(()) => report,
-        Err(err) => err.wrap_err(report),
-      });
-    }
-    let (size, sha256) = file_sha256(&target)?;
+      let key = self.input_store.commit(upload)?;
+      if !record.uploads.contains(&key) {
+        record.uploads.push(key.clone());
+        self.store.write(&record)?;
+      }
+      key
+    };
     Ok(UploadedInput {
       name: name.to_owned(),
-      path: target,
+      path: self.input_store.path(&key),
       size,
-      sha256,
+      sha256: key.sha256,
     })
-  }
-
-  fn ensure_unstarted(&self, id: &JobId, consequence: &str) -> Result<(), Report> {
-    if self.store.read(id)?.status != RunStatus::Created {
-      return Err(started(id, consequence));
-    }
-    Ok(())
   }
 
   pub fn files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
@@ -366,29 +459,99 @@ impl RunManager {
     id: &JobId,
     change: impl FnOnce(&mut RunRecord) -> Result<(), Report>,
   ) -> Result<RunRecord, Report> {
-    let _records = self.records.lock();
-    let mut record = self.store.read(id)?;
-    change(&mut record)?;
-    self.store.write(&record)?;
+    let record = {
+      let _records = self.records.lock();
+      let mut record = self.store.read(id)?;
+      change(&mut record)?;
+      self.store.write(&record)?;
+      record
+    };
+    let record = self.with_size(record)?;
     self
       .app_events
       .append(AppChange::RunUpdated { run: record.summary() }, run_stale_paths(id));
     Ok(record)
   }
 
-  pub(super) fn finish(&self, id: &JobId) {
-    self.active.lock().remove(id);
+  pub(super) fn finish(&self, id: &JobId, end: impl FnOnce()) {
+    let mut active = self.active.lock();
+    end();
+    active.remove(id);
+  }
+
+  fn portable(&self, id: &JobId, config: &CommandConfig) -> Result<PortableConfig, Report> {
+    let command = config.command();
+    let mut settings = config.settings()?;
+    let paths = PortablePaths::of_settings(command, &settings, &self.input_store)?.in_run(&self.store.run_dir(id));
+    let inputs = paths.stored_inputs(command, &settings)?;
+    paths.apply(command, &mut settings)?;
+    Ok(PortableConfig {
+      config: config_from_settings(command, &Value::Object(settings))?,
+      inputs,
+    })
+  }
+
+  fn with_size(&self, mut record: RunRecord) -> Result<RunRecord, Report> {
+    let others = self.store.list()?;
+    let references = others
+      .iter()
+      .filter(|other| other.id != record.id)
+      .chain([&record])
+      .flat_map(stored_references)
+      .fold(BTreeMap::new(), count_reference);
+    record.size = self.size_of(&record, &references)?;
+    Ok(record)
+  }
+
+  fn sized(&self, records: Vec<RunRecord>) -> Result<Vec<RunRecord>, Report> {
+    let references = records
+      .iter()
+      .flat_map(stored_references)
+      .fold(BTreeMap::new(), count_reference);
+    records
+      .into_iter()
+      .map(|mut record| {
+        record.size = self.size_of(&record, &references)?;
+        Ok(record)
+      })
+      .collect()
+  }
+
+  fn size_of(&self, record: &RunRecord, references: &BTreeMap<StoredInput, usize>) -> Result<usize, Report> {
+    let outputs = files_size(&self.store.out_dir(&record.id))?;
+    let own_inputs = stored_references(record)
+      .iter()
+      .filter(|key| references.get(*key) == Some(&1))
+      .map(|key| stored_size(&self.input_store, key))
+      .sum::<Result<usize, _>>()?;
+    Ok(outputs + own_inputs)
+  }
+
+  fn remove_unreferenced_inputs(&self) -> Result<(), Report> {
+    let _records = self.records.lock();
+    let referenced = self
+      .store
+      .list()?
+      .iter()
+      .flat_map(stored_references)
+      .collect::<BTreeSet<_>>();
+    for key in self.input_store.keys()? {
+      if !referenced.contains(&key) {
+        self.input_store.remove(&key)?;
+      }
+    }
+    Ok(())
   }
 }
 
 pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
 
-/// A file uploaded into a run's `inputs/` folder.
+/// A file uploaded for a run that has not started.
 #[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct UploadedInput {
-  /// File name inside the run's `inputs/` folder.
+  /// File name of the upload.
   pub name: String,
-  /// Path to use for the file in the run's configuration.
+  /// Path to use for the file in the configurations of runs, checks, and other requests.
   pub path: PathBuf,
   /// Size in bytes.
   pub size: usize,
@@ -416,9 +579,42 @@ impl ActiveRun {
   }
 }
 
+#[derive(Default)]
+pub(super) struct RunInputs {
+  lock: Mutex<()>,
+  uploading: Mutex<Option<String>>,
+}
+
+struct PortableConfig {
+  config: CommandConfig,
+  inputs: Vec<RunInput>,
+}
+
+fn stored_references(record: &RunRecord) -> BTreeSet<StoredInput> {
+  record
+    .uploads
+    .iter()
+    .cloned()
+    .chain(record.inputs.iter().filter_map(RunInput::stored))
+    .collect()
+}
+
+fn count_reference(mut counts: BTreeMap<StoredInput, usize>, key: StoredInput) -> BTreeMap<StoredInput, usize> {
+  *counts.entry(key).or_default() += 1;
+  counts
+}
+
+fn stored_size(store: &InputStore, key: &StoredInput) -> Result<usize, Report> {
+  file_size(&store.path(key))
+}
+
 fn files_size(dir: &Path) -> Result<usize, Report> {
-  fs::read_dir(dir)
-    .wrap_err_with(|| format!("When listing '{}'", dir.display()))?
+  let entries = match fs::read_dir(dir) {
+    Ok(entries) => entries,
+    Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(0),
+    Err(err) => return Err(Report::new(err).wrap_err(format!("When listing '{}'", dir.display()))),
+  };
+  entries
     .map(|entry| -> Result<usize, Report> {
       let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
       let path = entry.path();
@@ -436,34 +632,6 @@ fn files_size(dir: &Path) -> Result<usize, Report> {
     .sum()
 }
 
-#[expect(
-  clippy::create_dir,
-  reason = "`create_dir` fails on an existing folder, which claims each upload folder for one upload"
-)]
-fn claim_upload_folder(dir: &Path) -> Result<PathBuf, Report> {
-  for number in 1_usize.. {
-    let folder = dir.join(number.to_string());
-    match fs::create_dir(&folder) {
-      Ok(()) => return Ok(folder),
-      Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {},
-      Err(err) => return Err(Report::new(err).wrap_err(format!("When creating '{}'", folder.display()))),
-    }
-  }
-  make_internal_error!("No free upload folder in '{}'", dir.display())
-}
-
-fn upload_file(inputs_dir: &Path, path: &Path) -> Option<PathBuf> {
-  let mut components = path.strip_prefix(inputs_dir).ok()?.components();
-  let (Some(Component::Normal(folder)), Some(Component::Normal(name)), None) =
-    (components.next(), components.next(), components.next())
-  else {
-    return None;
-  };
-  let is_upload = folder.to_str().is_some_and(is_upload_folder_name)
-    && name.to_str().is_some_and(|name| validate_upload_name(name).is_ok());
-  is_upload.then(|| inputs_dir.join(folder).join(name))
-}
-
 fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {
   let uploading = inputs.uploading.lock().clone();
   conflict(format!(
@@ -471,12 +639,6 @@ fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {
     id.as_str(),
     uploading.map_or_else(|| o!("a file"), |name| format!("`{name}`"))
   ))
-}
-
-#[derive(Default)]
-pub(super) struct RunInputs {
-  lock: Mutex<()>,
-  uploading: Mutex<Option<String>>,
 }
 
 fn started(id: &JobId, consequence: &str) -> Report {
@@ -497,102 +659,5 @@ fn file_size(path: &Path) -> Result<usize, Report> {
     Ok(_) => Ok(0),
     Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(0),
     Err(err) => Err(Report::new(err).wrap_err(format!("When reading the size of '{}'", path.display()))),
-  }
-}
-
-fn remove_dir_all_if_exists(folder: &Path) -> Result<(), Report> {
-  match fs::remove_dir_all(folder) {
-    Err(err) if err.kind() != io::ErrorKind::NotFound => {
-      Err(Report::new(err).wrap_err(format!("When removing the upload folder '{}'", folder.display())))
-    },
-    _ => Ok(()),
-  }
-}
-
-fn remove_unused_uploads(inputs_dir: &Path, settings: &Map<String, Value>) -> Result<(), Report> {
-  let referenced = settings
-    .values()
-    .flat_map(string_values)
-    .map(PathBuf::from)
-    .collect::<BTreeSet<_>>();
-  for folder in fs::read_dir(inputs_dir).wrap_err_with(|| format!("When listing '{}'", inputs_dir.display()))? {
-    let folder = folder
-      .wrap_err_with(|| format!("When listing '{}'", inputs_dir.display()))?
-      .path();
-    if !folder.is_dir()
-      || !folder
-        .file_name()
-        .and_then(OsStr::to_str)
-        .is_some_and(is_upload_folder_name)
-    {
-      continue;
-    }
-    for file in fs::read_dir(&folder).wrap_err_with(|| format!("When listing '{}'", folder.display()))? {
-      let file = file
-        .wrap_err_with(|| format!("When listing '{}'", folder.display()))?
-        .path();
-      if !referenced.contains(&file) {
-        remove_upload(&file)?;
-      }
-    }
-    match fs::remove_dir(&folder) {
-      Err(err) if err.kind() != io::ErrorKind::DirectoryNotEmpty => {
-        return Err(Report::new(err).wrap_err(format!("When removing the upload folder '{}'", folder.display())));
-      },
-      _ => {},
-    }
-  }
-  Ok(())
-}
-
-fn remove_upload(file: &Path) -> Result<(), Report> {
-  match fs::remove_file(file) {
-    Err(err) if err.kind() != io::ErrorKind::NotFound => {
-      Err(Report::new(err).wrap_err(format!("When removing the upload '{}'", file.display())))
-    },
-    _ => Ok(()),
-  }
-}
-
-fn is_upload_folder_name(name: &str) -> bool {
-  name.parse::<usize>().is_ok()
-}
-
-fn string_values(value: &Value) -> Vec<&str> {
-  match value {
-    Value::String(text) => vec![text.as_str()],
-    Value::Array(items) => items.iter().flat_map(string_values).collect(),
-    Value::Object(fields) => fields.values().flat_map(string_values).collect(),
-    Value::Null | Value::Bool(_) | Value::Number(_) => vec![],
-  }
-}
-
-fn validate_upload_name(name: &str) -> Result<(), Report> {
-  let mut components = Path::new(name).components();
-  let single = matches!(components.next(), Some(Component::Normal(_))) && components.next().is_none();
-  if !single || name.starts_with('.') || name.contains(['/', '\\']) {
-    return Err(invalid(format!(
-      "upload name `{name}` must be a plain file name without directories"
-    )));
-  }
-  Ok(())
-}
-
-fn format_size(bytes: usize) -> String {
-  const UNITS: [&str; 5] = ["bytes", "KiB", "MiB", "GiB", "TiB"];
-  let (value, unit) = UNITS
-    .iter()
-    .skip(1)
-    .fold((bytes.to_f64_exact(), UNITS[0]), |(value, unit), next| {
-      if value >= 1024.0 {
-        (value / 1024.0, *next)
-      } else {
-        (value, unit)
-      }
-    });
-  if unit == UNITS[0] {
-    format!("{bytes} bytes")
-  } else {
-    format!("{} {unit}", float_to_significant_digits(value, 3))
   }
 }

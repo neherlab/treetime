@@ -44,13 +44,10 @@ impl JobExecutor {
   pub fn read_input(&self, run_id: &str, path: &str) -> Result<FileChunks, Report> {
     self.with_waiting(run_id, |prepared| {
       let path = Path::new(path);
-      if !prepared.job().inputs.iter().any(|input| input.path == path) {
-        return Err(invalid(format!(
-          "'{}' is not an input file of run `{run_id}`",
-          path.display()
-        )));
-      }
-      FileChunks::open(path)
+      let source = prepared
+        .input_source(path)
+        .ok_or_else(|| invalid(format!("'{}' is not an input file of run `{run_id}`", path.display())))?;
+      FileChunks::open(source)
     })
   }
 
@@ -62,7 +59,7 @@ impl JobExecutor {
 
   pub fn begin_output(&self, run_id: &str, relative_path: &str) -> Result<(), Report> {
     self.with_waiting(run_id, |prepared| {
-      let path = run_file_destination(&prepared.job().out_dir, relative_path)?;
+      let path = run_file_destination(&prepared.job().out_dir(), relative_path)?;
       if let Some(folder) = path.parent() {
         fs::create_dir_all(folder).wrap_err_with(|| format!("When creating '{}'", folder.display()))?;
       }
@@ -73,7 +70,7 @@ impl JobExecutor {
 
   pub fn append_output(&self, run_id: &str, relative_path: &str, chunk: &[u8]) -> Result<(), Report> {
     self.with_waiting(run_id, |prepared| {
-      let path = run_file_destination(&prepared.job().out_dir, relative_path)?;
+      let path = run_file_destination(&prepared.job().out_dir(), relative_path)?;
       OpenOptions::new()
         .append(true)
         .open(&path)
@@ -120,7 +117,7 @@ impl RunExecutor for JobExecutor {
       let id = prepared.job().id.clone();
       let mut queue = self.queue.lock();
       queue.orders.push(QueuedOrder::Start(id.clone()));
-      queue.waiting.insert(id, prepared);
+      queue.waiting.insert(id, *prepared);
     }
     Ok(())
   }

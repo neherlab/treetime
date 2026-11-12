@@ -50,6 +50,6 @@ struct RunsFolderInputs {
 
 impl InputPolicy for RunsFolderInputs {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report> {
-    PathPolicy::new(&self.runs.input_dirs()?)?.confine(command, config)
+    PathPolicy::new(&self.runs.input_dirs())?.confine(command, config)
   }
 }

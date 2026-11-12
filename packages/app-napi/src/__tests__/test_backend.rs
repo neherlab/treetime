@@ -51,6 +51,32 @@ mod tests {
   }
 
   #[test]
+  fn test_backend_delete_removes_the_run_folder() {
+    let root = tempdir().unwrap();
+    let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
+    let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(false)));
+    let id = record["id"].as_str().unwrap().to_owned();
+    wait_for_terminal(&service, &id);
+    let folder = root.path().join("runs").join(&id);
+    let existed = folder.join("run.json").is_file();
+
+    let deleted = fetch(
+      &service,
+      PortScope::Renderer,
+      "DELETE",
+      &format!("/api/runs/{id}"),
+      vec![],
+      None,
+    );
+    let (status, _) = fetch_json(&service, "GET", &format!("/api/runs/{id}"), None);
+
+    assert_eq!(
+      (true, 200, false, 404),
+      (existed, deleted.status, folder.exists(), status)
+    );
+  }
+
+  #[test]
   fn test_backend_deferred_run_waits_for_start() {
     let root = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();

@@ -514,6 +514,18 @@ export type RunSummary = {
    */
   pinned: boolean;
   /**
+   * Run whose settings this run started from. The source may have been deleted since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references.
+   */
+  size: number;
+  /**
    * Time the run was created.
    */
   created_at: string;
@@ -607,10 +619,17 @@ export type CreateRunRequest = {
    * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
    */
   defer_start?: boolean;
+  /**
+   * Run whose settings the new run starts from, such as the source of a variant.
+   */
+  source_run_id?: JobId;
 };
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
  */
 export type RunRecord = ({
   command: 'timetree';
@@ -633,7 +652,8 @@ export type RunInput = {
    */
   setting: string;
   /**
-   * Path of the file, as the run read it.
+   * Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file, the
+   * absolute path for a file read from elsewhere.
    */
   path: string;
   /**
@@ -644,6 +664,20 @@ export type RunInput = {
    * SHA-256 of the file contents, as lowercase hexadecimal.
    */
   sha256: string;
+};
+
+/**
+ * Key of a file in the input store: the SHA-256 of its contents and its file name.
+ */
+export type StoredInput = {
+  /**
+   * SHA-256 of the file contents, as lowercase hexadecimal.
+   */
+  sha256: string;
+  /**
+   * File name of the upload.
+   */
+  name: string;
 };
 
 /**
@@ -749,6 +783,10 @@ export type StartRunRequest = {
    * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
    */
   config?: SparseConfig;
+  /**
+   * Run whose settings the run starts from; replaces the one given at creation.
+   */
+  source_run_id?: JobId;
 };
 
 /**
@@ -1781,6 +1819,8 @@ export type AppEvent = ({
 } & AppEventRunCreated) | ({
   kind: 'run-updated';
 } & AppEventRunUpdated) | ({
+  kind: 'run-removed';
+} & AppEventRunRemoved) | ({
   kind: 'examples-download';
 } & AppEventExamplesDownload) | ({
   kind: 'resync';
@@ -1819,15 +1859,15 @@ export type ExamplesDownload = ({
 } & ExamplesDownloadFailed);
 
 /**
- * A file uploaded into a run's `inputs/` folder.
+ * A file uploaded for a run that has not started.
  */
 export type UploadedInput = {
   /**
-   * File name inside the run's `inputs/` folder.
+   * File name of the upload.
    */
   name: string;
   /**
-   * Path to use for the file in the run's configuration.
+   * Path to use for the file in the configurations of runs, checks, and other requests.
    */
   path: string;
   /**
@@ -4469,8 +4509,8 @@ export type CheckConfigResponseInvalid = {
  */
 export type RunConfigResponseValid = {
   /**
-   * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
-   * `output_all` set to `out`.
+   * The configuration as the run records it, with every default filled in, the outputs the run layer adds,
+   * `output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.
    */
   config: SparseConfig;
   /**
@@ -4526,6 +4566,26 @@ export type RunRecordTimetree = {
    */
   pinned: boolean;
   /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
+  /**
    * Time the run was created.
    */
   created_at: string;
@@ -4546,9 +4606,13 @@ export type RunRecordTimetree = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
   /**
    * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
    * paths removed. Two runs with equal hashes used the same settings on the same input contents.
@@ -4596,6 +4660,26 @@ export type RunRecordOptimize = {
    */
   pinned: boolean;
   /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
+  /**
    * Time the run was created.
    */
   created_at: string;
@@ -4616,9 +4700,13 @@ export type RunRecordOptimize = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
   /**
    * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
    * paths removed. Two runs with equal hashes used the same settings on the same input contents.
@@ -4666,6 +4754,26 @@ export type RunRecordPrune = {
    */
   pinned: boolean;
   /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
+  /**
    * Time the run was created.
    */
   created_at: string;
@@ -4686,9 +4794,13 @@ export type RunRecordPrune = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
   /**
    * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
    * paths removed. Two runs with equal hashes used the same settings on the same input contents.
@@ -4736,6 +4848,26 @@ export type RunRecordAncestral = {
    */
   pinned: boolean;
   /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
+  /**
    * Time the run was created.
    */
   created_at: string;
@@ -4756,9 +4888,13 @@ export type RunRecordAncestral = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
   /**
    * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
    * paths removed. Two runs with equal hashes used the same settings on the same input contents.
@@ -4806,6 +4942,26 @@ export type RunRecordClock = {
    */
   pinned: boolean;
   /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
+  /**
    * Time the run was created.
    */
   created_at: string;
@@ -4826,9 +4982,13 @@ export type RunRecordClock = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
   /**
    * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
    * paths removed. Two runs with equal hashes used the same settings on the same input contents.
@@ -5148,6 +5308,31 @@ export type AppEventRunUpdated = {
    */
   run: RunSummary;
   kind: 'run-updated';
+};
+
+/**
+ * A run was deleted, with its folder and the uploaded inputs that no other run references.
+ */
+export type AppEventRunRemoved = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale.
+   */
+  stale: Array<StalePath>;
+  /**
+   * Id of the deleted run.
+   */
+  id: JobId;
+  kind: 'run-removed';
 };
 
 /**
@@ -5498,12 +5683,43 @@ export type RunsCreateError = RunsCreateErrors[keyof RunsCreateErrors];
 
 export type RunsCreateResponses = {
   /**
-   * Durable record of one command run, stored as `run.json` in the run's folder.
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
    */
   200: RunRecord;
 };
 
 export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
+
+export type RunsDeleteData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: never;
+  url: '/api/runs/{id}';
+};
+
+export type RunsDeleteErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsDeleteError = RunsDeleteErrors[keyof RunsDeleteErrors];
+
+export type RunsDeleteResponses = {
+  /**
+   * no content
+   */
+  200: unknown;
+};
 
 export type RunsGetData = {
   body?: never;
@@ -5528,7 +5744,10 @@ export type RunsGetError = RunsGetErrors[keyof RunsGetErrors];
 
 export type RunsGetResponses = {
   /**
-   * Durable record of one command run, stored as `run.json` in the run's folder.
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
    */
   200: RunRecord;
 };
@@ -5568,6 +5787,36 @@ export type RunsUpdateResponses = {
 
 export type RunsUpdateResponse = RunsUpdateResponses[keyof RunsUpdateResponses];
 
+export type RunsSettingsData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: never;
+  url: '/api/runs/{id}/settings';
+};
+
+export type RunsSettingsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsSettingsError = RunsSettingsErrors[keyof RunsSettingsErrors];
+
+export type RunsSettingsResponses = {
+  /**
+   * Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.
+   */
+  200: SparseConfig;
+};
+
+export type RunsSettingsResponse = RunsSettingsResponses[keyof RunsSettingsResponses];
+
 export type RunsStartData = {
   /**
    * Request to start a created run.
@@ -5594,7 +5843,10 @@ export type RunsStartError = RunsStartErrors[keyof RunsStartErrors];
 
 export type RunsStartResponses = {
   /**
-   * Durable record of one command run, stored as `run.json` in the run's folder.
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
    */
   200: RunRecord;
 };
@@ -5951,7 +6203,7 @@ export type RunsUploadInputData = {
      */
     id: JobId;
     /**
-     * File name inside the run's `inputs/` folder.
+     * File name of the upload.
      */
     name: string;
   };
@@ -5980,7 +6232,7 @@ export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputEr
 
 export type RunsUploadInputResponses = {
   /**
-   * A file uploaded into a run's `inputs/` folder.
+   * A file uploaded for a run that has not started.
    */
   200: UploadedInput;
 };

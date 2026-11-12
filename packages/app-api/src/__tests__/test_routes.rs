@@ -31,11 +31,10 @@ pub(crate) mod tests {
     );
 
     let (_, record) = request(&test, "GET", &format!("/api/runs/{id}"), None).await;
-    let run_dir = test.runs_dir.path().canonicalize().unwrap().join(&id);
     assert_eq!(
       (
         json!("ok"),
-        json!(run_dir.join("out")),
+        json!("out"),
         json!([
           "nwk",
           "nexus",
@@ -340,18 +339,7 @@ pub(crate) mod tests {
     .await;
     assert_eq!((200, json!("running")), (status, record["status"].clone()));
     let record = wait_for_status(&test, &id, "ok").await;
-    assert_eq!(
-      json!(
-        test
-          .runs_dir
-          .path()
-          .canonicalize()
-          .unwrap()
-          .join(&id)
-          .join("inputs/1/tree.nwk")
-      ),
-      record["inputs"][0]["path"]
-    );
+    assert_eq!(json!("inputs/tree.nwk"), record["inputs"][0]["path"]);
 
     let late = test.upload(&id, "late.nwk", b"(A,B);".to_vec()).await;
     assert_eq!(409, late.0, "inputs cannot change after the run starts");

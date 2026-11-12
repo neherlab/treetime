@@ -18,6 +18,8 @@ const BYTES_HEADERS: Header[] = [["content-type", "application/octet-stream"]];
 
 const ZIP_SIGNATURE = "PK";
 
+const RUN_INPUT_PATHS = ["inputs/aln.fasta.xz", "inputs/tree.nwk"];
+
 const KEEP_ALIVE_INTERVAL_MS = 1000;
 
 const moduleSchema = z.object({
@@ -109,7 +111,20 @@ async function checkAncestralRun(): Promise<void> {
       archive.status,
       text(archive).slice(0, ZIP_SIGNATURE.length),
     ],
-    [200, "running", [alignment, tree], true, "ok", outputs.files.toSorted(), true, true, 200, "(", 200, ZIP_SIGNATURE],
+    [
+      200,
+      "running",
+      ["inputs/aln.fasta.xz", "inputs/tree.nwk"],
+      true,
+      "ok",
+      outputs.files.toSorted(),
+      true,
+      true,
+      200,
+      "(",
+      200,
+      ZIP_SIGNATURE,
+    ],
     text(started),
   );
 }
@@ -170,13 +185,9 @@ async function checkEmptyInput(): Promise<void> {
 }
 
 async function checkRepeatedInput(): Promise<void> {
-  const uploads: string[] = [];
-
   const id = await startedRun("ancestral", async (runId) => {
     const alignment = await upload(runId, "aln.fasta.xz");
     const tree = await upload(runId, "tree.nwk");
-
-    uploads.push(alignment, tree);
 
     return { tree, alignment: [alignment, alignment] };
   });
@@ -187,7 +198,11 @@ async function checkRepeatedInput(): Promise<void> {
   const outputs = await driveJob(id, order.job, inputPaths);
   const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
 
-  assert.deepEqual([inputPaths, outputs.completed, record.status], [uploads, true, "ok"], JSON.stringify(record.error));
+  assert.deepEqual(
+    [inputPaths, outputs.completed, record.status],
+    [RUN_INPUT_PATHS, true, "ok"],
+    JSON.stringify(record.error),
+  );
 }
 
 async function checkClockRunWithoutCharts(): Promise<void> {
