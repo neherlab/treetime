@@ -3285,6 +3285,10 @@
           "headline": {
             "description": "Key results of a finished run.",
             "$ref": "#/components/schemas/RunHeadline"
+          },
+          "package_name": {
+            "description": "Name to save the run package under: the run's title and the start of its id, as in the names of its output\nfiles, for example `ebola-100-time-tree-1a2b3c4d.zip`.",
+            "type": "string"
           }
         },
         "required": [
@@ -3297,7 +3301,8 @@
           "size",
           "created_at",
           "changed_settings",
-          "headline"
+          "headline",
+          "package_name"
         ]
       },
       "RunStatus": {

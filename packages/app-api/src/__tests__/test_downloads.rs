@@ -58,6 +58,15 @@ mod tests {
   async fn test_downloads_package_streams_stored_entries_of_the_run_folder_and_its_inputs() {
     let (test, id) = finished_run().await;
     let (_, files) = request(&test, "GET", &format!("/api/runs/{id}/files"), None).await;
+    let (_, list) = request(&test, "GET", "/api/runs", None).await;
+    let name = list["runs"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .find(|run| run["id"] == id.as_str())
+      .and_then(|run| run["package_name"].as_str())
+      .unwrap()
+      .to_owned();
     let expected = [
       "run.json",
       "run.yaml",
@@ -90,7 +99,8 @@ mod tests {
         (
           Some("application/zip".to_owned()),
           Some(format!(
-            "attachment; filename=\"treetime-{id}.zip\"; filename*=UTF-8''treetime%2D{id}%2Ezip"
+            "attachment; filename=\"{name}\"; filename*=UTF-8''{}",
+            utf8_percent_encode(&name, NON_ALPHANUMERIC)
           ))
         ),
         expected

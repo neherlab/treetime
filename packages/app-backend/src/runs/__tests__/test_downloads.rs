@@ -52,6 +52,20 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::titled(      "Ebola/100, time tree: skyline", "ebola-100-time-tree-skyline-<id>.zip")]
+  #[case::symbols_only("*** / ***",                     "treetime-<id>.zip")]
+  #[trace]
+  fn test_downloads_package_name_has_the_stem_of_the_output_names(#[case] title: &str, #[case] expected: &str) {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = titled_run(&runs, title);
+
+    let id = record.id.as_str().chars().take(8).collect::<String>();
+    assert_eq!(expected.replace("<id>", &id), record.summary().package_name);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::dated_tree(     AppCommand::Timetree, Some(OutputSelection::Nwk),      "timetree.nwk",          "Dated tree (Newick, branch lengths in years)")]
   #[case::rerooted_tree(  AppCommand::Clock,    Some(OutputSelection::Nwk),      "clock.nwk",             "Rerooted tree (Newick)")]
   #[case::ancestral_fasta(AppCommand::Ancestral,Some(OutputSelection::Sequences),"ancestral.1.sequences.fasta", "Ancestral sequences (FASTA)")]

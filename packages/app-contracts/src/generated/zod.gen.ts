@@ -628,7 +628,8 @@ export const zRunSummary = z.object({
   duration_seconds: z.number().optional(),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
-  headline: zRunHeadline
+  headline: zRunHeadline,
+  package_name: z.string()
 });
 
 /**

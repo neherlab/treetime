@@ -1,6 +1,7 @@
 use crate::command::{OutputAlignment, OutputFile, config_from_settings};
 use crate::config::code::config_code;
 use crate::job::JobId;
+use crate::runs::downloads::package_name;
 use crate::runs::errors::{conflict, invalid};
 use crate::runs::files::{FileChunks, relative_name, walk_files};
 use crate::runs::input_store::validate_upload_name;
@@ -90,6 +91,7 @@ pub fn export_run(manager: &RunManager, id: &JobId) -> Result<RunPackage, Report
   .collect();
   Ok(RunPackage {
     folder: package_folder(id),
+    file_name: package_name(&record),
     entries,
   })
 }
@@ -100,6 +102,7 @@ pub fn package_folder(id: &JobId) -> String {
 
 pub struct RunPackage {
   folder: String,
+  file_name: String,
   entries: Vec<PackageEntry>,
 }
 
@@ -108,8 +111,8 @@ impl RunPackage {
     &self.folder
   }
 
-  pub fn file_name(&self) -> String {
-    format!("{}.zip", self.folder)
+  pub fn file_name(&self) -> &str {
+    &self.file_name
   }
 
   pub fn write(self, writer: impl Write + Seek) -> Result<(), Report> {

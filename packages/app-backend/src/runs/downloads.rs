@@ -9,25 +9,11 @@ const STEM_MAX_CHARS: usize = 60;
 const RUN_ID_CHARS: usize = 8;
 
 pub fn download_name(record: &RunRecord, relative: &str) -> String {
-  let title = record
-    .title
-    .split(|c: char| !c.is_alphanumeric())
-    .filter(|word| !word.is_empty())
-    .join("-")
-    .to_lowercase();
-  let title = title
-    .chars()
-    .take(STEM_MAX_CHARS)
-    .collect::<String>()
-    .trim_end_matches('-')
-    .to_owned();
-  let id = record.id.as_str().chars().take(RUN_ID_CHARS).collect::<String>();
-  let file = relative.replace('/', "-");
-  if title.is_empty() {
-    format!("treetime-{id}.{file}")
-  } else {
-    format!("{title}-{id}.{file}")
-  }
+  format!("{}.{}", download_stem(record), relative.replace('/', "-"))
+}
+
+pub fn package_name(record: &RunRecord) -> String {
+  format!("{}.zip", download_stem(record))
 }
 
 pub struct FileDownload {
@@ -105,4 +91,25 @@ fn chart_format(relative: &str) -> String {
     || "SVG".to_owned(),
     |extension| extension.to_string_lossy().to_uppercase(),
   )
+}
+
+fn download_stem(record: &RunRecord) -> String {
+  let title = record
+    .title
+    .split(|c: char| !c.is_alphanumeric())
+    .filter(|word| !word.is_empty())
+    .join("-")
+    .to_lowercase();
+  let title = title
+    .chars()
+    .take(STEM_MAX_CHARS)
+    .collect::<String>()
+    .trim_end_matches('-')
+    .to_owned();
+  let id = record.id.as_str().chars().take(RUN_ID_CHARS).collect::<String>();
+  if title.is_empty() {
+    format!("treetime-{id}")
+  } else {
+    format!("{title}-{id}")
+  }
 }

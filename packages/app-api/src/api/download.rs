@@ -64,7 +64,7 @@ pub(crate) async fn serve_run_file(
 
 pub(crate) fn stream_run_package(package: RunPackage) -> Result<ZipAttachment, AppError> {
   Ok(ZipAttachment {
-    disposition: attachment(&package.file_name())?,
+    disposition: attachment(package.file_name())?,
     body: package_body(package),
   })
 }

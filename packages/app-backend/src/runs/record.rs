@@ -1,5 +1,6 @@
 use crate::command::OutputFile;
 use crate::job::JobId;
+use crate::runs::downloads::package_name;
 use crate::runs::headline::RunHeadline;
 use crate::runs::input_store::StoredInput;
 use crate::runs::run_paths::INPUTS_DIR;
@@ -104,6 +105,7 @@ impl RunRecord {
       config_hash: self.config_hash.clone(),
       changed_settings: self.changed_settings.clone(),
       headline: self.headline.clone(),
+      package_name: package_name(self),
     }
   }
 }
@@ -197,6 +199,9 @@ pub struct RunSummary {
   pub changed_settings: Vec<String>,
   /// Key results of a finished run.
   pub headline: RunHeadline,
+  /// Name to save the run package under: the run's title and the start of its id, as in the names of its output
+  /// files, for example `ebola-100-time-tree-1a2b3c4d.zip`.
+  pub package_name: String,
 }
 
 /// State of a run.

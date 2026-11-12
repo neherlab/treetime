@@ -66,6 +66,7 @@ function appEvent(seq: number, kind: "resync" | "run-updated", stale: StalePath[
           created_at: "2026-09-25T08:00:00Z",
           changed_settings: [],
           headline: {},
+          package_name: "abc.zip",
         },
       };
 }

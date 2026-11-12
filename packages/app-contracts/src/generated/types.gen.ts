@@ -1148,6 +1148,11 @@ export type RunSummary = {
    * Key results of a finished run.
    */
   headline: RunHeadline;
+  /**
+   * Name to save the run package under: the run's title and the start of its id, as in the names of its output
+   * files, for example `ebola-100-time-tree-1a2b3c4d.zip`.
+   */
+  package_name: string;
 };
 
 /**
