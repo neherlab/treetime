@@ -10,12 +10,14 @@ import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { useRunEvents } from "../api/events";
 import { useApi } from "../api/hooks";
+import { isNotFound } from "../api/retry";
 import { AuspiceStoreSlot, AuspiceStoreSlotContext } from "../auspice/storeSlot";
 import { LoadingState, PageShell } from "../components/PageShell";
 import { countWarnings, EMPTY_PROGRESS, type RunProgress } from "../results/progress";
 import { AncestralResultsView } from "./AncestralResultsView";
 import { ClockResultsView } from "./ClockResultsView";
 import { LogTab } from "./LogTab";
+import { MissingRun } from "./MissingRun";
 import { RunContext, useRunOutputs, useRunView } from "./runContext";
 import { RunHeader } from "./RunHeader";
 import { RunningView } from "./RunningView";
@@ -43,6 +45,10 @@ export function RunPage({ id }: { id: string }) {
     () => (record === undefined ? undefined : { record, progress, failure }),
     [failure, progress, record],
   );
+
+  if (error !== null && isNotFound(error)) {
+    return <MissingRun />;
+  }
 
   if (error !== null) {
     return (
