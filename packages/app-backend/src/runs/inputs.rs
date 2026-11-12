@@ -14,8 +14,10 @@ use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fmt::{self, Write};
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs::{self, File, Metadata};
+use std::io::{self, Read};
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -108,7 +110,7 @@ pub fn draft_inputs(
   Ok(inputs)
 }
 
-/// SHA-256 of input files, remembered for files whose size and modification time stay the same.
+/// SHA-256 of input files, remembered for files whose size, modification time, and identity stay the same.
 #[derive(Default)]
 pub struct InputHashes {
   known: Mutex<BTreeMap<PathBuf, KnownHash>>,
@@ -120,10 +122,9 @@ impl InputHashes {
       return Ok(key.sha256);
     }
     let metadata = fs::metadata(path).wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?;
-    let Ok(modified) = metadata.modified() else {
+    let Ok(stamp) = FileStamp::of(&metadata) else {
       return Ok(file_sha256(path)?.1);
     };
-    let stamp = (metadata.len(), modified);
     if let Some(known) = self.known.lock().get(path).filter(|known| known.stamp == stamp) {
       return Ok(known.sha256.clone());
     }
@@ -140,8 +141,61 @@ impl InputHashes {
 }
 
 struct KnownHash {
-  stamp: (u64, SystemTime),
+  stamp: FileStamp,
   sha256: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct FileStamp {
+  size: u64,
+  modified: SystemTime,
+  identity: FileIdentity,
+}
+
+impl FileStamp {
+  fn of(metadata: &Metadata) -> io::Result<Self> {
+    Ok(Self {
+      size: metadata.len(),
+      modified: metadata.modified()?,
+      identity: FileIdentity::of(metadata)?,
+    })
+  }
+}
+
+#[cfg(unix)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct FileIdentity {
+  device: u64,
+  inode: u64,
+  changed_seconds: i64,
+  changed_nanoseconds: i64,
+}
+
+#[cfg(unix)]
+impl FileIdentity {
+  fn of(metadata: &Metadata) -> io::Result<Self> {
+    Ok(Self {
+      device: metadata.dev(),
+      inode: metadata.ino(),
+      changed_seconds: metadata.ctime(),
+      changed_nanoseconds: metadata.ctime_nsec(),
+    })
+  }
+}
+
+#[cfg(not(unix))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct FileIdentity {
+  created: SystemTime,
+}
+
+#[cfg(not(unix))]
+impl FileIdentity {
+  fn of(metadata: &Metadata) -> io::Result<Self> {
+    Ok(Self {
+      created: metadata.created()?,
+    })
+  }
 }
 
 pub struct HashedInputs {

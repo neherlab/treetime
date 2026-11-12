@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests {
-  use crate::runs::inputs::{hash_inputs, sha256_hex};
+  use crate::runs::input_store::InputStore;
+  use crate::runs::inputs::{InputHashes, hash_inputs, sha256_hex};
   use crate::runs::record::RunInput;
   use app_commands::command::AppCommand;
   use helpers::settings;
+  #[cfg(unix)]
+  use helpers::{Replacement, replace_keeping_modification_time, wait_for_a_later_change_time};
   use pretty_assertions::{assert_eq, assert_ne};
+  use rstest::rstest;
   use serde_json::{Map, json};
   use std::fs;
   use std::path::Path;
@@ -91,8 +95,86 @@ mod tests {
     );
   }
 
+  #[cfg(unix)]
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::rewritten_in_place(Replacement::InPlace)]
+  #[case::renamed_into_place(Replacement::Renamed)]
+  #[trace]
+  fn test_inputs_digest_of_a_same_length_replacement_with_the_modification_time_restored(
+    #[case] replacement: Replacement,
+  ) {
+    let dir = tempdir().unwrap();
+    let store = InputStore::new(&dir.path().join("runs"));
+    let tree = dir.path().join("tree.nwk");
+    fs::write(&tree, "abc").unwrap();
+    let hashes = InputHashes::default();
+    let before = hashes.sha256(&store, &tree).unwrap();
+
+    wait_for_a_later_change_time(dir.path(), &tree);
+    replace_keeping_modification_time(&tree, b"xyz", replacement);
+
+    assert_eq!(
+      (sha256_hex(b"abc").unwrap(), sha256_hex(b"xyz").unwrap()),
+      (before, hashes.sha256(&store, &tree).unwrap())
+    );
+  }
+
   mod helpers {
     use serde_json::{Map, Value};
+    #[cfg(unix)]
+    use std::fs::{self, OpenOptions};
+    #[cfg(unix)]
+    use std::io::Write;
+    #[cfg(unix)]
+    use std::os::unix::fs::MetadataExt;
+    #[cfg(unix)]
+    use std::path::Path;
+
+    #[cfg(unix)]
+    #[derive(Clone, Copy, Debug)]
+    pub(super) enum Replacement {
+      InPlace,
+      Renamed,
+    }
+
+    #[cfg(unix)]
+    pub(super) fn replace_keeping_modification_time(path: &Path, content: &[u8], replacement: Replacement) {
+      let modified = fs::metadata(path).unwrap().modified().unwrap();
+      let target = match replacement {
+        Replacement::InPlace => path.to_path_buf(),
+        Replacement::Renamed => path.with_extension("new"),
+      };
+      let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&target)
+        .unwrap();
+      file.write_all(content).unwrap();
+      file.set_modified(modified).unwrap();
+      drop(file);
+      if matches!(replacement, Replacement::Renamed) {
+        fs::rename(&target, path).unwrap();
+      }
+      assert_eq!(modified, fs::metadata(path).unwrap().modified().unwrap());
+    }
+
+    #[cfg(unix)]
+    pub(super) fn wait_for_a_later_change_time(dir: &Path, path: &Path) {
+      let changed = change_time(path);
+      let probe = dir.join("probe");
+      fs::write(&probe, "x").unwrap();
+      while change_time(&probe) <= changed {
+        fs::write(&probe, "x").unwrap();
+      }
+    }
+
+    #[cfg(unix)]
+    fn change_time(path: &Path) -> (i64, i64) {
+      let metadata = fs::metadata(path).unwrap();
+      (metadata.ctime(), metadata.ctime_nsec())
+    }
 
     pub(super) fn settings(value: Value) -> Map<String, Value> {
       match value {
