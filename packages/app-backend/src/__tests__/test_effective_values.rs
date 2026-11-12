@@ -105,6 +105,7 @@ mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     }
   }
 }

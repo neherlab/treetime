@@ -47,6 +47,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -60,6 +61,73 @@ pub(crate) mod tests {
         config.get("$schema").cloned()
       )
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::number(        "clock_filter",  Some("--clock-filter 4.0"))]
+  #[case::switch_on(     "confidence",    Some("--confidence"))]
+  #[case::switch_off(    "keep_root",     None)]
+  #[case::empty_list(    "relax",         None)]
+  #[case::quoted_list(   "outgroup",      Some("--outgroup 'A x,B'"))]
+  #[case::unset(         "clock_rate",    None)]
+  #[trace]
+  fn test_check_config_command_line_of_each_setting(#[case] key: &str, #[case] expected: Option<&str>) {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Timetree,
+      text: indoc! {r#"
+        tree: data/zika/20/tree.nwk
+        metadata: data/zika/20/metadata.tsv
+        sequence_length: 1000
+        clock_filter: 4
+        confidence: true
+        keep_root: false
+        relax: []
+        outgroup: ["A x", "B"]
+      "#}
+      .to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig::default(),
+      choices: vec![],
+      run_id: None,
+      example: None,
+    });
+    let CheckConfigResponse::Valid { command_lines, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    let text = command_lines.into_iter().find(|line| line.key == key).map(|line| line.text);
+    assert_eq!(Some(expected.map(ToOwned::to_owned)), text);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::example(   Some("zika/20"), "tree: data/zika/20/tree.nwk",    Some("zika/20"))]
+  #[case::own_files( None,            "tree: data/zika/20/tree.nwk",    Some("tree.nwk"))]
+  #[case::no_tree(   None,            "clock_filter: 4",                None)]
+  #[case::invalid(   Some("zika/20"), "clock_filter: [",                Some("zika/20"))]
+  #[trace]
+  fn test_check_config_names_the_dataset(
+    #[case] example: Option<&str>,
+    #[case] text: &str,
+    #[case] expected: Option<&str>,
+  ) {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Timetree,
+      text: text.to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig::default(),
+      choices: vec![],
+      run_id: None,
+      example: example.map(ToOwned::to_owned),
+    });
+    let dataset = match response {
+      CheckConfigResponse::Valid { dataset, .. } | CheckConfigResponse::Invalid { dataset, .. } => dataset,
+    };
+    assert_eq!(expected.map(ToOwned::to_owned), dataset);
   }
 
   #[test]
@@ -80,6 +148,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -105,6 +174,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -123,6 +193,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -164,6 +235,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
@@ -183,6 +255,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -228,6 +301,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -257,6 +331,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -282,6 +357,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -311,6 +387,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
@@ -332,6 +409,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -353,6 +431,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -374,6 +453,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -392,6 +472,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -436,6 +517,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let expected = expected
       .map(|(settings, text)| RunCheck {
@@ -464,6 +546,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -491,6 +574,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let value = to_json_value(&response).unwrap();
     assert_eq!(
@@ -523,6 +607,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { command, config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -545,6 +630,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { command, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -564,6 +650,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -594,6 +681,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig(replacements.as_object().unwrap().clone()),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { config, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -628,6 +716,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig(json!({ "reroot": "oldest" }).as_object().unwrap().clone()),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -649,6 +738,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig(json!({ "tree": 5 }).as_object().unwrap().clone()),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -671,6 +761,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -695,6 +786,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Invalid { messages, checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -748,6 +840,7 @@ pub(crate) mod tests {
       replace_inputs: SparseConfig::default(),
       choices: vec![],
       run_id: None,
+      example: None,
     });
     let CheckConfigResponse::Valid { checks, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");

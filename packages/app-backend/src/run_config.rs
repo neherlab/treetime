@@ -1,5 +1,6 @@
 use crate::command::AppCommandExt;
-use crate::config::code::{ConfigCode, config_code};
+use crate::config::catalog::command_settings;
+use crate::config::code::{ConfigCode, SettingCommandLine, config_code, setting_command_lines};
 use crate::runs::input_store::InputStore;
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::ConfigHook;
@@ -29,10 +30,17 @@ pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &Inpu
       let mut config = prepared.config.clone();
       PortablePaths::of_settings(command, &config, store)?.apply(command, &mut config)?;
       let seed = prepared.args.random_step().and_then(|_| prepared.args.seed());
-      Ok((config_code(command, &config)?, config, prepared.config, seed))
+      let command_lines = setting_command_lines(command, &command_settings(command)?.settings, &config)?;
+      Ok((
+        config_code(command, &config)?,
+        command_lines,
+        config,
+        prepared.config,
+        seed,
+      ))
     });
   match resolved {
-    Ok((code, config, requested, seed)) => {
+    Ok((code, command_lines, config, requested, seed)) => {
       let (config_hash, config_hash_error) = match config_hash(command, &requested, confine) {
         Ok(hash) => (Some(hash), None),
         Err(report) => (None, Some(format!("{report:#}"))),
@@ -40,6 +48,7 @@ pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &Inpu
       RunConfigResponse::Valid {
         config: SparseConfig(config),
         code: Box::new(code),
+        command_lines,
         config_hash,
         config_hash_error,
         seed,
@@ -74,6 +83,8 @@ pub enum RunConfigResponse {
     config: SparseConfig,
     /// The command line and the YAML config that reproduce the run.
     code: Box<ConfigCode>,
+    /// The command-line form of each setting of the command for its value in `config`.
+    command_lines: Vec<SettingCommandLine>,
     /// Hash that a run of this configuration records, to find finished runs with the same settings and input
     /// contents; absent when an input cannot be read.
     config_hash: Option<String>,

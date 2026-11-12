@@ -1,5 +1,5 @@
 use crate::command::AppCommandExt;
-use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
+use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_line_name, command_settings};
 use crate::config::effective::value_text;
 use crate::results::citation::{Citation, citation};
 use crate::run_config::RUN_CONFIG_OUTPUT_DIR;
@@ -15,7 +15,7 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
-use treetime_schema::version_info;
+use treetime_schema::{skip_serializing_optionals, version_info};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_report;
 
@@ -54,6 +54,45 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
     command_line,
     yaml,
   })
+}
+
+pub fn setting_command_lines(
+  command: AppCommand,
+  settings: &[SettingSpec],
+  config: &Map<String, Value>,
+) -> Result<Vec<SettingCommandLine>, Report> {
+  let cli = command.cli_command();
+  settings
+    .iter()
+    .map(|spec| {
+      let arg = cli
+        .get_arguments()
+        .find(|arg| arg.get_long() == spec.flag.strip_prefix("--"))
+        .ok_or_else(|| make_report!("setting `{}` has no command-line flag", spec.key))?;
+      let text = config
+        .get(&spec.key)
+        .and_then(|value| setting_tokens(arg, &spec.flag, value))
+        .map(|tokens| quote_tokens(&tokens))
+        .transpose()?;
+      Ok(SettingCommandLine {
+        key: spec.key.clone(),
+        text,
+      })
+    })
+    .try_collect()
+}
+
+/// The command-line form of a setting for its value in a configuration.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct SettingCommandLine {
+  /// Key of the setting.
+  pub key: String,
+  /// The flag and its value as a command line takes them, quoted for the shell, for example `--clock-filter 4` or
+  /// `--outgroup 'A/x 1'`; absent when the command line leaves the setting out for this value: a switch that is off,
+  /// an unset value, or an empty list.
+  pub text: Option<String>,
 }
 
 /// A command line and a YAML config that reproduce a configuration.
@@ -145,7 +184,7 @@ fn command_line(
   output_dir: &str,
 ) -> Result<Vec<CodeLine>, Report> {
   let mut lines = vec![CodeLine {
-    text: format!("treetime {command}"),
+    text: command_line_name(command),
     kind: CodeLineKind::Command,
   }];
   for (settings, kind) in [(inputs, CodeLineKind::Input), (changed, CodeLineKind::Changed)] {

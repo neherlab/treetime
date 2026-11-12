@@ -289,6 +289,7 @@ mod tests {
         replace_inputs: SparseConfig::default(),
         choices: picked.to_vec(),
         run_id: None,
+        example: None,
       })
     }
 

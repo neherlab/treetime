@@ -132,6 +132,30 @@ mod tests {
   }
 
   #[test]
+  fn test_run_config_names_the_command_line_of_each_setting_for_its_value_in_the_run() {
+    let response = resolve(
+      AppCommand::Clock,
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "clock_filter": 4, "keep_root": false }),
+    );
+    let text_of = |key: &str| {
+      response["command_lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|line| line["key"] == key)
+        .map(|line| line["text"].clone())
+    };
+    assert_eq!(
+      (
+        Some(json!("--clock-filter 4.0")),
+        Some(json!("--tree t.nwk")),
+        Some(Value::Null)
+      ),
+      (text_of("clock_filter"), text_of("tree"), text_of("keep_root"))
+    );
+  }
+
+  #[test]
   fn test_run_config_names_an_uploaded_input_by_its_path_in_the_run_folder() {
     let root = tempdir().unwrap();
     let store = InputStore::new(root.path());
