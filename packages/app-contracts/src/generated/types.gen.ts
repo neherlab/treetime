@@ -1342,6 +1342,12 @@ export type StartRunRequest = {
    * Run whose settings the run starts from; replaces the one given at creation.
    */
   source_run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; replaces the one given at
+   * creation, for example when the user opened an example after the run that holds the uploads was created. The run's
+   * name starts with it.
+   */
+  example?: string;
 };
 
 /**
@@ -2628,6 +2634,13 @@ export type IndexedDataset = {
    * Number of sites of the alignment, when the dataset has an alignment.
    */
   sequence_length?: number;
+  /**
+   * Settings that the commands need to read the files of the dataset, in configuration form, from the `settings`
+   * field of the front matter of the folder's `README.md`, for example `metadata_id_columns: [genbank_accession]`
+   * when the tip names of the tree are in a metadata column that is not one of the default name columns. The facts
+   * of the dataset are read with these settings. Left out when the dataset needs none.
+   */
+  settings?: SparseConfig;
 };
 
 /**

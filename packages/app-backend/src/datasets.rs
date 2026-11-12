@@ -33,17 +33,22 @@ const DATASET_INPUTS: [(InputKind, &[&str]); 3] = [
   (InputKind::Metadata, &["metadata.tsv", "metadata.csv"]),
 ];
 
-pub fn dataset_input_facts(data_dir: &Path, inputs: &[IndexedInput]) -> Result<InputFacts, Report> {
-  let config: Map<String, Value> = inputs
+pub fn dataset_input_facts(
+  data_dir: &Path,
+  inputs: &[IndexedInput],
+  settings: &SparseConfig,
+) -> Result<InputFacts, Report> {
+  let config: Map<String, Value> = settings
     .iter()
-    .map(|input| {
+    .map(|(key, value)| (key.clone(), value.clone()))
+    .chain(inputs.iter().map(|input| {
       let path = data_dir.join(&input.path);
       let value = match input.kind {
         InputKind::Alignment => json!([path]),
         InputKind::Tree | InputKind::Metadata => json!(path),
       };
       (input.kind.setting().to_owned(), value)
-    })
+    }))
     .collect();
   check_inputs(&CheckInputsRequest {
     command: AppCommand::Timetree,
@@ -75,7 +80,7 @@ impl DataIndex {
     mut size: impl FnMut(&str) -> Result<u64, Report>,
     mut read: impl FnMut(&str) -> Result<String, Report>,
     pipeline_steps: impl Fn(&str) -> Result<Vec<IndexedStep>, Report>,
-    mut input_facts: impl FnMut(&[IndexedInput]) -> Result<InputFacts, Report>,
+    mut input_facts: impl FnMut(&[IndexedInput], &SparseConfig) -> Result<InputFacts, Report>,
   ) -> Result<Self, Report> {
     if let Some(path) = paths.iter().find(|path| !is_data_path(path)) {
       return make_error!("the file list names '{path}', which is not a normalized path relative to the data folder");
@@ -158,6 +163,13 @@ pub struct IndexedDataset {
   pub dates: Option<DateSpan>,
   /// Number of sites of the alignment, when the dataset has an alignment.
   pub sequence_length: Option<usize>,
+  /// Settings that the commands need to read the files of the dataset, in configuration form, from the `settings`
+  /// field of the front matter of the folder's `README.md`, for example `metadata_id_columns: [genbank_accession]`
+  /// when the tip names of the tree are in a metadata column that is not one of the default name columns. The facts
+  /// of the dataset are read with these settings. Left out when the dataset needs none.
+  #[schemars(default, skip_serializing_if = "no_settings")]
+  #[deser(default, skip_serializing_if = no_settings)]
+  pub settings: SparseConfig,
 }
 
 impl IndexedDataset {
@@ -165,7 +177,7 @@ impl IndexedDataset {
     dataset: &DatasetFiles,
     tracked: &BTreeSet<&str>,
     read: &mut impl FnMut(&str) -> Result<String, Report>,
-    input_facts: &mut impl FnMut(&[IndexedInput]) -> Result<InputFacts, Report>,
+    input_facts: &mut impl FnMut(&[IndexedInput], &SparseConfig) -> Result<InputFacts, Report>,
   ) -> Result<Self, Report> {
     let inputs = dataset_inputs(dataset)
       .map(|(kind, file)| IndexedInput {
@@ -177,9 +189,13 @@ impl IndexedDataset {
     if !tracked.contains(readme.as_str()) {
       return make_error!("the folder has no tracked `{README_FILE}`, whose front matter names the organism");
     }
-    let DatasetReadme { organism, segment } =
+    let DatasetReadme {
+      organism,
+      segment,
+      settings,
+    } =
       readme_front_matter(&read(&readme)?).wrap_err_with(|| format!("When reading the front matter of '{readme}'"))?;
-    let facts = input_facts(&inputs)?;
+    let facts = input_facts(&inputs, &settings)?;
     if let Some(problem) = facts.problems.first() {
       return make_error!("the input {} cannot be read: {}", problem.input, problem.message);
     }
@@ -199,8 +215,13 @@ impl IndexedDataset {
         .and_then(|metadata| metadata.dates.as_ref())
         .and_then(|dates| dates.span.clone()),
       sequence_length: facts.detected.sequence_length.as_ref().map(|length| length.length),
+      settings,
     })
   }
+}
+
+fn no_settings(settings: &SparseConfig) -> bool {
+  settings.is_empty()
 }
 
 /// The front matter of the `README.md` of a dataset.
@@ -210,6 +231,8 @@ struct DatasetReadme {
   organism: String,
   #[deser(default)]
   segment: Option<String>,
+  #[deser(default)]
+  settings: SparseConfig,
 }
 
 /// A file of a dataset that fills a command input.

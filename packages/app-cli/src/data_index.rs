@@ -24,7 +24,7 @@ pub fn generate_data_index(data_dir: &Path, file_list: &str) -> Result<DataIndex
     |path| file_size(&data_dir.join(path)),
     |path| read_file_to_string(data_dir.join(path)),
     pipeline_steps,
-    |inputs| dataset_input_facts(data_dir, inputs),
+    |inputs, settings| dataset_input_facts(data_dir, inputs, settings),
   )
 }
 

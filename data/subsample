@@ -172,7 +172,7 @@ def compute_hash(path: Path) -> str:
 
 
 def front_matter(readme: Path) -> str:
-    """Front matter of a README (organism and segment), with its fences and a blank line after it."""
+    """Front matter of a README (organism, segment, and the settings that reading the dataset needs), with its fences and a blank line after it."""
     lines = readme.read_text().splitlines(keepends=True)
     if not lines or lines[0].rstrip() != "---":
         msg = f"{readme} does not start with a front matter line ---"

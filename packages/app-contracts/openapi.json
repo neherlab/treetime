@@ -3652,6 +3652,11 @@
             "description": "Run whose settings the run starts from; replaces the one given at creation.",
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; replaces the one given at\ncreation, for example when the user opened an example after the run that holds the uploads was created. The run's\nname starts with it.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "additionalProperties": false
@@ -5637,6 +5642,10 @@
             "format": "uint",
             "minimum": 0,
             "x-unset": true
+          },
+          "settings": {
+            "description": "Settings that the commands need to read the files of the dataset, in configuration form, from the `settings`\nfield of the front matter of the folder's `README.md`, for example `metadata_id_columns: [genbank_accession]`\nwhen the tip names of the tree are in a metadata column that is not one of the default name columns. The facts\nof the dataset are read with these settings. Left out when the dataset needs none.",
+            "$ref": "#/components/schemas/SparseConfig"
           }
         },
         "additionalProperties": false,

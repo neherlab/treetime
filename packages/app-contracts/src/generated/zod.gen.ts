@@ -741,7 +741,8 @@ export const zUpdateRunRequest = z.strictObject({
 export const zStartRunRequest = z.strictObject({
   command: zAppCommand.optional(),
   config: zSparseConfig.optional(),
-  source_run_id: zJobId.optional()
+  source_run_id: zJobId.optional(),
+  example: z.string().optional()
 });
 
 /**
@@ -1175,7 +1176,8 @@ export const zIndexedDataset = z.strictObject({
   segment: z.string().optional(),
   samples: z.int().gte(0),
   dates: zDateSpan.optional(),
-  sequence_length: z.int().gte(0).optional()
+  sequence_length: z.int().gte(0).optional(),
+  settings: zSparseConfig.optional()
 });
 
 /**

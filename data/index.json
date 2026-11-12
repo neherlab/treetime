@@ -6,7 +6,7 @@
     },
     {
       "path": "dengue/100/README.md",
-      "size": 859
+      "size": 918
     },
     {
       "path": "dengue/100/aln.fasta.xz",
@@ -26,7 +26,7 @@
     },
     {
       "path": "dengue/1000/README.md",
-      "size": 231
+      "size": 290
     },
     {
       "path": "dengue/1000/aln.fasta.xz",
@@ -42,7 +42,7 @@
     },
     {
       "path": "dengue/20/README.md",
-      "size": 855
+      "size": 914
     },
     {
       "path": "dengue/20/aln.fasta.xz",
@@ -58,7 +58,7 @@
     },
     {
       "path": "dengue/2000/README.md",
-      "size": 231
+      "size": 290
     },
     {
       "path": "dengue/2000/aln.fasta.xz",
@@ -118,7 +118,7 @@
     },
     {
       "path": "dengue/500/README.md",
-      "size": 230
+      "size": 289
     },
     {
       "path": "dengue/500/aln.fasta.xz",
@@ -1682,7 +1682,7 @@
     },
     {
       "path": "subsample",
-      "size": 13232
+      "size": 13278
     },
     {
       "path": "tb/100/README.md",
@@ -1918,7 +1918,12 @@
           "date": "2024-03-27"
         }
       },
-      "sequence_length": 10723
+      "sequence_length": 10723,
+      "settings": {
+        "metadata_id_columns": [
+          "genbank_accession"
+        ]
+      }
     },
     {
       "name": "dengue/1000",
@@ -1948,7 +1953,12 @@
           "date": "2024-07-25"
         }
       },
-      "sequence_length": 10723
+      "sequence_length": 10723,
+      "settings": {
+        "metadata_id_columns": [
+          "genbank_accession"
+        ]
+      }
     },
     {
       "name": "dengue/20",
@@ -1978,7 +1988,12 @@
           "date": "2022-06-28"
         }
       },
-      "sequence_length": 10723
+      "sequence_length": 10723,
+      "settings": {
+        "metadata_id_columns": [
+          "genbank_accession"
+        ]
+      }
     },
     {
       "name": "dengue/2000",
@@ -2008,7 +2023,12 @@
           "date": "2024-07-25"
         }
       },
-      "sequence_length": 10723
+      "sequence_length": 10723,
+      "settings": {
+        "metadata_id_columns": [
+          "genbank_accession"
+        ]
+      }
     },
     {
       "name": "dengue/500",
@@ -2038,7 +2058,12 @@
           "date": "2024-05-21"
         }
       },
-      "sequence_length": 10723
+      "sequence_length": 10723,
+      "settings": {
+        "metadata_id_columns": [
+          "genbank_accession"
+        ]
+      }
     },
     {
       "name": "ebola/100",

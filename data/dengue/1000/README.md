@@ -1,5 +1,8 @@
 ---
 organism: "Dengue virus"
+settings:
+  metadata_id_columns:
+    - "genbank_accession"
 ---
 
 # `dengue/1000`

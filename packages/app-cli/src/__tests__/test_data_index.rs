@@ -4,6 +4,7 @@ mod tests {
   use app_backend::check_inputs::InputKind;
   use app_backend::datasets::{DataIndex, IndexedDataset, IndexedFile, IndexedInput, IndexedStep};
   use app_commands::command::AppCommand;
+  use app_commands::json_value::SparseConfig;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::fs;
@@ -40,6 +41,7 @@ mod tests {
           samples: 2,
           dates: None,
           sequence_length: None,
+          settings: SparseConfig::default(),
         }],
         configs: vec![],
         pipelines: vec![],
