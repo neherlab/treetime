@@ -1,13 +1,12 @@
-import { runsList } from "@neherlab/app-contracts/client";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { useNewAnalysis } from "../analysis/useDraftSession";
-import { useApi } from "../api/hooks";
 import { PALETTE_HOTKEY } from "../hotkeys";
 import { useShellStore } from "../store/shell";
-import { listedRuns } from "./runList";
+import { groupedRunOrder, groupRuns } from "./runList";
+import { useListedRuns } from "./useListedRuns";
 
 export const RUN_FILTER_ID = "run-filter";
 
@@ -15,11 +14,11 @@ export function useGlobalShortcuts() {
   const navigate = useNavigate();
   const newAnalysis = useNewAnalysis();
   const currentId = useParams({ strict: false, select: (params) => params.id });
-  const { data } = useApi((context) => runsList(context));
   const runFilter = useShellStore((state) => state.runFilter);
   const commandFilter = useShellStore((state) => state.commandFilter);
   const setPaletteOpen = useShellStore((state) => state.setPaletteOpen);
-  const runs = useMemo(() => listedRuns(data?.runs ?? [], runFilter, commandFilter), [commandFilter, data, runFilter]);
+  const { runs: listed } = useListedRuns(runFilter, commandFilter);
+  const runs = useMemo(() => groupedRunOrder(groupRuns(listed)), [listed]);
 
   const step = useCallback(
     (offset: number) => {

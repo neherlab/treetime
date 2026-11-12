@@ -1,18 +1,20 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, JobId } from "@neherlab/app-contracts";
 import { create } from "zustand";
-
-const COMPARE_LIMIT = 2;
 
 interface ShellState {
   runFilter: string;
   commandFilter: AppCommand | null;
-  compareIds: string[];
+  selectedIds: readonly JobId[];
+  renamingId: JobId | undefined;
+  confirmingDelete: readonly JobId[] | undefined;
   paletteOpen: boolean;
   workspaceOpen: boolean;
   setRunFilter: (runFilter: string) => void;
   setCommandFilter: (commandFilter: AppCommand | null) => void;
-  toggleCompare: (id: string) => void;
-  clearCompare: () => void;
+  toggleSelected: (id: JobId) => void;
+  clearSelection: () => void;
+  setRenamingId: (renamingId: JobId | undefined) => void;
+  setConfirmingDelete: (confirmingDelete: readonly JobId[] | undefined) => void;
   setPaletteOpen: (paletteOpen: boolean) => void;
   setWorkspaceOpen: (workspaceOpen: boolean) => void;
 }
@@ -20,18 +22,20 @@ interface ShellState {
 export const useShellStore = create<ShellState>()((set) => ({
   runFilter: "",
   commandFilter: null,
-  compareIds: [],
+  selectedIds: [],
+  renamingId: undefined,
+  confirmingDelete: undefined,
   paletteOpen: false,
   workspaceOpen: false,
   setRunFilter: (runFilter) => set({ runFilter }),
   setCommandFilter: (commandFilter) => set({ commandFilter }),
-  toggleCompare: (id) =>
-    set((state) => ({
-      compareIds: state.compareIds.includes(id)
-        ? state.compareIds.filter((selected) => selected !== id)
-        : [...state.compareIds, id].slice(-COMPARE_LIMIT),
+  toggleSelected: (id) =>
+    set(({ selectedIds }) => ({
+      selectedIds: selectedIds.includes(id) ? selectedIds.filter((selected) => selected !== id) : [...selectedIds, id],
     })),
-  clearCompare: () => set({ compareIds: [] }),
+  clearSelection: () => set({ selectedIds: [] }),
+  setRenamingId: (renamingId) => set({ renamingId }),
+  setConfirmingDelete: (confirmingDelete) => set({ confirmingDelete }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setWorkspaceOpen: (workspaceOpen) => set({ workspaceOpen }),
 }));
