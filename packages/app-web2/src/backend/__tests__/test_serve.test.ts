@@ -33,7 +33,7 @@ describe("serve exchanges", () => {
           { name: "content-type", value: "application/octet-stream" },
           { name: "x-a", value: "1" },
         ],
-        body: new Uint8Array([1, 2]),
+        body: new Blob([new Uint8Array([1, 2])]),
       },
     });
     await ended(endpoint, 3);
@@ -100,6 +100,24 @@ describe("serve exchanges", () => {
     expect([exchange.aborted(), endpoint.posted.map(({ reply }) => reply)]).toStrictEqual([
       true,
       [{ kind: "reset", seq: 7, message: "the file cannot be read" }],
+    ]);
+  });
+
+  test("a trap while the body is sent leaves the trapped exchange alone and reports the trap once", async () => {
+    const exchange = fakeExchange({ sendError: new WebAssembly.RuntimeError("unreachable"), headWaitsForAbort: true });
+    const endpoint = fakeEndpoint();
+    const traps: string[] = [];
+
+    serve(endpoint, fakeBackend(exchange).backend, (trap) => {
+      traps.push(trap.message);
+    });
+    endpoint.receive({ kind: "request", request: { ...REQUEST.request, method: "PUT", body: new Blob(["x"]) } });
+    await ended(endpoint, 7);
+
+    expect([exchange.aborted(), traps, endpoint.posted.map(({ reply }) => reply.kind)]).toStrictEqual([
+      false,
+      ["unreachable"],
+      ["reset"],
     ]);
   });
 

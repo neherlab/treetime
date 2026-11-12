@@ -15,10 +15,7 @@ const requestFields = {
 
 export const portRequestSchema = z.strictObject({ ...requestFields, body: bytesSchema.exactOptional() });
 
-export const blobPortRequestSchema = z.strictObject({
-  ...requestFields,
-  body: z.union([bytesSchema, blobSchema]).exactOptional(),
-});
+export const blobPortRequestSchema = z.strictObject({ ...requestFields, body: blobSchema.exactOptional() });
 
 export const portMessageSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("request"), request: portRequestSchema }),
@@ -47,6 +44,8 @@ export type PortHeader = z.infer<typeof portHeaderSchema>;
 export type PortRequest = z.infer<typeof portRequestSchema>;
 
 export type BlobPortRequest = z.infer<typeof blobPortRequestSchema>;
+
+export type AnyPortRequest = PortRequest | BlobPortRequest;
 
 export type PortMessage = z.infer<typeof portMessageSchema>;
 

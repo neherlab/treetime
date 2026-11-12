@@ -33,13 +33,7 @@ export function responseHeaders({ headerNames, headerValues }: WasmResponseHead)
   return zip(headerNames, headerValues).map(([name, value]) => ({ name, value }));
 }
 
-export async function* bodyChunks(body: Uint8Array | Blob, sliceSize = BODY_SLICE_SIZE): AsyncGenerator<Uint8Array> {
-  if (body instanceof Uint8Array) {
-    yield body;
-
-    return;
-  }
-
+export async function* bodyChunks(body: Blob, sliceSize = BODY_SLICE_SIZE): AsyncGenerator<Uint8Array> {
   for (let start = 0; start < body.size; start += sliceSize) {
     yield new Uint8Array(await body.slice(start, start + sliceSize).arrayBuffer());
   }
@@ -139,7 +133,7 @@ export class ExchangeServer {
     }
   }
 
-  async #send(seq: number, exchange: WasmExchange, body: Uint8Array | Blob): Promise<Error | undefined> {
+  async #send(seq: number, exchange: WasmExchange, body: Blob): Promise<Error | undefined> {
     const error = await sendBody(exchange, body);
 
     if (error instanceof WebAssembly.RuntimeError && this.#open.has(seq)) {
@@ -178,22 +172,34 @@ export class ExchangeServer {
   }
 }
 
-async function sendBody(exchange: WasmExchange, body: Uint8Array | Blob): Promise<Error | undefined> {
+async function sendBody(exchange: WasmExchange, body: Blob): Promise<Error | undefined> {
   try {
     for await (const chunk of bodyChunks(body)) {
       if (!(await exchange.send(chunk))) {
         return undefined;
       }
     }
-  } catch (error) {
-    exchange.abort();
 
-    return error instanceof Error ? error : new Error(errorMessage(error));
+    exchange.end();
+
+    return undefined;
+  } catch (error) {
+    const failure = error instanceof Error ? error : new Error(errorMessage(error));
+
+    return failure instanceof WebAssembly.RuntimeError ? failure : abortExchange(exchange, failure);
+  }
+}
+
+function abortExchange(exchange: WasmExchange, failure: Error): Error {
+  try {
+    exchange.abort();
+  } catch (error) {
+    if (error instanceof WebAssembly.RuntimeError) {
+      return error;
+    }
   }
 
-  exchange.end();
-
-  return undefined;
+  return failure;
 }
 
 export interface ServeEndpoint {

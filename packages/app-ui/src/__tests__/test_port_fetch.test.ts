@@ -3,8 +3,14 @@ import { ApiError } from "@neherlab/app-contracts/client";
 import pWaitFor from "p-wait-for";
 
 import type { BackendStopped } from "../host";
-import type { BlobPortMessage, BlobPortRequest, PortReply } from "../port";
-import { createBlobPortFetch, createPortFetch, type FetchConnection, type FetchPort } from "../port-fetch";
+import type { AnyPortRequest, PortReply } from "../port";
+import {
+  createBlobPortFetch,
+  createPortFetch,
+  type FetchConnection,
+  type FetchPort,
+  type PortMessageOf,
+} from "../port-fetch";
 
 const ORIGIN = "http://treetime.desktop";
 
@@ -363,8 +369,8 @@ describe("port_fetch back end stops", () => {
 });
 
 interface FakeBackend {
-  connection: FetchConnection<BlobPortRequest>;
-  posted: BlobPortMessage[];
+  connection: FetchConnection<AnyPortRequest>;
+  posted: Array<PortMessageOf<AnyPortRequest>>;
   connect(): void;
   reply(reply: PortReply): void;
   deliver(data: unknown): void;
@@ -391,8 +397,8 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
       },
     },
     connect() {
-      const port: FetchPort<BlobPortRequest> = {
-        postMessage(message: BlobPortMessage) {
+      const port: FetchPort<AnyPortRequest> = {
+        postMessage(message: PortMessageOf<AnyPortRequest>) {
           backend.posted.push(message);
         },
         addEventListener(_type, listener) {

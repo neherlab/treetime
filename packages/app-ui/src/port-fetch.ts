@@ -1,20 +1,27 @@
 import { ApiError } from "@neherlab/app-contracts/client";
 
 import type { BackendStopped } from "./host";
-import { type BlobPortRequest, type PortHeader, type PortReply, type PortRequest, portReplySchema } from "./port";
+import {
+  type AnyPortRequest,
+  type BlobPortRequest,
+  type PortHeader,
+  type PortReply,
+  type PortRequest,
+  portReplySchema,
+} from "./port";
 
-export interface FetchPort<R extends BlobPortRequest = PortRequest> {
+export interface FetchPort<R extends AnyPortRequest = PortRequest> {
   postMessage(message: PortMessageOf<R>): void;
   addEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
   start(): void;
 }
 
-export interface FetchConnection<R extends BlobPortRequest = PortRequest> {
+export interface FetchConnection<R extends AnyPortRequest = PortRequest> {
   onPort(listener: (port: FetchPort<R>) => void): void;
   onStopped(listener: (stop: BackendStopped) => void): void;
 }
 
-export type PortMessageOf<R extends BlobPortRequest> = { kind: "request"; request: R } | { kind: "abort"; seq: number };
+export type PortMessageOf<R extends AnyPortRequest> = { kind: "request"; request: R } | { kind: "abort"; seq: number };
 
 export type PortFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -74,7 +81,7 @@ interface Exchange {
   fail(error: Error): void;
 }
 
-class PortClient<R extends BlobPortRequest> {
+class PortClient<R extends AnyPortRequest> {
   private port: FetchPort<R> | undefined;
   private readonly waiting = new Map<number, R>();
   private readonly exchanges = new Map<number, Exchange>();

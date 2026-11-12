@@ -1,4 +1,5 @@
 import type { BackendStopped } from "@neherlab/app-ui/host";
+import type { BlobPortRequest } from "@neherlab/app-ui/port";
 import type { FetchPort } from "@neherlab/app-ui/port-fetch";
 import pWaitFor from "p-wait-for";
 
@@ -46,7 +47,7 @@ describe("connection start", () => {
   test("a ready worker gives every port listener the page end of the channel", async () => {
     const host = fakeHost();
     const connection = new WorkerConnection(host);
-    const ports: FetchPort[] = [];
+    const ports: Array<FetchPort<BlobPortRequest>> = [];
 
     connection.onPort((port) => {
       ports.push(port);
@@ -118,7 +119,7 @@ describe("connection failures", () => {
     const host = fakeHost();
     const connection = new WorkerConnection(host);
     const stops: BackendStopped[] = [];
-    const ports: FetchPort[] = [];
+    const ports: Array<FetchPort<BlobPortRequest>> = [];
 
     connection.onStopped((stop) => {
       stops.push(stop);
