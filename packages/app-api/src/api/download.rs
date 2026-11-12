@@ -9,25 +9,22 @@ use log::warn;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::path::Path;
 
+use crate::api::blocking::run_blocking;
 use app_backend::runs::downloads::FileDownload;
 #[cfg(target_family = "wasm")]
 use app_backend::runs::files::FileChunks;
 use app_backend::runs::package::RunPackage;
-#[cfg(target_family = "wasm")]
-use std::convert::Infallible;
+use parking_lot::Mutex;
 #[cfg(target_family = "wasm")]
 use std::future::{Ready, ready};
-#[cfg(target_family = "wasm")]
+use std::iter::repeat;
+use std::sync::Arc;
+use tokio_stream::StreamExt as _;
 use tokio_stream::iter;
-#[cfg(not(target_family = "wasm"))]
-use tokio_util::io::{ReaderStream, SyncIoBridge};
 #[cfg(not(target_family = "wasm"))]
 use tower::ServiceExt as _;
 #[cfg(not(target_family = "wasm"))]
 use tower_http::services::ServeFile;
-
-#[cfg(not(target_family = "wasm"))]
-const PACKAGE_BUFFER_SIZE: usize = 64 * 1024;
 
 const CONTENT_TYPES: &[(&str, &str)] = &[
   ("json", "application/json"),
@@ -83,36 +80,24 @@ fn file_response(path: &Path, _request: Request) -> Ready<Result<Response, AppEr
   )
 }
 
-#[cfg(not(target_family = "wasm"))]
-#[cfg_attr(
-  dylint_lib = "custom",
-  expect(
-    spawn_handle_dropped,
-    reason = "the package task logs its error and ends the body stream, which the client sees as a cut download"
+fn package_body(package: RunPackage) -> Body {
+  let folder = package.folder().to_owned();
+  let chunks = Arc::new(Mutex::new(package.chunks()));
+  Body::from_stream(
+    iter(repeat(()))
+      .then(move |()| {
+        let chunks = Arc::clone(&chunks);
+        run_blocking(move || chunks.lock().next().transpose())
+      })
+      .map_while(Result::transpose)
+      .map(move |chunk| {
+        chunk.map_err(|error| {
+          let report = error.into_report();
+          warn_package_ended(&folder, &report);
+          report
+        })
+      }),
   )
-)]
-fn package_body(package: RunPackage) -> Body {
-  let (reader, writer) = tokio::io::duplex(PACKAGE_BUFFER_SIZE);
-  let bridge = SyncIoBridge::new(writer);
-  let folder = package.folder().to_owned();
-  tokio::task::spawn_blocking(move || {
-    if let Err(report) = package.stream(bridge) {
-      warn_package_ended(&folder, &report);
-    }
-  });
-  Body::from_stream(ReaderStream::new(reader))
-}
-
-#[cfg(target_family = "wasm")]
-fn package_body(package: RunPackage) -> Body {
-  let folder = package.folder().to_owned();
-  Body::from_stream(iter(package.chunks().map_while(move |chunk| match chunk {
-    Ok(bytes) => Some(Ok::<_, Infallible>(bytes)),
-    Err(report) => {
-      warn_package_ended(&folder, &report);
-      None
-    },
-  })))
 }
 
 fn warn_package_ended(folder: &str, report: &Report) {

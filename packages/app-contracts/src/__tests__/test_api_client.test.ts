@@ -34,6 +34,7 @@ const RECORD = {
   created_at: "2026-09-25T10:00:00Z",
   treetime_version: "1.0.0",
   inputs: [],
+  input_sets: [],
   uploads: [],
   changed_settings: [],
   headline: {},

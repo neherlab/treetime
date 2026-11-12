@@ -1254,8 +1254,8 @@ export type RunInput = {
   setting: string;
   /**
    * Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;
-   * `inputs/<setting>/...` for a file that a path template of an imported run names, kept in the run's folder; the
-   * absolute path for a file read from elsewhere.
+   * a path in the folder of an entry of `input_sets`, such as `inputs/<setting>/...`, for a file of a path template
+   * that the input store keeps; the absolute path for a file read from elsewhere.
    */
   path: string;
   /**
@@ -1264,6 +1264,21 @@ export type RunInput = {
   size: number;
   /**
    * SHA-256 of the file contents, as lowercase hexadecimal.
+   */
+  sha256: string;
+};
+
+/**
+ * Folder of a path template whose files the input store keeps as one set.
+ */
+export type InputSet = {
+  /**
+   * Folder of the files relative to the run's folder, `inputs/<setting>`; the template and its files lie in it.
+   */
+  folder: string;
+  /**
+   * Key of the set in the input store: the SHA-256, as lowercase hexadecimal, of the sorted lines `<sha256>  <path>`,
+   * one per file, with the file's SHA-256 and its path relative to the folder.
    */
   sha256: string;
 };
@@ -5332,6 +5347,11 @@ export type RunRecordTimetree = {
    */
   inputs: Array<RunInput>;
   /**
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
    * Files uploaded for the run before it started; the run drops them when it starts.
    */
   uploads: Array<StoredInput>;
@@ -5437,6 +5457,11 @@ export type RunRecordOptimize = {
    * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
   /**
    * Files uploaded for the run before it started; the run drops them when it starts.
    */
@@ -5544,6 +5569,11 @@ export type RunRecordPrune = {
    */
   inputs: Array<RunInput>;
   /**
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
    * Files uploaded for the run before it started; the run drops them when it starts.
    */
   uploads: Array<StoredInput>;
@@ -5650,6 +5680,11 @@ export type RunRecordAncestral = {
    */
   inputs: Array<RunInput>;
   /**
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
    * Files uploaded for the run before it started; the run drops them when it starts.
    */
   uploads: Array<StoredInput>;
@@ -5755,6 +5790,11 @@ export type RunRecordClock = {
    * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
+  /**
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
   /**
    * Files uploaded for the run before it started; the run drops them when it starts.
    */
@@ -7024,6 +7064,10 @@ export type RunsImportData = {
 };
 
 export type RunsImportErrors = {
+  /**
+   * The run package exceeds the upload limit
+   */
+  413: ErrorResponse;
   /**
    * The error, with its causes
    */

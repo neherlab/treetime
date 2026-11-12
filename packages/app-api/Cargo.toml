@@ -35,6 +35,7 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 mime = { workspace = true }
+parking_lot = { workspace = true }
 percent-encoding = { workspace = true }
 rayon = { workspace = true }
 schemars = { workspace = true }

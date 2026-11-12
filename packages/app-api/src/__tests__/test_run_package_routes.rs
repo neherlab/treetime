@@ -8,6 +8,7 @@ mod tests {
   use helpers::{Policy, ancestral_package_with_translations, app_with_policy, import_in_chunks, staged_folders};
   use pretty_assertions::assert_eq;
   use serde_json::json;
+  use std::fs;
   use tempfile::tempdir;
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -78,6 +79,37 @@ mod tests {
       ),
       (status, body, staged_folders(&test))
     );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_run_package_routes_package_body_fails_when_a_packaged_file_disappears() {
+    let test = app_with_upload_limit(1 << 30);
+    let (_, record) = test.run_with_data("timetree", timetree_config()).await;
+    let id = record["id"].as_str().unwrap().to_owned();
+    let record = wait_for_status(&test, &id, "ok").await;
+    let response = test
+      .send(
+        Request::get(format!("/api/runs/{id}/package"))
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await;
+    let removed = test
+      .runs_dir
+      .path()
+      .canonicalize()
+      .unwrap()
+      .join(&id)
+      .join("out")
+      .join(record["output_files"][0]["path"].as_str().unwrap());
+    fs::remove_file(&removed).unwrap();
+
+    let body = to_bytes(response.into_body(), usize::MAX).await;
+
+    let Err(error) = body else {
+      panic!("expected the body of the run package to fail");
+    };
+    assert_eq!(format!("When opening '{}'", removed.display()), error.to_string());
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -663,6 +663,14 @@ export const zRunInput = z.object({
 });
 
 /**
+ * Folder of a path template whose files the input store keeps as one set.
+ */
+export const zInputSet = z.object({
+  folder: z.string(),
+  sha256: z.string()
+});
+
+/**
  * Key of a file in the input store: the SHA-256 of its contents and its file name.
  */
 export const zStoredInput = z.object({
@@ -2156,6 +2164,7 @@ export const zRunRecordTimetree = z.object({
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  input_sets: z.array(zInputSet),
   uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
@@ -2184,6 +2193,7 @@ export const zRunRecordOptimize = z.object({
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  input_sets: z.array(zInputSet),
   uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
@@ -2212,6 +2222,7 @@ export const zRunRecordPrune = z.object({
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  input_sets: z.array(zInputSet),
   uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
@@ -2240,6 +2251,7 @@ export const zRunRecordAncestral = z.object({
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  input_sets: z.array(zInputSet),
   uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
@@ -2268,6 +2280,7 @@ export const zRunRecordClock = z.object({
   duration_seconds: z.number().optional(),
   treetime_version: z.string(),
   inputs: z.array(zRunInput),
+  input_sets: z.array(zInputSet),
   uploads: z.array(zStoredInput),
   config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),

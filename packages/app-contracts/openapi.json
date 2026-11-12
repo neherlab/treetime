@@ -1065,7 +1065,7 @@
     },
     "/api/runs/import": {
       "post": {
-        "description": "Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists.",
+        "description": "Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists. The package, as uploaded and unpacked, must fit in the upload limit.",
         "operationId": "runsImport",
         "requestBody": {
           "content": {
@@ -1095,6 +1095,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The run package exceeds the upload limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1546,7 +1556,7 @@
             "const": "not_found"
           },
           {
-            "description": "The inputs of a run exceed the upload limit.",
+            "description": "The inputs of a run or a run package exceed the upload limit.",
             "type": "string",
             "const": "upload_too_large"
           },
@@ -3522,7 +3532,7 @@
             "type": "string"
           },
           "path": {
-            "description": "Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;\n`inputs/<setting>/...` for a file that a path template of an imported run names, kept in the run's folder; the\nabsolute path for a file read from elsewhere.",
+            "description": "Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;\na path in the folder of an entry of `input_sets`, such as `inputs/<setting>/...`, for a file of a path template\nthat the input store keeps; the absolute path for a file read from elsewhere.",
             "type": "string"
           },
           "size": {
@@ -3540,6 +3550,24 @@
           "setting",
           "path",
           "size",
+          "sha256"
+        ]
+      },
+      "InputSet": {
+        "description": "Folder of a path template whose files the input store keeps as one set.",
+        "type": "object",
+        "properties": {
+          "folder": {
+            "description": "Folder of the files relative to the run's folder, `inputs/<setting>`; the template and its files lie in it.",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "Key of the set in the input store: the SHA-256, as lowercase hexadecimal, of the sorted lines `<sha256>  <path>`,\none per file, with the file's SHA-256 and its path relative to the folder.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder",
           "sha256"
         ]
       },
@@ -9065,6 +9093,13 @@
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
           "uploads": {
             "description": "Files uploaded for the run before it started; the run drops them when it starts.",
             "type": "array",
@@ -9126,6 +9161,7 @@
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
           "uploads",
           "changed_settings",
           "headline",
@@ -9216,6 +9252,13 @@
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
           "uploads": {
             "description": "Files uploaded for the run before it started; the run drops them when it starts.",
             "type": "array",
@@ -9277,6 +9320,7 @@
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
           "uploads",
           "changed_settings",
           "headline",
@@ -9367,6 +9411,13 @@
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
           "uploads": {
             "description": "Files uploaded for the run before it started; the run drops them when it starts.",
             "type": "array",
@@ -9428,6 +9479,7 @@
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
           "uploads",
           "changed_settings",
           "headline",
@@ -9518,6 +9570,13 @@
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
           "uploads": {
             "description": "Files uploaded for the run before it started; the run drops them when it starts.",
             "type": "array",
@@ -9579,6 +9638,7 @@
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
           "uploads",
           "changed_settings",
           "headline",
@@ -9669,6 +9729,13 @@
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
           "uploads": {
             "description": "Files uploaded for the run before it started; the run drops them when it starts.",
             "type": "array",
@@ -9730,6 +9797,7 @@
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
           "uploads",
           "changed_settings",
           "headline",

@@ -18,6 +18,12 @@ impl IntoResponse for AppError {
   }
 }
 
+impl AppError {
+  pub(crate) fn into_report(self) -> Report {
+    self.0
+  }
+}
+
 impl<E: Into<Report>> From<E> for AppError {
   fn from(err: E) -> Self {
     Self(err.into())

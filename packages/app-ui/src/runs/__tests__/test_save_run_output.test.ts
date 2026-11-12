@@ -145,6 +145,49 @@ describe("save run output in a browser", () => {
   });
 });
 
+describe("save run output with a body that fails", () => {
+  test("a download whose body fails starts no download and fails with the body error", async () => {
+    const objectUrls = new FakeObjectUrls();
+    const downloads: string[] = [];
+
+    const save = saveRunOutput(
+      {
+        host: null,
+        client: failingBodyClient(),
+        pickFile: null,
+        download: (url) => {
+          downloads.push(url);
+        },
+        objectUrls,
+        setTimer: noTimer,
+      },
+      { id: "r1", name: "run.zip" },
+    );
+
+    await expect(save).rejects.toThrow(BODY_FAILURE);
+    expect([downloads, objectUrls.liveCount()]).toStrictEqual([[], 0]);
+  });
+
+  test("a download into a picked file whose body fails aborts the file and fails with the body error", async () => {
+    const files = new FakeFiles();
+
+    const save = saveRunOutput(
+      {
+        host: null,
+        client: failingBodyClient(),
+        pickFile: files.pick,
+        download: noDownload,
+        objectUrls: new FakeObjectUrls(),
+        setTimer: noTimer,
+      },
+      { id: "r1", name: "run.zip" },
+    );
+
+    await expect(save).rejects.toThrow(BODY_FAILURE);
+    expect(files.saved()).toStrictEqual([{ name: "run.zip", content: "PK", state: "aborted" }]);
+  });
+});
+
 describe("save run output in a browser with a save file picker", () => {
   test("the output streams into the picked file without an object URL", async () => {
     const server = fakeServer({ "/api/runs/r1/package": "PK" });
@@ -244,6 +287,30 @@ function fakeServer(files: Record<string, string>): FakeServer {
       },
     }),
   };
+}
+
+const BODY_FAILURE = "When opening 'out/tree.nwk'";
+
+function failingBodyClient(): SaveTarget["client"] {
+  return createApiClient({
+    baseUrl: ORIGIN,
+    fetch: () => {
+      let sent = false;
+
+      const body = new ReadableStream<Uint8Array>({
+        pull: (controller) => {
+          if (sent) {
+            controller.error(new TypeError(BODY_FAILURE));
+          } else {
+            sent = true;
+            controller.enqueue(new TextEncoder().encode("PK"));
+          }
+        },
+      });
+
+      return Promise.resolve(new Response(body, { headers: { "content-type": "application/octet-stream" } }));
+    },
+  });
 }
 
 interface Download {

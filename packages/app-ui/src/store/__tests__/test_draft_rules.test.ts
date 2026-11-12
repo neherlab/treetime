@@ -29,6 +29,7 @@ const RUN: RunRecord = {
   created_at: "2026-11-12T08:00:00Z",
   treetime_version: "1.0.0",
   inputs: [{ setting: "tree", path: "inputs/tree.nwk", size: 10, sha256: "a" }],
+  input_sets: [],
   uploads: [],
   changed_settings: ["clock_filter"],
   headline: {},

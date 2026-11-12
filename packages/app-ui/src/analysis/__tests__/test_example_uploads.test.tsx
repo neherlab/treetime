@@ -119,6 +119,7 @@ const UPLOAD_RUN: RunRecord = {
   created_at: "2026-10-22T08:00:00Z",
   treetime_version: "1.0.0",
   inputs: [],
+  input_sets: [],
   uploads: [],
   changed_settings: [],
   headline: {},

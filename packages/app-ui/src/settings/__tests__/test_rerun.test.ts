@@ -28,6 +28,7 @@ const RECORD: RunRecord = {
     { setting: "tree", path: "inputs/tree.nwk", size: 10, sha256: "a" },
     { setting: "metadata", path: "/data/zika/86/metadata.tsv", size: 20, sha256: "b" },
   ],
+  input_sets: [],
   uploads: [],
   changed_settings: ["keep_root"],
   headline: {},

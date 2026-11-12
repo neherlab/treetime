@@ -406,7 +406,7 @@ export const runsPackage = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
- * Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists.
+ * Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists. The package, as uploaded and unpacked, must fit in the upload limit.
  */
 export const runsImport = <ThrowOnError extends boolean = false>(options: Options<RunsImportData, ThrowOnError>): RequestResult<RunsImportResponses, RunsImportErrors, ThrowOnError> => (options.client ?? client).post<RunsImportResponses, RunsImportErrors, ThrowOnError>({
   bodySerializer: null,
