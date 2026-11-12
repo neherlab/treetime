@@ -52,7 +52,7 @@
       "project": ["src/**/*.{ts,tsx}!", "build/**/*.ts!", "!src/**/__tests__/**!"]
     },
     "packages/app-wasm": {
-      "entry": ["smoke.ts"]
+      "entry": ["smoke.ts", "preview-timing.ts"]
     }
   }
 }
