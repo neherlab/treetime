@@ -26,6 +26,21 @@ mod tests {
   use treetime_utils::datetime::options::DateParserOptions;
   use treetime_utils::o;
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::iso(          DateForm::Calendar,  Some("%Y-%m-%d"),  "YYYY-MM-DD")]
+  #[case::day_first(    DateForm::Calendar,  Some("%d/%m/%y"),  "DD/MM/YY")]
+  #[case::month_name(   DateForm::Calendar,  Some("%b %e %Y"),  "MMM D YYYY")]
+  #[case::literal(      DateForm::Calendar,  Some("%Y%%x"),     "YYYY%x")]
+  #[case::no_format(    DateForm::Calendar,  None,              "calendar dates")]
+  #[case::numeric(      DateForm::Numeric,   None,              "decimal years")]
+  #[case::uncertain(    DateForm::Uncertain, None,              "uncertain dates")]
+  #[case::range(        DateForm::Range,     None,              "date ranges")]
+  #[trace]
+  fn test_check_inputs_date_reading_text(#[case] form: DateForm, #[case] format: Option<&str>, #[case] expected: &str) {
+    assert_eq!(expected, DateReading::new(form, format.map(str::to_owned), 1).text);
+  }
+
   #[test]
   fn test_check_inputs_zika_86_tree_facts() {
     let facts = check_inputs(&request(
@@ -664,11 +679,7 @@ mod tests {
     }
 
     pub(super) fn reading(form: DateForm, format: Option<&str>, count: usize) -> DateReading {
-      DateReading {
-        form,
-        format: format.map(str::to_owned),
-        count,
-      }
+      DateReading::new(form, format.map(str::to_owned), count)
     }
 
     pub(super) fn detected(column: &str, origin: SettingOrigin, setting: &str) -> DetectedColumn {

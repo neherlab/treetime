@@ -513,7 +513,7 @@ fn date_facts(dates: &[(String, Option<DateConstraint>)], options: &DateParserOp
     .into_iter()
     .counts()
     .into_iter()
-    .map(|((form, format), count)| DateReading { form, format, count })
+    .map(|((form, format), count)| DateReading::new(form, format, count))
     .sorted_by_key(|reading| (Reverse(reading.count), reading.form, reading.format.clone()))
     .collect_vec();
   let facts = DateFacts {

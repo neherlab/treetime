@@ -202,6 +202,20 @@ pub struct DateReading {
   pub format: Option<String>,
   /// Number of dates read in this form.
   pub count: usize,
+  /// The form as a person reads it: the pattern of a calendar format, such as `YYYY-MM-DD` for `%Y-%m-%d`, or the
+  /// name of the form, such as `decimal years`.
+  pub text: String,
+}
+
+impl DateReading {
+  pub fn new(form: DateForm, format: Option<String>, count: usize) -> Self {
+    Self {
+      text: reading_text(form, format.as_deref()),
+      form,
+      format,
+      count,
+    }
+  }
 }
 
 /// Form of a sampling date.
@@ -339,4 +353,46 @@ fn is_set(config: &Map<String, Value>, key: &str) -> bool {
     Value::Array(items) => !items.is_empty(),
     _ => true,
   })
+}
+
+const FORMAT_PATTERNS: [(&str, &str); 10] = [
+  ("%Y", "YYYY"),
+  ("%y", "YY"),
+  ("%m", "MM"),
+  ("%d", "DD"),
+  ("%e", "D"),
+  ("%B", "MMMM"),
+  ("%b", "MMM"),
+  ("%h", "MMM"),
+  ("%j", "DDD"),
+  ("%%", "%"),
+];
+
+fn reading_text(form: DateForm, format: Option<&str>) -> String {
+  match (form, format) {
+    (DateForm::Calendar, Some(format)) => format_pattern(format),
+    (DateForm::Calendar, None) => "calendar dates".to_owned(),
+    (DateForm::Numeric, _) => "decimal years".to_owned(),
+    (DateForm::Uncertain, _) => "uncertain dates".to_owned(),
+    (DateForm::Range, _) => "date ranges".to_owned(),
+  }
+}
+
+fn format_pattern(format: &str) -> String {
+  let mut pattern = String::new();
+  let mut rest = format;
+  while !rest.is_empty() {
+    if let Some((after, text)) = FORMAT_PATTERNS
+      .iter()
+      .find_map(|(specifier, text)| Some((rest.strip_prefix(specifier)?, text)))
+    {
+      pattern.push_str(text);
+      rest = after;
+    } else {
+      let mut chars = rest.chars();
+      pattern.extend(chars.next());
+      rest = chars.as_str();
+    }
+  }
+  pattern
 }
