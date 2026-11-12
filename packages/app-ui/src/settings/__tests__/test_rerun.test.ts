@@ -19,6 +19,7 @@ const RECORD: RunRecord = {
   },
   status: "ok",
   pinned: false,
+  renamed: false,
   group_id: "r1",
   size: 30,
   created_at: "2026-09-25T08:00:00Z",

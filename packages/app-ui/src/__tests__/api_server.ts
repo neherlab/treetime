@@ -10,6 +10,7 @@ export const RECORD = {
   config: { tree: "t.nwk" },
   status: "running",
   pinned: false,
+  renamed: false,
   group_id: "r0",
   size: 0,
   created_at: "2026-09-25T10:00:00Z",

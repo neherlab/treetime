@@ -300,6 +300,11 @@ export const zActiveChoice = z.strictObject({
 });
 
 /**
+ * Identifier of one command run, unique among the jobs of a process.
+ */
+export const zJobId = z.string();
+
+/**
  * Request to check a configuration.
  */
 export const zCheckConfigRequest = z.strictObject({
@@ -309,7 +314,8 @@ export const zCheckConfigRequest = z.strictObject({
   replace_inputs: zSparseConfig.optional().default({}),
   input_facts: zInputFacts.optional(),
   folder: z.string().optional(),
-  choices: z.array(zActiveChoice).optional().default([])
+  choices: z.array(zActiveChoice).optional().default([]),
+  run_id: zJobId.optional()
 });
 
 /**
@@ -386,6 +392,16 @@ export const zEffectiveValue = z.object({
   key: z.string(),
   text: z.string()
 });
+
+/**
+ * What a setting is for.
+ */
+export const zSettingPurpose = z.union([
+  z.literal('data'),
+  z.literal('analysis'),
+  z.literal('output'),
+  z.literal('ordering')
+]);
 
 /**
  * Location of a problem in the configuration text.
@@ -534,11 +550,6 @@ export const zClockPreview = z.object({
 });
 
 /**
- * Identifier of one command run, unique among the jobs of a process.
- */
-export const zJobId = z.string();
-
-/**
  * State of a run.
  */
 export const zRunStatus = z.union([
@@ -607,7 +618,8 @@ export const zCreateRunRequest = z.strictObject({
   command: zAppCommand,
   config: zSparseConfig,
   defer_start: z.boolean().optional().default(false),
-  source_run_id: zJobId.optional()
+  source_run_id: zJobId.optional(),
+  example: z.string().optional()
 });
 
 /**
@@ -929,6 +941,17 @@ export const zOutputProblem = z.object({
  * Auspice JSON of a run, with the color scales the app displays.
  */
 export const zAuspiceDocument = z.record(z.string(), z.unknown());
+
+/**
+ * A difference between two time-tree runs that changes what their log likelihoods measure, so that their difference
+ * is no measure of fit.
+ */
+export const zLikelihoodMismatch = z.union([
+  z.literal('data'),
+  z.literal('substitution-model'),
+  z.literal('coalescent-prior'),
+  z.literal('topology')
+]);
 
 /**
  * Date shift of one ancestor between two trees.
@@ -1276,16 +1299,6 @@ export const zSettingChoice = z.object({
   keys: z.array(z.string()),
   options: z.array(zChoiceOption)
 });
-
-/**
- * What a setting is for.
- */
-export const zSettingPurpose = z.union([
-  z.literal('data'),
-  z.literal('analysis'),
-  z.literal('output'),
-  z.literal('ordering')
-]);
 
 /**
  * What a setting names.
@@ -1899,19 +1912,6 @@ export const zPruneConfig = z.strictObject({
 });
 
 /**
- * The configuration is accepted.
- */
-export const zCheckConfigResponseValid = z.object({
-  command: zAppCommand,
-  config: zSparseConfig,
-  code: zConfigCode,
-  checks: z.array(zRunCheck),
-  choices: z.array(zActiveChoice),
-  effective: z.array(zEffectiveValue),
-  status: z.literal('valid')
-});
-
-/**
  * The configuration is rejected.
  */
 export const zCheckConfigResponseInvalid = z.object({
@@ -1925,6 +1925,65 @@ export const zCheckConfigResponseInvalid = z.object({
   choices: z.array(zActiveChoice),
   effective: z.array(zEffectiveValue),
   status: z.literal('invalid')
+});
+
+/**
+ * A value that controls the analysis.
+ */
+export const zSettingDifferenceSetting = z.object({
+  key: z.string(),
+  label: z.string(),
+  group: z.string(),
+  purpose: zSettingPurpose,
+  first: zJsonValue.optional(),
+  second: zJsonValue.optional(),
+  kind: z.literal('setting')
+});
+
+/**
+ * Input files with different contents.
+ */
+export const zSettingDifferenceInput = z.object({
+  key: z.string(),
+  label: z.string(),
+  group: z.string(),
+  purpose: zSettingPurpose,
+  first: z.array(z.string()),
+  second: z.array(z.string()),
+  kind: z.literal('input')
+});
+
+/**
+ * A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.
+ * Inputs differ when their file contents differ; their paths do not count.
+ */
+export const zSettingDifference = z.discriminatedUnion('kind', [
+  zSettingDifferenceSetting,
+  zSettingDifferenceInput
+]);
+
+/**
+ * Settings and inputs that differ between two runs of the same command. The settings that the app sets for every
+ * run, the output files and their paths, are not compared.
+ */
+export const zSettingsComparison = z.object({
+  differences: z.array(zSettingDifference),
+  compared: z.int().gte(0),
+  same_config_hash: z.boolean()
+});
+
+/**
+ * The configuration is accepted.
+ */
+export const zCheckConfigResponseValid = z.object({
+  command: zAppCommand,
+  config: zSparseConfig,
+  code: zConfigCode,
+  checks: z.array(zRunCheck),
+  choices: z.array(zActiveChoice),
+  effective: z.array(zEffectiveValue),
+  run_differences: z.array(zSettingDifference).optional(),
+  status: z.literal('valid')
 });
 
 /**
@@ -1967,6 +2026,8 @@ export const zRunConfigResponse = z.discriminatedUnion('status', [
 export const zRunRecordTimetree = z.object({
   id: zJobId,
   title: z.string(),
+  renamed: z.boolean(),
+  example: z.string().optional(),
   status: zRunStatus,
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
@@ -1993,6 +2054,8 @@ export const zRunRecordTimetree = z.object({
 export const zRunRecordOptimize = z.object({
   id: zJobId,
   title: z.string(),
+  renamed: z.boolean(),
+  example: z.string().optional(),
   status: zRunStatus,
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
@@ -2019,6 +2082,8 @@ export const zRunRecordOptimize = z.object({
 export const zRunRecordPrune = z.object({
   id: zJobId,
   title: z.string(),
+  renamed: z.boolean(),
+  example: z.string().optional(),
   status: zRunStatus,
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
@@ -2045,6 +2110,8 @@ export const zRunRecordPrune = z.object({
 export const zRunRecordAncestral = z.object({
   id: zJobId,
   title: z.string(),
+  renamed: z.boolean(),
+  example: z.string().optional(),
   status: zRunStatus,
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
@@ -2071,6 +2138,8 @@ export const zRunRecordAncestral = z.object({
 export const zRunRecordClock = z.object({
   id: zJobId,
   title: z.string(),
+  renamed: z.boolean(),
+  example: z.string().optional(),
   status: zRunStatus,
   pinned: z.boolean(),
   source_run_id: zJobId.optional(),
@@ -2237,7 +2306,18 @@ export const zEstimateComparison = z.object({
   root_interval_change_days: z.number().optional(),
   clock_rate_change_percent: z.number().optional(),
   excluded_samples_change: z.int().min(-9007199254740991, { error: 'Invalid value: Expected int64 to be >= -9007199254740991, the smallest exact JSON integer' }).max(9007199254740991, { error: 'Invalid value: Expected int64 to be <= 9007199254740991, the largest exact JSON integer' }),
-  log_likelihood_change: z.number().optional()
+  log_likelihood_change: z.number().optional(),
+  log_likelihood_mismatches: z.array(zLikelihoodMismatch)
+});
+
+/**
+ * Comparison of two runs: their settings and their results.
+ */
+export const zRunComparison = z.object({
+  same_analysis: z.boolean(),
+  settings: zSettingsComparison.optional(),
+  estimates: zEstimateComparison.optional(),
+  ancestors: zAncestorComparison.optional()
 });
 
 export const zCommandResultsTimetree = z.object({
@@ -2266,53 +2346,6 @@ export const zRunResults = z.object({
   results: zCommandResults,
   citation: zCitation,
   problems: z.array(zOutputProblem)
-});
-
-/**
- * A value that controls the analysis.
- */
-export const zSettingDifferenceSetting = z.object({
-  key: z.string(),
-  first: zJsonValue.optional(),
-  second: zJsonValue.optional(),
-  kind: z.literal('setting')
-});
-
-/**
- * Input files, which differ in their paths, their contents, or both.
- */
-export const zSettingDifferenceInput = z.object({
-  key: z.string(),
-  first: z.array(z.string()),
-  second: z.array(z.string()),
-  same_content: z.boolean(),
-  kind: z.literal('input')
-});
-
-/**
- * A setting whose value differs between two runs.
- */
-export const zSettingDifference = z.discriminatedUnion('kind', [
-  zSettingDifferenceSetting,
-  zSettingDifferenceInput
-]);
-
-/**
- * Settings and inputs that differ between two runs of the same command.
- */
-export const zSettingsComparison = z.object({
-  differences: z.array(zSettingDifference),
-  compared: z.int().gte(0),
-  same_config_hash: z.boolean()
-});
-
-/**
- * Comparison of two runs: their settings and their results.
- */
-export const zRunComparison = z.object({
-  settings: zSettingsComparison.optional(),
-  estimates: zEstimateComparison.optional(),
-  ancestors: zAncestorComparison.optional()
 });
 
 /**

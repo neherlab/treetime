@@ -46,6 +46,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -78,6 +79,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -102,6 +104,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -119,6 +122,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -159,6 +163,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
@@ -177,6 +182,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -221,6 +227,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -249,6 +256,7 @@ pub(crate) mod tests {
       folder: Some(PathBuf::from("/data/zika/20")),
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -273,6 +281,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -301,6 +310,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
@@ -321,6 +331,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -341,6 +352,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -361,6 +373,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -378,6 +391,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -421,6 +435,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let expected = expected
       .map(|(settings, text)| RunCheck {
@@ -448,6 +463,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -474,6 +490,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let value = to_json_value(&response).unwrap();
     assert_eq!(
@@ -505,6 +522,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { command, config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -526,6 +544,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { command, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -544,6 +563,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -573,6 +593,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig(replacements.as_object().unwrap().clone()),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { config, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -606,6 +627,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig(json!({ "reroot": "oldest" }).as_object().unwrap().clone()),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -626,6 +648,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig(json!({ "tree": 5 }).as_object().unwrap().clone()),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -647,6 +670,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -670,6 +694,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Invalid { messages, checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -722,6 +747,7 @@ pub(crate) mod tests {
       folder: None,
       replace_inputs: SparseConfig::default(),
       choices: vec![],
+      run_id: None,
     });
     let CheckConfigResponse::Valid { checks, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");

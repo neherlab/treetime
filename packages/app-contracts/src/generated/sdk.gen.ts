@@ -304,7 +304,7 @@ export const runsAuspice = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
- * Differences of the second run's results from the first run's.
+ * Differences of the second run's settings and results from the first run's. Every change of a run makes the comparisons under `/api/compare` stale.
  */
 export const runsCompare = <ThrowOnError extends boolean = false>(options: Options<RunsCompareData, ThrowOnError>): RequestResult<RunsCompareResponses, RunsCompareErrors, ThrowOnError> => (options.client ?? client).get<RunsCompareResponses, RunsCompareErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({
@@ -313,7 +313,7 @@ export const runsCompare = <ThrowOnError extends boolean = false>(options: Optio
     query: z.never().optional()
   }).parseAsync(data),
   responseValidator: async (data) => await zRunsCompareResponse.parseAsync(data),
-  url: '/api/runs/{id}/compare/{other}',
+  url: '/api/compare/{id}/{other}',
   ...options
 });
 

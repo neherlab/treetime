@@ -729,9 +729,9 @@
         }
       }
     },
-    "/api/runs/{id}/compare/{other}": {
+    "/api/compare/{id}/{other}": {
       "get": {
-        "description": "Differences of the second run's results from the first run's.",
+        "description": "Differences of the second run's settings and results from the first run's. Every change of a run makes the comparisons under `/api/compare` stale.",
         "operationId": "runsCompare",
         "parameters": [
           {
@@ -1558,6 +1558,11 @@
               "$ref": "#/components/schemas/ActiveChoice"
             },
             "default": []
+          },
+          "run_id": {
+            "description": "Run to compare the configuration with, for example the run whose results the app shows beside the form. The\nanswer then lists the settings whose resolved values differ from those of the run.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
           }
         },
         "additionalProperties": false,
@@ -2318,6 +2323,10 @@
           }
         ]
       },
+      "JobId": {
+        "description": "Identifier of one command run, unique among the jobs of a process.",
+        "type": "string"
+      },
       "CheckConfigResponse": {
         "description": "Outcome of checking a configuration without running it.",
         "oneOf": [
@@ -2539,6 +2548,49 @@
         "required": [
           "key",
           "text"
+        ]
+      },
+      "SettingDifference": {
+        "description": "A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.\nInputs differ when their file contents differ; their paths do not count.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SettingDifferenceSetting"
+          },
+          {
+            "$ref": "#/components/schemas/SettingDifferenceInput"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "setting": "#/components/schemas/SettingDifferenceSetting",
+            "input": "#/components/schemas/SettingDifferenceInput"
+          }
+        }
+      },
+      "SettingPurpose": {
+        "description": "What a setting is for.",
+        "oneOf": [
+          {
+            "description": "How the input files are read.",
+            "type": "string",
+            "const": "data"
+          },
+          {
+            "description": "A model, method, or parameter of the analysis.",
+            "type": "string",
+            "const": "analysis"
+          },
+          {
+            "description": "What the run writes, and in which format.",
+            "type": "string",
+            "const": "output"
+          },
+          {
+            "description": "The order of the tree in the outputs, and the random seed: settings that change no inferred value.",
+            "type": "string",
+            "const": "ordering"
+          }
         ]
       },
       "ConfigProblem": {
@@ -3073,10 +3125,6 @@
           "headline"
         ]
       },
-      "JobId": {
-        "description": "Identifier of one command run, unique among the jobs of a process.",
-        "type": "string"
-      },
       "RunStatus": {
         "description": "State of a run.",
         "oneOf": [
@@ -3176,6 +3224,11 @@
           "source_run_id": {
             "description": "Run whose settings the new run starts from, such as the source of a variant.",
             "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; unset for the user's own files.\nThe run's name starts with it.",
+            "type": "string",
             "x-unset": true
           }
         },
@@ -4403,8 +4456,12 @@
         "description": "Comparison of two runs: their settings and their results.",
         "type": "object",
         "properties": {
+          "same_analysis": {
+            "description": "Whether both runs are the same analysis, that is, they execute the same command. Runs of different analyses have\nno settings comparison and no estimates.",
+            "type": "boolean"
+          },
           "settings": {
-            "description": "Settings and inputs that differ; absent when the runs execute different commands.",
+            "description": "Settings and inputs that differ; absent when the runs are different analyses.",
             "$ref": "#/components/schemas/SettingsComparison",
             "x-unset": true
           },
@@ -4418,14 +4475,17 @@
             "$ref": "#/components/schemas/AncestorComparison",
             "x-unset": true
           }
-        }
+        },
+        "required": [
+          "same_analysis"
+        ]
       },
       "SettingsComparison": {
-        "description": "Settings and inputs that differ between two runs of the same command.",
+        "description": "Settings and inputs that differ between two runs of the same command. The settings that the app sets for every\nrun, the output files and their paths, are not compared.",
         "type": "object",
         "properties": {
           "differences": {
-            "description": "Settings and inputs whose values differ.",
+            "description": "Settings whose resolved values differ, and inputs whose file contents differ.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SettingDifference"
@@ -4447,24 +4507,6 @@
           "compared",
           "same_config_hash"
         ]
-      },
-      "SettingDifference": {
-        "description": "A setting whose value differs between two runs.",
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/SettingDifferenceSetting"
-          },
-          {
-            "$ref": "#/components/schemas/SettingDifferenceInput"
-          }
-        ],
-        "discriminator": {
-          "propertyName": "kind",
-          "mapping": {
-            "setting": "#/components/schemas/SettingDifferenceSetting",
-            "input": "#/components/schemas/SettingDifferenceInput"
-          }
-        }
       },
       "EstimateComparison": {
         "description": "Estimates of two time-tree runs and their differences, second minus first.",
@@ -4502,16 +4544,49 @@
             "format": "int64"
           },
           "log_likelihood_change": {
-            "description": "Change of the total log likelihood; absent when either value is missing or not finite.",
+            "description": "Change of the total log likelihood; absent when either value is missing or not finite, or when\n`log_likelihood_mismatches` is not empty.",
             "type": "number",
             "format": "double",
             "x-unset": true
+          },
+          "log_likelihood_mismatches": {
+            "description": "Why the log likelihoods of the two runs cannot be compared; empty when they can.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LikelihoodMismatch"
+            }
           }
         },
         "required": [
           "first",
           "second",
-          "excluded_samples_change"
+          "excluded_samples_change",
+          "log_likelihood_mismatches"
+        ]
+      },
+      "LikelihoodMismatch": {
+        "description": "A difference between two time-tree runs that changes what their log likelihoods measure, so that their difference\nis no measure of fit.",
+        "oneOf": [
+          {
+            "description": "The runs read different input data: different file contents, or different settings of how the files are read.",
+            "type": "string",
+            "const": "data"
+          },
+          {
+            "description": "The runs use different substitution models.",
+            "type": "string",
+            "const": "substitution-model"
+          },
+          {
+            "description": "The runs use different coalescent priors.",
+            "type": "string",
+            "const": "coalescent-prior"
+          },
+          {
+            "description": "The trees of the runs differ in topology, for example because the runs resolved polytomies with different\nrandom seeds or polytomy settings: each node that the resolution adds lowers the log likelihood. Also when a run\nwrote no tree.",
+            "type": "string",
+            "const": "topology"
+          }
         ]
       },
       "AncestorComparison": {
@@ -6014,31 +6089,6 @@
           "conflicts",
           "help",
           "more"
-        ]
-      },
-      "SettingPurpose": {
-        "description": "What a setting is for.",
-        "oneOf": [
-          {
-            "description": "How the input files are read.",
-            "type": "string",
-            "const": "data"
-          },
-          {
-            "description": "A model, method, or parameter of the analysis.",
-            "type": "string",
-            "const": "analysis"
-          },
-          {
-            "description": "What the run writes, and in which format.",
-            "type": "string",
-            "const": "output"
-          },
-          {
-            "description": "The order of the tree in the outputs, and the random seed: settings that change no inferred value.",
-            "type": "string",
-            "const": "ordering"
-          }
         ]
       },
       "SettingRole": {
@@ -8254,6 +8304,14 @@
               "$ref": "#/components/schemas/EffectiveValue"
             }
           },
+          "run_differences": {
+            "description": "Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and\ninputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output\nfiles and their paths, are not compared. Absent without `run_id`, and when the run executes another command.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingDifference"
+            },
+            "x-unset": true
+          },
           "status": {
             "type": "string",
             "const": "valid"
@@ -8345,6 +8403,98 @@
           "effective"
         ]
       },
+      "SettingDifferenceSetting": {
+        "description": "A value that controls the analysis.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key path of the setting joined with `.`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "group": {
+            "description": "Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "purpose": {
+            "description": "What the setting is for.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "first": {
+            "description": "Value in the first configuration; absent when it leaves the setting unset.",
+            "$ref": "#/components/schemas/JsonValue",
+            "x-unset": true
+          },
+          "second": {
+            "description": "Value in the second configuration; absent when it leaves the setting unset.",
+            "$ref": "#/components/schemas/JsonValue",
+            "x-unset": true
+          },
+          "kind": {
+            "type": "string",
+            "const": "setting"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "group",
+          "purpose",
+          "kind"
+        ]
+      },
+      "SettingDifferenceInput": {
+        "description": "Input files with different contents.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key path of the setting joined with `.`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "group": {
+            "description": "Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "purpose": {
+            "description": "What the setting is for.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "first": {
+            "description": "Paths of the files of the first configuration.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "second": {
+            "description": "Paths of the files of the second configuration.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "input"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "group",
+          "purpose",
+          "kind",
+          "first",
+          "second"
+        ]
+      },
       "RunConfigResponseValid": {
         "description": "The configuration is accepted.",
         "type": "object",
@@ -8420,8 +8570,17 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
@@ -8537,6 +8696,7 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
           "pinned",
           "group_id",
@@ -8561,8 +8721,17 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
@@ -8678,6 +8847,7 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
           "pinned",
           "group_id",
@@ -8702,8 +8872,17 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
@@ -8819,6 +8998,7 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
           "pinned",
           "group_id",
@@ -8843,8 +9023,17 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
@@ -8960,6 +9149,7 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
           "pinned",
           "group_id",
@@ -8984,8 +9174,17 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
@@ -9101,6 +9300,7 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
           "pinned",
           "group_id",
@@ -9298,73 +9498,6 @@
           "kind",
           "points",
           "stiffness"
-        ]
-      },
-      "SettingDifferenceSetting": {
-        "description": "A value that controls the analysis.",
-        "type": "object",
-        "properties": {
-          "key": {
-            "description": "Key path of the setting joined with `.`.",
-            "type": "string"
-          },
-          "first": {
-            "description": "Value in the first run; absent when the first run does not set the setting.",
-            "$ref": "#/components/schemas/JsonValue",
-            "x-unset": true
-          },
-          "second": {
-            "description": "Value in the second run; absent when the second run does not set the setting.",
-            "$ref": "#/components/schemas/JsonValue",
-            "x-unset": true
-          },
-          "kind": {
-            "type": "string",
-            "const": "setting"
-          }
-        },
-        "required": [
-          "kind",
-          "key"
-        ]
-      },
-      "SettingDifferenceInput": {
-        "description": "Input files, which differ in their paths, their contents, or both.",
-        "type": "object",
-        "properties": {
-          "key": {
-            "description": "Key path of the setting that names the files.",
-            "type": "string"
-          },
-          "first": {
-            "description": "Paths of the files the first run read.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "second": {
-            "description": "Paths of the files the second run read.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "same_content": {
-            "description": "Whether the files of both runs have the same contents.",
-            "type": "boolean"
-          },
-          "kind": {
-            "type": "string",
-            "const": "input"
-          }
-        },
-        "required": [
-          "kind",
-          "key",
-          "first",
-          "second",
-          "same_content"
         ]
       },
       "RunEventStarted": {

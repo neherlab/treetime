@@ -18,6 +18,7 @@ const OWN: UiDraft = {
 const RUN: RunRecord = {
   id: "r1",
   title: "Baseline",
+  renamed: false,
   command: "timetree",
   config: { tree: "inputs/tree.nwk", clock_filter: 3, output_all: "out" },
   status: "ok",

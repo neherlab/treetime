@@ -4,7 +4,9 @@ use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_
 use crate::config::choices::{ActiveChoice, active_choices};
 use crate::config::code::{ConfigCode, config_code};
 use crate::config::effective::{EffectiveValue, effective_values};
+use crate::job::JobId;
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
+use crate::runs::setting_differences::SettingDifference;
 use app_commands::command::AppCommand;
 use app_commands::commands::shared::argument_error::ArgumentError;
 use app_commands::config::resolve_paths::resolve_config_paths_where;
@@ -77,6 +79,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
         effective,
         config: SparseConfig(config),
         code,
+        run_differences: None,
       }
     },
     Err(report) => invalid(
@@ -129,6 +132,11 @@ pub struct CheckConfigRequest {
   #[schemars(default, transform = field_default::<Vec<ActiveChoice>>)]
   #[deser(default)]
   pub choices: Vec<ActiveChoice>,
+  /// Run to compare the configuration with, for example the run whose results the app shows beside the form. The
+  /// answer then lists the settings whose resolved values differ from those of the run.
+  #[schemars(default)]
+  #[deser(default)]
+  pub run_id: Option<JobId>,
 }
 
 fn invalid(
@@ -200,6 +208,10 @@ pub enum CheckConfigResponse {
     choices: Vec<ActiveChoice>,
     /// The value the run uses for each setting that the configuration leaves at its default, as a short text.
     effective: Vec<EffectiveValue>,
+    /// Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and
+    /// inputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output
+    /// files and their paths, are not compared. Absent without `run_id`, and when the run executes another command.
+    run_differences: Option<Vec<SettingDifference>>,
   },
   /// The configuration is rejected.
   Invalid {

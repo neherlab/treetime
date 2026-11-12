@@ -108,6 +108,7 @@ const UPLOAD_RUN: RunRecord = {
   config: {},
   status: "created",
   pinned: false,
+  renamed: false,
   group_id: "r1",
   size: 0,
   created_at: "2026-10-22T08:00:00Z",

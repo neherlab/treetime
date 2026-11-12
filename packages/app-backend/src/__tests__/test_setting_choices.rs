@@ -288,6 +288,7 @@ mod tests {
         folder: None,
         replace_inputs: SparseConfig::default(),
         choices: picked.to_vec(),
+        run_id: None,
       })
     }
 

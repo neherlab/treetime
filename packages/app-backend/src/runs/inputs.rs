@@ -1,4 +1,6 @@
+use crate::runs::input_store::InputStore;
 use crate::runs::record::RunInput;
+use crate::runs::setting_differences::ComparedInput;
 use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::aa_node_data::{cds_names, translation_path};
 use app_commands::config::properties::{PathRole, setting_properties};
@@ -6,12 +8,16 @@ use deser::adapters::As;
 use deser_serde::Serde;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use log::warn;
+use parking_lot::Mutex;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::fmt::{self, Write};
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 const HASH_BUFFER_SIZE: usize = 1 << 16;
@@ -56,6 +62,88 @@ pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<H
   })
 }
 
+pub fn draft_inputs(
+  command: AppCommand,
+  config: &Map<String, Value>,
+  sha256: impl Fn(&Path) -> Result<String, Report>,
+) -> Result<Vec<ComparedInput>, Report> {
+  let mut inputs = vec![];
+  for property in setting_properties(command.config_schema().as_value())? {
+    let setting = property.key.as_str();
+    let paths = match property.path_role {
+      Some(PathRole::Input) => Ok(config.get(setting).map_or_else(Vec::new, path_values)),
+      Some(PathRole::InputTemplate) => template_input_paths(config, setting),
+      Some(PathRole::Output) | None => continue,
+    };
+    match paths {
+      Ok(paths) => inputs.extend(paths.into_iter().map(|path| {
+        let sha256 = sha256(&path)
+          .inspect_err(|report| {
+            warn!(
+              "The input '{}' of setting `{setting}` counts as changed: {report:#}",
+              path.display()
+            );
+          })
+          .ok();
+        ComparedInput {
+          setting: setting.to_owned(),
+          path,
+          sha256,
+        }
+      })),
+      Err(report) => {
+        warn!("The inputs of setting `{setting}` count as changed: {report:#}");
+        inputs.push(ComparedInput {
+          setting: setting.to_owned(),
+          path: config
+            .get(setting)
+            .and_then(Value::as_str)
+            .map(PathBuf::from)
+            .unwrap_or_default(),
+          sha256: None,
+        });
+      },
+    }
+  }
+  Ok(inputs)
+}
+
+/// SHA-256 of input files, remembered for files whose size and modification time stay the same.
+#[derive(Default)]
+pub struct InputHashes {
+  known: Mutex<BTreeMap<PathBuf, KnownHash>>,
+}
+
+impl InputHashes {
+  pub fn sha256(&self, store: &InputStore, path: &Path) -> Result<String, Report> {
+    if let Some(key) = store.key_of(path) {
+      return Ok(key.sha256);
+    }
+    let metadata = fs::metadata(path).wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?;
+    let Ok(modified) = metadata.modified() else {
+      return Ok(file_sha256(path)?.1);
+    };
+    let stamp = (metadata.len(), modified);
+    if let Some(known) = self.known.lock().get(path).filter(|known| known.stamp == stamp) {
+      return Ok(known.sha256.clone());
+    }
+    let (_, sha256) = file_sha256(path)?;
+    self.known.lock().insert(
+      path.to_path_buf(),
+      KnownHash {
+        stamp,
+        sha256: sha256.clone(),
+      },
+    );
+    Ok(sha256)
+  }
+}
+
+struct KnownHash {
+  stamp: (u64, SystemTime),
+  sha256: String,
+}
+
 pub struct HashedInputs {
   pub inputs: Vec<RunInput>,
   pub config_hash: String,
@@ -80,6 +168,14 @@ fn hash_path_values(setting: &str, value: &mut Value, inputs: &mut Vec<RunInput>
     _ => {},
   }
   Ok(())
+}
+
+fn path_values(value: &Value) -> Vec<PathBuf> {
+  match value {
+    Value::String(path) => vec![PathBuf::from(path)],
+    Value::Array(items) => items.iter().flat_map(path_values).collect(),
+    _ => vec![],
+  }
 }
 
 fn record_input(setting: &str, path: &Path) -> Result<RunInput, Report> {

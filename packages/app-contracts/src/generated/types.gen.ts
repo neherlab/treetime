@@ -71,6 +71,11 @@ export type CheckConfigRequest = {
    * configuration selects the option.
    */
   choices?: Array<ActiveChoice>;
+  /**
+   * Run to compare the configuration with, for example the run whose results the app shows beside the form. The
+   * answer then lists the settings whose resolved values differ from those of the run.
+   */
+  run_id?: JobId;
 };
 
 /**
@@ -538,6 +543,11 @@ export type ChoiceName = 'clock-rate' | 'root';
 export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'outgroup' | 'keep';
 
 /**
+ * Identifier of one command run, unique among the jobs of a process.
+ */
+export type JobId = string;
+
+/**
  * Outcome of checking a configuration without running it.
  */
 export type CheckConfigResponse = ({
@@ -667,6 +677,21 @@ export type EffectiveValue = {
    */
   text: string;
 };
+
+/**
+ * A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.
+ * Inputs differ when their file contents differ; their paths do not count.
+ */
+export type SettingDifference = ({
+  kind: 'setting';
+} & SettingDifferenceSetting) | ({
+  kind: 'input';
+} & SettingDifferenceInput);
+
+/**
+ * What a setting is for.
+ */
+export type SettingPurpose = 'data' | 'analysis' | 'output' | 'ordering';
 
 /**
  * One problem found in a configuration.
@@ -1016,11 +1041,6 @@ export type RunSummary = {
 };
 
 /**
- * Identifier of one command run, unique among the jobs of a process.
- */
-export type JobId = string;
-
-/**
  * State of a run.
  */
 export type RunStatus = 'created' | 'running' | 'ok' | 'error' | 'cancelled' | 'interrupted';
@@ -1073,6 +1093,11 @@ export type CreateRunRequest = {
    * Run whose settings the new run starts from, such as the source of a variant.
    */
   source_run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; unset for the user's own files.
+   * The run's name starts with it.
+   */
+  example?: string;
 };
 
 /**
@@ -1855,7 +1880,12 @@ export type AuspiceDocument = {
  */
 export type RunComparison = {
   /**
-   * Settings and inputs that differ; absent when the runs execute different commands.
+   * Whether both runs are the same analysis, that is, they execute the same command. Runs of different analyses have
+   * no settings comparison and no estimates.
+   */
+  same_analysis: boolean;
+  /**
+   * Settings and inputs that differ; absent when the runs are different analyses.
    */
   settings?: SettingsComparison;
   /**
@@ -1869,11 +1899,12 @@ export type RunComparison = {
 };
 
 /**
- * Settings and inputs that differ between two runs of the same command.
+ * Settings and inputs that differ between two runs of the same command. The settings that the app sets for every
+ * run, the output files and their paths, are not compared.
  */
 export type SettingsComparison = {
   /**
-   * Settings and inputs whose values differ.
+   * Settings whose resolved values differ, and inputs whose file contents differ.
    */
   differences: Array<SettingDifference>;
   /**
@@ -1885,15 +1916,6 @@ export type SettingsComparison = {
    */
   same_config_hash: boolean;
 };
-
-/**
- * A setting whose value differs between two runs.
- */
-export type SettingDifference = ({
-  kind: 'setting';
-} & SettingDifferenceSetting) | ({
-  kind: 'input';
-} & SettingDifferenceInput);
 
 /**
  * Estimates of two time-tree runs and their differences, second minus first.
@@ -1924,10 +1946,21 @@ export type EstimateComparison = {
    */
   excluded_samples_change: number;
   /**
-   * Change of the total log likelihood; absent when either value is missing or not finite.
+   * Change of the total log likelihood; absent when either value is missing or not finite, or when
+   * `log_likelihood_mismatches` is not empty.
    */
   log_likelihood_change?: number;
+  /**
+   * Why the log likelihoods of the two runs cannot be compared; empty when they can.
+   */
+  log_likelihood_mismatches: Array<LikelihoodMismatch>;
 };
+
+/**
+ * A difference between two time-tree runs that changes what their log likelihoods measure, so that their difference
+ * is no measure of fit.
+ */
+export type LikelihoodMismatch = 'data' | 'substitution-model' | 'coalescent-prior' | 'topology';
 
 /**
  * Date shifts of the ancestors two trees share, matched by their set of samples.
@@ -2900,11 +2933,6 @@ export type SettingSpec = {
    */
   more: string;
 };
-
-/**
- * What a setting is for.
- */
-export type SettingPurpose = 'data' | 'analysis' | 'output' | 'ordering';
 
 /**
  * What a setting names.
@@ -4817,6 +4845,12 @@ export type CheckConfigResponseValid = {
    * The value the run uses for each setting that the configuration leaves at its default, as a short text.
    */
   effective: Array<EffectiveValue>;
+  /**
+   * Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and
+   * inputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output
+   * files and their paths, are not compared. Absent without `run_id`, and when the run executes another command.
+   */
+  run_differences?: Array<SettingDifference>;
   status: 'valid';
 };
 
@@ -4863,6 +4897,68 @@ export type CheckConfigResponseInvalid = {
    */
   effective: Array<EffectiveValue>;
   status: 'invalid';
+};
+
+/**
+ * A value that controls the analysis.
+ */
+export type SettingDifferenceSetting = {
+  /**
+   * Key path of the setting joined with `.`.
+   */
+  key: string;
+  /**
+   * Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.
+   */
+  label: string;
+  /**
+   * Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.
+   */
+  group: string;
+  /**
+   * What the setting is for.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Value in the first configuration; absent when it leaves the setting unset.
+   */
+  first?: JsonValue;
+  /**
+   * Value in the second configuration; absent when it leaves the setting unset.
+   */
+  second?: JsonValue;
+  kind: 'setting';
+};
+
+/**
+ * Input files with different contents.
+ */
+export type SettingDifferenceInput = {
+  /**
+   * Key path of the setting joined with `.`.
+   */
+  key: string;
+  /**
+   * Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.
+   */
+  label: string;
+  /**
+   * Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.
+   */
+  group: string;
+  /**
+   * What the setting is for.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Paths of the files of the first configuration.
+   */
+  first: Array<string>;
+  /**
+   * Paths of the files of the second configuration.
+   */
+  second: Array<string>;
+  kind: 'input';
 };
 
 /**
@@ -4915,9 +5011,20 @@ export type RunRecordTimetree = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
   /**
    * State of the run.
    */
@@ -5009,9 +5116,20 @@ export type RunRecordOptimize = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
   /**
    * State of the run.
    */
@@ -5103,9 +5221,20 @@ export type RunRecordPrune = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
   /**
    * State of the run.
    */
@@ -5197,9 +5326,20 @@ export type RunRecordAncestral = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
   /**
    * State of the run.
    */
@@ -5291,9 +5431,20 @@ export type RunRecordClock = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
   /**
    * State of the run.
    */
@@ -5456,48 +5607,6 @@ export type CoalescentPriorSkyline = {
    */
   stiffness: number;
   kind: 'skyline';
-};
-
-/**
- * A value that controls the analysis.
- */
-export type SettingDifferenceSetting = {
-  /**
-   * Key path of the setting joined with `.`.
-   */
-  key: string;
-  /**
-   * Value in the first run; absent when the first run does not set the setting.
-   */
-  first?: JsonValue;
-  /**
-   * Value in the second run; absent when the second run does not set the setting.
-   */
-  second?: JsonValue;
-  kind: 'setting';
-};
-
-/**
- * Input files, which differ in their paths, their contents, or both.
- */
-export type SettingDifferenceInput = {
-  /**
-   * Key path of the setting that names the files.
-   */
-  key: string;
-  /**
-   * Paths of the files the first run read.
-   */
-  first: Array<string>;
-  /**
-   * Paths of the files the second run read.
-   */
-  second: Array<string>;
-  /**
-   * Whether the files of both runs have the same contents.
-   */
-  same_content: boolean;
-  kind: 'input';
 };
 
 /**
@@ -6433,7 +6542,7 @@ export type RunsCompareData = {
     other: JobId;
   };
   query?: never;
-  url: '/api/runs/{id}/compare/{other}';
+  url: '/api/compare/{id}/{other}';
 };
 
 export type RunsCompareErrors = {

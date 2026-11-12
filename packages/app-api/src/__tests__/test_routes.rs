@@ -617,6 +617,46 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_check_config_lists_the_settings_that_differ_from_a_run() {
+    let test = app();
+    let (_, record) = test.run_with_data("timetree", timetree_config()).await;
+    let id = record["id"].as_str().unwrap().to_owned();
+    wait_for_status(&test, &id, "ok").await;
+    let (_, settings) = request(&test, "GET", &format!("/api/runs/{id}/settings"), None).await;
+    let draft = |changes: Value| {
+      let mut draft = settings.clone();
+      if let (Value::Object(draft), Value::Object(changes)) = (&mut draft, changes) {
+        draft.extend(changes);
+      }
+      json!({ "command": "timetree", "text": draft.to_string(), "run_id": id })
+    };
+
+    let (_, unchanged) = request(&test, "POST", "/api/check-config", Some(draft(json!({})))).await;
+    let (_, changed) = request(
+      &test,
+      "POST",
+      "/api/check-config",
+      Some(draft(json!({ "coalescent": "skyline", "output_selection": ["nwk"] }))),
+    )
+    .await;
+
+    assert_eq!(
+      (
+        json!([]),
+        json!([{
+          "key": "coalescent",
+          "label": "Coalescent prior",
+          "group": "Coalescent prior",
+          "purpose": "analysis",
+          "kind": "setting",
+          "second": "skyline",
+        }])
+      ),
+      (unchanged["run_differences"].clone(), changed["run_differences"].clone())
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_run_config_adds_the_run_outputs() {
     let test = app();
     let (_, response) = request(

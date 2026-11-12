@@ -66,6 +66,7 @@ describe("upload run of a discarded form", () => {
       {
         id: "r1",
         title: "Baseline",
+        renamed: false,
         command: "timetree",
         config: {},
         status: "ok",

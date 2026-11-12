@@ -57,6 +57,7 @@ mod tests {
         folder: None,
         replace_inputs: SparseConfig::default(),
         choices: vec![],
+        run_id: None,
       });
       match response {
         CheckConfigResponse::Valid { .. } => panic!("check-config accepted the config"),
