@@ -122,6 +122,7 @@ export default projectConfig({
       files: [
         "packages/app-ui/src/host.ts",
         "packages/app-ui/src/port.ts",
+        "packages/app-ui/src/routerSearch.ts",
         "packages/app-ui/src/runs/RootToTipPlot.tsx",
         "packages/app-ui/src/settings/inputs.ts",
       ],
