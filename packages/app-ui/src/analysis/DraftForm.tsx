@@ -21,6 +21,7 @@ import { configResolver } from "./configResolver";
 import { datasetLabel } from "./datasetLabel";
 import { fromFormConfig, toFormConfig, type FormConfig } from "./formValues";
 import { OptionsPanel } from "./OptionsPanel";
+import { StaleBar } from "./StaleBar";
 import { useStartRun } from "./useStartRun";
 import { WorkspaceContext, type WorkspaceView } from "./workspaceContext";
 import { WorkspaceLayout } from "./WorkspaceLayout";
@@ -58,12 +59,12 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
       const text = JSON.stringify(settled);
       const picked = choices ?? [];
 
+      const body = { command, text, choices: picked };
+      const withRun = shownRunId === undefined ? body : { ...body, run_id: shownRunId };
+
       return configCheck({
         ...context,
-        body:
-          facts === undefined
-            ? { command, text, choices: picked }
-            : { command, text, choices: picked, input_facts: facts },
+        body: facts === undefined ? withRun : { ...withRun, input_facts: facts },
       });
     },
     { placeholderData: keepPreviousData, staleTime: Infinity },
@@ -134,6 +135,7 @@ export function DraftForm({ command, shownRunId }: { command: AppCommand; shownR
             </form>
           }
           footer={<RunFooter checks={checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} onRun={run} />}
+          aboveMain={shownRunId === undefined ? undefined : <StaleBar shownRunId={shownRunId} />}
           main={<Outlet />}
         />
       </WorkspaceContext>

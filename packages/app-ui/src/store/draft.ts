@@ -42,7 +42,8 @@ interface DraftActions {
   viewRun: (runId: JobId, options: UiDraft) => void;
   refreshView: (runId: JobId, options: UiDraft) => void;
   leaveRun: () => void;
-  discard: (reason: Exclude<DiscardReason, "replaced">, command: AppCommand) => void;
+  discard: (reason: Exclude<DiscardReason, "replaced" | "revert">, command: AppCommand) => void;
+  revertToRun: (runId: JobId, options: UiDraft) => void;
   undoDiscard: (token: symbol, shownRunId: JobId | undefined) => void;
   dropUndo: (token: symbol) => void;
   queueExamples: (examples: readonly QueuedExample[]) => void;
@@ -190,6 +191,17 @@ export const useDraftStore = create<Store>()((set) => ({
         uploadRunCreation: undefined,
       };
     });
+  },
+  revertToRun: (runId, options) => {
+    set((state) => ({
+      draft: options,
+      viewing: { runId, parked: blankDraft(state.draft, state.draft.command) },
+      lastShown: runId,
+      undo: { token: Symbol("revert"), reason: "revert", previous: snapshotOf(state) },
+      epoch: state.epoch + 1,
+      selections: {},
+      uploadRunCreation: undefined,
+    }));
   },
   undoDiscard: (token, shownRunId) => {
     set((state) => {

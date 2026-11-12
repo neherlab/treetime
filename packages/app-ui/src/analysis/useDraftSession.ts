@@ -14,6 +14,7 @@ const UNDO_TITLES: Readonly<Record<DiscardReason, string>> = {
   reset: "The form was reset to the defaults",
   new: "A new analysis replaced the earlier draft",
   replaced: "The edit started a variant of the shown run and replaced the earlier draft",
+  revert: "The settings of the run replaced the edited options",
 };
 
 export function useDraftSession(): void {

@@ -104,7 +104,7 @@ export interface DraftUndo {
   previous: DraftSnapshot;
 }
 
-export type DiscardReason = "reset" | "new" | "replaced";
+export type DiscardReason = "reset" | "new" | "replaced" | "revert";
 
 function displayOf({ view, search, changed_only, code_format }: UiDraft) {
   return { view, search, changed_only, code_format };

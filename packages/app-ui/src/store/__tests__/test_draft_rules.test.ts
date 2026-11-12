@@ -120,6 +120,25 @@ describe("options of a shown run", () => {
   });
 });
 
+describe("revert to the settings of a shown run", () => {
+  test("shows the run read-only again, and undo restores the edited variant", () => {
+    const variant = { ...RUN_OPTIONS, config: { ...RUN_OPTIONS.config, coalescent: "skyline" } };
+    useDraftStore.setState({ draft: variant });
+    useDraftStore.getState().revertToRun("r1", RUN_OPTIONS);
+    const reverted = useDraftStore.getState();
+    useDraftStore.getState().undoDiscard(reverted.undo?.token ?? Symbol("missing"), "r1");
+    const undone = useDraftStore.getState();
+
+    expect([
+      reverted.draft,
+      reverted.viewing?.runId,
+      reverted.undo?.reason,
+      undone.draft,
+      undone.viewing,
+    ]).toStrictEqual([RUN_OPTIONS, "r1", "revert", variant, undefined]);
+  });
+});
+
 describe("reset with undo", () => {
   test("reset starts from the defaults with the display kept, and undo restores the draft", () => {
     useDraftStore.getState().discard("reset", "clock");
