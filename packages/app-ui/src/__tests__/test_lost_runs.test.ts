@@ -27,7 +27,10 @@ const DRAFT: UiDraft = {
 
 describe("lost runs of a draft", () => {
   test("the files of a run that the back end no longer has leave the form", async () => {
-    const server = new FakeServer({ "GET /api/runs/r2": () => json(R2) });
+    const server = new FakeServer({
+      "GET /api/runs/r2": () => json(R2),
+      "POST /api/stored-inputs": () => json({ missing: ["/treetime/runs/r1/inputs/tree.nwk"] }),
+    });
 
     const expected: UiDraft = {
       ...FRESH,
@@ -41,11 +44,15 @@ describe("lost runs of a draft", () => {
       examples: [],
       runs: new Map([["r2", R2]]),
     });
-    expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r1", "GET /api/runs/r2"]);
+    expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r1", "GET /api/runs/r2", "POST /api/stored-inputs"]);
   });
 
   test("a draft whose runs all exist stays as it is", async () => {
-    const server = new FakeServer({ "GET /api/runs/r1": () => json(R1), "GET /api/runs/r2": () => json(R2) });
+    const server = new FakeServer({
+      "GET /api/runs/r1": () => json(R1),
+      "GET /api/runs/r2": () => json(R2),
+      "POST /api/stored-inputs": () => json({ missing: [] }),
+    });
 
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
       draft: DRAFT,
@@ -55,6 +62,22 @@ describe("lost runs of a draft", () => {
         ["r1", R1],
         ["r2", R2],
       ]),
+    });
+  });
+
+  test("a file of a lost run that another run still holds stays in the form", async () => {
+    const server = new FakeServer({
+      "GET /api/runs/r2": () => json(R2),
+      "POST /api/stored-inputs": () => json({ missing: [] }),
+    });
+
+    const { upload_run_id: _lost, ...expected } = DRAFT;
+
+    await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
+      draft: expected,
+      dropped: [],
+      examples: [],
+      runs: new Map([["r2", R2]]),
     });
   });
 

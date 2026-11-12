@@ -1,6 +1,6 @@
 import type { UiDraft } from "@neherlab/app-contracts";
 
-import { forgetRuns, freshDraft, referencedRuns } from "../draftSchema";
+import { draftInputPaths, forgetRuns, freshDraft, referencedRuns } from "../draftSchema";
 
 const FRESH = freshDraft("timetree");
 
@@ -51,7 +51,12 @@ describe("runs of a draft", () => {
       search: "rate",
     };
 
-    expect(forgetRuns(DRAFT, new Set(["r1"]))).toStrictEqual({
+    const lost = {
+      runs: new Set(["r1"]),
+      paths: new Set(["/treetime/runs/r1/inputs/tree.nwk", "/treetime/runs/r1/inputs/aln.fasta"]),
+    };
+
+    expect(forgetRuns(DRAFT, lost)).toStrictEqual({
       draft: expected,
       dropped: ["tree.nwk", "aln.fasta"],
       examples: [],
@@ -61,10 +66,46 @@ describe("runs of a draft", () => {
   test("forgetting the earlier run drops the form's link to it and no file", () => {
     const { from_run_id: _fromRun, ...expected } = DRAFT;
 
-    expect(forgetRuns(DRAFT, new Set(["r3"]))).toStrictEqual({ draft: expected, dropped: [], examples: [] });
+    expect(forgetRuns(DRAFT, { runs: new Set(["r3"]), paths: new Set() })).toStrictEqual({
+      draft: expected,
+      dropped: [],
+      examples: [],
+    });
   });
 
   test("forgetting no run keeps the draft", () => {
-    expect(forgetRuns(DRAFT, new Set())).toStrictEqual({ draft: DRAFT, dropped: [], examples: [] });
+    expect(forgetRuns(DRAFT, { runs: new Set(), paths: new Set() })).toStrictEqual({
+      draft: DRAFT,
+      dropped: [],
+      examples: [],
+    });
+  });
+
+  test("an input of a deleted run whose stored copy another run holds stays in the draft", () => {
+    const { from_run_id: _fromRun, ...expected } = DRAFT;
+
+    expect(forgetRuns(DRAFT, { runs: new Set(["r2", "r3"]), paths: new Set() })).toStrictEqual({
+      draft: expected,
+      dropped: [],
+      examples: [],
+    });
+  });
+
+  test("a stored input that is gone drops its file also when its run exists", () => {
+    const forgotten = forgetRuns(DRAFT, { runs: new Set(), paths: new Set(["/treetime/runs/r2/inputs/dates.tsv"]) });
+
+    expect([Object.keys(forgotten.draft.sources), forgotten.dropped]).toStrictEqual([
+      ["tree", "alignment", "topology_order_list"],
+      ["dates.tsv"],
+    ]);
+  });
+
+  test("the input paths of a draft are the paths of its sources, once each", () => {
+    expect(draftInputPaths(DRAFT)).toStrictEqual([
+      "/treetime/runs/r1/inputs/tree.nwk",
+      "/treetime/runs/r1/inputs/aln.fasta",
+      "/treetime/runs/r2/inputs/dates.tsv",
+      "/data/order.txt",
+    ]);
   });
 });

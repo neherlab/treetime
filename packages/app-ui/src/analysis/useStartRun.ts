@@ -6,8 +6,7 @@ import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
-import { exampleDatasetName } from "./datasetLabel";
-import { forgetLostRuns, lostFilesMessage } from "./lostRuns";
+import { forgetLostRuns, lostFilesMessage, refetchedExamplesMessage } from "./lostRuns";
 import { pendingUpload } from "./pendingUpload";
 import { whileRunBusy } from "./runWork";
 
@@ -26,10 +25,9 @@ export function useStartRun(command: AppCommand) {
         if (kept.dropped.length > 0 || kept.examples.length > 0) {
           load(kept.draft);
           queueExamples(kept.examples);
-
-          if (kept.dropped.length > 0) {
-            toasts.add(lostFilesMessage(kept.dropped));
-          }
+          toasts.add(
+            kept.dropped.length > 0 ? lostFilesMessage(kept.dropped) : refetchedExamplesMessage(kept.examples),
+          );
 
           return;
         }
@@ -37,7 +35,7 @@ export function useStartRun(command: AppCommand) {
         const uploadRunId = kept.draft.upload_run_id;
         const upload = pendingUpload(uploadRunId === undefined ? undefined : kept.runs.get(uploadRunId));
 
-        const example = exampleDatasetName(kept.draft);
+        const { example } = kept.draft;
         const source = kept.draft.from_run_id;
         const named: Pick<StartRunRequest, "example" | "source_run_id"> = {};
 

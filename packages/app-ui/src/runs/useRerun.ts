@@ -16,9 +16,14 @@ export function useRerun(record: RunRecord): () => void {
   const rerun = useCallback(async () => {
     try {
       const { data: settings } = await runsSettings({ client, path: { id: record.id }, throwOnError: true });
-      const state = useDraftStore.getState();
+      const store = useDraftStore.getState();
+      const options = runOptionsDraft(record, settings, ownDraft(store));
 
-      state.load(runOptionsDraft(record, settings, ownDraft(state)));
+      if (options === undefined) {
+        throw new Error("the run has not resolved its settings yet");
+      }
+
+      store.load(options);
       await navigate({ to: "/new" });
 
       const [named] = record.error?.settings ?? [];

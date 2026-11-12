@@ -19,8 +19,13 @@ export function useCreateVariant(record: RunRecord): () => void {
     try {
       const { data: settings } = await runsSettings({ client, path: { id: record.id }, throwOnError: true });
       const store = useDraftStore.getState();
+      const options = runOptionsDraft(record, settings, ownDraft(store));
 
-      store.load(runOptionsDraft(record, settings, ownDraft(store)));
+      if (options === undefined) {
+        throw new Error("the run has not resolved its settings yet");
+      }
+
+      store.load(options);
     } catch (error: unknown) {
       toasts.add({ title: "The settings of the run cannot be loaded", description: errorMessage(error) });
     }

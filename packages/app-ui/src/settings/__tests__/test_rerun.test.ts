@@ -18,6 +18,7 @@ const RECORD: RunRecord = {
     output_selection: ["nwk", "auspice"],
   },
   status: "ok",
+  prepared: true,
   pinned: false,
   renamed: false,
   group_id: "r1",

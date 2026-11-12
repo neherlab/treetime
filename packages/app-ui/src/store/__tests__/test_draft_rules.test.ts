@@ -22,6 +22,7 @@ const RUN: RunRecord = {
   command: "timetree",
   config: { tree: "inputs/tree.nwk", clock_filter: 3, output_all: "out" },
   status: "ok",
+  prepared: true,
   pinned: false,
   group_id: "r1",
   size: 30,
@@ -37,7 +38,7 @@ const RUN: RunRecord = {
   warnings: [],
 };
 
-const RUN_OPTIONS = runOptionsDraft(RUN, { tree: "/runs/.inputs/a/tree.nwk", clock_filter: 3 }, OWN);
+const RUN_OPTIONS = runOptionsDraft(RUN, { tree: "/runs/.inputs/a/tree.nwk", clock_filter: 3 }, OWN) ?? FRESH;
 
 beforeEach(() => {
   useDraftStore.setState({ ...blankDraftState("timetree"), draft: OWN, epoch: 0 });
@@ -52,6 +53,14 @@ describe("options of a shown run", () => {
       from_run_id: "r1",
       search: "rate",
     });
+  });
+
+  test("come only from a run whose settings the run layer has prepared", () => {
+    expect(runOptionsDraft({ ...RUN, prepared: false }, { clock_filter: 3 }, OWN)).toBeUndefined();
+  });
+
+  test("keep the example dataset of the run", () => {
+    expect(runOptionsDraft({ ...RUN, example: "ebola/100" }, { clock_filter: 3 }, OWN)?.example).toBe("ebola/100");
   });
 
   test("showing a run parks the own draft, and leaving the run restores it unchanged", () => {
@@ -76,32 +85,65 @@ describe("options of a shown run", () => {
     expect(useDraftStore.getState().viewing?.runId).toBe("r1");
   });
 
-  test("the first edit turns the options into a variant draft of the run with its seed, in the same form", () => {
+  test("the first edit turns the options into a variant draft of the run with its seed and keeps the own draft", () => {
     useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
     const { epoch } = useDraftStore.getState();
     useDraftStore.getState().setConfig({ ...RUN_OPTIONS.config, coalescent: "skyline" });
     const state = useDraftStore.getState();
 
-    expect([state.draft, state.viewing, state.epoch, state.undo?.reason]).toStrictEqual([
+    expect([state.draft, state.viewing, state.epoch, state.undo, ownDraft(state)]).toStrictEqual([
       { ...RUN_OPTIONS, config: { ...RUN_OPTIONS.config, coalescent: "skyline" } },
       undefined,
       epoch,
-      "replaced",
+      undefined,
+      OWN,
     ]);
   });
 
-  test("undo of the first edit shows the run read-only again with the own draft parked", () => {
+  test("a reset of the variant shows the own draft again, and undo restores the variant", () => {
     useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
     useDraftStore.getState().pickChoice({ choice: "root", option: "keep" });
-    const token = useDraftStore.getState().undo?.token ?? Symbol("missing");
-    useDraftStore.getState().undoDiscard(token, "r1");
+    const variant = useDraftStore.getState().draft;
+    useDraftStore.getState().discard("reset", "timetree");
+    const reset = useDraftStore.getState();
+    useDraftStore.getState().undoDiscard(reset.undo?.token ?? Symbol("missing"), undefined);
+    const undone = useDraftStore.getState();
+
+    expect([reset.draft, reset.parked, undone.draft, ownDraft(undone)]).toStrictEqual([OWN, undefined, variant, OWN]);
+  });
+
+  test("a reset of an unedited shown run shows the own draft again without an undo", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().discard("reset", "timetree");
     const state = useDraftStore.getState();
 
-    expect([state.draft, state.viewing, state.undo]).toStrictEqual([
-      RUN_OPTIONS,
-      { runId: "r1", parked: OWN },
-      undefined,
-    ]);
+    expect([state.draft, state.viewing, state.undo]).toStrictEqual([OWN, undefined, undefined]);
+  });
+
+  test("a new analysis from a shown run with an untouched own draft offers no undo", () => {
+    useDraftStore.setState({ draft: FRESH });
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().discard("new", "timetree");
+
+    expect([useDraftStore.getState().draft.sources, useDraftStore.getState().undo]).toStrictEqual([{}, undefined]);
+  });
+
+  test("starting the variant shows the own draft again", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().setConfig({ ...RUN_OPTIONS.config, coalescent: "skyline" });
+    useDraftStore.getState().finishStart();
+    const state = useDraftStore.getState();
+
+    expect([state.draft, state.parked]).toStrictEqual([OWN, undefined]);
+  });
+
+  test("opening another run while a variant is edited offers to undo the variant and keeps the own draft", () => {
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    useDraftStore.getState().setConfig({ ...RUN_OPTIONS.config, coalescent: "skyline" });
+    useDraftStore.getState().viewRun("r2", { ...RUN_OPTIONS, from_run_id: "r2" });
+    const state = useDraftStore.getState();
+
+    expect([state.undo?.reason, ownDraft(state)]).toStrictEqual(["replaced", OWN]);
   });
 
   test("a variant of a pristine draft offers no undo", () => {
@@ -174,10 +216,38 @@ describe("reset with undo", () => {
   test("an undo token of an earlier discard changes nothing", () => {
     useDraftStore.getState().discard("reset", "timetree");
     const stale = useDraftStore.getState().undo?.token ?? Symbol("missing");
+    useDraftStore.getState().setConfig({ ...FRESH.config, clock_rate: 0.002 });
+    useDraftStore.getState().discard("reset", "timetree");
+    const before = useDraftStore.getState();
     useDraftStore.getState().undoDiscard(stale, undefined);
-    useDraftStore.getState().undoDiscard(stale, undefined);
+    const after = useDraftStore.getState();
 
-    expect(useDraftStore.getState().draft).toStrictEqual(OWN);
+    expect([after.draft, after.undo, stale === before.undo?.token]).toStrictEqual([before.draft, before.undo, false]);
+  });
+});
+
+describe("uploads in flight while a run is shown", () => {
+  test("opening a run keeps the file choices of the own draft, and a finished upload lands in it", () => {
+    const selection = Symbol("pick");
+    useDraftStore.getState().claimSelections(["alignment"], selection);
+    useDraftStore.getState().viewRun("r1", RUN_OPTIONS);
+    const alignment = { label: "aln.fasta", origin: { kind: "upload" as const }, size: 20, run_id: "u1" };
+
+    useDraftStore.getState().assignInputs(
+      {
+        config: { ...OWN.config, alignment: ["/runs/.inputs/b/aln.fasta"] },
+        sources: { ...OWN.sources, alignment },
+      },
+      ["alignment"],
+    );
+
+    const state = useDraftStore.getState();
+
+    expect([state.draft, state.viewing?.runId, state.parked?.draft.sources["alignment"]]).toStrictEqual([
+      RUN_OPTIONS,
+      "r1",
+      alignment,
+    ]);
   });
 });
 

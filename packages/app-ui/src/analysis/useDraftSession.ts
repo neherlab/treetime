@@ -11,9 +11,9 @@ import { useQueuedExamples } from "./useExampleData";
 const UNDO_TIMEOUT_MS = 10_000;
 
 const UNDO_TITLES: Readonly<Record<DiscardReason, string>> = {
-  reset: "The form was reset to the defaults",
-  new: "A new analysis replaced the earlier draft",
-  replaced: "The edit started a variant of the shown run and replaced the earlier draft",
+  reset: "The form was reset",
+  new: "A new analysis replaced your own draft",
+  replaced: "Opening the run set the edited variant aside",
   revert: "The settings of the run replaced the edited options",
 };
 
@@ -40,8 +40,8 @@ function useUploadRunJanitor(): void {
     const janitor = new UploadRunJanitor(
       useDraftStore,
       async (runId) => deleteUnstartedRun(client, runId),
-      (message) => {
-        toast.add({ title: "The uploads of a discarded form remain", description: message });
+      (problem) => {
+        toast.add(problem);
       },
     );
 
@@ -62,7 +62,7 @@ function useDiscardUndo(): void {
 
   useEffect(() => {
     if (undo === undefined) {
-      return;
+      return undefined;
     }
 
     const { token, reason } = undo;
@@ -81,5 +81,9 @@ function useDiscardUndo(): void {
         useDraftStore.getState().dropUndo(token);
       },
     });
+
+    return () => {
+      toast.close(id);
+    };
   }, [undo]);
 }

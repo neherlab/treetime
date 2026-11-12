@@ -1,28 +1,37 @@
 import { errorMessage, type JobId } from "@neherlab/app-contracts";
 import { ApiError, type ApiClient, runsDelete, runsGet } from "@neherlab/app-contracts/client";
 
-import { heldUploadRuns, type HeldDrafts, releasedUploadRuns } from "../store/draftRules";
+import {
+  heldCreations,
+  type HeldCreations,
+  heldUploadRuns,
+  type HeldDrafts,
+  releasedUploadRuns,
+} from "../store/draftRules";
 
 export class UploadRunJanitor {
   readonly #store: JanitorStore;
   readonly #retire: (runId: JobId) => Promise<void>;
-  readonly #report: (message: string) => void;
+  readonly #report: (problem: JanitorProblem) => void;
   readonly #retiring = new Set<JobId>();
+  readonly #pending = new Set<Promise<void>>();
   readonly #unsubscribe: () => void;
 
-  constructor(store: JanitorStore, retire: (runId: JobId) => Promise<void>, report: (message: string) => void) {
+  constructor(store: JanitorStore, retire: (runId: JobId) => Promise<void>, report: (problem: JanitorProblem) => void) {
     this.#store = store;
     this.#retire = retire;
     this.#report = report;
     this.#unsubscribe = store.subscribe((after, before) => {
       for (const runId of releasedUploadRuns(before, after)) {
-        void this.#retireWhenIdle(runId);
+        this.#track(this.#retireWhenIdle(runId));
       }
 
-      const creation = before.uploadRunCreation;
+      const kept = heldCreations(after);
 
-      if (creation !== undefined && creation !== after.uploadRunCreation) {
-        void this.#retireCreated(creation);
+      for (const creation of heldCreations(before)) {
+        if (!kept.has(creation)) {
+          this.#track(this.#retireCreated(creation));
+        }
       }
     });
   }
@@ -31,14 +40,27 @@ export class UploadRunJanitor {
     this.#unsubscribe();
   }
 
-  async #retireCreated(creation: Promise<JobId>): Promise<void> {
-    const created = await creation.then(
-      (runId) => runId,
-      () => undefined,
-    );
+  async settled(): Promise<void> {
+    while (this.#pending.size > 0) {
+      await Promise.all(this.#pending);
+    }
+  }
 
-    if (created !== undefined) {
-      await this.#retireWhenIdle(created);
+  #track(work: Promise<void>): void {
+    this.#pending.add(work);
+    void work.finally(() => {
+      this.#pending.delete(work);
+    });
+  }
+
+  async #retireCreated(creation: Promise<JobId>): Promise<void> {
+    try {
+      await this.#retireWhenIdle(await creation);
+    } catch (error: unknown) {
+      this.#report({
+        title: "The upload run of a discarded form was not created",
+        description: errorMessage(error),
+      });
     }
   }
 
@@ -56,7 +78,7 @@ export class UploadRunJanitor {
         await this.#retire(runId);
       }
     } catch (error: unknown) {
-      this.#report(`the uploads of a discarded form could not be removed: ${errorMessage(error)}`);
+      this.#report({ title: "The uploads of a discarded form remain", description: errorMessage(error) });
     } finally {
       this.#retiring.delete(runId);
     }
@@ -93,9 +115,13 @@ export async function deleteUnstartedRun(client: ApiClient, runId: JobId): Promi
   }
 }
 
-export interface JanitorState extends HeldDrafts {
+export interface JanitorProblem {
+  title: string;
+  description: string;
+}
+
+export interface JanitorState extends HeldDrafts, HeldCreations {
   busyRuns: readonly JobId[];
-  uploadRunCreation: Promise<JobId> | undefined;
 }
 
 export interface JanitorStore {

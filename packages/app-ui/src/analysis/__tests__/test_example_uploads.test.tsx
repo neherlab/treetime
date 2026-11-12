@@ -112,6 +112,7 @@ const UPLOAD_RUN: RunRecord = {
   command: "timetree",
   config: {},
   status: "created",
+  prepared: false,
   pinned: false,
   renamed: false,
   group_id: "r1",
@@ -481,6 +482,7 @@ function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected:
       checks: [],
       choices: [],
       effective: [],
+      command_lines: [],
     };
   }
 
@@ -492,6 +494,7 @@ function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected:
     checks: [],
     choices: [],
     effective: [],
+    command_lines: [],
   };
 }
 

@@ -6,8 +6,8 @@ import { sameJson } from "../settings/json";
 import { rerunDraft } from "../settings/rerun";
 import { freshDraft } from "./draftSchema";
 
-export function ownDraft(snapshot: DraftSnapshot): UiDraft {
-  return snapshot.viewing?.parked ?? snapshot.draft;
+export function ownDraft(state: { draft: UiDraft; parked: FormSlot | undefined }): UiDraft {
+  return state.parked?.draft ?? state.draft;
 }
 
 export function isPristine(draft: UiDraft): boolean {
@@ -28,10 +28,14 @@ export function sameConfig(draft: UiDraft, config: SparseConfig): boolean {
   return sameJson(normalizeConfig(specs, draft.config), normalizeConfig(specs, config));
 }
 
-export function runOptionsDraft(record: RunRecord, settings: SparseConfig, base: UiDraft): UiDraft {
+export function runOptionsDraft(record: RunRecord, settings: SparseConfig, base: UiDraft): UiDraft | undefined {
+  if (!record.prepared) {
+    return undefined;
+  }
+
   const { config, inputLabels } = rerunDraft(record, settings);
 
-  return {
+  const draft: UiDraft = {
     ...displayOf(base),
     command: record.command,
     config,
@@ -41,6 +45,8 @@ export function runOptionsDraft(record: RunRecord, settings: SparseConfig, base:
     choices: [],
     from_run_id: record.id,
   };
+
+  return record.example === undefined ? draft : { ...draft, example: record.example };
 }
 
 export function blankDraft(base: UiDraft, command: UiDraft["command"]): UiDraft {
@@ -63,9 +69,30 @@ export function withoutAbandonedUpload(draft: UiDraft, pendingPicks: number): Ui
   return kept;
 }
 
+export function lostOnDiscard(state: SlotState): boolean {
+  const ownEdited = state.viewing === undefined && !isPristine(state.draft);
+
+  return ownEdited || (state.parked !== undefined && !isPristine(state.parked.draft));
+}
+
+export function claimedSlot(state: SlotState, selection: symbol): "current" | "parked" {
+  const parked = state.parked?.selections ?? {};
+
+  return Object.values(parked).includes(selection) ? "parked" : "current";
+}
+
+export function slotHoldingKeys(state: SlotState, keys: readonly string[]): "current" | "parked" {
+  const parked = state.parked?.selections ?? {};
+  const [first] = keys;
+  const selection = first === undefined ? undefined : parked[first];
+
+  return selection !== undefined && keys.every((key) => parked[key] === selection) ? "parked" : "current";
+}
+
 export function heldUploadRuns(state: HeldDrafts): Set<JobId> {
-  const snapshots = state.undo === undefined ? [state] : [state, state.undo.previous];
-  const drafts = snapshots.flatMap((snapshot) => [snapshot.draft, ownDraft(snapshot)]);
+  const drafts = [state.draft, state.parked?.draft, state.undo?.previous.draft, state.undo?.previous.parked].filter(
+    (draft) => draft !== undefined,
+  );
 
   return new Set(drafts.flatMap((draft) => (draft.upload_run_id === undefined ? [] : [draft.upload_run_id])));
 }
@@ -76,26 +103,50 @@ export function releasedUploadRuns(before: HeldDrafts, after: HeldDrafts): JobId
   return [...heldUploadRuns(before)].filter((runId) => !kept.has(runId));
 }
 
+export function heldCreations(state: HeldCreations): Set<Promise<JobId>> {
+  const creations = [state.uploadRunCreation, state.parked?.uploadRunCreation];
+
+  return new Set(creations.filter((creation) => creation !== undefined));
+}
+
 export function restoredSnapshot(previous: DraftSnapshot, shownRunId: JobId | undefined): DraftSnapshot {
   if (previous.viewing === undefined || previous.viewing.runId === shownRunId) {
     return previous;
   }
 
-  return { draft: previous.viewing.parked, viewing: undefined };
+  return { draft: previous.parked ?? previous.draft, viewing: undefined, parked: undefined };
+}
+
+export interface FormSlot {
+  draft: UiDraft;
+  selections: Readonly<Record<string, symbol>>;
+  uploadRunCreation: Promise<JobId> | undefined;
+}
+
+export interface SlotState extends FormSlot {
+  viewing: RunView | undefined;
+  parked: FormSlot | undefined;
 }
 
 export interface DraftSnapshot {
   draft: UiDraft;
   viewing: RunView | undefined;
+  parked: UiDraft | undefined;
 }
 
 export interface RunView {
   runId: JobId;
-  parked: UiDraft;
 }
 
-export interface HeldDrafts extends DraftSnapshot {
+export interface HeldDrafts {
+  draft: UiDraft;
+  parked: FormSlot | undefined;
   undo: DraftUndo | undefined;
+}
+
+export interface HeldCreations {
+  uploadRunCreation: Promise<JobId> | undefined;
+  parked: FormSlot | undefined;
 }
 
 export interface DraftUndo {

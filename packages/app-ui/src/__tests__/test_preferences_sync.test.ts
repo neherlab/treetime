@@ -47,8 +47,10 @@ describe("restore preferences", () => {
     upload_run_id: "r1",
   };
 
+  const gone = () => json({ missing: ["/treetime/runs/r1/inputs/tree.nwk"] });
+
   test("a saved form loses the files of a run that the back end no longer has", async () => {
-    const server = new FakeServer({});
+    const server = new FakeServer({ "POST /api/stored-inputs": gone });
 
     await expect(restorePreferences(server.client(), { theme: "dark", draft }, failTest)).resolves.toStrictEqual({
       preferences: { theme: "dark", draft: freshDraft("clock") },
@@ -58,7 +60,7 @@ describe("restore preferences", () => {
   });
 
   test("a saved form fetches the files of an example again in place of dropping them", async () => {
-    const server = new FakeServer({});
+    const server = new FakeServer({ "POST /api/stored-inputs": gone });
 
     const example = {
       ...draft,

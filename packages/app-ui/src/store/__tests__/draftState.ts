@@ -6,6 +6,7 @@ export function blankDraftState(command: AppCommand) {
   return {
     draft: freshDraft(command),
     viewing: undefined,
+    parked: undefined,
     lastShown: undefined,
     undo: undefined,
     queuedExamples: [],

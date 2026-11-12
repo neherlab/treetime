@@ -5,7 +5,6 @@ import GitBranchPlus from "~icons/lucide/git-branch-plus";
 
 import { formatDuration } from "../format";
 import { commandSettings } from "../settings/catalog";
-import { baseName } from "../settings/inputs";
 import { hasEnded, RunActionsMenu } from "../shell/runActions";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
 import { DownloadMenu } from "./DownloadMenu";
@@ -14,11 +13,9 @@ import { useRunSummary } from "./runContext";
 import { RunTitle } from "./RunTitle";
 import { useCreateVariant } from "./useCreateVariant";
 
-const TREE_SETTING = "tree";
-
 export function RunHeader({ record }: { record: RunRecord }) {
   const created = DateTime.fromISO(record.created_at);
-  const dataset = runDataset(record);
+  const { dataset } = record;
 
   return (
     <header className="flex flex-wrap items-start gap-x-4 gap-y-2">
@@ -57,14 +54,4 @@ function RunHeaderActions({ record }: { record: RunRecord }) {
       {summary !== undefined && <RunActionsMenu run={summary} />}
     </div>
   );
-}
-
-function runDataset(record: RunRecord): string | undefined {
-  if (record.example !== undefined) {
-    return record.example;
-  }
-
-  const tree = record.inputs.find((input) => input.setting === TREE_SETTING);
-
-  return tree === undefined ? undefined : baseName(tree.path);
 }

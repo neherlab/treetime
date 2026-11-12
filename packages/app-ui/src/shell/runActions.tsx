@@ -1,5 +1,5 @@
 import { errorMessage, type JobId, type RunStatus, type RunSummary } from "@neherlab/app-contracts";
-import { runsList, runsUpdate } from "@neherlab/app-contracts/client";
+import { type ApiClient, runsList, runsUpdate } from "@neherlab/app-contracts/client";
 import { Button } from "@neherlab/design/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@neherlab/design/ui/dialog";
 import {
@@ -14,13 +14,14 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import Ellipsis from "~icons/lucide/ellipsis";
 
-import { lostFilesMessage } from "../analysis/lostRuns";
+import { lostFilesMessage, lostInputs } from "../analysis/lostRuns";
 import { useApiContext } from "../api/context";
 import { useApi, useApiMutation } from "../api/hooks";
 import { useSaveRunOutput } from "../runs/OutputFiles";
+import { baseName } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { ownDraft } from "../store/draftRules";
-import { forgetRuns } from "../store/draftSchema";
+import { forgetRuns, runSourcePaths } from "../store/draftSchema";
 import { useRunDeletionStore } from "../store/runDeletion";
 import { useShellStore } from "../store/shell";
 import { onPageHide } from "./pageHide";
@@ -334,7 +335,9 @@ function useDeleteRuns(): (ids: readonly JobId[]) => void {
 
       const commit = () => {
         stopOnPageHide();
-        void commitDeletion(token, titles, async (id) => removeRun(client, id, AbortSignal.timeout(CANCEL_WAIT_MS)));
+        void commitDeletion(client, token, titles, async (id) =>
+          removeRun(client, id, AbortSignal.timeout(CANCEL_WAIT_MS)),
+        );
       };
 
       const stopOnPageHide = onPageHide(window, commit);
@@ -358,43 +361,56 @@ function useDeleteRuns(): (ids: readonly JobId[]) => void {
 }
 
 async function commitDeletion(
+  client: ApiClient,
   token: symbol,
   titles: ReadonlyMap<JobId, string>,
   remove: (id: JobId) => Promise<void>,
 ): Promise<void> {
   const { removed, failed } = await useRunDeletionStore.getState().commit(token, remove);
-  forgetDeletedRuns(removed);
 
   for (const { id, error } of failed) {
     toast.add({ title: `${titles.get(id) ?? "The run"} cannot be deleted`, description: errorMessage(error) });
   }
+
+  if (removed.length === 0) {
+    return;
+  }
+
+  try {
+    await forgetDeletedRuns(client);
+  } catch (error: unknown) {
+    toast.add({ title: "The files of the form cannot be checked", description: errorMessage(error) });
+  }
 }
 
 function draftFilesOf(ids: readonly JobId[]): string[] {
-  return forgetRuns(ownDraft(useDraftStore.getState()), new Set(ids)).dropped;
+  const draft = ownDraft(useDraftStore.getState());
+  const runs = new Set(ids);
+
+  return forgetRuns(draft, { runs, paths: new Set(runSourcePaths(draft, runs)) }).dropped;
 }
 
-function forgetDeletedRuns(removed: readonly JobId[]): void {
-  const { draft, viewing, load, queueExamples } = useDraftStore.getState();
+async function forgetDeletedRuns(client: ApiClient): Promise<void> {
+  const { draft, parked } = useDraftStore.getState();
+  const drafts = parked === undefined ? [draft] : [draft, parked.draft];
+  const { lost } = await lostInputs(client, drafts);
+  const forgotten = drafts.map((each) => forgetRuns(each, lost));
+  const [current] = forgotten;
 
-  if (removed.length === 0 || viewing !== undefined) {
-    return;
+  const dropped = [
+    ...new Set([
+      ...forgotten.flatMap((each) => each.dropped),
+      ...forgotten.slice(1).flatMap((each) => each.examples.map((example) => baseName(example.path))),
+    ]),
+  ];
+
+  useDraftStore.getState().forgetInputs(lost);
+
+  if (current !== undefined && current.examples.length > 0) {
+    useDraftStore.getState().queueExamples(current.examples);
   }
 
-  const kept = forgetRuns(draft, new Set(removed));
-
-  if (kept.dropped.length === 0 && kept.examples.length === 0 && sameRuns(draft, kept.draft)) {
-    return;
+  if (dropped.length > 0) {
+    toast.add(lostFilesMessage(dropped));
   }
-
-  load(kept.draft);
-  queueExamples(kept.examples);
-
-  if (kept.dropped.length > 0) {
-    toast.add(lostFilesMessage(kept.dropped));
-  }
-}
-
-function sameRuns(left: { from_run_id?: JobId; upload_run_id?: JobId }, right: typeof left): boolean {
-  return left.from_run_id === right.from_run_id && left.upload_run_id === right.upload_run_id;
 }

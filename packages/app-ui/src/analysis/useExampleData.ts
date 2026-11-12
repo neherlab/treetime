@@ -70,7 +70,7 @@ export function useExampleConfigLoader() {
 
       const { command } = useDraftStore.getState().draft;
       const isCurrent = claimInputs([...new Set([...inputSettingKeys(command), ...inputSettingKeys(config.command)])]);
-      const runId = await uploadRun(config.command);
+      const runId = await uploadRun(config.command, isCurrent.selection);
       const replaces = draftUploadPaths(useDraftStore.getState().draft);
       const uploaded: UploadedConfigInput[] = [];
 
@@ -182,7 +182,7 @@ function useExampleInputsUpload() {
         return false;
       }
 
-      const runId = await uploadRun(command);
+      const runId = await uploadRun(command, isCurrent.selection);
 
       if (!isCurrent(runId)) {
         return false;

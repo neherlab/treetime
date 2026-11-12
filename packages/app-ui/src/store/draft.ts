@@ -1,28 +1,30 @@
 import type { ActiveChoice, AppCommand, JobId, SparseConfig, UiDraft, UiDraftSource } from "@neherlab/app-contracts";
 import { create } from "zustand";
 
+import { withDraftExample } from "./draftExample";
 import {
   blankDraft,
   type DiscardReason,
+  type DraftSnapshot,
   type DraftUndo,
+  type FormSlot,
   isPristine,
-  ownDraft,
+  lostOnDiscard,
   restoredSnapshot,
   type RunView,
   sameConfig,
+  slotHoldingKeys,
   withoutAbandonedUpload,
 } from "./draftRules";
-import { freshDraft, type QueuedExample, withPickedChoice } from "./draftSchema";
+import { forgetRuns, freshDraft, type LostInputs, type QueuedExample, withPickedChoice } from "./draftSchema";
 
-interface DraftState {
-  draft: UiDraft;
+interface DraftState extends FormSlot {
   viewing: RunView | undefined;
+  parked: FormSlot | undefined;
   lastShown: JobId | undefined;
   undo: DraftUndo | undefined;
   queuedExamples: readonly QueuedExample[];
   epoch: number;
-  selections: Readonly<Record<string, symbol>>;
-  uploadRunCreation: Promise<JobId> | undefined;
   busyRuns: readonly JobId[];
   focus: SettingFocus | undefined;
 }
@@ -40,7 +42,7 @@ interface DraftActions {
   setSource: (key: string, source: UiDraftSource | undefined) => void;
   assignInputs: (changes: Pick<UiDraft, "config" | "sources">, keys: readonly string[]) => void;
   claimSelections: (keys: readonly string[], selection: symbol) => void;
-  beginUploadRun: (creation: Promise<JobId>) => void;
+  beginUploadRun: (creation: Promise<JobId>, selection: symbol | undefined) => void;
   settleUploadRun: (creation: Promise<JobId>, id: JobId | undefined) => void;
   beginRunWork: (runId: JobId) => void;
   endRunWork: (runId: JobId) => void;
@@ -50,6 +52,7 @@ interface DraftActions {
   leaveRun: () => void;
   discard: (reason: Exclude<DiscardReason, "replaced" | "revert">, command: AppCommand) => void;
   revertToRun: (runId: JobId, options: UiDraft) => void;
+  forgetInputs: (lost: LostInputs) => void;
   focusSetting: (key: string) => void;
   clearFocus: (token: symbol) => void;
   undoDiscard: (token: symbol, shownRunId: JobId | undefined) => void;
@@ -61,19 +64,18 @@ interface DraftActions {
 type Store = DraftState & DraftActions;
 
 export const useDraftStore = create<Store>()((set) => ({
-  draft: freshDraft("timetree"),
+  ...emptySlot(freshDraft("timetree")),
   viewing: undefined,
+  parked: undefined,
   lastShown: undefined,
   undo: undefined,
   queuedExamples: [],
   epoch: 0,
-  selections: {},
-  uploadRunCreation: undefined,
   busyRuns: [],
   focus: undefined,
   load: (draft) => {
     set((state) => ({
-      ...edited(state, withoutAbandonedUpload(draft, 0)),
+      ...edited(withoutAbandonedUpload(withDraftExample(draft, draft.example), 0)),
       epoch: state.epoch + 1,
       selections: {},
       uploadRunCreation: undefined,
@@ -83,30 +85,34 @@ export const useDraftStore = create<Store>()((set) => ({
     set(({ draft }) => ({ draft: { ...draft, ...changes } }));
   },
   setConfig: (config) => {
-    set((state) => (sameConfig(state.draft, config) ? {} : edited(state, { ...state.draft, config })));
+    set((state) => (sameConfig(state.draft, config) ? {} : edited({ ...state.draft, config })));
   },
   pickChoice: (picked) => {
-    set((state) => edited(state, { ...state.draft, choices: withPickedChoice(state.draft.choices, picked) }));
+    set((state) => edited({ ...state.draft, choices: withPickedChoice(state.draft.choices, picked) }));
   },
   setSource: (key, source) => {
     set((state) => {
       const sources = Object.fromEntries(Object.entries(state.draft.sources).filter(([name]) => name !== key));
       const selections = Object.fromEntries(Object.entries(state.selections).filter(([name]) => name !== key));
+      const next = { ...state.draft, sources: source === undefined ? sources : { ...sources, [key]: source } };
+      const draft = withoutAbandonedUpload(withDraftExample(next, state.draft.example), Object.keys(selections).length);
 
-      const draft = withoutAbandonedUpload(
-        { ...state.draft, sources: source === undefined ? sources : { ...sources, [key]: source } },
-        Object.keys(selections).length,
-      );
-
-      return { ...edited(state, draft), selections };
+      return { ...edited(draft), selections };
     });
   },
   assignInputs: (changes, keys) => {
     set((state) => {
-      const selections = Object.fromEntries(Object.entries(state.selections).filter(([name]) => !keys.includes(name)));
-      const draft = withoutAbandonedUpload({ ...state.draft, ...changes }, Object.keys(selections).length);
+      const target = slotHoldingKeys(state, keys) === "parked" ? state.parked : undefined;
+      const slot = target ?? state;
+      const selections = Object.fromEntries(Object.entries(slot.selections).filter(([name]) => !keys.includes(name)));
+      const next = withDraftExample({ ...slot.draft, ...changes }, slot.draft.example);
+      const draft = withoutAbandonedUpload(next, Object.keys(selections).length);
 
-      return { ...edited(state, draft), epoch: state.epoch + 1, selections };
+      if (target !== undefined) {
+        return { parked: { ...target, draft, selections } };
+      }
+
+      return { ...edited(draft), epoch: state.epoch + 1, selections };
     });
   },
   claimSelections: (keys, selection) => {
@@ -114,19 +120,30 @@ export const useDraftStore = create<Store>()((set) => ({
       selections: { ...selections, ...Object.fromEntries(keys.map((key) => [key, selection])) },
     }));
   },
-  beginUploadRun: (creation) => {
-    set({ uploadRunCreation: creation });
+  beginUploadRun: (creation, selection) => {
+    set((state) => {
+      const parked = state.parked;
+
+      if (parked !== undefined && selection !== undefined && Object.values(parked.selections).includes(selection)) {
+        return { parked: { ...parked, uploadRunCreation: creation } };
+      }
+
+      return { uploadRunCreation: creation };
+    });
   },
   settleUploadRun: (creation, id) => {
     set((state) => {
-      if (state.uploadRunCreation !== creation) {
-        return {};
+      const settle = (slot: FormSlot): FormSlot => ({
+        ...slot,
+        uploadRunCreation: undefined,
+        draft: id === undefined ? slot.draft : { ...slot.draft, upload_run_id: id },
+      });
+
+      if (state.uploadRunCreation === creation) {
+        return settle(state);
       }
 
-      return {
-        uploadRunCreation: undefined,
-        draft: id === undefined ? state.draft : { ...state.draft, upload_run_id: id },
-      };
+      return state.parked?.uploadRunCreation === creation ? { parked: settle(state.parked) } : {};
     });
   },
   beginRunWork: (runId) => {
@@ -141,11 +158,10 @@ export const useDraftStore = create<Store>()((set) => ({
   },
   finishStart: () => {
     set((state) => ({
-      draft: blankDraft(state.draft, state.draft.command),
+      ...(state.parked ?? emptySlot(blankDraft(state.draft, state.draft.command))),
       viewing: undefined,
+      parked: undefined,
       epoch: state.epoch + 1,
-      selections: {},
-      uploadRunCreation: undefined,
     }));
   },
   viewRun: (runId, options) => {
@@ -154,13 +170,16 @@ export const useDraftStore = create<Store>()((set) => ({
         return { lastShown: runId };
       }
 
+      const own = state.viewing === undefined ? slotOf(state) : undefined;
+      const replaced = state.parked !== undefined && own !== undefined && !isPristine(own.draft);
+
       return {
-        draft: options,
-        viewing: { runId, parked: ownDraft(state) },
+        ...emptySlot(options),
+        viewing: { runId },
+        parked: state.parked ?? own,
         lastShown: runId,
+        undo: replaced ? undoOf("replaced", state) : state.undo,
         epoch: state.epoch + 1,
-        selections: {},
-        uploadRunCreation: undefined,
       };
     });
   },
@@ -178,39 +197,65 @@ export const useDraftStore = create<Store>()((set) => ({
       state.viewing === undefined
         ? { lastShown: undefined }
         : {
-            draft: state.viewing.parked,
+            ...(state.parked ?? emptySlot(blankDraft(state.draft, state.draft.command))),
             viewing: undefined,
+            parked: undefined,
             lastShown: undefined,
             epoch: state.epoch + 1,
-            selections: {},
-            uploadRunCreation: undefined,
           },
     );
   },
   discard: (reason, command) => {
     set((state) => {
-      const kept = isPristine(state.draft) && isPristine(ownDraft(state));
+      if (reason === "reset" && state.parked !== undefined) {
+        const variantLost = state.viewing === undefined && !isPristine(state.draft);
+
+        return {
+          ...state.parked,
+          viewing: undefined,
+          parked: undefined,
+          undo: variantLost ? undoOf(reason, state) : state.undo,
+          epoch: state.epoch + 1,
+        };
+      }
 
       return {
-        draft: blankDraft(state.draft, command),
+        ...emptySlot(blankDraft(state.draft, command)),
         viewing: undefined,
-        undo: kept ? state.undo : { token: Symbol(reason), reason, previous: snapshotOf(state) },
+        parked: undefined,
+        undo: lostOnDiscard(state) ? undoOf(reason, state) : state.undo,
         epoch: state.epoch + 1,
-        selections: {},
-        uploadRunCreation: undefined,
       };
     });
   },
   revertToRun: (runId, options) => {
     set((state) => ({
-      draft: options,
-      viewing: { runId, parked: blankDraft(state.draft, state.draft.command) },
+      ...emptySlot(options),
+      viewing: { runId },
+      parked: state.parked ?? emptySlot(blankDraft(state.draft, state.draft.command)),
       lastShown: runId,
-      undo: { token: Symbol("revert"), reason: "revert", previous: snapshotOf(state) },
+      undo: undoOf("revert", state),
       epoch: state.epoch + 1,
-      selections: {},
-      uploadRunCreation: undefined,
     }));
+  },
+  forgetInputs: (lost) => {
+    set((state) => {
+      const current = forgetRuns(state.draft, lost).draft;
+
+      const changes: Partial<DraftState> = sameDraft(current, state.draft)
+        ? {}
+        : { draft: current, epoch: state.epoch + 1 };
+
+      if (state.parked === undefined) {
+        return changes;
+      }
+
+      const parked = forgetRuns(state.parked.draft, lost).draft;
+
+      return sameDraft(parked, state.parked.draft)
+        ? changes
+        : { ...changes, parked: { ...state.parked, draft: parked } };
+    });
   },
   focusSetting: (key) => {
     set({ focus: { key, token: Symbol(key) } });
@@ -227,11 +272,11 @@ export const useDraftStore = create<Store>()((set) => ({
       const restored = restoredSnapshot(state.undo.previous, shownRunId);
 
       return {
-        ...restored,
+        ...emptySlot(restored.draft),
+        viewing: restored.viewing,
+        parked: restored.parked === undefined ? undefined : emptySlot(restored.parked),
         undo: undefined,
         epoch: state.epoch + 1,
-        selections: {},
-        uploadRunCreation: undefined,
       };
     });
   },
@@ -246,22 +291,24 @@ export const useDraftStore = create<Store>()((set) => ({
   },
 }));
 
-function edited(state: DraftState, draft: UiDraft): Pick<DraftState, "draft" | "viewing" | "undo"> {
-  if (state.viewing === undefined) {
-    return { draft, viewing: undefined, undo: state.undo };
-  }
-
-  const replaced = !isPristine(state.viewing.parked);
-
-  return {
-    draft,
-    viewing: undefined,
-    undo: replaced ? { token: Symbol("replaced"), reason: "replaced", previous: snapshotOf(state) } : state.undo,
-  };
+function edited(draft: UiDraft): Pick<DraftState, "draft" | "viewing"> {
+  return { draft, viewing: undefined };
 }
 
-function snapshotOf({ draft, viewing }: DraftState) {
-  return { draft, viewing };
+function emptySlot(draft: UiDraft): FormSlot {
+  return { draft, selections: {}, uploadRunCreation: undefined };
+}
+
+function slotOf({ draft, selections, uploadRunCreation }: FormSlot): FormSlot {
+  return { draft, selections, uploadRunCreation };
+}
+
+function undoOf(reason: DiscardReason, state: DraftState): DraftUndo {
+  return { token: Symbol(reason), reason, previous: snapshotOf(state) };
+}
+
+function snapshotOf({ draft, viewing, parked }: DraftState): DraftSnapshot {
+  return { draft, viewing, parked: parked?.draft };
 }
 
 function sameDraft(left: UiDraft, right: UiDraft): boolean {

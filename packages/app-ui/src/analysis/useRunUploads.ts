@@ -5,13 +5,14 @@ import { useCallback, useMemo } from "react";
 
 import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
+import { claimedSlot, type FormSlot } from "../store/draftRules";
 import { type StoredFile, storeInOrder } from "./fileSelection";
 import { pendingUploadRun } from "./pendingUpload";
 import { whileRunBusy } from "./runWork";
 import { storeWithinAllowance } from "./uploadAllowance";
 
 export interface RunUploads {
-  uploadRun: (command: AppCommand) => Promise<string>;
+  uploadRun: (command: AppCommand, selection?: symbol) => Promise<string>;
   uploadFiles: (runId: string, files: readonly File[], replaces: readonly string[]) => Promise<StoredFile[]>;
   release: (runId: string, paths: readonly string[]) => void;
   releaseFromPendingRun: (runId: string, paths: readonly string[]) => void;
@@ -51,20 +52,20 @@ export function useRunUploads(): RunUploads {
   );
 
   const uploadRun = useCallback(
-    async (command: AppCommand): Promise<string> => {
-      const pending = useDraftStore.getState().uploadRunCreation;
+    async (command: AppCommand, selection?: symbol): Promise<string> => {
+      const pending = claimedSlotOf(selection).uploadRunCreation;
 
       if (pending !== undefined) {
         return pending;
       }
 
-      const existing = await pendingUploadRun(client, useDraftStore.getState().draft.upload_run_id);
+      const existing = await pendingUploadRun(client, claimedSlotOf(selection).draft.upload_run_id);
 
       if (existing !== undefined) {
         return existing.id;
       }
 
-      const started = useDraftStore.getState().uploadRunCreation;
+      const started = claimedSlotOf(selection).uploadRunCreation;
 
       if (started !== undefined) {
         return started;
@@ -82,7 +83,7 @@ export function useRunUploads(): RunUploads {
         })
         .finally(() => useDraftStore.getState().settleUploadRun(creation, undefined));
 
-      useDraftStore.getState().beginUploadRun(creation);
+      useDraftStore.getState().beginUploadRun(creation, selection);
 
       return creation;
     },
@@ -133,4 +134,12 @@ export function useRunUploads(): RunUploads {
     () => ({ uploadRun, uploadFiles, release, releaseFromPendingRun }),
     [release, releaseFromPendingRun, uploadFiles, uploadRun],
   );
+}
+
+function claimedSlotOf(selection: symbol | undefined): FormSlot {
+  const state = useDraftStore.getState();
+
+  return selection !== undefined && claimedSlot(state, selection) === "parked" && state.parked !== undefined
+    ? state.parked
+    : state;
 }

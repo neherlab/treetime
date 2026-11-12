@@ -25,6 +25,7 @@ const UPLOAD_RUN: RunRecord = {
   command: "ancestral",
   config: {},
   status: "created",
+  prepared: false,
   pinned: false,
   renamed: false,
   group_id: "r1",

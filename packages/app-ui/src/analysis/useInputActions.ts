@@ -130,7 +130,7 @@ export function useInputActions(command: AppCommand): InputActions {
         return;
       }
 
-      const runId = await uploadRun(command);
+      const runId = await uploadRun(command, isCurrent.selection);
 
       if (!isCurrent(runId)) {
         return;
