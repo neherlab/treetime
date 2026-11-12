@@ -43,6 +43,25 @@ describe("upload run of a discarded form", () => {
     expect([whileUploading, retired.ids]).toStrictEqual([[], ["u1"]]);
   });
 
+  test("a reset while the upload run is being created deletes the run once its creation returns", async () => {
+    useDraftStore.setState(blankDraftState("timetree"));
+    const retired = watch();
+    const { promise, resolve } = Promise.withResolvers<string>();
+
+    const creation: Promise<string> = promise.then((id) => {
+      useDraftStore.getState().settleUploadRun(creation, id);
+
+      return id;
+    });
+
+    useDraftStore.getState().beginUploadRun(creation);
+    useDraftStore.getState().discard("reset", "timetree");
+    resolve("u2");
+    await pWaitFor(() => retired.ids.length > 0);
+
+    expect([retired.ids, useDraftStore.getState().draft.upload_run_id]).toStrictEqual([["u2"], undefined]);
+  });
+
   test("undo of a reset deletes nothing", () => {
     const retired = watch();
     useDraftStore.getState().discard("reset", "timetree");

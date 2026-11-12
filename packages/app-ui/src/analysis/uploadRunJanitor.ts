@@ -18,11 +18,28 @@ export class UploadRunJanitor {
       for (const runId of releasedUploadRuns(before, after)) {
         void this.#retireWhenIdle(runId);
       }
+
+      const creation = before.uploadRunCreation;
+
+      if (creation !== undefined && creation !== after.uploadRunCreation) {
+        void this.#retireCreated(creation);
+      }
     });
   }
 
   dispose(): void {
     this.#unsubscribe();
+  }
+
+  async #retireCreated(creation: Promise<JobId>): Promise<void> {
+    const created = await creation.then(
+      (runId) => runId,
+      () => undefined,
+    );
+
+    if (created !== undefined) {
+      await this.#retireWhenIdle(created);
+    }
   }
 
   async #retireWhenIdle(runId: JobId): Promise<void> {
@@ -78,6 +95,7 @@ export async function deleteUnstartedRun(client: ApiClient, runId: JobId): Promi
 
 export interface JanitorState extends HeldDrafts {
   busyRuns: readonly JobId[];
+  uploadRunCreation: Promise<JobId> | undefined;
 }
 
 export interface JanitorStore {
