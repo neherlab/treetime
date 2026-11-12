@@ -10,10 +10,12 @@ use app_commands::command::AppCommand;
 use eyre::Report;
 use serde_json::Value;
 use smart_default::SmartDefault;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
+
+const FILES_FIELD: &str = "files";
 
 pub fn confined_service(runs_dir: &Path, executor: Arc<dyn RunExecutor>) -> Result<Arc<AppService>, Report> {
   let runs = RunManager::open(runs_dir)?;
@@ -51,5 +53,9 @@ struct RunsFolderInputs {
 impl InputPolicy for RunsFolderInputs {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report> {
     PathPolicy::new(&self.runs.input_dirs())?.confine(command, config)
+  }
+
+  fn confine_path(&self, path: &Path) -> Result<PathBuf, Report> {
+    PathPolicy::new(&self.runs.input_dirs())?.confine_path(FILES_FIELD, path)
   }
 }

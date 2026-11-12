@@ -15,6 +15,7 @@ use app_backend::bridge::error::ErrorCode;
 use app_backend::bridge::service::AppService;
 use app_backend::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_backend::check_inputs::{CheckInputsRequest, InputFacts};
+use app_backend::file_kinds::{FileKinds, FileKindsRequest};
 use app_backend::job::JobId;
 use app_backend::results::auspice::AuspiceDocument;
 use app_backend::results::clades::{CladeInRuns, CladeRequest};
@@ -175,6 +176,15 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       post_with(inputs_check, |op| {
         op.id("inputsCheck")
           .description("Facts about the input files, read with the readers the commands use.")
+      }),
+    )
+    .api_route(
+      "/api/file-kinds",
+      post_with(file_kinds, |op| {
+        op.id("fileKinds").description(
+          "The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with \
+           the readers the commands use, or `unknown` with the reason.",
+        )
       }),
     )
     .api_route(
@@ -344,6 +354,15 @@ async fn inputs_check(
   ApiJson(request): ApiJson<CheckInputsRequest>,
 ) -> Result<ApiJson<InputFacts>, AppError> {
   call(&state, move |service| service.check_inputs(request))
+    .await
+    .map(ApiJson)
+}
+
+async fn file_kinds(
+  State(state): State<Arc<AppState>>,
+  ApiJson(request): ApiJson<FileKindsRequest>,
+) -> Result<ApiJson<FileKinds>, AppError> {
+  call(&state, move |service| service.file_kinds(&request))
     .await
     .map(ApiJson)
 }

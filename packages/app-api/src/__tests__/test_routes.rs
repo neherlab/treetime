@@ -528,6 +528,48 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_file_kinds_type_uploaded_files_by_content() {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let config = test
+      .upload_data(
+        &id,
+        json!({ "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" }),
+      )
+      .await;
+    let (status, kinds) = request(
+      &test,
+      "POST",
+      "/api/file-kinds",
+      Some(json!({ "files": [config["metadata"], config["tree"]] })),
+    )
+    .await;
+    assert_eq!(
+      (200, json!(["metadata", "tree"])),
+      (status, json!([kinds["files"][0]["kind"], kinds["files"][1]["kind"]]))
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_file_kinds_rejects_paths_outside_the_run_uploads() {
+    let test = app();
+    let (status, body) = request(
+      &test,
+      "POST",
+      "/api/file-kinds",
+      Some(json!({ "files": ["../../Cargo.toml"] })),
+    )
+    .await;
+    assert_eq!(
+      (
+        400,
+        json!("input `../../Cargo.toml` of setting `files` is not a file uploaded to TreeTime")
+      ),
+      (status, body["message"].clone())
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_check_config_reports_cli_errors() {
     let test = app();
     let (_, response) = request(

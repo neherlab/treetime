@@ -11,6 +11,7 @@ pub mod command;
 pub mod config;
 pub mod datasets;
 pub mod examples_download;
+pub mod file_kinds;
 pub mod input_detection;
 pub mod job;
 pub mod json_float;
