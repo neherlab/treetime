@@ -1,11 +1,7 @@
-import type { AppCommand, RunRecord, SparseConfig } from "@neherlab/app-contracts";
+import type { AppCommand, SparseConfig } from "@neherlab/app-contracts";
 
 import { commandSettings } from "./catalog";
 import { carryOverConfig } from "./config";
-
-type ConfigOf<C extends AppCommand> = Extract<RunRecord, { command: C }>["config"];
-
-export type SettingKey<C extends AppCommand> = keyof ConfigOf<C> & string;
 
 export const COMMAND_VERBS: Record<AppCommand, string> = {
   timetree: "Run time tree",
