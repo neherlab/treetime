@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { zRunList, zRunRecord, zRunsFilesResponse, zUploadedInput, zVersionInfo } from "@neherlab/app-contracts";
+import {
+  zErrorResponse,
+  zRunList,
+  zRunRecord,
+  zRunsFilesResponse,
+  zUploadedInput,
+  zVersionInfo,
+} from "@neherlab/app-contracts";
 import * as z from "zod";
 
 import type createModule from "./pkg/app_wasm.js";
@@ -18,7 +26,17 @@ const BYTES_HEADERS: Header[] = [["content-type", "application/octet-stream"]];
 
 const ZIP_SIGNATURE = "PK";
 
+const RUN_INPUT_PATHS = ["inputs/aln.fasta.xz", "inputs/tree.nwk"];
+
 const KEEP_ALIVE_INTERVAL_MS = 1000;
+
+const UPLOAD_SLICE_SIZE = 256;
+
+const CENTRAL_DIRECTORY_SIGNATURE = 0x02_01_4b_50;
+
+const CENTRAL_DIRECTORY_SIZE_OFFSET = 24;
+
+const OVERSIZED_ENTRY_BYTES = 0x7f_ff_ff_f0;
 
 const moduleSchema = z.object({
   // oxlint-disable-next-line unicorn/no-instanceof-builtins -- the imported module belongs to this realm, so instanceof Function is reliable
@@ -41,7 +59,9 @@ const backend = new wasm.Backend();
 
 await checkNewBackend();
 
-await checkAncestralRun();
+const ancestralRun = await checkAncestralRun();
+
+await checkPackageImport(ancestralRun);
 
 await checkCancelledRun();
 
@@ -55,6 +75,8 @@ await checkClockRunWithoutCharts();
 
 await checkEventStreamAborts();
 
+await checkUploadInSlices();
+
 async function checkNewBackend(): Promise<void> {
   const version = await call("GET", "/api/version");
   const runs = await call("GET", "/api/runs");
@@ -67,7 +89,7 @@ async function checkNewBackend(): Promise<void> {
   parse(zVersionInfo, version);
 }
 
-async function checkAncestralRun(): Promise<void> {
+async function checkAncestralRun(): Promise<string> {
   const created = parse(
     zRunRecord,
     await call("POST", "/api/runs", encode({ command: "ancestral", config: {}, defer_start: true }), JSON_HEADERS),
@@ -92,7 +114,7 @@ async function checkAncestralRun(): Promise<void> {
   const record = parse(zRunRecord, await call("GET", `/api/runs/${created.id}`));
   const files = parse(zRunsFilesResponse, await call("GET", `/api/runs/${created.id}/files`));
   const newick = await call("GET", `/api/runs/${created.id}/file?path=ancestral.nwk`);
-  const archive = await call("GET", `/api/runs/${created.id}/archive`);
+  const runPackage = await call("GET", `/api/runs/${created.id}/package`);
 
   assert.deepEqual(
     [
@@ -101,17 +123,60 @@ async function checkAncestralRun(): Promise<void> {
       inputPaths,
       outputs.completed,
       record.status,
-      files.map((file) => file.path),
+      files.map((file) => file.path).toSorted(),
       record.output_files.every((file) => outputs.files.includes(file.path)),
       files.some((file) => file.path === "ancestral.sequences.fasta"),
       newick.status,
       text(newick).slice(0, 1),
-      archive.status,
-      text(archive).slice(0, ZIP_SIGNATURE.length),
+      runPackage.status,
+      text(runPackage).slice(0, ZIP_SIGNATURE.length),
     ],
-    [200, "running", [alignment, tree], true, "ok", outputs.files.toSorted(), true, true, 200, "(", 200, ZIP_SIGNATURE],
+    [
+      200,
+      "running",
+      ["inputs/aln.fasta.xz", "inputs/tree.nwk"],
+      true,
+      "ok",
+      outputs.files.toSorted(),
+      true,
+      true,
+      200,
+      "(",
+      200,
+      ZIP_SIGNATURE,
+    ],
     text(started),
   );
+
+  return created.id;
+}
+
+async function checkPackageImport(id: string): Promise<void> {
+  const runPackage = await call("GET", `/api/runs/${id}/package`);
+  const slices = slicesOf(runPackage.body);
+  const imported = await call("POST", "/api/runs/import", slices, BYTES_HEADERS);
+  const oversized = await call("POST", "/api/runs/import", slicesOf(declaredOversized(runPackage.body)), BYTES_HEADERS);
+
+  assert.ok(slices.length > 2, "the import body spans several slices");
+  assert.deepEqual(
+    [imported.status, parse(zRunRecord, imported).status, oversized.status, parse(zErrorResponse, oversized).code],
+    [200, "ok", 413, "upload_too_large"],
+    `${text(imported)} ${text(oversized)}`,
+  );
+}
+
+function declaredOversized(zip: Uint8Array): Uint8Array {
+  const patched = Uint8Array.from(zip);
+  const view = new DataView(patched.buffer);
+
+  const entry = patched.findIndex(
+    (_, index) => index + 4 <= patched.length && view.getUint32(index, true) === CENTRAL_DIRECTORY_SIGNATURE,
+  );
+
+  assert.ok(entry >= 0, "the run package has a central directory");
+  view.setUint32(entry + CENTRAL_DIRECTORY_SIZE_OFFSET, OVERSIZED_ENTRY_BYTES, true);
+
+  return patched;
 }
 
 async function checkCancelledRun(): Promise<void> {
@@ -170,13 +235,9 @@ async function checkEmptyInput(): Promise<void> {
 }
 
 async function checkRepeatedInput(): Promise<void> {
-  const uploads: string[] = [];
-
   const id = await startedRun("ancestral", async (runId) => {
     const alignment = await upload(runId, "aln.fasta.xz");
     const tree = await upload(runId, "tree.nwk");
-
-    uploads.push(alignment, tree);
 
     return { tree, alignment: [alignment, alignment] };
   });
@@ -187,7 +248,11 @@ async function checkRepeatedInput(): Promise<void> {
   const outputs = await driveJob(id, order.job, inputPaths);
   const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
 
-  assert.deepEqual([inputPaths, outputs.completed, record.status], [uploads, true, "ok"], JSON.stringify(record.error));
+  assert.deepEqual(
+    [inputPaths, outputs.completed, record.status],
+    [RUN_INPUT_PATHS, true, "ok"],
+    JSON.stringify(record.error),
+  );
 }
 
 async function checkClockRunWithoutCharts(): Promise<void> {
@@ -310,9 +375,22 @@ function readAll(reader: { chunk(): Uint8Array | undefined }): Uint8Array[] {
   return chunks;
 }
 
+async function checkUploadInSlices(): Promise<void> {
+  const created = parse(
+    zRunRecord,
+    await call("POST", "/api/runs", encode({ command: "ancestral", config: {}, defer_start: true }), JSON_HEADERS),
+  );
+
+  const bytes = readFileSync(join(DATASET, "aln.fasta.xz"));
+  const uploaded = await uploadInSlices(created.id, "aln.fasta.xz", bytes);
+
+  assert.ok(bytes.length > 2 * UPLOAD_SLICE_SIZE, "the upload spans several slices");
+  assert.deepEqual([uploaded.size, uploaded.sha256], [bytes.length, createHash("sha256").update(bytes).digest("hex")]);
+}
+
 async function checkEventStreamAborts(): Promise<void> {
   // oxlint-disable-next-line custom/require-io-timeout -- the back end answers in this process; the check aborts the stream itself
-  const exchange = backend.fetch("GET", "/api/events", [], [], undefined);
+  const exchange = backend.fetch("GET", "/api/events", [], [], false);
   const head = await exchange.head();
   const contentType = head.headerValues[head.headerNames.indexOf("content-type")];
 
@@ -326,22 +404,39 @@ async function upload(id: string, name: string): Promise<string> {
 }
 
 async function uploadBytes(id: string, name: string, bytes: Uint8Array): Promise<string> {
-  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, bytes, BYTES_HEADERS);
-
-  return parse(zUploadedInput, response).path;
+  return (await uploadInSlices(id, name, bytes)).path;
 }
 
-async function call(method: string, url: string, body?: Uint8Array, headers: Header[] = []): Promise<Reply> {
+async function uploadInSlices(id: string, name: string, bytes: Uint8Array): Promise<z.infer<typeof zUploadedInput>> {
+  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, slicesOf(bytes), BYTES_HEADERS);
+
+  return parse(zUploadedInput, response);
+}
+
+function slicesOf(bytes: Uint8Array): Uint8Array[] {
+  return Array.from({ length: Math.ceil(bytes.length / UPLOAD_SLICE_SIZE) }, (_, index) =>
+    bytes.subarray(index * UPLOAD_SLICE_SIZE, (index + 1) * UPLOAD_SLICE_SIZE),
+  );
+}
+
+async function call(
+  method: string,
+  url: string,
+  body?: Uint8Array | Uint8Array[],
+  headers: Header[] = [],
+): Promise<Reply> {
   // oxlint-disable-next-line custom/require-io-timeout -- the back end answers in this process, without network IO
   const exchange = backend.fetch(
     method,
     url,
     headers.map(([name]) => name),
     headers.map(([, value]) => value),
-    body,
+    body !== undefined,
   );
 
+  const sending = body === undefined ? Promise.resolve() : sendBody(exchange, [body].flat());
   const head = await exchange.head();
+  await sending;
   const chunks: Uint8Array[] = [];
 
   for (let chunk = await exchange.chunk(); chunk !== undefined; chunk = await exchange.chunk()) {
@@ -351,6 +446,16 @@ async function call(method: string, url: string, body?: Uint8Array, headers: Hea
   exchange.free();
 
   return { status: head.status, body: Buffer.concat(chunks) };
+}
+
+async function sendBody(exchange: Exchange, chunks: Uint8Array[]): Promise<void> {
+  for (const chunk of chunks) {
+    if (!(await exchange.send(chunk))) {
+      return;
+    }
+  }
+
+  exchange.end();
 }
 
 function parse<T extends z.ZodType>(schema: T, reply: Reply): z.infer<T> {
@@ -371,6 +476,8 @@ type ModuleFactory = typeof createModule;
 type JobModule = Awaited<ReturnType<ModuleFactory>>;
 
 type Header = [name: string, value: string];
+
+type Exchange = ReturnType<InstanceType<JobModule["Backend"]>["fetch"]>;
 
 type RunInputs = Record<string, string | string[]>;
 

@@ -8,4 +8,5 @@ mod test_cli_output_lists;
 mod test_cli_short_help;
 pub(crate) mod test_cli_support;
 mod test_data_index;
+mod test_run_package_cli;
 mod test_transport_parity;

@@ -97,12 +97,12 @@ fn fitch_gtr(
   }
   let mut gtr = infer_gtr_fitch(fitch, graph, branch_lengths, log)?;
   rate.apply(&mut gtr)?;
-  log_gtr(&gtr, model.name(), log)?;
+  log_gtr(&gtr, model.name(), fitch.alphabet.name(), log)?;
   Ok(gtr)
 }
 
 fn named_gtr(model: &GtrModel, alphabet: AlphabetName, log: &dyn LogSink) -> Result<GTR, Report> {
   let gtr = model.build(alphabet)?;
-  log_gtr(&gtr, model.name(), log)?;
+  log_gtr(&gtr, model.name(), alphabet, log)?;
   Ok(gtr)
 }

@@ -4,26 +4,12 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}` | (string & {});
 };
 
-/**
- * Liveness of the server.
- */
-export type HealthStatus = {
-  /**
-   * Always `ok`.
-   */
-  status: string;
-  /**
-   * Version of TreeTime.
-   */
-  version: string;
-};
-
 export type VersionInfo = {
   version: string;
 };
 
 /**
- * Error of a back-end operation, as the web server and the desktop back end report it.
+ * Error of a back-end operation, as the API routes report it.
  */
 export type ErrorResponse = {
   /**
@@ -41,9 +27,9 @@ export type ErrorResponse = {
 };
 
 /**
- * Class of a back-end error. The web server answers each class with its own HTTP status.
+ * Class of a back-end error. The API routes answer each class with its own HTTP status.
  */
-export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'forbidden' | 'timeout' | 'internal_error';
+export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'internal_error';
 
 /**
  * Request to check a configuration.
@@ -79,6 +65,22 @@ export type CheckConfigRequest = {
    * stay as they are. Unset: relative paths resolve from the working directory of the back end.
    */
   folder?: string;
+  /**
+   * The options that the form picked for the choices of the command. A picked option counts while the configuration
+   * has every value that picking it writes, for example `outgroup` before the user names a tip; otherwise the
+   * configuration selects the option.
+   */
+  choices?: Array<ActiveChoice>;
+  /**
+   * Run to compare the configuration with, for example the run whose results the app shows beside the form. The
+   * answer then lists the settings whose resolved values differ from those of the run.
+   */
+  run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the configuration reads, for example `ebola/100`; unset for the user's
+   * own files. The answer names the dataset after it.
+   */
+  example?: string;
 };
 
 /**
@@ -121,6 +123,11 @@ export type InputFacts = {
    */
   tips_without_metadata?: Array<string>;
   /**
+   * What the readers used or found for each setting of how the input files are read, with the key of the setting
+   * that overrides it.
+   */
+  detected: DetectedSettings;
+  /**
    * Inputs that could not be read, with the reason.
    */
   problems: Array<InputProblem>;
@@ -150,6 +157,10 @@ export type TreeFacts = {
    * Node names that occur more than once, tips and internal nodes alike, sorted.
    */
   duplicate_node_names: Array<string>;
+  /**
+   * Names of the named tips, sorted, each once: the names that settings such as `outgroup` can name.
+   */
+  tip_names: Array<string>;
 };
 
 /**
@@ -232,6 +243,272 @@ export type DateFacts = {
    * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
    */
   on_day_1_or_15: number;
+  /**
+   * Earliest and latest sampling date that the parser read; a date range counts with its first and its last day.
+   * Absent when no date could be read.
+   */
+  span?: DateSpan;
+};
+
+/**
+ * The earliest and the latest of a set of dates.
+ */
+export type DateSpan = {
+  /**
+   * The earliest date.
+   */
+  earliest: YearDate;
+  /**
+   * The latest date.
+   */
+  latest: YearDate;
+};
+
+/**
+ * A date as a decimal year and as a calendar day.
+ */
+export type YearDate = {
+  /**
+   * The date as a decimal year, for example `2015.47`.
+   */
+  year: number;
+  /**
+   * The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.
+   */
+  date?: string;
+};
+
+/**
+ * What the input readers used or found for each setting of how the input files are read, each with the key of the
+ * setting that overrides it. A fact is present when the command has its setting and the readers read the input it
+ * concerns.
+ */
+export type DetectedSettings = {
+  /**
+   * Newick dialect the tree was read in.
+   */
+  newick_dialect?: DetectedDialect;
+  /**
+   * Delimiter of the columns of the metadata table.
+   */
+  metadata_delimiter?: DetectedDelimiter;
+  /**
+   * Column of the metadata table that holds the sample names.
+   */
+  id_column?: DetectedColumn;
+  /**
+   * Column of the metadata table that holds the sampling dates.
+   */
+  date_column?: DetectedColumn;
+  /**
+   * Forms in which the date parser read the sampling dates, with the count of dates read.
+   */
+  date_format?: DetectedDateFormat;
+  /**
+   * Alphabet the alignments were read in.
+   */
+  alphabet?: DetectedAlphabet;
+  /**
+   * Number of sites of the sequences: the sites of every alignment file, or the `sequence_length` setting without an
+   * alignment.
+   */
+  sequence_length?: DetectedLength;
+  /**
+   * Partitions of the sites of the alignment files.
+   */
+  partitions?: DetectedPartitions;
+};
+
+/**
+ * The Newick dialect the tree was read in.
+ */
+export type DetectedDialect = {
+  /**
+   * The dialect as the setting spells it: `<structure>,<annotations>`, for example `classic,plain`.
+   */
+  dialect: string;
+  /**
+   * Where the dialect comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the dialect.
+   */
+  setting: string;
+};
+
+/**
+ * Where the value of a detected setting comes from.
+ */
+export type SettingOrigin = 'detected' | 'setting' | 'default';
+
+/**
+ * The delimiter of the columns of the metadata table.
+ */
+export type DetectedDelimiter = {
+  /**
+   * The delimiter character, for example a tab.
+   */
+  delimiter: string;
+  /**
+   * Where the delimiter comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the delimiter.
+   */
+  setting: string;
+};
+
+/**
+ * A column of the metadata table.
+ */
+export type DetectedColumn = {
+  /**
+   * Name of the column, as the table writes it.
+   */
+  column: string;
+  /**
+   * Where the column comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the column.
+   */
+  setting: string;
+};
+
+/**
+ * The forms in which the date parser read the sampling dates.
+ */
+export type DetectedDateFormat = {
+  /**
+   * Each form the parser read dates in, with its count, the most frequent form first.
+   */
+  readings: Array<DateReading>;
+  /**
+   * Number of rows whose date the parser read.
+   */
+  read: number;
+  /**
+   * Number of rows of the table.
+   */
+  rows: number;
+  /**
+   * Where the date format comes from: `setting` when the configuration names a format that the parser tries first.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the date format.
+   */
+  setting: string;
+};
+
+/**
+ * The dates that the parser read in one form.
+ */
+export type DateReading = {
+  /**
+   * Form of the dates.
+   */
+  form: DateForm;
+  /**
+   * The format of a calendar date, in the `strftime` notation of the `date_format` setting, for example `%Y-%m-%d`.
+   */
+  format?: string;
+  /**
+   * Number of dates read in this form.
+   */
+  count: number;
+  /**
+   * The form as a person reads it: the pattern of a calendar format, such as `YYYY-MM-DD` for `%Y-%m-%d`, or the
+   * name of the form, such as `decimal years`.
+   */
+  text: string;
+};
+
+/**
+ * Form of a sampling date.
+ */
+export type DateForm = 'numeric' | 'calendar' | 'uncertain' | 'range';
+
+/**
+ * The alphabet the alignments were read in.
+ */
+export type DetectedAlphabet = {
+  /**
+   * The alphabet.
+   */
+  alphabet: AlphabetName;
+  /**
+   * Where the alphabet comes from.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the alphabet.
+   */
+  setting: string;
+};
+
+export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
+
+/**
+ * The number of sites of the sequences.
+ */
+export type DetectedLength = {
+  /**
+   * Number of sites.
+   */
+  length: number;
+  /**
+   * Where the number comes from: `detected` for the sites of the alignment files, `setting` for the
+   * `sequence_length` setting.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that changes the number: `alignment` for the sites of the alignment files.
+   */
+  setting: string;
+};
+
+/**
+ * The partitions of the sites of the alignment files.
+ */
+export type DetectedPartitions = {
+  /**
+   * Each partition, in the order of the run.
+   */
+  partitions: Array<PartitionFacts>;
+  /**
+   * Where the partitions come from: `default` for one partition per alignment file.
+   */
+  origin: SettingOrigin;
+  /**
+   * Key of the setting that overrides the partitions.
+   */
+  setting: string;
+};
+
+/**
+ * One partition of the sites of an alignment file.
+ */
+export type PartitionFacts = {
+  /**
+   * Name of the partition in outputs and messages.
+   */
+  label: string;
+  /**
+   * Number of the alignment file of the partition, from 1.
+   */
+  alignment: number;
+  /**
+   * Number of sites of the partition.
+   */
+  sites: number;
+  /**
+   * Substitution model of the partition, as the `model` setting spells it.
+   */
+  model: string;
 };
 
 /**
@@ -256,6 +533,29 @@ export type InputProblem = {
  * Kind of input file.
  */
 export type InputKind = 'tree' | 'metadata' | 'alignment';
+
+/**
+ * The option of a choice that a configuration selects, or that the form picked.
+ */
+export type ActiveChoice = {
+  choice: ChoiceName;
+  option: ChoiceOptionName;
+};
+
+/**
+ * A group of settings that the form shows as one choice.
+ */
+export type ChoiceName = 'clock-rate' | 'root';
+
+/**
+ * An option of a choice.
+ */
+export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'outgroup' | 'keep';
+
+/**
+ * Identifier of one command run, unique among the jobs of a process.
+ */
+export type JobId = string;
 
 /**
  * Outcome of checking a configuration without running it.
@@ -294,6 +594,15 @@ export type ConfigCode = {
    * The command line that runs the saved YAML config.
    */
   config_command: string;
+  /**
+   * A methods paragraph for a publication: the analysis, the TreeTime version, and the key settings that differ from
+   * their defaults.
+   */
+  methods: string;
+  /**
+   * The publication to cite for TreeTime.
+   */
+  citation: Citation;
 };
 
 /**
@@ -314,6 +623,28 @@ export type CodeLine = {
  * What a line of a command line or a YAML config sets.
  */
 export type CodeLineKind = 'command' | 'input' | 'changed' | 'output' | 'comment';
+
+/**
+ * The publication to cite for TreeTime.
+ */
+export type Citation = {
+  /**
+   * Reference in text form.
+   */
+  text: string;
+  /**
+   * Reference in the form a sentence cites it, for example `Sagulenko et al. 2018`.
+   */
+  short: string;
+  /**
+   * DOI of the publication, for example `10.1093/ve/vex042`.
+   */
+  doi: string;
+  /**
+   * Link to the publication.
+   */
+  url: string;
+};
 
 /**
  * A finding about a configuration and its input files, before a run.
@@ -375,22 +706,49 @@ export type SettingPatch = {
 };
 
 /**
- * The option of a choice that a configuration selects.
+ * The value that a run uses for a setting that the configuration leaves at its default.
  */
-export type ActiveChoice = {
-  choice: ChoiceName;
-  option: ChoiceOptionName;
+export type EffectiveValue = {
+  /**
+   * Key of the setting.
+   */
+  key: string;
+  /**
+   * The value as a short text, for example `Automatic: least-squares rerooting`.
+   */
+  text: string;
 };
 
 /**
- * A group of settings that the form shows as one choice.
+ * The command-line form of a setting for its value in a configuration.
  */
-export type ChoiceName = 'clock-rate' | 'root';
+export type SettingCommandLine = {
+  /**
+   * Key of the setting.
+   */
+  key: string;
+  /**
+   * The flag and its value as a command line takes them, quoted for the shell, for example `--clock-filter 4` or
+   * `--outgroup 'A/x 1'`; absent when the command line leaves the setting out for this value: a switch that is off,
+   * an unset value, or an empty list.
+   */
+  text?: string;
+};
 
 /**
- * An option of a choice.
+ * A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.
+ * Inputs differ when their file contents differ; their paths do not count.
  */
-export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'outgroup' | 'keep';
+export type SettingDifference = ({
+  kind: 'setting';
+} & SettingDifferenceSetting) | ({
+  kind: 'input';
+} & SettingDifferenceInput);
+
+/**
+ * What a setting is for.
+ */
+export type SettingPurpose = 'data' | 'analysis' | 'output' | 'ordering';
 
 /**
  * One problem found in a configuration.
@@ -466,6 +824,350 @@ export type CheckInputsRequest = {
 };
 
 /**
+ * Files to identify by their content, for example files that the user dropped without naming the input they fill.
+ */
+export type FileKindsRequest = {
+  /**
+   * Paths of the files.
+   */
+  files: Array<string>;
+};
+
+/**
+ * The kind of each file of a request, in the order of the request.
+ */
+export type FileKinds = {
+  /**
+   * One entry per file of the request.
+   */
+  files: Array<DetectedFile>;
+};
+
+/**
+ * The kind of one file, as the readers of the commands read it.
+ */
+export type DetectedFile = {
+  /**
+   * Path of the file, as the request gives it.
+   */
+  path: string;
+  /**
+   * Kind of the file, from its content; the file name extension only decides which reader tries first.
+   */
+  kind: FileKind;
+  /**
+   * The analyses whose settings the configuration sets, for a `configuration`: the analysis that its
+   * `yaml-language-server` schema directive names, or else every analysis that has all of its top-level keys.
+   */
+  commands: Array<AppCommand>;
+  /**
+   * Why no reader reads the file, for an `unknown` file.
+   */
+  reason?: string;
+};
+
+/**
+ * Kind of a file.
+ */
+export type FileKind = 'tree' | 'alignment' | 'metadata' | 'configuration' | 'run-package' | 'unknown';
+
+/**
+ * The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+ * any upload.
+ */
+export type FileHeadsRequest = {
+  /**
+   * One entry per file.
+   */
+  files: Array<FileHead>;
+};
+
+/**
+ * The first bytes of one file.
+ */
+export type FileHead = {
+  /**
+   * The first bytes of the file as text, with each byte sequence that is not UTF-8 replaced.
+   */
+  head: string;
+  /**
+   * Whether `head` holds the whole file.
+   */
+  complete: boolean;
+};
+
+/**
+ * What TreeTime does with each file of a request, in the order of the request.
+ */
+export type FileRoles = {
+  /**
+   * One entry per file of the request.
+   */
+  files: Array<FileRole>;
+};
+
+/**
+ * What TreeTime does with a file that the user opened.
+ */
+export type FileRole = 'run-package' | 'configuration' | 'input';
+
+/**
+ * Input paths, for example those of a form, to look up in the store of uploaded inputs.
+ */
+export type StoredInputsRequest = {
+  /**
+   * Paths of the input files, as the form holds them.
+   */
+  paths: Array<string>;
+};
+
+/**
+ * The inputs of a request that the store of uploaded inputs no longer holds.
+ */
+export type StoredInputs = {
+  /**
+   * Paths of the request that name a stored input whose file is gone, because no run references its contents any
+   * more, in the order of the request. Paths outside the store, such as files on the computer, are not listed.
+   */
+  missing: Array<string>;
+};
+
+/**
+ * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
+ */
+export type ClockPreviewRequest = {
+  /**
+   * Command of the draft.
+   */
+  command: AppCommand;
+  /**
+   * Settings of the draft. The preview takes the settings that the `clock` command shares with the draft's command
+   * and that concern the input data or the analysis, such as the input files, the dates, the rooting, and the clock
+   * filter, and ignores the rest.
+   */
+  config: SparseConfig;
+  /**
+   * Whether to compute the preview also for a tree with more tips than `tip_limit`.
+   */
+  beyond_limit?: boolean;
+};
+
+/**
+ * The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.
+ */
+export type ClockPreview = {
+  /**
+   * Number of tips of the tree.
+   */
+  tips: number;
+  /**
+   * Largest tree, in tips, whose preview the back end computes without `beyond_limit`.
+   */
+  tip_limit: number;
+  /**
+   * Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does
+   * not set `beyond_limit`, when the draft has no metadata, when the draft's command uses no dates, and when the
+   * regression fails.
+   */
+  clock?: ClockResults;
+  /**
+   * The tree in divergence units, without dates; absent when the tree has more tips than `tip_limit` and the request
+   * does not set `beyond_limit`.
+   */
+  tree?: PreviewTree;
+  /**
+   * Why the root-to-tip regression failed, as the CLI prints the error; the tree then has the root of the input tree
+   * file.
+   */
+  problem?: string;
+};
+
+/**
+ * Results of a `clock` run.
+ */
+export type ClockResults = {
+  /**
+   * Estimates of the clock model.
+   */
+  estimates: ClockEstimates;
+  /**
+   * Statistics of the root-to-tip regression in display order; empty when the run wrote no clock model.
+   */
+  statistics: Array<RegressionStatistic>;
+  /**
+   * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
+   */
+  root_to_tip?: RootToTip;
+};
+
+/**
+ * Estimates of a `clock` run.
+ */
+export type ClockEstimates = {
+  /**
+   * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
+   */
+  clock_rate?: number;
+  /**
+   * Whether the clock rate was fixed by the user instead of estimated.
+   */
+  clock_rate_fixed: boolean;
+  /**
+   * Root date that the regression line implies: the date at which it reaches zero divergence (x-intercept).
+   */
+  root_date?: YearDate;
+  /**
+   * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
+   */
+  r?: number;
+  /**
+   * Coefficient of determination of the root-to-tip regression.
+   */
+  r_squared?: number;
+  /**
+   * Number of samples with a date.
+   */
+  dated_samples: number;
+  /**
+   * Number of dated samples the clock filter flagged as outliers.
+   */
+  outliers: number;
+};
+
+/**
+ * One statistic of a root-to-tip regression, as Tempest lists them.
+ */
+export type RegressionStatistic = {
+  /**
+   * Which statistic this is.
+   */
+  statistic: RegressionStatisticKind;
+  /**
+   * Name of the statistic, for example `Correlation coefficient r`.
+   */
+  label: string;
+  /**
+   * What the statistic measures, in one or two sentences.
+   */
+  definition: string;
+  /**
+   * Unit of a numeric value; absent for a value without a unit.
+   */
+  unit?: string;
+  /**
+   * Value of the statistic.
+   */
+  value: StatisticValue;
+};
+
+/**
+ * A statistic of a root-to-tip regression.
+ */
+export type RegressionStatisticKind = 'clock-rate' | 'root-date' | 'correlation-coefficient' | 'r-squared' | 'residual-mean-square';
+
+/**
+ * Value of a regression statistic.
+ */
+export type StatisticValue = ({
+  kind: 'number';
+} & StatisticValueNumber) | ({
+  kind: 'date';
+} & StatisticValueDate);
+
+/**
+ * The points and line of a root-to-tip regression, as TreeTime fitted it.
+ */
+export type RootToTip = {
+  /**
+   * Samples as the regression saw them.
+   */
+  points: Array<RootToTipPoint>;
+  /**
+   * Line of the clock model; absent when the run wrote no clock model.
+   */
+  line?: ClockLine;
+};
+
+/**
+ * One sample of a root-to-tip regression.
+ */
+export type RootToTipPoint = {
+  /**
+   * Name of the sample.
+   */
+  name: string;
+  /**
+   * Date the regression used.
+   */
+  date?: YearDate;
+  /**
+   * Where the date came from; absent when the table does not say.
+   */
+  date_source?: ClockDateSource;
+  /**
+   * Root-to-tip divergence the regression used.
+   */
+  div: number;
+  /**
+   * Date the clock model predicts from the divergence.
+   */
+  predicted_date: YearDate;
+  /**
+   * Sampling date minus the predicted date, in days.
+   */
+  residual_days?: number;
+  /**
+   * Whether the clock filter flagged the sample as an outlier.
+   */
+  outlier: boolean;
+};
+
+/**
+ * Where the date a clock regression used for a sample came from.
+ */
+export type ClockDateSource = 'input' | 'inferred' | 'missing';
+
+/**
+ * Line of a clock model: divergence = rate * date + intercept.
+ */
+export type ClockLine = {
+  /**
+   * Clock rate in substitutions per site per year.
+   */
+  rate: number;
+  /**
+   * Divergence at year 0.
+   */
+  intercept: number;
+};
+
+/**
+ * The tree of a draft, as the preview draws it.
+ */
+export type PreviewTree = {
+  /**
+   * Where the root of the tree comes from.
+   */
+  root: PreviewRoot;
+  /**
+   * The tree as an Auspice document, with the divergence of every node and no dates.
+   */
+  auspice: AuspiceDocument;
+};
+
+/**
+ * Where the root of a preview tree comes from.
+ */
+export type PreviewRoot = 'regression' | 'input';
+
+/**
+ * Auspice JSON of a run, with the color scales the app displays.
+ */
+export type AuspiceDocument = {
+  [key: string]: unknown;
+};
+
+/**
  * Runs, newest first, and the number of runs computing now.
  */
 export type RunList = {
@@ -492,6 +1194,11 @@ export type RunSummary = {
    */
   title: string;
   /**
+   * Name of the dataset of the run: the example name, for example `ebola/100`, else the file name of the tree input;
+   * absent for a run without either.
+   */
+  dataset?: string;
+  /**
    * Command the run executes.
    */
   command: AppCommand;
@@ -503,6 +1210,18 @@ export type RunSummary = {
    * Whether the run is pinned.
    */
   pinned: boolean;
+  /**
+   * Run whose settings this run started from. The source may have been deleted since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references.
+   */
+  size: number;
   /**
    * Time the run was created.
    */
@@ -516,9 +1235,14 @@ export type RunSummary = {
    */
   duration_seconds?: number;
   /**
-   * Hash that identifies runs with the same settings and input contents.
+   * Hash that identifies runs with the same settings and input contents, leaving out the seed: runs with the same
+   * hash have the same settings when they have the same `seed`.
    */
   config_hash?: string;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step.
+   */
+  seed?: number;
   /**
    * Setting keys whose values differ from the command defaults.
    */
@@ -527,12 +1251,20 @@ export type RunSummary = {
    * Key results of a finished run.
    */
   headline: RunHeadline;
+  /**
+   * Name to save the run package under: the run's title and the start of its id, as in the names of its output
+   * files, for example `ebola-100-time-tree-1a2b3c4d.zip`.
+   */
+  package_name: string;
+  /**
+   * Name to save the log of the run under, for example `ebola-100-time-tree-1a2b3c4d.log.txt`.
+   */
+  log_name: string;
+  /**
+   * Name to save the configuration of the run under, for example `ebola-100-time-tree-1a2b3c4d.yaml`.
+   */
+  config_name: string;
 };
-
-/**
- * Identifier of one command run, unique among the jobs of a process.
- */
-export type JobId = string;
 
 /**
  * State of a run.
@@ -544,7 +1276,7 @@ export type RunStatus = 'created' | 'running' | 'ok' | 'error' | 'cancelled' | '
  */
 export type RunHeadline = {
   /**
-   * Date of the root of a time tree.
+   * Date of the root: of the time tree, or where the root-to-tip regression of a clock run reaches zero divergence.
    */
   root_date?: YearDate;
   /**
@@ -559,20 +1291,6 @@ export type RunHeadline = {
    * Number of distinct substitutions on two or more branches of a homoplasy run.
    */
   recurrent_substitutions?: number;
-};
-
-/**
- * A date as a decimal year and as a calendar day.
- */
-export type YearDate = {
-  /**
-   * The date as a decimal year, for example `2015.47`.
-   */
-  year: number;
-  /**
-   * The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.
-   */
-  date?: string;
 };
 
 /**
@@ -597,10 +1315,22 @@ export type CreateRunRequest = {
    * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
    */
   defer_start?: boolean;
+  /**
+   * Run whose settings the new run starts from, such as the source of a variant.
+   */
+  source_run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; unset for the user's own files.
+   * The run's name starts with it.
+   */
+  example?: string;
 };
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
+ * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+ * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+ * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+ * read from elsewhere keep their absolute paths.
  */
 export type RunRecord = ({
   command: 'timetree';
@@ -623,7 +1353,9 @@ export type RunInput = {
    */
   setting: string;
   /**
-   * Path of the file, as the run read it.
+   * Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;
+   * a path in the folder of an entry of `input_sets`, such as `inputs/<setting>/...`, for a file of a path template
+   * that the input store keeps; the absolute path for a file read from elsewhere.
    */
   path: string;
   /**
@@ -634,6 +1366,35 @@ export type RunInput = {
    * SHA-256 of the file contents, as lowercase hexadecimal.
    */
   sha256: string;
+};
+
+/**
+ * Folder of a path template whose files the input store keeps as one set.
+ */
+export type InputSet = {
+  /**
+   * Folder of the files relative to the run's folder, `inputs/<setting>`; the template and its files lie in it.
+   */
+  folder: string;
+  /**
+   * Key of the set in the input store: the SHA-256, as lowercase hexadecimal, of the sorted lines `<sha256>  <path>`,
+   * one per file, with the file's SHA-256 and its path relative to the folder.
+   */
+  sha256: string;
+};
+
+/**
+ * Key of a file in the input store: the SHA-256 of its contents and its file name.
+ */
+export type StoredInput = {
+  /**
+   * SHA-256 of the file contents, as lowercase hexadecimal.
+   */
+  sha256: string;
+  /**
+   * File name of the upload.
+   */
+  name: string;
 };
 
 /**
@@ -710,6 +1471,10 @@ export type RunError = {
    * The errors that caused `message`, outermost first.
    */
   causes: Array<string>;
+  /**
+   * Keys of the settings whose command-line flags the error and its causes name, in the order they name them.
+   */
+  settings: Array<string>;
 };
 
 /**
@@ -739,6 +1504,16 @@ export type StartRunRequest = {
    * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
    */
   config?: SparseConfig;
+  /**
+   * Run whose settings the run starts from; replaces the one given at creation.
+   */
+  source_run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; replaces the one given at
+   * creation, for example when the user opened an example after the run that holds the uploads was created. The run's
+   * name starts with it.
+   */
+  example?: string;
 };
 
 /**
@@ -749,6 +1524,29 @@ export type CancelRunResponse = {
    * Whether cancellation was requested; the run ends with a `cancelled` terminal event.
    */
   cancelled: boolean;
+  /**
+   * Sequence number from which to read the run's events to wait for its terminal event; absent when nothing was
+   * cancelled.
+   */
+  from?: number;
+};
+
+/**
+ * Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+ */
+export type UploadAllowance = {
+  /**
+   * Bytes that the next uploads may add in total; the files that the request names as replaced do not count.
+   */
+  remaining: number;
+  /**
+   * Limit of the total size of the inputs of a run, in bytes.
+   */
+  limit: number;
+  /**
+   * The limit as the upload errors name it, such as `1 GiB`.
+   */
+  limit_text: string;
 };
 
 /**
@@ -759,6 +1557,16 @@ export type RunFile = {
    * Path relative to the run's `out/` folder, with `/` separators.
    */
   path: string;
+  /**
+   * Name to save the file under: the run's title, the start of its id, and the path, so that the files of different
+   * runs do not share a name, for example `ebola-100-time-tree-1a2b3c4d.timetree.nwk`.
+   */
+  download_name: string;
+  /**
+   * Short name of the file with its format, for example `Dated tree (Newick, branch lengths in years)`; the file name
+   * for files the output plan does not name.
+   */
+  label: string;
   /**
    * Size in bytes.
    */
@@ -771,6 +1579,11 @@ export type RunFile = {
    * What the file holds; empty for files the output plan does not name.
    */
   description: string;
+  /**
+   * Whether the file is one of the main formats of the command, which the Download menu offers. The list holds these
+   * files first, in menu order, then the other files by path.
+   */
+  main: boolean;
   /**
    * Alignment file the output belongs to, for an output written once per alignment file.
    */
@@ -798,11 +1611,7 @@ export type RunResults = {
    */
   results: CommandResults;
   /**
-   * The publication to cite.
-   */
-  citation: Citation;
-  /**
-   * Output files that could not be read.
+   * Output files, and the input tree of an `optimize` or `prune` run, that could not be read.
    */
   problems: Array<OutputProblem>;
 };
@@ -1058,6 +1867,11 @@ export type TimetreeResults = {
    */
   estimates?: TimetreeEstimates;
   /**
+   * Statistics of the root-to-tip regression of the final clock model in display order; empty when the run wrote no
+   * clock model.
+   */
+  statistics: Array<RegressionStatistic>;
+  /**
    * Samples and line of the final clock model; absent when the run wrote no clock regression table.
    */
   root_to_tip?: RootToTip;
@@ -1087,6 +1901,11 @@ export type TimetreeEstimates = {
    * Whether the root date lies within 5% of the interval width from a bound of its interval.
    */
   root_near_interval_edge: boolean;
+  /**
+   * Whether a rerun with confidence intervals on adds the root-date interval: the root is dated, and the run computed
+   * no interval because its `confidence` setting was off.
+   */
+  interval_computable: boolean;
   /**
    * Clock rate in substitutions per site per year.
    */
@@ -1124,9 +1943,17 @@ export type TimetreeEstimates = {
    */
   coalescent_prior: CoalescentPrior;
   /**
+   * The coalescent prior in words, for example `Skyline, 20 points, stiffness 2`.
+   */
+  coalescent_summary: string;
+  /**
    * Relaxed clock the run used.
    */
   relaxed_clock?: RelaxedClock;
+  /**
+   * The clock model in words: `Strict clock`, or the relaxed clock with its parameters.
+   */
+  clock_model_summary: string;
   /**
    * Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).
    */
@@ -1167,73 +1994,6 @@ export type RelaxedClock = {
    * Coupling: how strongly the rates of parent and child branches are tied.
    */
   coupling: number;
-};
-
-/**
- * The points and line of a root-to-tip regression, as TreeTime fitted it.
- */
-export type RootToTip = {
-  /**
-   * Samples as the regression saw them.
-   */
-  points: Array<RootToTipPoint>;
-  /**
-   * Line of the clock model; absent when the run wrote no clock model.
-   */
-  line?: ClockLine;
-};
-
-/**
- * One sample of a root-to-tip regression.
- */
-export type RootToTipPoint = {
-  /**
-   * Name of the sample.
-   */
-  name: string;
-  /**
-   * Date the regression used.
-   */
-  date?: YearDate;
-  /**
-   * Where the date came from; absent when the table does not say.
-   */
-  date_source?: ClockDateSource;
-  /**
-   * Root-to-tip divergence the regression used.
-   */
-  div: number;
-  /**
-   * Date the clock model predicts from the divergence.
-   */
-  predicted_date: YearDate;
-  /**
-   * Sampling date minus the predicted date, in days.
-   */
-  residual_days?: number;
-  /**
-   * Whether the clock filter flagged the sample as an outlier.
-   */
-  outlier: boolean;
-};
-
-/**
- * Where the date a clock regression used for a sample came from.
- */
-export type ClockDateSource = 'input' | 'inferred' | 'missing';
-
-/**
- * Line of a clock model: divergence = rate * date + intercept.
- */
-export type ClockLine = {
-  /**
-   * Clock rate in substitutions per site per year.
-   */
-  rate: number;
-  /**
-   * Divergence at year 0.
-   */
-  intercept: number;
 };
 
 /**
@@ -1307,50 +2067,6 @@ export type Band = {
 };
 
 /**
- * Results of a `clock` run.
- */
-export type ClockResults = {
-  /**
-   * Estimates of the clock model.
-   */
-  estimates: ClockEstimates;
-  /**
-   * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
-   */
-  root_to_tip?: RootToTip;
-};
-
-/**
- * Estimates of a `clock` run.
- */
-export type ClockEstimates = {
-  /**
-   * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
-   */
-  clock_rate?: number;
-  /**
-   * Whether the clock rate was fixed by the user instead of estimated.
-   */
-  clock_rate_fixed: boolean;
-  /**
-   * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
-   */
-  r?: number;
-  /**
-   * Coefficient of determination of the root-to-tip regression.
-   */
-  r_squared?: number;
-  /**
-   * Number of samples with a date.
-   */
-  dated_samples: number;
-  /**
-   * Number of dated samples the clock filter flagged as outliers.
-   */
-  outliers: number;
-};
-
-/**
  * Results of an `ancestral` run.
  */
 export type AncestralResults = {
@@ -1402,51 +2118,47 @@ export type RecurrentSite = {
 };
 
 /**
- * Summary of a tree an `optimize` or `prune` run wrote.
+ * The tree before and after an `optimize` or `prune` run.
  */
-export type TreeSummary = {
+export type TreeChange = {
   /**
-   * Number of samples.
-   */
-  samples: number;
-  /**
-   * Number of internal nodes.
-   */
-  internal_nodes: number;
-  /**
-   * Number of nucleotide mutations on all branches.
+   * Number of nucleotide mutations on all branches of the tree the run wrote.
    */
   mutations: number;
   /**
-   * Sum of the branch lengths in the node data file.
+   * The statistics of both trees by name, in the order to show them.
    */
-  total_branch_length?: number;
+  rows: Array<TreeStatisticRow>;
 };
 
 /**
- * The publication to cite for TreeTime.
+ * One statistic of the input tree and the result tree.
  */
-export type Citation = {
+export type TreeStatisticRow = {
   /**
-   * Reference in text form.
+   * Name of the statistic.
    */
-  text: string;
+  label: string;
   /**
-   * DOI of the publication, for example `10.1093/ve/vex042`.
+   * Whether the statistic counts nodes; otherwise it is a length in substitutions per site.
    */
-  doi: string;
+  count: boolean;
   /**
-   * Link to the publication.
+   * Value for the input tree; absent when it cannot be read, and the problems of the results name the cause.
    */
-  url: string;
+  before?: number;
+  /**
+   * Value for the tree the run wrote; absent when the run wrote no Auspice tree.
+   */
+  after?: number;
 };
 
 /**
- * An output file of a run that could not be read.
+ * A file of a run that could not be read.
  */
 export type OutputProblem = {
   /**
-   * Path of the file relative to the run's `out/` folder.
+   * Path of the file: relative to the run's `out/` folder for an output file, as the run resolved it for an input.
    */
   path: string;
   /**
@@ -1456,20 +2168,23 @@ export type OutputProblem = {
 };
 
 /**
- * Auspice JSON of a run, with the color scales the app displays.
- */
-export type AuspiceDocument = {
-  [key: string]: unknown;
-};
-
-/**
  * Comparison of two runs: their settings and their results.
  */
 export type RunComparison = {
   /**
-   * Settings and inputs that differ; absent when the runs execute different commands.
+   * Whether both runs are the same analysis, that is, they execute the same command. Runs of different analyses have
+   * no settings comparison and no estimates.
+   */
+  same_analysis: boolean;
+  /**
+   * Settings and inputs that differ; absent when the runs are different analyses.
    */
   settings?: SettingsComparison;
+  /**
+   * Changes of the root date and the clock rate, for a one-line summary; present when both runs are finished
+   * time-tree runs or finished clock runs, and at least one of the two estimates is known in both.
+   */
+  delta?: EstimateDelta;
   /**
    * Estimates side by side; present when both runs are finished time-tree runs with a tree.
    */
@@ -1481,11 +2196,12 @@ export type RunComparison = {
 };
 
 /**
- * Settings and inputs that differ between two runs of the same command.
+ * Settings and inputs that differ between two runs of the same command. The settings that the app sets for every
+ * run, the output files and their paths, are not compared.
  */
 export type SettingsComparison = {
   /**
-   * Settings and inputs whose values differ.
+   * Settings whose resolved values differ, and inputs whose file contents differ.
    */
   differences: Array<SettingDifference>;
   /**
@@ -1493,19 +2209,29 @@ export type SettingsComparison = {
    */
   compared: number;
   /**
-   * Whether both runs have the same configuration hash: the same settings on the same input contents.
+   * Whether both runs have the same settings, the seed of the random step included, on the same input contents.
    */
-  same_config_hash: boolean;
+  same_config: boolean;
 };
 
 /**
- * A setting whose value differs between two runs.
+ * Changes of the main estimates from the first run to the second.
  */
-export type SettingDifference = ({
-  kind: 'setting';
-} & SettingDifferenceSetting) | ({
-  kind: 'input';
-} & SettingDifferenceInput);
+export type EstimateDelta = {
+  /**
+   * Root date of the second run minus the root date of the first, in days: the dated root of a time tree, or the
+   * x-intercept of the root-to-tip regression of a clock run.
+   */
+  root_date_days?: number;
+  /**
+   * Change of the clock rate, in percent of the first rate.
+   */
+  clock_rate_percent?: number;
+  /**
+   * The changes in one line, for example `Root date -46 d, clock rate -7.9 %`.
+   */
+  summary: string;
+};
 
 /**
  * Estimates of two time-tree runs and their differences, second minus first.
@@ -1536,10 +2262,26 @@ export type EstimateComparison = {
    */
   excluded_samples_change: number;
   /**
-   * Change of the total log likelihood; absent when either value is missing or not finite.
+   * Change of the total log likelihood; absent when either value is missing or not finite, or when
+   * `log_likelihood_mismatches` is not empty.
    */
   log_likelihood_change?: number;
+  /**
+   * Why the log likelihoods of the two runs cannot be compared; empty when they can.
+   */
+  log_likelihood_mismatches: Array<LikelihoodMismatch>;
+  /**
+   * The mismatches in words, for example `different data, different coalescent prior`; absent when the log
+   * likelihoods can be compared.
+   */
+  log_likelihood_not_comparable?: string;
 };
+
+/**
+ * A difference between two time-tree runs that changes what their log likelihoods measure, so that their difference
+ * is no measure of fit.
+ */
+export type LikelihoodMismatch = 'data' | 'substitution-model' | 'coalescent-prior' | 'topology';
 
 /**
  * Date shifts of the ancestors two trees share, matched by their set of samples.
@@ -1771,6 +2513,8 @@ export type AppEvent = ({
 } & AppEventRunCreated) | ({
   kind: 'run-updated';
 } & AppEventRunUpdated) | ({
+  kind: 'run-removed';
+} & AppEventRunRemoved) | ({
   kind: 'examples-download';
 } & AppEventExamplesDownload) | ({
   kind: 'resync';
@@ -1809,15 +2553,15 @@ export type ExamplesDownload = ({
 } & ExamplesDownloadFailed);
 
 /**
- * A file uploaded into a run's `inputs/` folder.
+ * A file uploaded for a run that has not started.
  */
 export type UploadedInput = {
   /**
-   * File name inside the run's `inputs/` folder.
+   * File name of the upload.
    */
   name: string;
   /**
-   * Path to use for the file in the run's configuration.
+   * Path to use for the file in the configurations of runs, checks, and other requests.
    */
   path: string;
   /**
@@ -1885,6 +2629,10 @@ export type UiSettings = {
    */
   sidebar_width?: number;
   /**
+   * Width of the options panel of the analysis workspace in pixels.
+   */
+  options_width?: number;
+  /**
    * The unfinished analysis form.
    */
   draft?: UiDraft;
@@ -1918,6 +2666,14 @@ export type UiDraft = {
    * The run that holds the uploaded input files of the form.
    */
   upload_run_id?: JobId;
+  /**
+   * Name of the example dataset whose files the form holds, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
+  /**
+   * The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.
+   */
+  choices: Array<ActiveChoice>;
   view: UiSettingsView;
   /**
    * Text of the settings search field.
@@ -1953,7 +2709,19 @@ export type UiDraftSource = {
 /**
  * Where an input file of the form came from.
  */
-export type UiDraftOrigin = 'dataset' | 'upload' | 'local' | 'run' | 'config';
+export type UiDraftOrigin = ({
+  kind: 'dataset';
+} & UiDraftOriginDataset) | ({
+  kind: 'example';
+} & UiDraftOriginExample) | ({
+  kind: 'upload';
+} & UiDraftOriginUpload) | ({
+  kind: 'local';
+} & UiDraftOriginLocal) | ({
+  kind: 'run';
+} & UiDraftOriginRun) | ({
+  kind: 'config';
+} & UiDraftOriginConfig);
 
 /**
  * Which settings the form shows.
@@ -2044,6 +2812,35 @@ export type IndexedDataset = {
    * uncompressed name.
    */
   inputs: Array<IndexedInput>;
+  /**
+   * Organism of the samples, from the `organism` field of the front matter of the folder's `README.md`, for example
+   * `Zika virus`.
+   */
+  organism: string;
+  /**
+   * Genome segment of the sequences, for a segmented genome, from the `segment` field of the same front matter, for
+   * example `NA`.
+   */
+  segment?: string;
+  /**
+   * Number of samples: the tips of the tree.
+   */
+  samples: number;
+  /**
+   * Earliest and latest sampling date of the metadata, when the dataset has dates.
+   */
+  dates?: DateSpan;
+  /**
+   * Number of sites of the alignment, when the dataset has an alignment.
+   */
+  sequence_length?: number;
+  /**
+   * Settings that the commands need to read the files of the dataset, in configuration form, from the `settings`
+   * field of the front matter of the folder's `README.md`, for example `metadata_id_columns: [genbank_accession]`
+   * when the tip names of the tree are in a metadata column that is not one of the default name columns. The facts
+   * of the dataset are read with these settings. Left out when the dataset needs none.
+   */
+  settings?: SparseConfig;
 };
 
 /**
@@ -2138,6 +2935,16 @@ export type ExamplesDownloadStatus = {
 };
 
 /**
+ * A run package to import from a file on disk.
+ */
+export type ImportFileRequest = {
+  /**
+   * Absolute path of the run package.
+   */
+  path: string;
+};
+
+/**
  * The runs folder of the running back end, and the folder used when the settings name none.
  */
 export type Workspace = {
@@ -2170,11 +2977,12 @@ export type WorkspaceUpdate = {
 };
 
 /**
- * Where to save an output file of a run, or the archive of all its outputs.
+ * Where to save an output file of a run, or its run package.
  */
 export type SaveRunRequest = {
   /**
-   * Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
+   * Path of the file relative to the run's `out/` folder. Unset: the run package, a zip archive that recreates the
+   * run in the app and reproduces it with the command-line tool.
    */
   path?: string;
   /**
@@ -2191,6 +2999,10 @@ export type CommandSettings = {
    * The command.
    */
   command: AppCommand;
+  /**
+   * The command as the command line runs it, for example `treetime timetree`.
+   */
+  command_line: string;
   /**
    * Name of the analysis as the app shows it, for example `Time tree`.
    */
@@ -2212,9 +3024,19 @@ export type CommandSettings = {
    */
   groups: Array<string>;
   /**
-   * Keys of the settings the form shows first, in the order it shows them.
+   * Sections of the settings form in display order, one per purpose: the settings of the purpose that the app does not
+   * set, by group.
    */
-  main_settings: Array<string>;
+  sections: Array<SettingSection>;
+  /**
+   * The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
+   */
+  main_rows: Array<MainSettingRow>;
+  /**
+   * Keys of the settings that the clock preview reads: the input data and analysis settings that the `clock` command
+   * shares with this command, in catalog order. The preview of a draft changes only when one of them changes.
+   */
+  preview_settings: Array<string>;
   /**
    * Settings that the form shows as one choice between options.
    */
@@ -2261,6 +3083,113 @@ export type InputSlot = {
 export type InputNeed = 'required' | 'recommended' | 'optional';
 
 /**
+ * One section of the settings form: the settings of one purpose.
+ */
+export type SettingSection = {
+  /**
+   * Purpose of the settings of the section.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Heading of the section, for example `Output format`.
+   */
+  title: string;
+  /**
+   * Groups of the section, in the order of `groups`; each has a setting of the purpose that the app does not set.
+   */
+  groups: Array<string>;
+};
+
+/**
+ * One row of the main settings: one or more settings that the form shows and edits together.
+ */
+export type MainSettingRow = {
+  /**
+   * Name of the row, for example `Coalescent prior`.
+   */
+  label: string;
+  /**
+   * Short line under the name, for example `Tree prior on node times`.
+   */
+  description?: string;
+  /**
+   * The settings of the row, in the order the row shows them.
+   */
+  settings: Array<RowSetting>;
+  /**
+   * The control that edits the settings.
+   */
+  control: RowControl;
+};
+
+/**
+ * One setting of a row of the main settings.
+ */
+export type RowSetting = {
+  /**
+   * Key of the setting.
+   */
+  key: string;
+  /**
+   * Name of the setting inside the row, for example `Rate` in the row `Clock rate`.
+   */
+  label: string;
+};
+
+/**
+ * Control of a row of the main settings.
+ */
+export type RowControl = ({
+  kind: 'choice';
+} & RowControlChoice) | ({
+  kind: 'switches';
+} & RowControlSwitches) | ({
+  kind: 'coalescent';
+} & RowControlCoalescent) | ({
+  kind: 'clock-filter';
+} & RowControlClockFilter) | ({
+  kind: 'substitution-model';
+} & RowControlSubstitutionModel) | ({
+  kind: 'setting';
+} & RowControlSetting);
+
+/**
+ * A switch of a row of the main settings.
+ */
+export type RowSwitch = {
+  /**
+   * Key of the setting the switch turns on or off.
+   */
+  key: string;
+  /**
+   * Text beside the switch.
+   */
+  text: string;
+  /**
+   * Whether the switch is on while the setting is off: the setting turns off a step that runs by default.
+   */
+  inverted: boolean;
+};
+
+/**
+ * An option of a row of the main settings.
+ */
+export type RowOption = {
+  /**
+   * The option, for example `skyline`.
+   */
+  value: string;
+  /**
+   * Name of the option, for example `Skyline`.
+   */
+  label: string;
+  /**
+   * What the option does, as the form shows it while the option is picked.
+   */
+  note?: string;
+};
+
+/**
  * Settings that the form shows as one choice between options, for example the clock rate.
  */
 export type SettingChoice = {
@@ -2280,6 +3209,14 @@ export type SettingChoice = {
  */
 export type ChoiceOption = {
   option: ChoiceOptionName;
+  /**
+   * Name of the option, for example `Fixed rate`.
+   */
+  label: string;
+  /**
+   * What the option does, as the form shows it while the option is picked.
+   */
+  note?: string;
   /**
    * Changes that picking the option makes: settings it writes, and settings it removes so that they take their
    * defaults.
@@ -2311,6 +3248,15 @@ export type SettingSpec = {
    * Heading of the setting in `--help`.
    */
   group: string;
+  /**
+   * What the setting is for, which places it in the form.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Whether the app sets the setting for every run, as it does for the output files and their selection, so that
+   * the form does not offer it and comparisons of configurations skip it.
+   */
+  set_by_app: boolean;
   /**
    * What the setting names: a file, or a value.
    */
@@ -2389,6 +3335,10 @@ export type SettingOption = {
    * The value, as the configuration spells it.
    */
   value: string;
+  /**
+   * Name of the value as the form shows it, for example `Least squares`.
+   */
+  label: string;
   /**
    * Description of the value, when it has one.
    */
@@ -2485,8 +3435,6 @@ export type PartitionSpec = {
 };
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
-
-export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
 
 export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'midpoint';
 
@@ -4280,6 +5228,24 @@ export type CheckConfigResponseValid = {
    * The option of each choice of the command that the configuration selects.
    */
   choices: Array<ActiveChoice>;
+  /**
+   * The value the run uses for each setting that the configuration leaves at its default, as a short text.
+   */
+  effective: Array<EffectiveValue>;
+  /**
+   * The command-line form of each setting for its value in the configuration, in catalog order.
+   */
+  command_lines: Array<SettingCommandLine>;
+  /**
+   * Name of the dataset: the example of the request, else the file name of the tree input; absent without either.
+   */
+  dataset?: string;
+  /**
+   * Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and
+   * inputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output
+   * files and their paths, are not compared. Absent without `run_id`, and when the run executes another command.
+   */
+  run_differences?: Array<SettingDifference>;
   status: 'valid';
 };
 
@@ -4320,7 +5286,84 @@ export type CheckConfigResponseInvalid = {
    * merged over the defaults.
    */
   choices: Array<ActiveChoice>;
+  /**
+   * The value the run uses for each setting that the configuration leaves at its default, as a short text, when the
+   * configuration could be merged over the defaults.
+   */
+  effective: Array<EffectiveValue>;
+  /**
+   * The command-line form of each setting for its value in the configuration, in catalog order, when the
+   * configuration could be merged over the defaults.
+   */
+  command_lines: Array<SettingCommandLine>;
+  /**
+   * Name of the dataset: the example of the request, else the file name of the tree input when the configuration
+   * could be merged over the defaults; absent without either.
+   */
+  dataset?: string;
   status: 'invalid';
+};
+
+/**
+ * A value that controls the analysis.
+ */
+export type SettingDifferenceSetting = {
+  /**
+   * Key path of the setting joined with `.`.
+   */
+  key: string;
+  /**
+   * Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.
+   */
+  label: string;
+  /**
+   * Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.
+   */
+  group: string;
+  /**
+   * What the setting is for.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Value in the first configuration; absent when it leaves the setting unset.
+   */
+  first?: JsonValue;
+  /**
+   * Value in the second configuration; absent when it leaves the setting unset.
+   */
+  second?: JsonValue;
+  kind: 'setting';
+};
+
+/**
+ * Input files with different contents.
+ */
+export type SettingDifferenceInput = {
+  /**
+   * Key path of the setting joined with `.`.
+   */
+  key: string;
+  /**
+   * Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.
+   */
+  label: string;
+  /**
+   * Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.
+   */
+  group: string;
+  /**
+   * What the setting is for.
+   */
+  purpose: SettingPurpose;
+  /**
+   * Paths of the files of the first configuration.
+   */
+  first: Array<string>;
+  /**
+   * Paths of the files of the second configuration.
+   */
+  second: Array<string>;
+  kind: 'input';
 };
 
 /**
@@ -4328,14 +5371,18 @@ export type CheckConfigResponseInvalid = {
  */
 export type RunConfigResponseValid = {
   /**
-   * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
-   * `output_all` set to `out`.
+   * The configuration as the run records it, with every default filled in, the outputs the run layer adds,
+   * `output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.
    */
   config: SparseConfig;
   /**
    * The command line and the YAML config that reproduce the run.
    */
   code: ConfigCode;
+  /**
+   * The command-line form of each setting of the command for its value in `config`.
+   */
+  command_lines: Array<SettingCommandLine>;
   /**
    * Hash that a run of this configuration records, to find finished runs with the same settings and input
    * contents; absent when an input cannot be read.
@@ -4345,6 +5392,12 @@ export type RunConfigResponseValid = {
    * Why `config_hash` is absent.
    */
   config_hash_error?: string;
+  /**
+   * Seed that the configuration sets for its random step; absent when it sets none, so that the run draws one, and
+   * when the run has no random step. A finished run with the same `config_hash` has the settings of this
+   * configuration when the configuration sets no seed or the seed of that run.
+   */
+  seed?: number;
   status: 'valid';
 };
 
@@ -4367,23 +5420,86 @@ export type RunConfigResponseInvalid = {
   status: 'invalid';
 };
 
+/**
+ * A number.
+ */
+export type StatisticValueNumber = {
+  /**
+   * The number.
+   */
+  value: number;
+  kind: 'number';
+};
+
+/**
+ * A date.
+ */
+export type StatisticValueDate = {
+  /**
+   * The date.
+   */
+  date: YearDate;
+  kind: 'date';
+};
+
 export type RunRecordTimetree = {
   /**
    * Identifier of the run, also the name of its folder.
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
+  /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
   /**
    * State of the run.
    */
   status: RunStatus;
   /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
+  /**
    * Whether the run is pinned in run lists.
    */
   pinned: boolean;
+  /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
   /**
    * Time the run was created.
    */
@@ -4405,12 +5521,22 @@ export type RunRecordTimetree = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -4443,17 +5569,58 @@ export type RunRecordOptimize = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
+  /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
   /**
    * State of the run.
    */
   status: RunStatus;
   /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
+  /**
    * Whether the run is pinned in run lists.
    */
   pinned: boolean;
+  /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
   /**
    * Time the run was created.
    */
@@ -4475,12 +5642,22 @@ export type RunRecordOptimize = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -4513,17 +5690,58 @@ export type RunRecordPrune = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
+  /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
   /**
    * State of the run.
    */
   status: RunStatus;
   /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
+  /**
    * Whether the run is pinned in run lists.
    */
   pinned: boolean;
+  /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
   /**
    * Time the run was created.
    */
@@ -4545,12 +5763,22 @@ export type RunRecordPrune = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -4583,17 +5811,58 @@ export type RunRecordAncestral = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
+  /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
   /**
    * State of the run.
    */
   status: RunStatus;
   /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
+  /**
    * Whether the run is pinned in run lists.
    */
   pinned: boolean;
+  /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
   /**
    * Time the run was created.
    */
@@ -4615,12 +5884,22 @@ export type RunRecordAncestral = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -4653,17 +5932,58 @@ export type RunRecordClock = {
    */
   id: JobId;
   /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   * Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and
+   * the analysis settings that differ from those of its source run, or from the defaults for a run without a source,
+   * for example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,
+   * as in `+2`. A renamed run keeps its title.
    */
   title: string;
+  /**
+   * Whether the user renamed the run.
+   */
+  renamed: boolean;
+  /**
+   * Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.
+   */
+  example?: string;
+  /**
+   * Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.
+   */
+  dataset?: string;
   /**
    * State of the run.
    */
   status: RunStatus;
   /**
+   * Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its
+   * seed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the
+   * request, and the settings of the run are not those that it computes with.
+   */
+  prepared: boolean;
+  /**
    * Whether the run is pinned in run lists.
    */
   pinned: boolean;
+  /**
+   * Run whose settings this run started from, such as the source of a variant. The source may have been deleted
+   * since.
+   */
+  source_run_id?: JobId;
+  /**
+   * Group of related runs in the run history: the group of the source run, or for a run without a source, the group
+   * of the earliest run with the same input contents, else the run's own id.
+   */
+  group_id: JobId;
+  /**
+   * Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the
+   * last read of the record.
+   */
+  size: number;
+  /**
+   * Seed of the random number generator that the run used, for a run with a random step: the configured seed, or
+   * the seed the run drew when the configuration sets none.
+   */
+  seed?: number;
   /**
    * Time the run was created.
    */
@@ -4685,12 +6005,22 @@ export type RunRecordClock = {
    */
   treetime_version: string;
   /**
-   * Input files the run read.
+   * Input files the run read. Before the run starts, the uploaded inputs its configuration names.
    */
   inputs: Array<RunInput>;
   /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   * Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`
+   * template of an imported run.
+   */
+  input_sets: Array<InputSet>;
+  /**
+   * Files uploaded for the run before it started; the run drops them when it starts.
+   */
+  uploads: Array<StoredInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the
+   * output paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same
+   * input contents.
    */
   config_hash?: string;
   /**
@@ -4744,12 +6074,12 @@ export type CommandResultsAncestral = {
 
 export type CommandResultsOptimize = {
   command: 'optimize';
-  data: TreeSummary;
+  data: TreeChange;
 };
 
 export type CommandResultsPrune = {
   command: 'prune';
-  data: TreeSummary;
+  data: TreeChange;
 };
 
 /**
@@ -4794,48 +6124,6 @@ export type CoalescentPriorSkyline = {
    */
   stiffness: number;
   kind: 'skyline';
-};
-
-/**
- * A value that controls the analysis.
- */
-export type SettingDifferenceSetting = {
-  /**
-   * Key path of the setting joined with `.`.
-   */
-  key: string;
-  /**
-   * Value in the first run; absent when the first run does not set the setting.
-   */
-  first?: JsonValue;
-  /**
-   * Value in the second run; absent when the second run does not set the setting.
-   */
-  second?: JsonValue;
-  kind: 'setting';
-};
-
-/**
- * Input files, which differ in their paths, their contents, or both.
- */
-export type SettingDifferenceInput = {
-  /**
-   * Key path of the setting that names the files.
-   */
-  key: string;
-  /**
-   * Paths of the files the first run read.
-   */
-  first: Array<string>;
-  /**
-   * Paths of the files the second run read.
-   */
-  second: Array<string>;
-  /**
-   * Whether the files of both runs have the same contents.
-   */
-  same_content: boolean;
-  kind: 'input';
 };
 
 /**
@@ -4965,7 +6253,7 @@ export type TerminalEventInterrupted = {
 export type AppEventRunCreated = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -4990,7 +6278,7 @@ export type AppEventRunCreated = {
 export type AppEventRunUpdated = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -5010,12 +6298,37 @@ export type AppEventRunUpdated = {
 };
 
 /**
+ * A run was deleted, with its folder and the uploaded inputs that no other run references.
+ */
+export type AppEventRunRemoved = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale.
+   */
+  stale: Array<StalePath>;
+  /**
+   * Id of the deleted run.
+   */
+  id: JobId;
+  kind: 'run-removed';
+};
+
+/**
  * The download of the example datasets progressed, finished, or failed.
  */
 export type AppEventExamplesDownload = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -5035,14 +6348,14 @@ export type AppEventExamplesDownload = {
 };
 
 /**
- * The stream cannot continue after the requested event, because the server no longer keeps that event or the
- * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+ * The stream cannot continue after the requested event, because the back end no longer keeps that event or the
+ * event belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
  */
 export type AppEventResync = {
   /**
    * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
    * the event.
    */
   seq: number;
@@ -5101,49 +6414,132 @@ export type ExamplesDownloadFailed = {
   state: 'failed';
 };
 
-export type HealthData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/health';
+/**
+ * A file of an example dataset in the data folder of the back end.
+ */
+export type UiDraftOriginDataset = {
+  kind: 'dataset';
 };
 
-export type HealthErrors = {
+/**
+ * A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file
+ * again when the uploaded copy is gone.
+ */
+export type UiDraftOriginExample = {
   /**
-   * The error, with its causes
+   * Path of the file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`.
    */
-  default: ErrorResponse;
+  path: string;
+  kind: 'example';
 };
 
-export type HealthError = HealthErrors[keyof HealthErrors];
+/**
+ * A file uploaded to TreeTime.
+ */
+export type UiDraftOriginUpload = {
+  kind: 'upload';
+};
 
-export type HealthResponses = {
+/**
+ * A file on the computer that runs TreeTime.
+ */
+export type UiDraftOriginLocal = {
+  kind: 'local';
+};
+
+/**
+ * An input of an earlier run.
+ */
+export type UiDraftOriginRun = {
+  kind: 'run';
+};
+
+/**
+ * A path from a loaded configuration file.
+ */
+export type UiDraftOriginConfig = {
+  kind: 'config';
+};
+
+/**
+ * A choice between options; the choice of the command with this name holds the options and their texts.
+ */
+export type RowControlChoice = {
+  choice: ChoiceName;
+  kind: 'choice';
+};
+
+/**
+ * Switches, one per setting.
+ */
+export type RowControlSwitches = {
+  switches: Array<RowSwitch>;
+  kind: 'switches';
+};
+
+/**
+ * The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.
+ */
+export type RowControlCoalescent = {
   /**
-   * Liveness of the server.
+   * Key of the setting that holds the prior: an option name, or a fixed time scale.
    */
-  200: HealthStatus;
-};
-
-export type HealthResponse = HealthResponses[keyof HealthResponses];
-
-export type OpenapiData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/openapi.json';
-};
-
-export type OpenapiErrors = {
+  setting: string;
   /**
-   * The error, with its causes
+   * Keys of the settings of the skyline, which apply only while the skyline is picked.
    */
-  default: ErrorResponse;
+  skyline_settings: Array<string>;
+  /**
+   * Unit suffix of a fixed time scale in years, as the setting takes it after the number: `y` in `50y`.
+   */
+  years_suffix: string;
+  options: Array<RowOption>;
+  kind: 'coalescent';
 };
 
-export type OpenapiError = OpenapiErrors[keyof OpenapiErrors];
+/**
+ * The clock filter threshold.
+ */
+export type RowControlClockFilter = {
+  /**
+   * Key of the setting that holds the threshold.
+   */
+  setting: string;
+  /**
+   * Note while the threshold is 0.
+   */
+  off: string;
+  /**
+   * Note while the threshold is above 0.
+   */
+  on: string;
+  kind: 'clock-filter';
+};
 
-export type OpenapiResponses = {
-  200: unknown;
+/**
+ * The substitution model and its parameters.
+ */
+export type RowControlSubstitutionModel = {
+  /**
+   * Key of the setting that holds the model.
+   */
+  model_setting: string;
+  /**
+   * Key of the setting that holds the parameters of the model.
+   */
+  parameters_setting: string;
+  /**
+   * Example of the parameters, as the form shows them in the empty field.
+   */
+  parameters_example: string;
+  kind: 'substitution-model';
+};
+
+/**
+ * The control of the one setting of the row.
+ */
+export type RowControlSetting = {
+  kind: 'setting';
 };
 
 export type VersionData = {
@@ -5252,6 +6648,119 @@ export type InputsCheckResponses = {
 
 export type InputsCheckResponse = InputsCheckResponses[keyof InputsCheckResponses];
 
+export type FileKindsData = {
+  /**
+   * Files to identify by their content, for example files that the user dropped without naming the input they fill.
+   */
+  body: FileKindsRequest;
+  path?: never;
+  query?: never;
+  url: '/api/file-kinds';
+};
+
+export type FileKindsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type FileKindsError = FileKindsErrors[keyof FileKindsErrors];
+
+export type FileKindsResponses = {
+  /**
+   * The kind of each file of a request, in the order of the request.
+   */
+  200: FileKinds;
+};
+
+export type FileKindsResponse = FileKindsResponses[keyof FileKindsResponses];
+
+export type FileRolesData = {
+  /**
+   * The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before
+   * any upload.
+   */
+  body: FileHeadsRequest;
+  path?: never;
+  query?: never;
+  url: '/api/file-roles';
+};
+
+export type FileRolesErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type FileRolesError = FileRolesErrors[keyof FileRolesErrors];
+
+export type FileRolesResponses = {
+  /**
+   * What TreeTime does with each file of a request, in the order of the request.
+   */
+  200: FileRoles;
+};
+
+export type FileRolesResponse = FileRolesResponses[keyof FileRolesResponses];
+
+export type StoredInputsData = {
+  /**
+   * Input paths, for example those of a form, to look up in the store of uploaded inputs.
+   */
+  body: StoredInputsRequest;
+  path?: never;
+  query?: never;
+  url: '/api/stored-inputs';
+};
+
+export type StoredInputsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type StoredInputsError = StoredInputsErrors[keyof StoredInputsErrors];
+
+export type StoredInputsResponses = {
+  /**
+   * The inputs of a request that the store of uploaded inputs no longer holds.
+   */
+  200: StoredInputs;
+};
+
+export type StoredInputsResponse = StoredInputsResponses[keyof StoredInputsResponses];
+
+export type ClockPreviewData = {
+  /**
+   * The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.
+   */
+  body: ClockPreviewRequest;
+  path?: never;
+  query?: never;
+  url: '/api/clock-preview';
+};
+
+export type ClockPreviewErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type ClockPreviewError = ClockPreviewErrors[keyof ClockPreviewErrors];
+
+export type ClockPreviewResponses = {
+  /**
+   * The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.
+   */
+  200: ClockPreview;
+};
+
+export type ClockPreviewResponse = ClockPreviewResponses[keyof ClockPreviewResponses];
+
 export type RunsListData = {
   body?: never;
   path?: never;
@@ -5298,12 +6807,43 @@ export type RunsCreateError = RunsCreateErrors[keyof RunsCreateErrors];
 
 export type RunsCreateResponses = {
   /**
-   * Durable record of one command run, stored as `run.json` in the run's folder.
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
    */
   200: RunRecord;
 };
 
 export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
+
+export type RunsDeleteData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: never;
+  url: '/api/runs/{id}';
+};
+
+export type RunsDeleteErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsDeleteError = RunsDeleteErrors[keyof RunsDeleteErrors];
+
+export type RunsDeleteResponses = {
+  /**
+   * no content
+   */
+  200: unknown;
+};
 
 export type RunsGetData = {
   body?: never;
@@ -5328,7 +6868,10 @@ export type RunsGetError = RunsGetErrors[keyof RunsGetErrors];
 
 export type RunsGetResponses = {
   /**
-   * Durable record of one command run, stored as `run.json` in the run's folder.
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
    */
   200: RunRecord;
 };
@@ -5368,6 +6911,36 @@ export type RunsUpdateResponses = {
 
 export type RunsUpdateResponse = RunsUpdateResponses[keyof RunsUpdateResponses];
 
+export type RunsSettingsData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: never;
+  url: '/api/runs/{id}/settings';
+};
+
+export type RunsSettingsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsSettingsError = RunsSettingsErrors[keyof RunsSettingsErrors];
+
+export type RunsSettingsResponses = {
+  /**
+   * Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.
+   */
+  200: SparseConfig;
+};
+
+export type RunsSettingsResponse = RunsSettingsResponses[keyof RunsSettingsResponses];
+
 export type RunsStartData = {
   /**
    * Request to start a created run.
@@ -5394,7 +6967,10 @@ export type RunsStartError = RunsStartErrors[keyof RunsStartErrors];
 
 export type RunsStartResponses = {
   /**
-   * Durable record of one command run, stored as `run.json` in the run's folder.
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
    */
   200: RunRecord;
 };
@@ -5463,6 +7039,42 @@ export type RunsReleaseInputResponses = {
    */
   200: unknown;
 };
+
+export type RunsUploadAllowanceData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: {
+    /**
+     * Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size
+     * does not count toward the upload limit.
+     */
+    replaces?: Array<string>;
+  };
+  url: '/api/runs/{id}/inputs';
+};
+
+export type RunsUploadAllowanceErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsUploadAllowanceError = RunsUploadAllowanceErrors[keyof RunsUploadAllowanceErrors];
+
+export type RunsUploadAllowanceResponses = {
+  /**
+   * Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.
+   */
+  200: UploadAllowance;
+};
+
+export type RunsUploadAllowanceResponse = RunsUploadAllowanceResponses[keyof RunsUploadAllowanceResponses];
 
 export type RunsFilesData = {
   body?: never;
@@ -5564,7 +7176,7 @@ export type RunsCompareData = {
     other: JobId;
   };
   query?: never;
-  url: '/api/runs/{id}/compare/{other}';
+  url: '/api/compare/{id}/{other}';
 };
 
 export type RunsCompareErrors = {
@@ -5713,7 +7325,7 @@ export type RunsFileResponses = {
 
 export type RunsFileResponse = RunsFileResponses[keyof RunsFileResponses];
 
-export type RunsArchiveData = {
+export type RunsPackageData = {
   body?: never;
   path: {
     /**
@@ -5722,26 +7334,58 @@ export type RunsArchiveData = {
     id: JobId;
   };
   query?: never;
-  url: '/api/runs/{id}/archive';
+  url: '/api/runs/{id}/package';
 };
 
-export type RunsArchiveErrors = {
+export type RunsPackageErrors = {
   /**
    * The error, with its causes
    */
   default: ErrorResponse;
 };
 
-export type RunsArchiveError = RunsArchiveErrors[keyof RunsArchiveErrors];
+export type RunsPackageError = RunsPackageErrors[keyof RunsPackageErrors];
 
-export type RunsArchiveResponses = {
+export type RunsPackageResponses = {
   /**
    * Zip archive
    */
   200: Blob | File;
 };
 
-export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
+export type RunsPackageResponse = RunsPackageResponses[keyof RunsPackageResponses];
+
+export type RunsImportData = {
+  body: Blob | File;
+  path?: never;
+  query?: never;
+  url: '/api/runs/import';
+};
+
+export type RunsImportErrors = {
+  /**
+   * The run package exceeds the upload limit
+   */
+  413: ErrorResponse;
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsImportError = RunsImportErrors[keyof RunsImportErrors];
+
+export type RunsImportResponses = {
+  /**
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
+   */
+  200: RunRecord;
+};
+
+export type RunsImportResponse = RunsImportResponses[keyof RunsImportResponses];
 
 export type RunsUploadInputData = {
   body: Blob | File;
@@ -5751,14 +7395,14 @@ export type RunsUploadInputData = {
      */
     id: JobId;
     /**
-     * File name inside the run's `inputs/` folder.
+     * File name of the upload.
      */
     name: string;
   };
   query?: {
     /**
-     * Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size
-     * does not count toward the upload limit of this upload.
+     * Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size
+     * does not count toward the upload limit.
      */
     replaces?: Array<string>;
   };
@@ -5767,7 +7411,7 @@ export type RunsUploadInputData = {
 
 export type RunsUploadInputErrors = {
   /**
-   * The inputs of the run exceed the upload limit of the server
+   * The inputs of the run exceed the upload limit
    */
   413: ErrorResponse;
   /**
@@ -5780,7 +7424,7 @@ export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputEr
 
 export type RunsUploadInputResponses = {
   /**
-   * A file uploaded into a run's `inputs/` folder.
+   * A file uploaded for a run that has not started.
    */
   200: UploadedInput;
 };
@@ -5950,6 +7594,37 @@ export type ExamplesDownloadStartResponses = {
 
 export type ExamplesDownloadStartResponse = ExamplesDownloadStartResponses[keyof ExamplesDownloadStartResponses];
 
+export type RunsImportFileData = {
+  /**
+   * A run package to import from a file on disk.
+   */
+  body: ImportFileRequest;
+  path?: never;
+  query?: never;
+  url: '/api/runs/import-file';
+};
+
+export type RunsImportFileErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsImportFileError = RunsImportFileErrors[keyof RunsImportFileErrors];
+
+export type RunsImportFileResponses = {
+  /**
+   * Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in
+   * the run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as
+   * `inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs
+   * read from elsewhere keep their absolute paths.
+   */
+  200: RunRecord;
+};
+
+export type RunsImportFileResponse = RunsImportFileResponses[keyof RunsImportFileResponses];
+
 export type WorkspaceData = {
   body?: never;
   path?: never;
@@ -6006,7 +7681,7 @@ export type WorkspaceUpdateResponse = WorkspaceUpdateResponses[keyof WorkspaceUp
 
 export type RunsSaveData = {
   /**
-   * Where to save an output file of a run, or the archive of all its outputs.
+   * Where to save an output file of a run, or its run package.
    */
   body: SaveRunRequest;
   path: {

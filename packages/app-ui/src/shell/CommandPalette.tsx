@@ -1,5 +1,4 @@
 import { errorMessage, type IndexedDataset } from "@neherlab/app-contracts";
-import { runsList } from "@neherlab/app-contracts/client";
 import {
   Command,
   CommandCollection,
@@ -19,14 +18,15 @@ import { appConfigs, type AppConfig } from "../analysis/exampleData";
 import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis/ExamplesDownload";
 import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
-import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
-import { useApi } from "../api/hooks";
+import { useNewAnalysis } from "../analysis/useDraftSession";
+import { useExampleConfigLoader, useExampleIndex, useOpenExample } from "../analysis/useExampleData";
 import { nextTheme } from "../chrome/ThemeCycleButton";
 import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
 import { commandSettings } from "../settings/catalog";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
+import { comparePair } from "./comparePair";
 import {
   datasetPaletteItems,
   matchingPaletteItems,
@@ -35,7 +35,7 @@ import {
   paletteGroups,
   paletteItem,
 } from "./paletteItems";
-import { changedFlags, listedRuns } from "./runList";
+import { useListedRuns } from "./useListedRuns";
 
 export function CommandPalette() {
   const open = useShellStore((state) => state.paletteOpen);
@@ -138,15 +138,16 @@ function itemTitle(item: PaletteItem): string {
 
 function usePaletteItems(): PaletteItem[] {
   const navigate = useNavigate();
-  const { data: runList } = useApi((context) => runsList(context));
+  const newAnalysis = useNewAnalysis();
+  const { all: runs } = useListedRuns();
   const { data: examples } = useExampleIndex();
   const command = useDraftStore((state) => state.draft.command);
-  const compareIds = useShellStore((state) => state.compareIds);
+  const selectedIds = useShellStore((state) => state.selectedIds);
   const setWorkspaceOpen = useShellStore((state) => state.setWorkspaceOpen);
   const host = useHost();
   const { theme, chooseTheme } = useThemeChoice();
   const loadExampleConfig = useExampleConfigLoader();
-  const loadExampleDataset = useDatasetLoader();
+  const openExample = useOpenExample();
   const toasts = useToastManager();
   const downloadStatus = useExamplesDownloadStatus(host !== null);
   const { mutate: startDownload } = useStartExamplesDownload();
@@ -177,17 +178,17 @@ function usePaletteItems(): PaletteItem[] {
       }
 
       try {
-        await loadExampleDataset(examples, dataset, command);
+        await openExample(examples, dataset);
       } catch (error: unknown) {
         toasts.add({ title: `${dataset.name} cannot be loaded`, description: errorMessage(error) });
       }
     },
-    [command, examples, loadExampleDataset, toasts],
+    [examples, openExample, toasts],
   );
 
   return useMemo(() => {
     const items: PaletteItem[] = [
-      paletteItem("Action", "action-new", "New analysis", "", () => navigate({ to: "/new" })),
+      paletteItem("Action", "action-new", "New analysis", "", newAnalysis),
       paletteItem("Action", "action-theme", "Change theme", "System, light or dark", () =>
         chooseTheme(nextTheme(theme)),
       ),
@@ -201,30 +202,26 @@ function usePaletteItems(): PaletteItem[] {
       );
     }
 
-    const [first, second] = compareIds;
+    const pair = comparePair(selectedIds, runs);
 
-    if (first !== undefined && second !== undefined) {
+    if (pair !== undefined) {
       items.push(
         paletteItem("Action", "action-compare", "Compare selected runs", "", () =>
-          navigate({ to: "/compare/$a/$b", params: { a: first, b: second } }),
+          navigate({ to: "/compare/$a/$b", params: pair }),
         ),
       );
     }
 
-    for (const run of listedRuns(runList?.runs ?? [], "", null)) {
+    for (const run of runs) {
       items.push(
-        paletteItem(
-          "Run",
-          `run-${run.id}`,
-          run.title,
-          [commandSettings(run.command).title, ...changedFlags(run)].join("  "),
-          () => navigate({ to: "/runs/$id/results", params: { id: run.id } }),
+        paletteItem("Run", `run-${run.id}`, run.title, commandSettings(run.command).title, () =>
+          navigate({ to: "/runs/$id/results", params: { id: run.id } }),
         ),
       );
     }
 
     for (const spec of commandSettings(command).settings) {
-      if (spec.role !== "output") {
+      if (!spec.set_by_app) {
         items.push(
           paletteItem(
             "Setting",
@@ -242,7 +239,7 @@ function usePaletteItems(): PaletteItem[] {
       }
     }
 
-    items.push(...datasetPaletteItems(examples?.index?.datasets ?? [], command, loadDataset));
+    items.push(...datasetPaletteItems(examples?.index?.datasets ?? [], loadDataset));
 
     for (const config of appConfigs(examples)) {
       items.push(
@@ -265,7 +262,7 @@ function usePaletteItems(): PaletteItem[] {
             });
             toasts.add({
               title: "Downloading the example datasets",
-              description: "The Example datasets panel of a new analysis shows the progress.",
+              description: "The start page shows the progress.",
             });
           },
         ),
@@ -276,14 +273,15 @@ function usePaletteItems(): PaletteItem[] {
   }, [
     chooseTheme,
     command,
-    compareIds,
     downloadStatus,
     examples,
     host,
     loadDataset,
     loadExample,
     navigate,
-    runList,
+    newAnalysis,
+    runs,
+    selectedIds,
     setWorkspaceOpen,
     startDownload,
     theme,

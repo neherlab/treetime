@@ -1,14 +1,12 @@
 import type { AlignmentSummary, RunModel, RunModels, RunRecord } from "@neherlab/app-contracts";
-import { Button } from "@neherlab/design/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@neherlab/design/ui/chart";
 import { cn } from "cn";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
-import Download from "~icons/lucide/download";
 
 import { Panel } from "../components/Panel";
 import { baseName } from "../settings/inputs";
-import { useSaveRunOutput } from "./OutputFiles";
+import { OutputDownload } from "./OutputFiles";
 import { CHART, PLOT_MARGIN, TICK_STYLE } from "./palette";
 
 const LABELED_STATES = 8;
@@ -38,26 +36,14 @@ export function SubstitutionModels({
   record: RunRecord;
   models: RunModels;
 }) {
-  const save = useSaveRunOutput();
-  const file = record.output_files.find((output) => output.kind === "model");
-
-  const onDownload = useCallback(() => {
-    if (file !== undefined) {
-      void save({ id: record.id, path: file.path, name: baseName(file.path) }, "The model file cannot be downloaded");
-    }
-  }, [file, record.id, save]);
-
   return (
     <Panel
       title={models.length === 1 ? "Substitution model" : "Substitution models"}
       hint="Equilibrium frequencies and substitution rates of the fitted model"
       actions={
-        file !== undefined && (
-          <Button type="button" variant="outline" size="sm" onClick={onDownload}>
-            <Download aria-hidden />
-            Download model (.json)
-          </Button>
-        )
+        <OutputDownload runId={record.id} kind="model">
+          Model (.json)
+        </OutputDownload>
       }
     >
       <div className="divide-y">
@@ -167,9 +153,24 @@ function RateHeatmap({ states, rates }: { states: readonly string[]; rates: read
         </tbody>
       </table>
       <p className="text-muted-foreground text-xs">
-        Rate from the row state to the column state per unit of branch length; darker cells change faster.
+        Rate from the row state to the column state per unit of branch length, on the scale below.
       </p>
+      <RateScale max={max} />
     </figure>
+  );
+}
+
+function RateScale({ max }: { max: number }) {
+  return (
+    <div className="text-muted-foreground flex items-center gap-2 text-xs" aria-label="Color scale of the rates">
+      <span className="tabular-nums">0</span>
+      <span aria-hidden className="flex">
+        {RATE_SHADES.map((shade) => (
+          <span key={shade} className={cn("h-3 w-4 first:rounded-l-sm last:rounded-r-sm", shade)} />
+        ))}
+      </span>
+      <span className="tabular-nums">{max.toPrecision(2)}</span>
+    </div>
   );
 }
 

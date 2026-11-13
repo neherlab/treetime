@@ -25,15 +25,12 @@ import ToggleTangle from "auspice/src/components/controls/toggle-tangle";
 import TransmissionLines from "auspice/src/components/controls/transmission-lines";
 import type { ComponentProps } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
-import ChevronRightIcon from "~icons/lucide/chevron-right";
 
 import { isDatedTree, type AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
 
 const HIDE_CONTROLS = "Hide Auspice controls";
-
-const SHOW_CONTROLS = "Show Auspice controls";
 
 const MAP_OPTIONS = (
   <>
@@ -98,26 +95,6 @@ export function HideControlsButton(props: ComponentProps<typeof Button>) {
         <ChevronLeftIcon aria-hidden className="size-3" />
       </TooltipTrigger>
       <TooltipContent side="right">{HIDE_CONTROLS}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-export function ShowControlsTab(props: ComponentProps<"button">) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label={SHOW_CONTROLS}
-            className="bg-muted focus-visible:ring-ring/50 absolute top-1 left-0 z-10 flex h-11 w-3.5 items-center justify-center rounded-r-md text-[#444] shadow-md outline-none focus-visible:ring-3"
-            {...props}
-          />
-        }
-      >
-        <ChevronRightIcon aria-hidden className="size-3" />
-      </TooltipTrigger>
-      <TooltipContent side="right">{SHOW_CONTROLS}</TooltipContent>
     </Tooltip>
   );
 }

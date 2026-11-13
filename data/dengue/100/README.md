@@ -1,3 +1,10 @@
+---
+organism: "Dengue virus"
+settings:
+  metadata_id_columns:
+    - "genbank_accession"
+---
+
 # `dengue/100`
 
 Subsample of `dengue/500` (100 sequences).

@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::progress::LogSink;
 use treetime::progress_warn;
+use treetime_io::auspice_types::AuspiceTree;
 use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::nex::nex_write_file;
 use treetime_io::nwk::{NwkNodeComments, NwkStyle, NwkWriteOptions, nwk_write_file};
@@ -101,6 +102,10 @@ pub fn tree_view_for_outputs<'a>(
       paths.iter().map(|path| format!("'{}'", path.display())).join(", ")
     )
   })
+}
+
+pub fn auspice_view(graph: &AnnotatedGraph<'_>, command: CommandKind) -> Result<AuspiceTree, Report> {
+  auspice_tree(&AnnotatedTreeView::new(graph)?, command, &generation_date())
 }
 
 pub fn write_tree_outputs(

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use app_commands::command::AppCommand;
-  use helpers::{config_for, output_files, run_cli, run_napi, run_server, same_inputs};
+  use helpers::{config_for, output_files, run_api, run_cli, run_napi, same_inputs};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use tempfile::tempdir;
@@ -15,34 +15,35 @@ mod tests {
   #[case::prune(    AppCommand::Prune)]
   #[trace]
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_transport_parity_cli_server_and_napi_write_identical_outputs(#[case] command: AppCommand) {
+  async fn test_transport_parity_cli_api_and_napi_write_identical_outputs(#[case] command: AppCommand) {
     let config = config_for(command);
     let work = tempdir().unwrap();
 
-    let server = run_server(command, &config, &work.path().join("server")).await;
+    let api = run_api(command, &config, &work.path().join("api")).await;
     let napi_runs = work.path().join("napi");
-    let napi_config = same_inputs(&config, &server.config);
+    let napi_config = same_inputs(&config, &api.config);
     let napi_dir = tokio::task::spawn_blocking(move || run_napi(command, &napi_config, &napi_runs))
       .await
       .unwrap();
     let cli_dir = work.path().join("cli");
-    run_cli(command, &server.config, work.path(), &cli_dir);
+    run_cli(command, &api.config, work.path(), &cli_dir);
 
     let cli = output_files(&cli_dir);
     assert!(!cli.is_empty(), "the CLI wrote no outputs");
-    assert_eq!(cli, output_files(&server.out_dir), "server outputs differ from CLI outputs");
+    assert_eq!(cli, output_files(&api.out_dir), "API outputs differ from CLI outputs");
     assert_eq!(cli, output_files(&napi_dir), "N-API outputs differ from CLI outputs");
   }
 
   mod helpers {
     use crate::cli::treetime_cli::{resolve_args, treetime_parse_cli_args};
     use crate::run::run_command;
+    use app_api::routes::api_router;
+    use app_api::state::{RouterConfig, confined_service};
     use app_backend::app_paths::AppFolderEnv;
+    use app_backend::bridge::executor::ThreadExecutor;
     use app_commands::command::AppCommand;
     use app_napi::backend::{DesktopService, PortScope};
     use app_napi::port::{PortHeader, PortReply, PortRequest};
-    use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
-    use app_server::web::{WebOptions, create_router};
     use axum::Router;
     use axum::body::Body;
     use axum::http::Request;
@@ -53,9 +54,8 @@ mod tests {
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
-    use std::sync::mpsc;
+    use std::sync::{Arc, mpsc};
     use std::time::Duration;
-    use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
     use treetime::progress::NoopProgress;
     use treetime_utils::io::json::to_json_value;
@@ -102,13 +102,13 @@ mod tests {
       }
     }
 
-    pub(super) fn same_inputs(config: &Value, server: &Value) -> Value {
+    pub(super) fn same_inputs(config: &Value, api: &Value) -> Value {
       Value::Object(
         config
           .as_object()
           .unwrap()
           .keys()
-          .map(|key| (key.clone(), server[key].clone()))
+          .map(|key| (key.clone(), api[key].clone()))
           .collect(),
       )
     }
@@ -129,24 +129,15 @@ mod tests {
       run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
     }
 
-    pub(super) struct ServerRun {
+    pub(super) struct ApiRun {
       pub config: Value,
       pub out_dir: PathBuf,
     }
 
-    pub(super) async fn run_server(command: AppCommand, config: &Value, runs_dir: &Path) -> ServerRun {
-      let router = create_router(
-        ServerConfig {
-          runs_dir: runs_dir.to_path_buf(),
-          max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-          max_grid_points: None,
-          shutdown: CancellationToken::new(),
-          settings: None,
-        },
-        &WebOptions::default(),
-      )
-      .unwrap();
-      let created = server_json(
+    pub(super) async fn run_api(command: AppCommand, config: &Value, runs_dir: &Path) -> ApiRun {
+      let service = confined_service(runs_dir, Arc::new(ThreadExecutor)).unwrap();
+      let (router, _) = api_router(service, RouterConfig::default()).unwrap();
+      let created = api_json(
         &router,
         Request::post("/api/runs"),
         json!({ "command": to_json_value(&command).unwrap(), "config": {}, "defer_start": true }).to_string(),
@@ -154,7 +145,7 @@ mod tests {
       .await;
       let id = created["id"].as_str().unwrap().to_owned();
       let config = upload_inputs(&router, &id, config).await;
-      server_json(
+      api_json(
         &router,
         Request::post(format!("/api/runs/{id}/start")),
         json!({ "config": config }).to_string(),
@@ -171,11 +162,12 @@ mod tests {
           .to_vec(),
       )
       .unwrap();
-      assert!(text.contains("\"status\":\"ok\""), "server run failed: {text}");
-      let request = Request::get(format!("/api/runs/{id}")).body(Body::empty()).unwrap();
-      let record = response_json(router.oneshot(request).await.unwrap()).await;
-      ServerRun {
-        config: record["config"].clone(),
+      assert!(text.contains("\"status\":\"ok\""), "API run failed: {text}");
+      let request = Request::get(format!("/api/runs/{id}/settings"))
+        .body(Body::empty())
+        .unwrap();
+      ApiRun {
+        config: response_json(router.oneshot(request).await.unwrap()).await,
         out_dir: runs_dir.join(&id).join("out"),
       }
     }
@@ -209,7 +201,7 @@ mod tests {
       response_json(router.clone().oneshot(request).await.unwrap()).await["path"].clone()
     }
 
-    async fn server_json(router: &Router, request: Builder, body: String) -> Value {
+    async fn api_json(router: &Router, request: Builder, body: String) -> Value {
       let request = request
         .header("content-type", "application/json")
         .body(Body::from(body))

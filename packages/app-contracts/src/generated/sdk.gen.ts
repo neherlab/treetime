@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AppSettingsAnalysisData, AppSettingsAnalysisErrors, AppSettingsAnalysisResponses, AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, ExamplesData, ExamplesDownloadData, ExamplesDownloadErrors, ExamplesDownloadResponses, ExamplesDownloadStartData, ExamplesDownloadStartErrors, ExamplesDownloadStartResponses, ExamplesErrors, ExamplesResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsReleaseInputData, RunsReleaseInputErrors, RunsReleaseInputResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
-import { zAppSettingsAnalysisBody, zAppSettingsAnalysisResponse, zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zEventsQuery, zEventsResponse, zExamplesDownloadResponse, zExamplesDownloadStartResponse, zExamplesResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsReleaseInputPath, zRunsReleaseInputQuery, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputQuery, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
+import type { AppSettingsAnalysisData, AppSettingsAnalysisErrors, AppSettingsAnalysisResponses, AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ClockPreviewData, ClockPreviewErrors, ClockPreviewResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, ExamplesData, ExamplesDownloadData, ExamplesDownloadErrors, ExamplesDownloadResponses, ExamplesDownloadStartData, ExamplesDownloadStartErrors, ExamplesDownloadStartResponses, ExamplesErrors, ExamplesResponses, FileKindsData, FileKindsErrors, FileKindsResponses, FileRolesData, FileRolesErrors, FileRolesResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsImportData, RunsImportErrors, RunsImportFileData, RunsImportFileErrors, RunsImportFileResponses, RunsImportResponses, RunsListData, RunsListErrors, RunsListResponses, RunsPackageData, RunsPackageErrors, RunsPackageResponses, RunsReleaseInputData, RunsReleaseInputErrors, RunsReleaseInputResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsSettingsData, RunsSettingsErrors, RunsSettingsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadAllowanceData, RunsUploadAllowanceErrors, RunsUploadAllowanceResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, StoredInputsData, StoredInputsErrors, StoredInputsResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
+import { zAppSettingsAnalysisBody, zAppSettingsAnalysisResponse, zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zClockPreviewBody, zClockPreviewResponse, zConfigCheckBody, zConfigCheckResponse, zEventsQuery, zEventsResponse, zExamplesDownloadResponse, zExamplesDownloadStartResponse, zExamplesResponse, zFileKindsBody, zFileKindsResponse, zFileRolesBody, zFileRolesResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsImportBody, zRunsImportFileBody, zRunsImportFileResponse, zRunsImportResponse, zRunsListResponse, zRunsPackagePath, zRunsPackageResponse, zRunsReleaseInputPath, zRunsReleaseInputQuery, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsSettingsPath, zRunsSettingsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadAllowancePath, zRunsUploadAllowanceQuery, zRunsUploadAllowanceResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputQuery, zRunsUploadInputResponse, zStoredInputsBody, zStoredInputsResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -20,33 +20,6 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
    */
   meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
-
-/**
- * Liveness of the server and the version of TreeTime it runs.
- */
-export const health = <ThrowOnError extends boolean = false>(options?: Options<HealthData, ThrowOnError>): RequestResult<HealthResponses, HealthErrors, ThrowOnError> => (options?.client ?? client).get<HealthResponses, HealthErrors, ThrowOnError>({
-  requestValidator: async (data) => await z.object({
-    body: z.never().optional(),
-    path: z.never().optional(),
-    query: z.never().optional()
-  }).parseAsync(data),
-  responseValidator: async (data) => await zHealthResponse.parseAsync(data),
-  url: '/api/health',
-  ...options
-});
-
-/**
- * This OpenAPI document.
- */
-export const openapi = <ThrowOnError extends boolean = false>(options?: Options<OpenapiData, ThrowOnError>): RequestResult<OpenapiResponses, OpenapiErrors, ThrowOnError> => (options?.client ?? client).get<OpenapiResponses, OpenapiErrors, ThrowOnError>({
-  requestValidator: async (data) => await z.object({
-    body: z.never().optional(),
-    path: z.never().optional(),
-    query: z.never().optional()
-  }).parseAsync(data),
-  url: '/api/openapi.json',
-  ...options
-});
 
 /**
  * Version of TreeTime.
@@ -117,6 +90,78 @@ export const inputsCheck = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
+ * The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with the readers the commands use, or `unknown` with the reason.
+ */
+export const fileKinds = <ThrowOnError extends boolean = false>(options: Options<FileKindsData, ThrowOnError>): RequestResult<FileKindsResponses, FileKindsErrors, ThrowOnError> => (options.client ?? client).post<FileKindsResponses, FileKindsErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zFileKindsBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zFileKindsResponse.parseAsync(data),
+  url: '/api/file-kinds',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * What the app does with each file that the user opened, from the first bytes of the file and before any upload: import it as a run package, load it as a configuration, or read it as an input.
+ */
+export const fileRoles = <ThrowOnError extends boolean = false>(options: Options<FileRolesData, ThrowOnError>): RequestResult<FileRolesResponses, FileRolesErrors, ThrowOnError> => (options.client ?? client).post<FileRolesResponses, FileRolesErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zFileRolesBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zFileRolesResponse.parseAsync(data),
+  url: '/api/file-roles',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * The input paths of a request whose stored copies are gone, because no run references their contents any more.
+ */
+export const storedInputs = <ThrowOnError extends boolean = false>(options: Options<StoredInputsData, ThrowOnError>): RequestResult<StoredInputsResponses, StoredInputsErrors, ThrowOnError> => (options.client ?? client).post<StoredInputsResponses, StoredInputsErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zStoredInputsBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zStoredInputsResponse.parseAsync(data),
+  url: '/api/stored-inputs',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.
+ */
+export const clockPreview = <ThrowOnError extends boolean = false>(options: Options<ClockPreviewData, ThrowOnError>): RequestResult<ClockPreviewResponses, ClockPreviewErrors, ThrowOnError> => (options.client ?? client).post<ClockPreviewResponses, ClockPreviewErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zClockPreviewBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zClockPreviewResponse.parseAsync(data),
+  url: '/api/clock-preview',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
  * Runs, newest first, and the number of runs computing now.
  */
 export const runsList = <ThrowOnError extends boolean = false>(options?: Options<RunsListData, ThrowOnError>): RequestResult<RunsListResponses, RunsListErrors, ThrowOnError> => (options?.client ?? client).get<RunsListResponses, RunsListErrors, ThrowOnError>({
@@ -146,6 +191,19 @@ export const runsCreate = <ThrowOnError extends boolean = false>(options: Option
     'Content-Type': 'application/json',
     ...options.headers
   }
+});
+
+/**
+ * Delete a run that is not computing, with its folder and the uploaded inputs that no other run references. Cancel a computing run first. A run that is already deleted answers not found.
+ */
+export const runsDelete = <ThrowOnError extends boolean = false>(options: Options<RunsDeleteData, ThrowOnError>): RequestResult<RunsDeleteResponses, RunsDeleteErrors, ThrowOnError> => (options.client ?? client).delete<RunsDeleteResponses, RunsDeleteErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: zRunsDeletePath,
+    query: z.never().optional()
+  }).parseAsync(data),
+  url: '/api/runs/{id}',
+  ...options
 });
 
 /**
@@ -181,6 +239,20 @@ export const runsUpdate = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
+ * Settings of a run, with each input path as requests take it and without the output paths, to start a new run from the settings of this one.
+ */
+export const runsSettings = <ThrowOnError extends boolean = false>(options: Options<RunsSettingsData, ThrowOnError>): RequestResult<RunsSettingsResponses, RunsSettingsErrors, ThrowOnError> => (options.client ?? client).get<RunsSettingsResponses, RunsSettingsErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: zRunsSettingsPath,
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zRunsSettingsResponse.parseAsync(data),
+  url: '/api/runs/{id}/settings',
+  ...options
+});
+
+/**
  * Start a created run.
  */
 export const runsStart = <ThrowOnError extends boolean = false>(options: Options<RunsStartData, ThrowOnError>): RequestResult<RunsStartResponses, RunsStartErrors, ThrowOnError> => (options.client ?? client).post<RunsStartResponses, RunsStartErrors, ThrowOnError>({
@@ -213,7 +285,7 @@ export const runsCancel = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Remove an uploaded file from the `inputs/` folder of a run that has not started. Removing an upload that is already gone succeeds.
+ * Remove an uploaded file from a run that has not started; the file stays while another run uses it. Removing an upload that is already gone succeeds.
  */
 export const runsReleaseInput = <ThrowOnError extends boolean = false>(options: Options<RunsReleaseInputData, ThrowOnError>): RequestResult<RunsReleaseInputResponses, RunsReleaseInputErrors, ThrowOnError> => (options.client ?? client).delete<RunsReleaseInputResponses, RunsReleaseInputErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({
@@ -221,6 +293,20 @@ export const runsReleaseInput = <ThrowOnError extends boolean = false>(options: 
     path: zRunsReleaseInputPath,
     query: zRunsReleaseInputQuery
   }).parseAsync(data),
+  url: '/api/runs/{id}/inputs',
+  ...options
+});
+
+/**
+ * Report how many bytes the next uploads of a run that has not started may add before the inputs of the run reach the upload limit.
+ */
+export const runsUploadAllowance = <ThrowOnError extends boolean = false>(options: Options<RunsUploadAllowanceData, ThrowOnError>): RequestResult<RunsUploadAllowanceResponses, RunsUploadAllowanceErrors, ThrowOnError> => (options.client ?? client).get<RunsUploadAllowanceResponses, RunsUploadAllowanceErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: zRunsUploadAllowancePath,
+    query: zRunsUploadAllowanceQuery.optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zRunsUploadAllowanceResponse.parseAsync(data),
   url: '/api/runs/{id}/inputs',
   ...options
 });
@@ -268,7 +354,7 @@ export const runsAuspice = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
- * Differences of the second run's results from the first run's.
+ * Differences of the second run's settings and results from the first run's. Every change of a run makes the comparisons under `/api/compare` stale.
  */
 export const runsCompare = <ThrowOnError extends boolean = false>(options: Options<RunsCompareData, ThrowOnError>): RequestResult<RunsCompareResponses, RunsCompareErrors, ThrowOnError> => (options.client ?? client).get<RunsCompareResponses, RunsCompareErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({
@@ -277,7 +363,7 @@ export const runsCompare = <ThrowOnError extends boolean = false>(options: Optio
     query: z.never().optional()
   }).parseAsync(data),
   responseValidator: async (data) => await zRunsCompareResponse.parseAsync(data),
-  url: '/api/runs/{id}/compare/{other}',
+  url: '/api/compare/{id}/{other}',
   ...options
 });
 
@@ -314,7 +400,7 @@ export const runsEvents = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.
+ * Stream of changes to the runs: `run-created`, `run-updated`, and `run-removed`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` event instead.
  */
 export const events = <ThrowOnError extends boolean = false>(options?: Options<EventsData, ThrowOnError, EventsResponse>): Promise<ServerSentEventsResult<EventsResponses>> => (options?.client ?? client).sse.get<EventsResponses, EventsErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({
@@ -342,21 +428,40 @@ export const runsFile = <ThrowOnError extends boolean = false>(options: Options<
 });
 
 /**
- * Zip archive of the run's `out/` folder.
+ * Run package of a run that has ended: a zip archive with one folder `treetime-<id>/` that holds `run.json`, `events.jsonl`, the input files in `inputs/`, the output files in `out/`, the YAML config `run.yaml`, and `command.sh`, which runs `run.yaml` with the command-line tool. Every path in `run.json` and `run.yaml` is relative to the folder.
  */
-export const runsArchive = <ThrowOnError extends boolean = false>(options: Options<RunsArchiveData, ThrowOnError>): RequestResult<RunsArchiveResponses, RunsArchiveErrors, ThrowOnError> => (options.client ?? client).get<RunsArchiveResponses, RunsArchiveErrors, ThrowOnError>({
+export const runsPackage = <ThrowOnError extends boolean = false>(options: Options<RunsPackageData, ThrowOnError>): RequestResult<RunsPackageResponses, RunsPackageErrors, ThrowOnError> => (options.client ?? client).get<RunsPackageResponses, RunsPackageErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({
     body: z.never().optional(),
-    path: zRunsArchivePath,
+    path: zRunsPackagePath,
     query: z.never().optional()
   }).parseAsync(data),
-  responseValidator: async (data) => await zRunsArchiveResponse.parseAsync(data),
-  url: '/api/runs/{id}/archive',
+  responseValidator: async (data) => await zRunsPackageResponse.parseAsync(data),
+  url: '/api/runs/{id}/package',
   ...options
 });
 
 /**
- * Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.
+ * Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists. The package, as uploaded and unpacked, must fit in the upload limit.
+ */
+export const runsImport = <ThrowOnError extends boolean = false>(options: Options<RunsImportData, ThrowOnError>): RequestResult<RunsImportResponses, RunsImportErrors, ThrowOnError> => (options.client ?? client).post<RunsImportResponses, RunsImportErrors, ThrowOnError>({
+  bodySerializer: null,
+  requestValidator: async (data) => await z.object({
+    body: zRunsImportBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zRunsImportResponse.parseAsync(data),
+  url: '/api/runs/import',
+  ...options,
+  headers: {
+    'Content-Type': 'application/octet-stream',
+    ...options.headers
+  }
+});
+
+/**
+ * Store a file for a run that has not started; the answer names the path to use for it in the run's configuration.
  */
 export const runsUploadInput = <ThrowOnError extends boolean = false>(options: Options<RunsUploadInputData, ThrowOnError>): RequestResult<RunsUploadInputResponses, RunsUploadInputErrors, ThrowOnError> => (options.client ?? client).put<RunsUploadInputResponses, RunsUploadInputErrors, ThrowOnError>({
   bodySerializer: null,
@@ -467,6 +572,24 @@ export const examplesDownloadStart = <ThrowOnError extends boolean = false>(opti
 });
 
 /**
+ * Import a run package from a file on disk, with the checks and the size limit of `/api/runs/import`. Only local apps serve this path.
+ */
+export const runsImportFile = <ThrowOnError extends boolean = false>(options: Options<RunsImportFileData, ThrowOnError>): RequestResult<RunsImportFileResponses, RunsImportFileErrors, ThrowOnError> => (options.client ?? client).post<RunsImportFileResponses, RunsImportFileErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zRunsImportFileBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zRunsImportFileResponse.parseAsync(data),
+  url: '/api/runs/import-file',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
  * The runs folder in use and the default runs folder. Only local apps serve this path.
  */
 export const workspace = <ThrowOnError extends boolean = false>(options?: Options<WorkspaceData, ThrowOnError>): RequestResult<WorkspaceResponses, WorkspaceErrors, ThrowOnError> => (options?.client ?? client).get<WorkspaceResponses, WorkspaceErrors, ThrowOnError>({
@@ -499,7 +622,7 @@ export const workspaceUpdate = <ThrowOnError extends boolean = false>(options: O
 });
 
 /**
- * Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.
+ * Write an output file of a run, or its run package, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.
  */
 export const runsSave = <ThrowOnError extends boolean = false>(options: Options<RunsSaveData, ThrowOnError>): RequestResult<RunsSaveResponses, RunsSaveErrors, ThrowOnError> => (options.client ?? client).post<RunsSaveResponses, RunsSaveErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({

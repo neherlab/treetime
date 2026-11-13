@@ -15,13 +15,21 @@ const ITEMS = [
 const DATASETS: IndexedDataset[] = [
   {
     name: "zika/20",
+    organism: "Zika virus",
+    samples: 20,
     inputs: [
       { kind: "tree", path: "zika/20/tree.nwk" },
       { kind: "alignment", path: "zika/20/aln.fasta.xz" },
       { kind: "metadata", path: "zika/20/metadata.tsv" },
     ],
   },
-  { name: "flu/h3n2/20", inputs: [{ kind: "alignment", path: "flu/h3n2/20/aln.fasta.xz" }] },
+  {
+    name: "flu/h3n2/20",
+    organism: "Influenza A virus (H3N2)",
+    segment: "NA",
+    samples: 19,
+    inputs: [{ kind: "alignment", path: "flu/h3n2/20/aln.fasta.xz" }],
+  },
 ];
 
 describe("command palette items", () => {
@@ -34,10 +42,11 @@ describe("command palette items", () => {
     ]);
   });
 
-  test("the indexed datasets with inputs of the current command are listed with the inputs they fill", () => {
-    expect(
-      datasetPaletteItems(DATASETS, "clock", NOOP).map((item) => [item.id, item.title, item.description]),
-    ).toStrictEqual([["dataset-zika/20", "zika/20", "tree, metadata"]]);
+  test("each indexed dataset is listed with its organism and sample count", () => {
+    expect(datasetPaletteItems(DATASETS, NOOP).map((item) => [item.id, item.title, item.description])).toStrictEqual([
+      ["dataset-zika/20", "zika/20", "Zika virus, 20 samples"],
+      ["dataset-flu/h3n2/20", "flu/h3n2/20", "Influenza A virus (H3N2), 19 samples"],
+    ]);
   });
 
   test("no group is listed for a kind without items", () => {

@@ -9,7 +9,7 @@ description: Benchmarks, profiles, the allocator, and heap profiles.
 
 ## Allocator
 
-On x86_64 and aarch64 Linux, the CLI and the API server allocate through jemalloc. jemalloc is built without a symbol prefix (the `override_allocator_on_supported_platforms` feature of `tikv-jemalloc-sys`), so the binary defines `malloc`, `free`, and the other allocator functions of the C library itself. Rust code, the C libraries (OpenBLAS, liblzma, libzstd), and the C library all allocate through jemalloc. The glibc binaries export these functions, so glibc binds its own calls to them. The static musl binaries keep the musl allocator only for the internal allocations that musl also frees itself. Other targets and the Node addon use the allocator of the system.
+On x86_64 and aarch64 Linux, the CLI allocates through jemalloc. jemalloc is built without a symbol prefix (the `override_allocator_on_supported_platforms` feature of `tikv-jemalloc-sys`), so the binary defines `malloc`, `free`, and the other allocator functions of the C library itself. Rust code, the C libraries (OpenBLAS, liblzma, libzstd), and the C library all allocate through jemalloc. The glibc binaries export these functions, so glibc binds its own calls to them. The static musl binaries keep the musl allocator only for the internal allocations that musl also frees itself. Other targets and the Node addon use the allocator of the system.
 
 - `MALLOC_CONF` configures jemalloc, for example `MALLOC_CONF=dirty_decay_ms:1000`. The settings of the glibc allocator (`MALLOC_ARENA_MAX`, the `glibc.malloc` tunables) have no effect
 - `dev/cross/check` fails when a Linux binary does not take these functions from jemalloc

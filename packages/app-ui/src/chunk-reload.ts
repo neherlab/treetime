@@ -1,8 +1,18 @@
 import { DateTime } from "luxon";
 
+import { useTabWorkStore } from "./notices/leaveGuard";
+import { useAppNoticesStore } from "./notices/noticeStore";
+
 const RELOAD_KEY = "treetime:chunk-reload-at";
 
 const RELOAD_INTERVAL_MS = 10_000;
+
+const APP_TAB: ChunkErrorTab = {
+  holdsWork: () => useTabWorkStore.getState().holdsWork,
+  showReloadNotice: () => {
+    useAppNoticesStore.getState().failChunk();
+  },
+};
 
 export interface ReloadTarget {
   addEventListener: (type: "vite:preloadError", listener: (event: Event) => void) => void;
@@ -10,8 +20,23 @@ export interface ReloadTarget {
   location: Pick<Location, "reload">;
 }
 
-export function reloadOnChunkError(target: ReloadTarget, now: () => number = currentMillis): void {
+export interface ChunkErrorTab {
+  holdsWork: () => boolean;
+  showReloadNotice: () => void;
+}
+
+export function reloadOnChunkError(
+  target: ReloadTarget,
+  tab: ChunkErrorTab = APP_TAB,
+  now: () => number = currentMillis,
+): void {
   target.addEventListener("vite:preloadError", (event) => {
+    if (tab.holdsWork()) {
+      tab.showReloadNotice();
+
+      return;
+    }
+
     const at = now();
 
     if (!canReload(target.sessionStorage.getItem(RELOAD_KEY), at)) {

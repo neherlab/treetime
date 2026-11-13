@@ -1,4 +1,4 @@
-import type { RunRecord, UploadedInput } from "@neherlab/app-contracts";
+import type { RunRecord, UploadAllowance, UploadedInput } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
 import { Toaster } from "@neherlab/design/ui/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,12 +10,14 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { inAct, registerDom } from "../../__tests__/dom";
 import { ApiContext, type ApiContextValue } from "../../api/context";
-import { type BrowserBackend, BrowserBackendContext, TAB_BACKEND } from "../../browser-backend";
+import { blankDraftState } from "../../store/__tests__/draftState";
 import { useDraftStore } from "../../store/draft";
 import type { FormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
 
 const NATIVE_FETCH = { fetch, Request, Response, Headers, Blob, File, FormData, AbortController, AbortSignal };
+
+const ALLOWANCE: UploadAllowance = { remaining: 1 << 30, limit: 1 << 30, limit_text: "1 GiB" };
 
 const UPLOAD_RUN: RunRecord = {
   id: "r1",
@@ -23,10 +25,16 @@ const UPLOAD_RUN: RunRecord = {
   command: "ancestral",
   config: {},
   status: "created",
+  prepared: false,
   pinned: false,
+  renamed: false,
+  group_id: "r1",
+  size: 0,
   created_at: "2026-10-18T08:00:00Z",
   treetime_version: "1.0.0",
   inputs: [],
+  input_sets: [],
+  uploads: [],
   changed_settings: [],
   headline: {},
   output_files: [],
@@ -42,7 +50,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  useDraftStore.getState().reset("ancestral");
+  useDraftStore.setState(blankDraftState("ancestral"));
 });
 
 afterEach(() => {
@@ -54,19 +62,14 @@ afterEach(() => {
 });
 
 describe("inputs note", () => {
-  test("the web app says that files are uploaded to the server", async () => {
+  test("the web app says that files and runs stay in this tab", async () => {
     await render(fakeServer().fetch);
 
-    expect(page().queryByText("Files are uploaded into the run folder on the server")).not.toBeNull();
-  });
-
-  test("a browser back end says that files and runs stay in this tab", async () => {
-    await render(fakeServer().fetch, TAB_BACKEND);
-
-    expect([
-      page().queryByText("Files and runs stay in this browser tab until it reloads or closes"),
-      page().queryByText("Files are uploaded into the run folder on the server"),
-    ]).toStrictEqual([expect.any(HTMLElement), null]);
+    expect(
+      page().queryByText(
+        "Files and runs stay in this browser tab. A reload, a closed tab, or a crash of the computation loses them.",
+      ),
+    ).not.toBeNull();
   });
 });
 
@@ -142,7 +145,7 @@ describe("alignment inputs of the web app", () => {
     const input = page().getByLabelText("Alignment files to upload");
     await user.upload(input, [fasta("ha.fasta", ">A\nACGT\n")]);
     await settingShowing(["/runs/r1/inputs/1/ha.fasta"]);
-    inAct(() => useDraftStore.getState().clearRuns());
+    inAct(() => useDraftStore.getState().finishStart());
 
     await user.upload(input, [fasta("mp.fasta", ">A\nA\n")]);
     await settingShowing(["/runs/r2/inputs/2/mp.fasta"]);
@@ -150,7 +153,7 @@ describe("alignment inputs of the web app", () => {
     expect([server.released, page().queryByText("An earlier upload cannot be removed")]).toStrictEqual([[], null]);
   });
 
-  test("removing the files during an upload keeps the setting empty", async () => {
+  test("removing the files during an upload keeps the setting empty and lets the form drop its upload run", async () => {
     const server = fakeServer({ held: "na.fasta" });
     await render(server.fetch);
     const user = userEvent.setup({ document });
@@ -162,11 +165,12 @@ describe("alignment inputs of the web app", () => {
 
     await user.click(page().getByRole("button", { name: "Remove" }));
     server.resume();
-    await pWaitFor(() => server.released.includes("/runs/r1/inputs/2/na.fasta") || settingText() !== "[]");
+    await pWaitFor(() => server.uploads.some((upload) => upload.startsWith("na.fasta")));
 
-    expect([settingText(), server.released.toSorted()]).toStrictEqual([
+    expect([settingText(), server.released, useDraftStore.getState().draft.upload_run_id]).toStrictEqual([
       "[]",
-      ["/runs/r1/inputs/1/ha.fasta", "/runs/r1/inputs/2/na.fasta"],
+      ["/runs/r1/inputs/1/ha.fasta"],
+      undefined,
     ]);
   });
 
@@ -201,7 +205,7 @@ describe("alignment inputs of the web app", () => {
     await user.upload(input, [fasta("na.fasta", ">A\nAC\n")]);
     await pWaitFor(() => server.holding());
 
-    inAct(() => useDraftStore.getState().clearRuns());
+    inAct(() => useDraftStore.getState().finishStart());
     server.resume();
     await page().findByRole("button", { name: "Replace" });
 
@@ -213,8 +217,8 @@ describe("alignment inputs of the web app", () => {
   });
 
   test.each([
-    ["a reset", () => useDraftStore.getState().reset("ancestral")],
-    ["a start", () => useDraftStore.getState().clearRuns()],
+    ["a reset", () => useDraftStore.getState().discard("reset", "ancestral")],
+    ["a start", () => useDraftStore.getState().finishStart()],
   ])("an upload run created after %s receives no files and assigns nothing", async (_, discard) => {
     const server = fakeServer({ holdCreates: true });
     await render(server.fetch);
@@ -322,6 +326,10 @@ function fakeServer({ failing, held, holdCreates }: { failing?: string; held?: s
 
     const name = /^\/api\/runs\/r\d+\/inputs\/(?<name>[^/]+)$/u.exec(pathname)?.groups?.["name"];
 
+    if (request.method === "GET" && pathname === `/api/runs/${run}/inputs`) {
+      return Response.json(ALLOWANCE);
+    }
+
     if (request.method === "DELETE" && pathname === `/api/runs/${run}/inputs`) {
       released.push(new URL(request.url).searchParams.get("path") ?? "");
 
@@ -379,7 +387,7 @@ function fakeServer({ failing, held, holdCreates }: { failing?: string; held?: s
   };
 }
 
-async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBackend | null = null) {
+async function render(fetch: typeof globalThis.fetch) {
   const api = apiContext(fetch);
   const container = document.createElement("div");
   document.body.append(container);
@@ -389,11 +397,9 @@ async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBac
     root.render(
       <ApiContext.Provider value={api}>
         <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-          <BrowserBackendContext.Provider value={browserBackend}>
-            <Toaster>
-              <Form />
-            </Toaster>
-          </BrowserBackendContext.Provider>
+          <Toaster>
+            <Form />
+          </Toaster>
         </QueryClientProvider>
       </ApiContext.Provider>,
     ),

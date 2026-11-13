@@ -1,0 +1,251 @@
+#[cfg(test)]
+mod tests {
+  use crate::__tests__::test_routes::tests::helpers::{app, request};
+  use helpers::{finished_run, local_host, local_renderer};
+  use pretty_assertions::assert_eq;
+  use serde_json::{Value, json};
+  use std::fs;
+  use std::io::{Cursor, Read};
+  use tempfile::tempdir;
+  use zip::ZipArchive;
+
+  #[tokio::test]
+  async fn test_save_route_writes_an_output_file_to_the_destination() {
+    let host = local_host();
+    let id = finished_run(&host.app).await;
+    let target = tempdir().unwrap();
+    let destination = target.path().join("tree.nwk");
+    let (status, body) = request(
+      &host.app,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(json!({ "path": "ancestral.nwk", "destination": destination })),
+    )
+    .await;
+    let source = host.app.runs_dir.path().join(&id).join("out").join("ancestral.nwk");
+    assert_eq!(
+      (200, Value::Null, fs::read(source).unwrap()),
+      (status, body, fs::read(&destination).unwrap())
+    );
+  }
+
+  #[tokio::test]
+  async fn test_save_route_writes_the_run_package_without_a_path() {
+    let host = local_host();
+    let id = finished_run(&host.app).await;
+    let target = tempdir().unwrap();
+    let destination = target.path().join("run.zip");
+    let (status, _) = request(
+      &host.app,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(json!({ "destination": destination })),
+    )
+    .await;
+    let mut archive = ZipArchive::new(Cursor::new(fs::read(&destination).unwrap())).unwrap();
+    let mut tree = String::new();
+    archive
+      .by_name(&format!("treetime-{id}/out/ancestral.nwk"))
+      .unwrap()
+      .read_to_string(&mut tree)
+      .unwrap();
+    let source = fs::read_to_string(host.app.runs_dir.path().join(&id).join("out").join("ancestral.nwk")).unwrap();
+    assert_eq!((200, source), (status, tree));
+  }
+
+  #[tokio::test]
+  async fn test_save_route_package_imports_from_its_path_as_a_new_run() {
+    let host = local_host();
+    let id = finished_run(&host.app).await;
+    let target = tempdir().unwrap();
+    let destination = target.path().join("run.zip");
+    request(
+      &host.app,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(json!({ "destination": destination })),
+    )
+    .await;
+    let (status, imported) = request(
+      &host.app,
+      "POST",
+      "/api/runs/import-file",
+      Some(json!({ "path": destination })),
+    )
+    .await;
+    assert_eq!(
+      (200, json!("ok"), true),
+      (status, imported["status"].clone(), imported["id"] != json!(id))
+    );
+  }
+
+  #[tokio::test]
+  async fn test_save_route_import_of_a_file_that_is_not_a_run_package_is_an_invalid_request() {
+    let host = local_renderer();
+    let target = tempdir().unwrap();
+    let path = target.path().join("notes.zip");
+    fs::write(&path, "not a zip archive").unwrap();
+    let (status, error) = request(
+      &host.app,
+      "POST",
+      "/api/runs/import-file",
+      Some(json!({ "path": path })),
+    )
+    .await;
+    assert_eq!((400, json!("invalid_request")), (status, error["code"].clone()));
+  }
+
+  #[tokio::test]
+  async fn test_save_route_answers_an_unknown_run_with_not_found() {
+    let host = local_host();
+    let target = tempdir().unwrap();
+    let (status, error) = request(
+      &host.app,
+      "POST",
+      "/api/runs/missing/save",
+      Some(json!({ "destination": target.path().join("run.zip") })),
+    )
+    .await;
+    assert_eq!(
+      (404, json!("not_found"), 0),
+      (
+        status,
+        error["code"].clone(),
+        fs::read_dir(target.path()).unwrap().count()
+      )
+    );
+  }
+
+  #[tokio::test]
+  async fn test_save_route_refuses_a_path_outside_the_run_folder() {
+    let host = local_host();
+    let id = finished_run(&host.app).await;
+    let target = tempdir().unwrap();
+    let (status, error) = request(
+      &host.app,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(json!({ "path": "../run.json", "destination": target.path().join("run.json") })),
+    )
+    .await;
+    assert_eq!(
+      (
+        400,
+        json!("file path `../run.json` must name a file inside the run's output folder"),
+        0
+      ),
+      (
+        status,
+        error["message"].clone(),
+        fs::read_dir(target.path()).unwrap().count()
+      )
+    );
+  }
+
+  #[tokio::test]
+  async fn test_save_route_refuses_a_relative_destination() {
+    let host = local_host();
+    let id = finished_run(&host.app).await;
+    let (status, error) = request(
+      &host.app,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(json!({ "destination": "run.zip" })),
+    )
+    .await;
+    assert_eq!(
+      (
+        400,
+        json!({
+          "code": "invalid_request",
+          "message": "the destination must be an absolute path, got 'run.zip'",
+          "causes": []
+        })
+      ),
+      (status, error)
+    );
+  }
+
+  #[tokio::test]
+  async fn test_save_route_is_absent_from_the_public_router() {
+    let public = app();
+    let target = tempdir().unwrap();
+    let (status, error) = request(
+      &public,
+      "POST",
+      "/api/runs/missing/save",
+      Some(json!({ "destination": target.path().join("run.zip") })),
+    )
+    .await;
+    assert_eq!((404, json!("not_found")), (status, error["code"].clone()));
+  }
+
+  #[tokio::test]
+  async fn test_save_route_is_absent_from_the_renderer_router_of_a_local_app() {
+    let renderer = local_renderer();
+    let target = tempdir().unwrap();
+    let (status, error) = request(
+      &renderer.app,
+      "POST",
+      "/api/runs/missing/save",
+      Some(json!({ "destination": target.path().join("run.zip") })),
+    )
+    .await;
+    assert_eq!((404, json!("not_found")), (status, error["code"].clone()));
+  }
+
+  mod helpers {
+    use crate::__tests__::test_routes::tests::helpers::{TestApp, events_of, local_routers};
+    use crate::routes::LocalRouters;
+    use app_backend::app_paths::AppFolderEnv;
+    use app_backend::examples_download::ExampleDownloads;
+    use axum::Router;
+    use serde_json::json;
+    use tempfile::{TempDir, tempdir};
+
+    const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
+
+    pub(super) struct LocalApp {
+      pub app: TestApp,
+      pub _settings: TempDir,
+    }
+
+    pub(super) fn local_host() -> LocalApp {
+      local_app(|routers| routers.host)
+    }
+
+    pub(super) fn local_renderer() -> LocalApp {
+      local_app(|routers| routers.renderer)
+    }
+
+    pub(super) async fn finished_run(test: &TestApp) -> String {
+      let (_, record) = test
+        .run_with_data(
+          "ancestral",
+          json!({ "tree": "zika/20/tree.nwk", "alignment": ["zika/20/aln.fasta.xz"] }),
+        )
+        .await;
+      let id = record["id"].as_str().unwrap().to_owned();
+      events_of(test, &id, "").await;
+      id
+    }
+
+    fn local_app(router: impl FnOnce(LocalRouters) -> Router) -> LocalApp {
+      let dir = tempdir().unwrap();
+      let runs_dir = tempdir().unwrap();
+      let routers = local_routers(
+        dir.path(),
+        runs_dir.path(),
+        &AppFolderEnv::default(),
+        ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples")),
+      );
+      LocalApp {
+        app: TestApp {
+          router: router(routers),
+          runs_dir,
+        },
+        _settings: dir,
+      }
+    }
+  }
+}

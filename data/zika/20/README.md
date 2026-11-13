@@ -1,3 +1,7 @@
+---
+organism: "Zika virus"
+---
+
 # `zika/20`
 
 Subsample of `zika/86` (20 sequences).

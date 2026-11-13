@@ -9,5 +9,7 @@ export function settingText(record: RunRecord, key: string, locale: Locale): str
   const config: SparseConfig = record.config;
   const spec = commandSettings(record.command).settings.find((candidate) => candidate.key === key);
 
-  return defaultText(spec === undefined ? config[key] : effectiveValue(config, spec), locale);
+  return spec === undefined
+    ? defaultText(config[key], locale)
+    : defaultText(effectiveValue(config, spec), locale, spec.options);
 }

@@ -168,6 +168,24 @@ impl CommandArgs {
     }
   }
 
+  pub fn random_step(&self) -> Option<&'static str> {
+    match self {
+      Self::Timetree(args) => args.random_step(),
+      Self::Ancestral(args) => args.random_step(),
+      Self::Homoplasy(args) => args.random_step(),
+      Self::Optimize(_) | Self::Prune(_) | Self::Clock(_) | Self::Mugration(_) => None,
+    }
+  }
+
+  pub fn seed(&self) -> Option<u64> {
+    match self {
+      Self::Timetree(args) => args.seed(),
+      Self::Ancestral(args) => args.seed(),
+      Self::Homoplasy(args) => args.seed(),
+      Self::Optimize(_) | Self::Prune(_) | Self::Clock(_) | Self::Mugration(_) => None,
+    }
+  }
+
   pub fn alignments(&self) -> &[PathBuf] {
     match self {
       Self::Timetree(args) => args.alignments(),

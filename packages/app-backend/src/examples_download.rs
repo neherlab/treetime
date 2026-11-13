@@ -31,7 +31,7 @@ pub fn read_examples_folder(folder: &Path) -> Result<ExamplesFolder, Report> {
 }
 
 /// The examples folder of a local app, with the index of the example data it holds.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ExamplesFolder {

@@ -1,3 +1,4 @@
+use crate::results::regression::{RegressionStatistic, regression_statistics};
 use crate::results::tree::ResultTree;
 use crate::results::year_date::YearDate;
 use deser::Serialize;
@@ -13,7 +14,16 @@ pub fn clock_results(
   model: Option<&ClockModel>,
   rows: Option<&[ClockRegressionResult]>,
 ) -> ClockResults {
-  let root_to_tip = rows.map(|rows| root_to_tip(tree, model, rows));
+  let tips = tree.map(tree_tips);
+  clock_results_of_tips(tips.as_ref(), model, rows)
+}
+
+pub fn clock_results_of_tips(
+  tips: Option<&BTreeSet<&str>>,
+  model: Option<&ClockModel>,
+  rows: Option<&[ClockRegressionResult]>,
+) -> ClockResults {
+  let root_to_tip = rows.map(|rows| root_to_tip_of_tips(tips, model, rows));
   let dated = root_to_tip
     .iter()
     .flat_map(|regression| &regression.points)
@@ -23,11 +33,13 @@ pub fn clock_results(
     estimates: ClockEstimates {
       clock_rate: model.map(ClockModel::clock_rate),
       clock_rate_fixed: model.is_some_and(has_fixed_rate),
+      root_date: model.map(|model| YearDate::new(model.t_mrca())),
       r: model.and_then(ClockModel::r_val),
       r_squared: model.and_then(ClockModel::r_squared),
       dated_samples: dated.len(),
       outliers: dated.iter().filter(|point| point.outlier).count(),
     },
+    statistics: statistics(model, root_to_tip.as_ref()),
     root_to_tip,
   }
 }
@@ -39,6 +51,8 @@ pub fn clock_results(
 pub struct ClockResults {
   /// Estimates of the clock model.
   pub estimates: ClockEstimates,
+  /// Statistics of the root-to-tip regression in display order; empty when the run wrote no clock model.
+  pub statistics: Vec<RegressionStatistic>,
   /// Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
   pub root_to_tip: Option<RootToTip>,
 }
@@ -52,6 +66,8 @@ pub struct ClockEstimates {
   pub clock_rate: Option<f64>,
   /// Whether the clock rate was fixed by the user instead of estimated.
   pub clock_rate_fixed: bool,
+  /// Root date that the regression line implies: the date at which it reaches zero divergence (x-intercept).
+  pub root_date: Option<YearDate>,
   /// Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
   pub r: Option<f64>,
   /// Coefficient of determination of the root-to-tip regression.
@@ -62,15 +78,27 @@ pub struct ClockEstimates {
   pub outliers: usize,
 }
 
+pub fn statistics(model: Option<&ClockModel>, root_to_tip: Option<&RootToTip>) -> Vec<RegressionStatistic> {
+  model.map_or_else(Vec::new, |model| {
+    regression_statistics(model, root_to_tip.map_or(&[], |root_to_tip| &root_to_tip.points))
+  })
+}
+
 pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: &[ClockRegressionResult]) -> RootToTip {
-  let tips: Option<BTreeSet<&str>> = tree.map(|tree| tree.tips().map(|tip| tip.name.as_str()).collect());
+  let tips = tree.map(tree_tips);
+  root_to_tip_of_tips(tips.as_ref(), model, rows)
+}
+
+fn root_to_tip_of_tips(
+  tips: Option<&BTreeSet<&str>>,
+  model: Option<&ClockModel>,
+  rows: &[ClockRegressionResult],
+) -> RootToTip {
   let points = rows
     .iter()
     .filter_map(|row| {
       let name = row.name.as_str();
-      let listed = tips
-        .as_ref()
-        .map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
+      let listed = tips.map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
       listed.then(|| RootToTipPoint {
         name: name.to_owned(),
         date: row.date.map(YearDate::new),
@@ -91,6 +119,10 @@ pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: 
       intercept: model.intercept(),
     }),
   }
+}
+
+fn tree_tips(tree: &ResultTree) -> BTreeSet<&str> {
+  tree.tips().map(|tip| tip.name.as_str()).collect()
 }
 
 /// The points and line of a root-to-tip regression, as TreeTime fitted it.

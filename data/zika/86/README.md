@@ -1,3 +1,7 @@
+---
+organism: "Zika virus"
+---
+
 # `zika/86`
 
 86 Zika virus genomes sampled from 2013 to 2016, the Zika example of TreeTime 0.x.

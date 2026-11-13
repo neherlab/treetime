@@ -1,206 +1,148 @@
-import type { AppCommand } from "@neherlab/app-contracts";
-import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } from "@neherlab/app-contracts/client";
-import { Button } from "@neherlab/design/ui/button";
+import type { AppCommand, JobId, RunCheck } from "@neherlab/app-contracts";
+import { useToastManager } from "@neherlab/design/ui/toast";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { useDebouncedValue } from "@tanstack/react-pacer";
-import { keepPreviousData } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
-import RotateCcw from "~icons/lucide/rotate-ccw";
+import { Outlet } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
+import { FormProvider, useFormState, useWatch } from "react-hook-form";
 
-import { useApi } from "../api/hooks";
-import { PageHeading, PageShell } from "../components/PageShell";
-import { RUN_HOTKEY } from "../hotkeys";
+import { LoadingState } from "../components/PageShell";
+import { COMMAND_LINE_HOTKEY, RUN_HOTKEY } from "../hotkeys";
 import { commandSettings } from "../settings/catalog";
 import { COMMAND_VERBS } from "../settings/commands";
-import { changedSpecs, normalizeConfig } from "../settings/config";
-import { inputFactsRequest } from "../settings/inputs";
+import { normalizeConfig } from "../settings/config";
+import { useListedRuns } from "../shell/useListedRuns";
 import { useDraftStore } from "../store/draft";
-import { ChecksPanel } from "./ChecksPanel";
-import { CodePanel } from "./CodePanel";
-import { CommandCards } from "./CommandCards";
-import { configResolver } from "./configResolver";
-import { fromFormConfig, toFormConfig, type FormConfig } from "./formValues";
-import { InputsSection } from "./InputsSection";
-import { SettingsPanel } from "./SettingsPanel";
+import { RunFooter } from "./ChecksPanel";
+import { type CommandLineCode, CommandLineDialog } from "./CommandLineDialog";
+import { duplicateRun } from "./duplicateRun";
+import { fromFormConfig, type FormConfig } from "./formValues";
+import { OptionsMenu } from "./OptionsMenu";
+import { OptionsPanel } from "./OptionsPanel";
+import { RUN_BLOCK_TEXT, runBlock, SingleRun } from "./runAction";
+import { StaleBar } from "./StaleBar";
+import { useDraftChecks } from "./useDraftChecks";
+import { useDraftForm } from "./useDraftForm";
 import { useStartRun } from "./useStartRun";
+import { WorkspaceContext, type WorkspaceView } from "./workspaceContext";
+import { ResetButton, WorkspaceDescription, WorkspaceTitle } from "./WorkspaceHeader";
+import { WorkspaceLayout } from "./WorkspaceLayout";
 
-const CHECK_DEBOUNCE = { wait: 400 };
-
-export function DraftForm({ command }: { command: AppCommand }) {
+export function DraftForm({
+  command,
+  shownRunId,
+  pending,
+}: {
+  command: AppCommand;
+  shownRunId: JobId | undefined;
+  pending: boolean;
+}) {
   const specs = commandSettings(command).settings;
-  const [initial] = useState(() => normalizeConfig(specs, useDraftStore.getState().draft.config));
-
-  const form = useForm<FormConfig>({
-    defaultValues: toFormConfig(initial),
-    resolver: configResolver(command),
-    mode: "onChange",
-  });
-
-  const setConfig = useDraftStore((state) => state.setConfig);
+  const form = useDraftForm();
   const watched = useWatch({ control: form.control });
-
   const config = useMemo(() => normalizeConfig(specs, fromFormConfig(watched)), [specs, watched]);
-
-  const [settled] = useDebouncedValue(config, CHECK_DEBOUNCE);
-  const factsRequest = useMemo(() => inputFactsRequest(command, settled), [command, settled]);
-
-  const { data: facts } = useApi(
-    (context) => inputsCheck({ ...context, body: factsRequest ?? { command, config: {} } }),
-    { enabled: factsRequest !== null, placeholderData: keepPreviousData, staleTime: 30_000 },
-  );
-
-  const { data: check, isPlaceholderData: checkPending } = useApi(
-    (context) => {
-      const text = JSON.stringify(settled);
-
-      return configCheck({
-        ...context,
-        body: facts === undefined ? { command, text } : { command, text, input_facts: facts },
-      });
-    },
-    { placeholderData: keepPreviousData, staleTime: Infinity },
-  );
-
-  const { data: runConfig } = useApi(
-    (context) => resolveRunConfig({ ...context, body: { command, config: settled } }),
-    { placeholderData: keepPreviousData, staleTime: 10_000 },
-  );
-
-  const { data: runList } = useApi((context) => runsList(context));
-  const startRun = useStartRun(command);
-
-  useEffect(
-    () =>
-      form.subscribe({
-        formState: { values: true },
-        callback: ({ values }) => setConfig(fromFormConfig(values)),
-      }),
-    [form, setConfig],
-  );
-
-  const checks = check?.checks;
-  const checked = check === undefined || checkPending ? undefined : settled;
-  const code = runConfig?.status === "valid" ? runConfig.code : null;
-
-  const configHash = runConfig?.status === "valid" ? runConfig.config_hash : undefined;
+  const { settled, facts, check, checkPending, runConfig } = useDraftChecks(command, config, shownRunId);
+  const { all: listedRuns } = useListedRuns();
+  const run = useRunAction(form, command, check?.checks, checkPending);
+  const epoch = useDraftStore((state) => state.epoch);
 
   const duplicate = useMemo(
-    () =>
-      configHash === undefined
-        ? undefined
-        : runList?.runs.find((run) => run.status === "ok" && run.command === command && run.config_hash === configHash),
-    [command, configHash, runList],
+    () => duplicateRun(listedRuns, command, runConfig?.status === "valid" ? runConfig : undefined),
+    [command, listedRuns, runConfig],
   );
 
-  const changed = changedSpecs(specs, config);
+  const [commandLineOpen, setCommandLineOpen] = useState(false);
+  const showCommandLine = useCallback(() => setCommandLineOpen(true), []);
 
-  const submit = useMemo(
-    () => form.handleSubmit((values) => startRun(normalizeConfig(specs, fromFormConfig(values)))),
-    [form, specs, startRun],
+  useHotkey(COMMAND_LINE_HOTKEY, showCommandLine);
+
+  const workspace = useMemo(
+    (): WorkspaceView => ({ command, settled, facts, check, checkPending, ...run }),
+    [check, checkPending, command, facts, run, settled],
   );
-
-  const onSubmit = useCallback((event: React.SubmitEvent) => void submit(event), [submit]);
-
-  useHotkey(RUN_HOTKEY, () => void submit());
 
   return (
-    <PageShell className="max-w-[92.5rem]">
-      <PageHeader />
-      <FormProvider {...form}>
-        <form
-          noValidate
-          onSubmit={onSubmit}
-          className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 @4xl:grid-cols-[minmax(0,1fr)_25rem]"
-        >
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-            <Step number={1} title="Analysis">
-              <CommandCards command={command} config={config} />
-            </Step>
-            <Step number={2} title="Data">
-              <InputsSection command={command} facts={facts} />
-            </Step>
-            <Step
-              number={3}
-              title="Settings"
-              hint={changed.length === 0 ? "All defaults" : `${changed.length} changed`}
-            >
-              <SettingsPanel
+    <FormProvider {...form}>
+      <WorkspaceContext value={workspace}>
+        <WorkspaceLayout
+          title={<WorkspaceTitle check={check} />}
+          description={<WorkspaceDescription shownRunId={shownRunId} check={check} />}
+          actions={<ResetButton />}
+          panel={
+            pending ? (
+              <LoadingState text="Loading the options of the run" />
+            ) : (
+              <OptionsPanel
+                key={`${command}:${epoch}`}
                 command={command}
                 config={config}
-                checks={checks}
-                reported={check?.choices}
-                checked={checked}
+                check={check}
+                checked={check === undefined || checkPending ? undefined : settled}
+                facts={facts}
+                menu={<OptionsMenu command={command} onCommandLine={showCommandLine} />}
               />
-            </Step>
-          </div>
-          <aside className="grid gap-4 @4xl:sticky @4xl:top-5">
-            <CodePanel command={command} code={code} />
-            <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} />
-          </aside>
-        </form>
-      </FormProvider>
-    </PageShell>
+            )
+          }
+          footer={<RunFooter checks={check?.checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} />}
+          aboveMain={shownRunId === undefined ? undefined : <StaleBar shownRunId={shownRunId} />}
+          main={<Outlet />}
+        />
+        <CommandLineDialog
+          open={commandLineOpen}
+          onOpenChange={setCommandLineOpen}
+          description="The options as a command, with the paths that a run records"
+          code={commandLineCode(runConfig)}
+        />
+      </WorkspaceContext>
+    </FormProvider>
   );
 }
 
-function PageHeader() {
-  const fromRunId = useDraftStore((state) => state.draft.from_run_id);
-  const command = useDraftStore((state) => state.draft.command);
-  const reset = useDraftStore((state) => state.reset);
-  const { data: runList } = useApi((context) => runsList(context));
-  const fromRun = runList?.runs.find((run) => run.id === fromRunId);
-  const fromTitle = fromRun?.title ?? fromRunId ?? "";
-  const resetForm = useCallback(() => reset(command), [command, reset]);
-  const otherCommand = fromRun !== undefined && fromRun.command !== command;
+function useRunAction(
+  form: ReturnType<typeof useDraftForm>,
+  command: AppCommand,
+  checks: readonly RunCheck[] | undefined,
+  checkPending: boolean,
+) {
+  const startRun = useStartRun(command);
+  const toasts = useToastManager();
+  const { isValid } = useFormState<FormConfig>({ control: form.control });
+  const [single] = useState(() => new SingleRun());
+  const [starting, setStarting] = useState(false);
+  const block = runBlock({ starting, checks, checkPending, valid: isValid });
 
-  return (
-    <PageHeading
-      title={fromRunId === undefined || otherCommand ? "New analysis" : "Edit and run again"}
-      description={pageDescription(fromRunId === undefined, otherCommand, fromTitle)}
-      actions={
-        <Button type="button" variant="ghost" onClick={resetForm}>
-          <RotateCcw aria-hidden />
-          Reset form
-        </Button>
-      }
-    />
-  );
+  const start = useCallback(async () => {
+    setStarting(true);
+
+    const submit = form.handleSubmit(async (values) =>
+      startRun(normalizeConfig(commandSettings(command).settings, fromFormConfig(values))),
+    );
+
+    await submit().finally(() => {
+      setStarting(false);
+    });
+  }, [command, form, startRun]);
+
+  const run = useCallback(() => {
+    if (block !== undefined) {
+      toasts.add({ title: "The run cannot start yet", description: RUN_BLOCK_TEXT[block] });
+
+      return;
+    }
+
+    void single.run(start);
+  }, [block, single, start, toasts]);
+
+  useHotkey(RUN_HOTKEY, run);
+
+  return useMemo(() => ({ run, runBlock: block }), [block, run]);
 }
 
-function pageDescription(fresh: boolean, otherCommand: boolean, fromTitle: string): string {
-  if (fresh) {
-    return "Choose an analysis, add the data, check the settings, run.";
+function commandLineCode(runConfig: ReturnType<typeof useDraftChecks>["runConfig"]): CommandLineCode {
+  if (runConfig === undefined) {
+    return { state: "loading" };
   }
 
-  return otherCommand
-    ? `Inputs and shared settings copied from "${fromTitle}". The original run stays unchanged.`
-    : `Settings copied from "${fromTitle}". The original run stays unchanged.`;
-}
-
-function Step({
-  number,
-  title,
-  hint,
-  children,
-}: {
-  number: number;
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section aria-labelledby={`step-${number}`} className="@container grid gap-2.5">
-      <div className="flex items-baseline gap-2.5 border-b pb-1.5">
-        <span className="text-primary font-mono text-sm font-bold" aria-hidden>
-          {String(number).padStart(2, "0")}
-        </span>
-        <h2 id={`step-${number}`} className="font-heading text-base font-bold">
-          {title}
-        </h2>
-        {hint !== undefined && <span className="text-muted-foreground text-sm">{hint}</span>}
-      </div>
-      {children}
-    </section>
-  );
+  return runConfig.status === "valid"
+    ? { state: "ready", code: runConfig.code, commandLines: runConfig.command_lines }
+    : { state: "invalid", message: [runConfig.message, ...runConfig.causes].join(": ") };
 }

@@ -1,3 +1,8 @@
+---
+organism: "Influenza A virus (H3N2)"
+segment: "NA"
+---
+
 # `flu/h3n2/500`
 
 476 neuraminidase (NA) sequences of seasonal influenza A/H3N2 sampled from 1968 to 2013, the coding sequence of the NA reference CY114383 (A/Wisconsin/67/2005) without its stop codon, in frame from site 1.

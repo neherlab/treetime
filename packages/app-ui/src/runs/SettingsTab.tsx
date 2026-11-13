@@ -1,152 +1,114 @@
-import type { RunRecord, SparseConfig, UiCodeFormat } from "@neherlab/app-contracts";
-import { configCheck } from "@neherlab/app-contracts/client";
+import type { RunRecord, SparseConfig } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
-import { CopyButton } from "@neherlab/design/ui/copy-button";
 import { Label } from "@neherlab/design/ui/label";
 import { Switch } from "@neherlab/design/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
-import { keepPreviousData } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Fragment, useMemo, useState } from "react";
-import RotateCcw from "~icons/lucide/rotate-ccw";
+import { Fragment, useCallback, useMemo, useState } from "react";
+import Download from "~icons/lucide/download";
 
-import { CodeLineView, keyedLines } from "../analysis/CodePanel";
-import { useApi } from "../api/hooks";
-import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { useLocale } from "../i18n/locale";
 import { commandSettings } from "../settings/catalog";
 import { documentedDefault, effectiveValue } from "../settings/config";
 import { groupedSpecs } from "../settings/groups";
-import { defaultText } from "../settings/help";
-import { useRerun } from "./useRerun";
+import { defaultText, SettingHelpPopover } from "../settings/help";
+import { useRunCode } from "./RunCommandLine";
+import { saveText } from "./saveRunOutput";
+import { changedSettingCount, shownSettings } from "./settingRows";
 
-const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
-  { value: "cli", label: "CLI" },
-  { value: "yaml", label: "YAML" },
-];
-
-export function SettingsTab({ record }: { record: RunRecord }) {
+export function SettingsTab({ record, configName }: { record: RunRecord; configName: string | undefined }) {
   const locale = useLocale();
   const settings = commandSettings(record.command);
   const specs = settings.settings;
   const config: SparseConfig = record.config;
   const [changedOnly, setChangedOnly] = useState(true);
-  const [format, setFormat] = useState<UiCodeFormat>("cli");
-  const rerun = useRerun(record);
   const changedKeys = useMemo(() => new Set(record.changed_settings), [record.changed_settings]);
 
   const groups = useMemo(
     () =>
       groupedSpecs(settings, specs).flatMap(([group, members]) => {
-        const rows = members.filter(
-          (spec) => spec.role !== "output" && (!changedOnly || spec.role === "input" || changedKeys.has(spec.key)),
-        );
+        const rows = shownSettings(members, config, changedKeys, changedOnly);
 
         return rows.length === 0 ? [] : [{ group, rows }];
       }),
-    [changedKeys, changedOnly, settings, specs],
+    [changedKeys, changedOnly, config, settings, specs],
   );
 
-  const changedCount = changedKeys.size;
+  const changedCount = changedSettingCount(specs, changedKeys);
+  const code = useRunCode(record, true);
+  const yaml = code.state === "ready" ? code.code.yaml_text : undefined;
+  const commandLines = code.state === "ready" ? code.commandLines : undefined;
 
-  const { data: check } = useApi(
-    (context) =>
-      configCheck({
-        ...context,
-        body: { command: record.command, text: JSON.stringify(config) },
-      }),
-    { placeholderData: keepPreviousData, staleTime: Infinity },
-  );
-
-  const code = check?.status === "valid" ? check.code : null;
-  const lines = code === null ? [] : format === "cli" ? code.command_line : code.yaml;
-  const text = code === null ? "" : format === "cli" ? code.command_line_text : code.yaml_text;
+  const onExport = useCallback(() => {
+    if (yaml !== undefined && configName !== undefined) {
+      saveText(yaml, configName, "application/yaml");
+    }
+  }, [configName, yaml]);
 
   return (
-    <div className="grid gap-4 @5xl:grid-cols-[minmax(0,1fr)_32rem]">
-      <Panel
-        title="Settings used"
-        hint={`${changedCount} ${changedCount === 1 ? "setting differs" : "settings differ"} from the defaults`}
-        actions={
-          <div className="flex items-center gap-2">
-            <Switch id="settings-changed-only" checked={changedOnly} onCheckedChange={setChangedOnly} />
-            <Label htmlFor="settings-changed-only">Changed only</Label>
-          </div>
-        }
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Setting</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead>Default</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {groups.map(({ group, rows }) => (
-              <Fragment key={group}>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead colSpan={3} scope="colgroup" className="h-7 text-xs">
-                    {group}
-                  </TableHead>
-                </TableRow>
-                {rows.map((spec) => {
-                  const changed = changedKeys.has(spec.key);
+    <Panel
+      title="Settings used"
+      hint={`${changedCount} ${changedCount === 1 ? "setting differs" : "settings differ"} from the defaults`}
+      actions={
+        <div className="flex items-center gap-2">
+          <Switch id="settings-changed-only" checked={changedOnly} onCheckedChange={setChangedOnly} />
+          <Label htmlFor="settings-changed-only">Changed only</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onExport}
+            disabled={yaml === undefined || configName === undefined}
+          >
+            <Download aria-hidden />
+            Config (.yaml)
+          </Button>
+        </div>
+      }
+    >
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Setting</TableHead>
+            <TableHead>Value</TableHead>
+            <TableHead>Default</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {groups.map(({ group, rows }) => (
+            <Fragment key={group}>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead colSpan={3} scope="colgroup" className="h-7 text-xs">
+                  {group}
+                </TableHead>
+              </TableRow>
+              {rows.map((spec) => {
+                const changed = changedKeys.has(spec.key);
 
-                  return (
-                    <TableRow key={spec.key} className={cn(changed && "bg-accent/60")}>
-                      <TableCell className="whitespace-normal">
-                        {changed && <span className="sr-only">Changed: </span>}
-                        <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
-                        <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs break-all whitespace-normal">
-                        {defaultText(effectiveValue(config, spec), locale)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">
-                        {spec.role === "setting" ? defaultText(documentedDefault(spec), locale) : ""}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </Fragment>
-            ))}
-          </TableBody>
-        </Table>
-      </Panel>
-      <div className="grid content-start gap-4">
-        <Panel
-          title="Reproduce"
-          actions={
-            <>
-              <OptionToggle label="Format" value={format} onChange={setFormat} options={CODE_FORMATS} />
-              <CopyButton text={text} label={format === "cli" ? "Copy the command" : "Copy the config"} />
-            </>
-          }
-        >
-          <div className="grid gap-2 p-3.5">
-            <pre className="bg-muted/50 overflow-x-auto rounded-md border px-3 py-2.5 font-mono text-xs leading-relaxed">
-              {keyedLines(lines).map(({ key, line, index }) => (
-                <CodeLineView
-                  key={key}
-                  line={line}
-                  continued={format === "cli" && index < lines.length - 1}
-                  indent={format === "cli" && index > 0}
-                />
-              ))}
-            </pre>
-            <p className="text-muted-foreground text-xs">
-              TreeTime {record.treetime_version}. The command includes the outputs the app adds to every run and writes
-              them to <code className="font-mono">out</code>.
-            </p>
-          </div>
-        </Panel>
-        <Button type="button" onClick={rerun}>
-          <RotateCcw aria-hidden />
-          Edit and run again
-        </Button>
-      </div>
-    </div>
+                return (
+                  <TableRow key={spec.key} className={cn(changed && "bg-accent/60")}>
+                    <TableCell className="whitespace-normal">
+                      {changed && <span className="sr-only">Changed: </span>}
+                      <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
+                      <SettingHelpPopover
+                        spec={spec}
+                        commandLine={commandLines?.find((line) => line.key === spec.key)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs break-all whitespace-normal">
+                      {defaultText(effectiveValue(config, spec), locale, spec.options)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">
+                      {spec.role === "setting" ? defaultText(documentedDefault(spec), locale, spec.options) : ""}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </Fragment>
+          ))}
+        </TableBody>
+      </Table>
+    </Panel>
   );
 }

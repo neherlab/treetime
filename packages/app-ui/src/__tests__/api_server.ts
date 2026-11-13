@@ -9,11 +9,17 @@ export const RECORD = {
   command: "clock",
   config: { tree: "t.nwk" },
   status: "running",
+  prepared: true,
   pinned: false,
+  renamed: false,
+  group_id: "r0",
+  size: 0,
   created_at: "2026-09-25T10:00:00Z",
   started_at: "2026-09-25T10:00:01Z",
   treetime_version: "1.0.0",
   inputs: [],
+  input_sets: [],
+  uploads: [],
   changed_settings: [],
   headline: {},
   output_files: [],
@@ -21,7 +27,19 @@ export const RECORD = {
 } as const;
 
 export function runRecord(id: JobId, status: RunStatus): RunRecord {
-  return { ...RECORD, id, status, inputs: [], changed_settings: [], output_files: [], warnings: [] };
+  return {
+    ...RECORD,
+    id,
+    group_id: id,
+    status,
+    prepared: status !== "created",
+    inputs: [],
+    input_sets: [],
+    uploads: [],
+    changed_settings: [],
+    output_files: [],
+    warnings: [],
+  };
 }
 
 export interface Sent {

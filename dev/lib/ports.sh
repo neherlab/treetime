@@ -17,9 +17,9 @@ port_block_start=14000
 port_slot_size=10
 port_slot_count=100
 
-# Ports in use within a slot, in this order of offsets: api, web, serve, web2,
-# web2 serve, docs, docs serve, desktop.
-port_slot_used=8
+# Ports in use within a slot, in this order of offsets: web2, web2 serve, docs,
+# docs serve, desktop.
+port_slot_used=5
 
 # Print the slot of the checkout that contains the directory $1, and claim a free
 # slot when a linked worktree holds none yet.

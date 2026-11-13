@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests {
+  use crate::runs::input_store::InputStore;
   use app_commands::command::AppCommand;
-  use helpers::{ZIKA_METADATA, ZIKA_TREE, resolve};
+  use helpers::{ZIKA_METADATA, ZIKA_TREE, resolve, resolve_in};
   use pretty_assertions::assert_eq;
-  use serde_json::json;
+  use rstest::rstest;
+  use serde_json::{Value, json};
+  use std::fs;
   use std::path::Path;
+  use tempfile::tempdir;
 
   #[test]
   fn test_run_config_adds_the_run_outputs_to_the_chosen_selection() {
@@ -68,6 +72,34 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::drawn(            json!({}),                                     json!(null))]
+  #[case::set(              json!({ "seed": 7 }),                          json!(7))]
+  #[case::no_random_step(   json!({ "seed": 7, "keep_polytomies": true }), json!(null))]
+  #[trace]
+  fn test_run_config_names_the_seed_of_the_random_step(#[case] extra: Value, #[case] seed: Value) {
+    let mut config = json!({ "tree": ZIKA_TREE, "metadata": ZIKA_METADATA, "sequence_length": 10807 });
+    let mut without_seed = config.clone();
+    for (key, value) in extra.as_object().unwrap() {
+      config[key] = value.clone();
+      if key != "seed" {
+        without_seed[key] = value.clone();
+      }
+    }
+    let response = resolve(AppCommand::Timetree, config);
+    let unseeded = resolve(AppCommand::Timetree, without_seed);
+    assert_eq!(
+      (json!("valid"), seed, true, unseeded["config_hash"].clone()),
+      (
+        response["status"].clone(),
+        response["seed"].clone(),
+        response["config_hash"].is_string(),
+        response["config_hash"].clone()
+      )
+    );
+  }
+
   #[test]
   fn test_run_config_hash_is_absent_when_an_input_cannot_be_read() {
     let response = resolve(
@@ -99,11 +131,63 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_run_config_names_the_command_line_of_each_setting_for_its_value_in_the_run() {
+    let response = resolve(
+      AppCommand::Clock,
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "clock_filter": 4, "keep_root": false }),
+    );
+    let text_of = |key: &str| {
+      response["command_lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|line| line["key"] == key)
+        .map(|line| line["text"].clone())
+    };
+    assert_eq!(
+      (
+        Some(json!("--clock-filter 4.0")),
+        Some(json!("--tree t.nwk")),
+        Some(Value::Null)
+      ),
+      (text_of("clock_filter"), text_of("tree"), text_of("keep_root"))
+    );
+  }
+
+  #[test]
+  fn test_run_config_names_an_uploaded_input_by_its_path_in_the_run_folder() {
+    let root = tempdir().unwrap();
+    let store = InputStore::new(root.path());
+    let tree = fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(ZIKA_TREE)).unwrap();
+    let upload = store.store("tree.nwk", &mut &tree[..], 1 << 20, 1 << 20).unwrap();
+    let tree = store.path(&store.commit(upload).unwrap());
+
+    let response = resolve_in(
+      &store,
+      AppCommand::Clock,
+      json!({ "tree": tree, "metadata": Path::new(env!("CARGO_MANIFEST_DIR")).join(ZIKA_METADATA) }),
+    );
+
+    assert_eq!(
+      (json!("inputs/tree.nwk"), true),
+      (
+        response["config"]["tree"].clone(),
+        response["code"]["command_line_text"]
+          .as_str()
+          .unwrap()
+          .contains("--tree inputs/tree.nwk"),
+      )
+    );
+  }
+
   mod helpers {
-    use crate::__tests__::test_support::tests::sparse;
+    use crate::__tests__::test_support::tests::{sparse, unconfined};
     use crate::run_config::{RunConfigRequest, run_config};
+    use crate::runs::input_store::InputStore;
     use app_commands::command::AppCommand;
     use serde_json::Value;
+    use std::path::Path;
     use treetime_utils::io::json::to_json_value;
 
     pub(super) const ZIKA_TREE: &str = "../../data/zika/20/tree.nwk";
@@ -111,12 +195,17 @@ mod tests {
     pub(super) const ZIKA_METADATA: &str = "../../data/zika/20/metadata.tsv";
 
     pub(super) fn resolve(command: AppCommand, config: Value) -> Value {
+      resolve_in(&InputStore::new(Path::new("/nonexistent-runs")), command, config)
+    }
+
+    pub(super) fn resolve_in(store: &InputStore, command: AppCommand, config: Value) -> Value {
       let response = run_config(
         &RunConfigRequest {
           command,
           config: sparse(config),
         },
-        Box::new(|_config: &mut Value| Ok(())),
+        &unconfined(),
+        store,
       );
       to_json_value(&response).unwrap()
     }

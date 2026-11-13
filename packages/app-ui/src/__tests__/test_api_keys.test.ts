@@ -15,7 +15,7 @@ import {
 import { QueryClient } from "@tanstack/react-query";
 
 import { apiKey, apiQueryOptions, resetApiQueries } from "../api/hooks";
-import { requestKey, requestUrl, staleCoversKey, type ApiRequest } from "../api/keys";
+import { requestKey, staleCoversKey, type ApiRequest } from "../api/keys";
 import { FakeServer, json, RECORD } from "./api_server";
 
 const CLIENT = new FakeServer({}).client();
@@ -42,7 +42,7 @@ describe("api keys", () => {
     {
       name: "two path parameters",
       request: (context) => runsCompare({ ...context, path: { id: "abc", other: "xyz" } }),
-      expected: ["api", "runs", "abc", "compare", "xyz"],
+      expected: ["api", "compare", "abc", "xyz"],
     },
     {
       name: "an escaped path parameter",
@@ -162,10 +162,10 @@ describe("api keys", () => {
       expected: true,
     },
     {
-      name: "a comparison of the run",
+      name: "a comparison that names the run second",
       scope: "subtree",
-      path: "/api/runs/abc",
-      request: (context) => runsCompare({ ...context, path: { id: "abc", other: "x" } }),
+      path: "/api/compare",
+      request: (context) => runsCompare({ ...context, path: { id: "x", other: "abc" } }),
       expected: true,
     },
     {
@@ -203,14 +203,6 @@ describe("api keys", () => {
     expect(record).toStrictEqual(RECORD);
     expect(queryClient.getQueryData(apiKey(client, get))).toStrictEqual(RECORD);
     expect(server.keys()).toStrictEqual(["GET /api/runs/r1"]);
-  });
-
-  test("the URL of a request carries its base, path and query", () => {
-    const url = requestUrl(CLIENT, (context) =>
-      runsFile({ ...context, path: { id: "r 1" }, query: { path: "out/a b.nwk" } }),
-    );
-
-    expect(url).toBe("http://treetime.test/api/runs/r%201/file?path=out%2Fa%20b.nwk");
   });
 });
 

@@ -1,3 +1,7 @@
+---
+organism: "Mpox virus"
+---
+
 # `mpox/clade-ii/100`
 
 Subsample of `mpox/clade-ii/500` (100 sequences).

@@ -13,60 +13,6 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/health": {
-      "get": {
-        "description": "Liveness of the server and the version of TreeTime it runs.",
-        "operationId": "health",
-        "responses": {
-          "default": {
-            "description": "The error, with its causes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Liveness of the server.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthStatus"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/openapi.json": {
-      "get": {
-        "description": "This OpenAPI document.",
-        "operationId": "openapi",
-        "responses": {
-          "default": {
-            "description": "The error, with its causes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": true
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/version": {
       "get": {
         "description": "Version of TreeTime.",
@@ -212,6 +158,162 @@
         }
       }
     },
+    "/api/file-kinds": {
+      "post": {
+        "description": "The kind of each file (tree, alignment, metadata, configuration, run package), read from its content with the readers the commands use, or `unknown` with the reason.",
+        "operationId": "fileKinds",
+        "requestBody": {
+          "description": "Files to identify by their content, for example files that the user dropped without naming the input they fill.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileKindsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The kind of each file of a request, in the order of the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileKinds"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file-roles": {
+      "post": {
+        "description": "What the app does with each file that the user opened, from the first bytes of the file and before any upload: import it as a run package, load it as a configuration, or read it as an input.",
+        "operationId": "fileRoles",
+        "requestBody": {
+          "description": "The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before\nany upload.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileHeadsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "What TreeTime does with each file of a request, in the order of the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileRoles"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stored-inputs": {
+      "post": {
+        "description": "The input paths of a request whose stored copies are gone, because no run references their contents any more.",
+        "operationId": "storedInputs",
+        "requestBody": {
+          "description": "Input paths, for example those of a form, to look up in the store of uploaded inputs.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoredInputsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The inputs of a request that the store of uploaded inputs no longer holds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredInputs"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clock-preview": {
+      "post": {
+        "description": "The root-to-tip regression of a draft's inputs, rooting and clock filter, computed as a `clock` run computes it, without a run, and the tree in divergence units; trees above the tip limit only on request.",
+        "operationId": "clockPreview",
+        "requestBody": {
+          "description": "The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClockPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs": {
       "get": {
         "description": "Runs, newest first, and the number of runs computing now.",
@@ -265,7 +367,7 @@
             }
           },
           "200": {
-            "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
             "content": {
               "application/json": {
                 "schema": {
@@ -306,7 +408,7 @@
             }
           },
           "200": {
-            "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
             "content": {
               "application/json": {
                 "schema": {
@@ -314,6 +416,38 @@
                 }
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a run that is not computing, with its folder and the uploaded inputs that no other run references. Cancel a computing run first. A run that is already deleted answers not found.",
+        "operationId": "runsDelete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "no content"
           }
         }
       },
@@ -368,6 +502,47 @@
         }
       }
     },
+    "/api/runs/{id}/settings": {
+      "get": {
+        "description": "Settings of a run, with each input path as requests take it and without the output paths, to start a new run from the settings of this one.",
+        "operationId": "runsSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparseConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{id}/start": {
       "post": {
         "description": "Start a created run.",
@@ -408,7 +583,7 @@
             }
           },
           "200": {
-            "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
             "content": {
               "application/json": {
                 "schema": {
@@ -462,8 +637,61 @@
       }
     },
     "/api/runs/{id}/inputs": {
+      "get": {
+        "description": "Report how many bytes the next uploads of a run that has not started may add before the inputs of the run reach the upload limit.",
+        "operationId": "runsUploadAllowance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          },
+          {
+            "in": "query",
+            "name": "replaces",
+            "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
+            "schema": {
+              "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadAllowance"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
-        "description": "Remove an uploaded file from the `inputs/` folder of a run that has not started. Removing an upload that is already gone succeeds.",
+        "description": "Remove an uploaded file from a run that has not started; the file stays while another run uses it. Removing an upload that is already gone succeeds.",
         "operationId": "runsReleaseInput",
         "parameters": [
           {
@@ -587,9 +815,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -631,16 +856,13 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
     },
-    "/api/runs/{id}/compare/{other}": {
+    "/api/compare/{id}/{other}": {
       "get": {
-        "description": "Differences of the second run's results from the first run's.",
+        "description": "Differences of the second run's settings and results from the first run's. Every change of a run makes the comparisons under `/api/compare` stale.",
         "operationId": "runsCompare",
         "parameters": [
           {
@@ -686,9 +908,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -787,7 +1006,7 @@
     },
     "/api/events": {
       "get": {
-        "description": "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.",
+        "description": "Stream of changes to the runs: `run-created`, `run-updated`, and `run-removed`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the back end no longer keeps that event or the event is from an earlier back end, the stream starts with a `resync` event instead.",
         "operationId": "events",
         "parameters": [
           {
@@ -880,10 +1099,10 @@
         }
       }
     },
-    "/api/runs/{id}/archive": {
+    "/api/runs/{id}/package": {
       "get": {
-        "description": "Zip archive of the run's `out/` folder.",
-        "operationId": "runsArchive",
+        "description": "Run package of a run that has ended: a zip archive with one folder `treetime-<id>/` that holds `run.json`, `events.jsonl`, the input files in `inputs/`, the output files in `out/`, the YAML config `run.yaml`, and `command.sh`, which runs `run.yaml` with the command-line tool. Every path in `run.json` and `run.yaml` is relative to the folder.",
+        "operationId": "runsPackage",
         "parameters": [
           {
             "in": "path",
@@ -922,9 +1141,58 @@
         }
       }
     },
+    "/api/runs/import": {
+      "post": {
+        "description": "Create a run from a run package. The package must hold a run that has ended, every path in it must be relative and inside it, every input must match the size and SHA-256 that `run.json` lists, and every output file that `run.json` lists must be present. The run keeps the id of the package unless a run with that id exists. The package, as uploaded and unpacked, must fit in the upload limit.",
+        "operationId": "runsImport",
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The run package exceeds the upload limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{id}/inputs/{name}": {
       "put": {
-        "description": "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.",
+        "description": "Store a file for a run that has not started; the answer names the path to use for it in the run's configuration.",
         "operationId": "runsUploadInput",
         "parameters": [
           {
@@ -941,10 +1209,10 @@
           {
             "in": "path",
             "name": "name",
-            "description": "File name inside the run's `inputs/` folder.",
+            "description": "File name of the upload.",
             "required": true,
             "schema": {
-              "description": "File name inside the run's `inputs/` folder.",
+              "description": "File name of the upload.",
               "type": "string"
             },
             "style": "simple"
@@ -952,9 +1220,9 @@
           {
             "in": "query",
             "name": "replaces",
-            "description": "Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit of this upload.",
+            "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
             "schema": {
-              "description": "Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit of this upload.",
+              "description": "Paths of earlier uploads of the run that the upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit.",
               "type": "array",
               "items": {
                 "type": "string"
@@ -987,7 +1255,7 @@
             }
           },
           "200": {
-            "description": "A file uploaded into a run's `inputs/` folder.",
+            "description": "A file uploaded for a run that has not started.",
             "content": {
               "application/json": {
                 "schema": {
@@ -997,7 +1265,7 @@
             }
           },
           "413": {
-            "description": "The inputs of the run exceed the upload limit of the server",
+            "description": "The inputs of the run exceed the upload limit",
             "content": {
               "application/json": {
                 "schema": {
@@ -1207,6 +1475,45 @@
         }
       }
     },
+    "/api/runs/import-file": {
+      "post": {
+        "description": "Import a run package from a file on disk, with the checks and the size limit of `/api/runs/import`. Only local apps serve this path.",
+        "operationId": "runsImportFile",
+        "requestBody": {
+          "description": "A run package to import from a file on disk.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/workspace": {
       "get": {
         "description": "The runs folder in use and the default runs folder. Only local apps serve this path.",
@@ -1274,7 +1581,7 @@
     },
     "/api/runs/{id}/save": {
       "post": {
-        "description": "Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.",
+        "description": "Write an output file of a run, or its run package, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.",
         "operationId": "runsSave",
         "parameters": [
           {
@@ -1290,7 +1597,7 @@
           }
         ],
         "requestBody": {
-          "description": "Where to save an output file of a run, or the archive of all its outputs.",
+          "description": "Where to save an output file of a run, or its run package.",
           "content": {
             "application/json": {
               "schema": {
@@ -1320,24 +1627,6 @@
   },
   "components": {
     "schemas": {
-      "HealthStatus": {
-        "description": "Liveness of the server.",
-        "type": "object",
-        "properties": {
-          "status": {
-            "description": "Always `ok`.",
-            "type": "string"
-          },
-          "version": {
-            "description": "Version of TreeTime.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "status",
-          "version"
-        ]
-      },
       "VersionInfo": {
         "type": "object",
         "properties": {
@@ -1350,7 +1639,7 @@
         ]
       },
       "ErrorResponse": {
-        "description": "Error of a back-end operation, as the web server and the desktop back end report it.",
+        "description": "Error of a back-end operation, as the API routes report it.",
         "type": "object",
         "properties": {
           "code": {
@@ -1376,7 +1665,7 @@
         ]
       },
       "ErrorCode": {
-        "description": "Class of a back-end error. The web server answers each class with its own HTTP status.",
+        "description": "Class of a back-end error. The API routes answer each class with its own HTTP status.",
         "oneOf": [
           {
             "description": "The run or file does not exist.",
@@ -1384,7 +1673,7 @@
             "const": "not_found"
           },
           {
-            "description": "The inputs of a run exceed the upload limit.",
+            "description": "The inputs of a run or a run package exceed the upload limit.",
             "type": "string",
             "const": "upload_too_large"
           },
@@ -1402,16 +1691,6 @@
             "description": "The path exists, but not for the request's method.",
             "type": "string",
             "const": "method_not_allowed"
-          },
-          {
-            "description": "The server does not answer requests for the host the request names.",
-            "type": "string",
-            "const": "forbidden"
-          },
-          {
-            "description": "The server did not finish the request in time.",
-            "type": "string",
-            "const": "timeout"
           },
           {
             "description": "The back end failed.",
@@ -1449,6 +1728,24 @@
           },
           "folder": {
             "description": "Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`\nstay as they are. Unset: relative paths resolve from the working directory of the back end.",
+            "type": "string",
+            "x-unset": true
+          },
+          "choices": {
+            "description": "The options that the form picked for the choices of the command. A picked option counts while the configuration\nhas every value that picking it writes, for example `outgroup` before the user names a tip; otherwise the\nconfiguration selects the option.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveChoice"
+            },
+            "default": []
+          },
+          "run_id": {
+            "description": "Run to compare the configuration with, for example the run whose results the app shows beside the form. The\nanswer then lists the settings whose resolved values differ from those of the run.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the configuration reads, for example `ebola/100`; unset for the user's\nown files. The answer names the dataset after it.",
             "type": "string",
             "x-unset": true
           }
@@ -1532,6 +1829,10 @@
             },
             "x-unset": true
           },
+          "detected": {
+            "description": "What the readers used or found for each setting of how the input files are read, with the key of the setting\nthat overrides it.",
+            "$ref": "#/components/schemas/DetectedSettings"
+          },
           "problems": {
             "description": "Inputs that could not be read, with the reason.",
             "type": "array",
@@ -1542,6 +1843,7 @@
         },
         "required": [
           "alignments",
+          "detected",
           "problems"
         ]
       },
@@ -1579,6 +1881,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "tip_names": {
+            "description": "Names of the named tips, sorted, each once: the names that settings such as `outgroup` can name.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -1586,7 +1895,8 @@
           "internal_nodes",
           "polytomies",
           "unnamed_tips",
-          "duplicate_node_names"
+          "duplicate_node_names",
+          "tip_names"
         ]
       },
       "AlignmentFacts": {
@@ -1712,6 +2022,11 @@
             "type": "integer",
             "format": "uint",
             "minimum": 0
+          },
+          "span": {
+            "description": "Earliest and latest sampling date that the parser read; a date range counts with its first and its last day.\nAbsent when no date could be read.",
+            "$ref": "#/components/schemas/DateSpan",
+            "x-unset": true
           }
         },
         "required": [
@@ -1719,6 +2034,387 @@
           "unreadable",
           "exact_days",
           "on_day_1_or_15"
+        ]
+      },
+      "DateSpan": {
+        "description": "The earliest and the latest of a set of dates.",
+        "type": "object",
+        "properties": {
+          "earliest": {
+            "description": "The earliest date.",
+            "$ref": "#/components/schemas/YearDate"
+          },
+          "latest": {
+            "description": "The latest date.",
+            "$ref": "#/components/schemas/YearDate"
+          }
+        },
+        "required": [
+          "earliest",
+          "latest"
+        ]
+      },
+      "YearDate": {
+        "description": "A date as a decimal year and as a calendar day.",
+        "type": "object",
+        "properties": {
+          "year": {
+            "description": "The date as a decimal year, for example `2015.47`.",
+            "type": "number",
+            "format": "double"
+          },
+          "date": {
+            "description": "The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "year"
+        ]
+      },
+      "DetectedSettings": {
+        "description": "What the input readers used or found for each setting of how the input files are read, each with the key of the\nsetting that overrides it. A fact is present when the command has its setting and the readers read the input it\nconcerns.",
+        "type": "object",
+        "properties": {
+          "newick_dialect": {
+            "description": "Newick dialect the tree was read in.",
+            "$ref": "#/components/schemas/DetectedDialect",
+            "x-unset": true
+          },
+          "metadata_delimiter": {
+            "description": "Delimiter of the columns of the metadata table.",
+            "$ref": "#/components/schemas/DetectedDelimiter",
+            "x-unset": true
+          },
+          "id_column": {
+            "description": "Column of the metadata table that holds the sample names.",
+            "$ref": "#/components/schemas/DetectedColumn",
+            "x-unset": true
+          },
+          "date_column": {
+            "description": "Column of the metadata table that holds the sampling dates.",
+            "$ref": "#/components/schemas/DetectedColumn",
+            "x-unset": true
+          },
+          "date_format": {
+            "description": "Forms in which the date parser read the sampling dates, with the count of dates read.",
+            "$ref": "#/components/schemas/DetectedDateFormat",
+            "x-unset": true
+          },
+          "alphabet": {
+            "description": "Alphabet the alignments were read in.",
+            "$ref": "#/components/schemas/DetectedAlphabet",
+            "x-unset": true
+          },
+          "sequence_length": {
+            "description": "Number of sites of the sequences: the sites of every alignment file, or the `sequence_length` setting without an\nalignment.",
+            "$ref": "#/components/schemas/DetectedLength",
+            "x-unset": true
+          },
+          "partitions": {
+            "description": "Partitions of the sites of the alignment files.",
+            "$ref": "#/components/schemas/DetectedPartitions",
+            "x-unset": true
+          }
+        }
+      },
+      "DetectedDialect": {
+        "description": "The Newick dialect the tree was read in.",
+        "type": "object",
+        "properties": {
+          "dialect": {
+            "description": "The dialect as the setting spells it: `<structure>,<annotations>`, for example `classic,plain`.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Where the dialect comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the dialect.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dialect",
+          "origin",
+          "setting"
+        ]
+      },
+      "SettingOrigin": {
+        "description": "Where the value of a detected setting comes from.",
+        "oneOf": [
+          {
+            "description": "The readers found the value in the input files, among the candidates of the setting.",
+            "type": "string",
+            "const": "detected"
+          },
+          {
+            "description": "The configuration sets the value.",
+            "type": "string",
+            "const": "setting"
+          },
+          {
+            "description": "The default of the setting, which the configuration does not change.",
+            "type": "string",
+            "const": "default"
+          }
+        ]
+      },
+      "DetectedDelimiter": {
+        "description": "The delimiter of the columns of the metadata table.",
+        "type": "object",
+        "properties": {
+          "delimiter": {
+            "description": "The delimiter character, for example a tab.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Where the delimiter comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the delimiter.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delimiter",
+          "origin",
+          "setting"
+        ]
+      },
+      "DetectedColumn": {
+        "description": "A column of the metadata table.",
+        "type": "object",
+        "properties": {
+          "column": {
+            "description": "Name of the column, as the table writes it.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Where the column comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the column.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "origin",
+          "setting"
+        ]
+      },
+      "DetectedDateFormat": {
+        "description": "The forms in which the date parser read the sampling dates.",
+        "type": "object",
+        "properties": {
+          "readings": {
+            "description": "Each form the parser read dates in, with its count, the most frequent form first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DateReading"
+            }
+          },
+          "read": {
+            "description": "Number of rows whose date the parser read.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "rows": {
+            "description": "Number of rows of the table.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "origin": {
+            "description": "Where the date format comes from: `setting` when the configuration names a format that the parser tries first.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the date format.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "readings",
+          "read",
+          "rows",
+          "origin",
+          "setting"
+        ]
+      },
+      "DateReading": {
+        "description": "The dates that the parser read in one form.",
+        "type": "object",
+        "properties": {
+          "form": {
+            "description": "Form of the dates.",
+            "$ref": "#/components/schemas/DateForm"
+          },
+          "format": {
+            "description": "The format of a calendar date, in the `strftime` notation of the `date_format` setting, for example `%Y-%m-%d`.",
+            "type": "string",
+            "x-unset": true
+          },
+          "count": {
+            "description": "Number of dates read in this form.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "text": {
+            "description": "The form as a person reads it: the pattern of a calendar format, such as `YYYY-MM-DD` for `%Y-%m-%d`, or the\nname of the form, such as `decimal years`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "form",
+          "count",
+          "text"
+        ]
+      },
+      "DateForm": {
+        "description": "Form of a sampling date.",
+        "oneOf": [
+          {
+            "description": "A numeric date, a decimal year such as `2015.3`.",
+            "type": "string",
+            "const": "numeric"
+          },
+          {
+            "description": "A calendar day in the format that `format` names.",
+            "type": "string",
+            "const": "calendar"
+          },
+          {
+            "description": "A date with unknown parts, such as `2015-XX-XX`, read as the range of days it allows.",
+            "type": "string",
+            "const": "uncertain"
+          },
+          {
+            "description": "A range of two dates, such as `2015-01-01/2015-06-30`.",
+            "type": "string",
+            "const": "range"
+          }
+        ]
+      },
+      "DetectedAlphabet": {
+        "description": "The alphabet the alignments were read in.",
+        "type": "object",
+        "properties": {
+          "alphabet": {
+            "description": "The alphabet.",
+            "$ref": "#/components/schemas/AlphabetName"
+          },
+          "origin": {
+            "description": "Where the alphabet comes from.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the alphabet.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alphabet",
+          "origin",
+          "setting"
+        ]
+      },
+      "AlphabetName": {
+        "type": "string",
+        "enum": [
+          "nuc",
+          "aa",
+          "aa-no-stop"
+        ]
+      },
+      "DetectedLength": {
+        "description": "The number of sites of the sequences.",
+        "type": "object",
+        "properties": {
+          "length": {
+            "description": "Number of sites.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "origin": {
+            "description": "Where the number comes from: `detected` for the sites of the alignment files, `setting` for the\n`sequence_length` setting.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that changes the number: `alignment` for the sites of the alignment files.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "length",
+          "origin",
+          "setting"
+        ]
+      },
+      "DetectedPartitions": {
+        "description": "The partitions of the sites of the alignment files.",
+        "type": "object",
+        "properties": {
+          "partitions": {
+            "description": "Each partition, in the order of the run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartitionFacts"
+            }
+          },
+          "origin": {
+            "description": "Where the partitions come from: `default` for one partition per alignment file.",
+            "$ref": "#/components/schemas/SettingOrigin"
+          },
+          "setting": {
+            "description": "Key of the setting that overrides the partitions.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partitions",
+          "origin",
+          "setting"
+        ]
+      },
+      "PartitionFacts": {
+        "description": "One partition of the sites of an alignment file.",
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "Name of the partition in outputs and messages.",
+            "type": "string"
+          },
+          "alignment": {
+            "description": "Number of the alignment file of the partition, from 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "sites": {
+            "description": "Number of sites of the partition.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "model": {
+            "description": "Substitution model of the partition, as the `model` setting spells it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "alignment",
+          "sites",
+          "model"
         ]
       },
       "InputProblem": {
@@ -1754,6 +2450,72 @@
           "metadata",
           "alignment"
         ]
+      },
+      "ActiveChoice": {
+        "description": "The option of a choice that a configuration selects, or that the form picked.",
+        "type": "object",
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/ChoiceName"
+          },
+          "option": {
+            "$ref": "#/components/schemas/ChoiceOptionName"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "choice",
+          "option"
+        ]
+      },
+      "ChoiceName": {
+        "description": "A group of settings that the form shows as one choice.",
+        "oneOf": [
+          {
+            "description": "Estimate the clock rate, or fix it.",
+            "type": "string",
+            "const": "clock-rate"
+          },
+          {
+            "description": "Reroot the tree by a method, root it on an outgroup, or keep the input root.",
+            "type": "string",
+            "const": "root"
+          }
+        ]
+      },
+      "ChoiceOptionName": {
+        "description": "An option of a choice.",
+        "oneOf": [
+          {
+            "description": "Estimate the clock rate from the data.",
+            "type": "string",
+            "const": "estimate"
+          },
+          {
+            "description": "A fixed clock rate.",
+            "type": "string",
+            "const": "fixed"
+          },
+          {
+            "description": "Find the root that fits the molecular clock best.",
+            "type": "string",
+            "const": "reroot"
+          },
+          {
+            "description": "Root on the branch above the most recent common ancestor of named tips.",
+            "type": "string",
+            "const": "outgroup"
+          },
+          {
+            "description": "Keep the root of the input tree.",
+            "type": "string",
+            "const": "keep"
+          }
+        ]
+      },
+      "JobId": {
+        "description": "Identifier of one command run, unique among the jobs of a process.",
+        "type": "string"
       },
       "CheckConfigResponse": {
         "description": "Outcome of checking a configuration without running it.",
@@ -1806,6 +2568,14 @@
           "config_command": {
             "description": "The command line that runs the saved YAML config.",
             "type": "string"
+          },
+          "methods": {
+            "description": "A methods paragraph for a publication: the analysis, the TreeTime version, and the key settings that differ from\ntheir defaults.",
+            "type": "string"
+          },
+          "citation": {
+            "description": "The publication to cite for TreeTime.",
+            "$ref": "#/components/schemas/Citation"
           }
         },
         "required": [
@@ -1814,7 +2584,9 @@
           "yaml",
           "yaml_text",
           "config_file",
-          "config_command"
+          "config_command",
+          "methods",
+          "citation"
         ]
       },
       "CodeLine": {
@@ -1863,6 +2635,34 @@
             "type": "string",
             "const": "comment"
           }
+        ]
+      },
+      "Citation": {
+        "description": "The publication to cite for TreeTime.",
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "Reference in text form.",
+            "type": "string"
+          },
+          "short": {
+            "description": "Reference in the form a sentence cites it, for example `Sagulenko et al. 2018`.",
+            "type": "string"
+          },
+          "doi": {
+            "description": "DOI of the publication, for example `10.1093/ve/vex042`.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link to the publication.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "short",
+          "doi",
+          "url"
         ]
       },
       "RunCheck": {
@@ -1960,64 +2760,82 @@
           "key"
         ]
       },
-      "ActiveChoice": {
-        "description": "The option of a choice that a configuration selects.",
+      "EffectiveValue": {
+        "description": "The value that a run uses for a setting that the configuration leaves at its default.",
         "type": "object",
         "properties": {
-          "choice": {
-            "$ref": "#/components/schemas/ChoiceName"
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
           },
-          "option": {
-            "$ref": "#/components/schemas/ChoiceOptionName"
+          "text": {
+            "description": "The value as a short text, for example `Automatic: least-squares rerooting`.",
+            "type": "string"
           }
         },
         "required": [
-          "choice",
-          "option"
+          "key",
+          "text"
         ]
       },
-      "ChoiceName": {
-        "description": "A group of settings that the form shows as one choice.",
-        "oneOf": [
-          {
-            "description": "Estimate the clock rate, or fix it.",
-            "type": "string",
-            "const": "clock-rate"
+      "SettingCommandLine": {
+        "description": "The command-line form of a setting for its value in a configuration.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
           },
-          {
-            "description": "Reroot the tree by a method, root it on an outgroup, or keep the input root.",
+          "text": {
+            "description": "The flag and its value as a command line takes them, quoted for the shell, for example `--clock-filter 4` or\n`--outgroup 'A/x 1'`; absent when the command line leaves the setting out for this value: a switch that is off,\nan unset value, or an empty list.",
             "type": "string",
-            "const": "root"
+            "x-unset": true
           }
+        },
+        "required": [
+          "key"
         ]
       },
-      "ChoiceOptionName": {
-        "description": "An option of a choice.",
+      "SettingDifference": {
+        "description": "A setting or an input whose resolved value differs between two configurations: a draft and a run, or two runs.\nInputs differ when their file contents differ; their paths do not count.",
         "oneOf": [
           {
-            "description": "Estimate the clock rate from the data.",
-            "type": "string",
-            "const": "estimate"
+            "$ref": "#/components/schemas/SettingDifferenceSetting"
           },
           {
-            "description": "A fixed clock rate.",
+            "$ref": "#/components/schemas/SettingDifferenceInput"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "setting": "#/components/schemas/SettingDifferenceSetting",
+            "input": "#/components/schemas/SettingDifferenceInput"
+          }
+        }
+      },
+      "SettingPurpose": {
+        "description": "What a setting is for.",
+        "oneOf": [
+          {
+            "description": "How the input files are read.",
             "type": "string",
-            "const": "fixed"
+            "const": "data"
           },
           {
-            "description": "Find the root that fits the molecular clock best.",
+            "description": "A model, method, or parameter of the analysis.",
             "type": "string",
-            "const": "reroot"
+            "const": "analysis"
           },
           {
-            "description": "Root on the branch above the most recent common ancestor of named tips.",
+            "description": "What the run writes, and in which format.",
             "type": "string",
-            "const": "outgroup"
+            "const": "output"
           },
           {
-            "description": "Keep the root of the input tree.",
+            "description": "The order of the tree in the outputs, and the random seed: settings that change no inferred value.",
             "type": "string",
-            "const": "keep"
+            "const": "ordering"
           }
         ]
       },
@@ -2127,6 +2945,572 @@
           "config"
         ]
       },
+      "FileKindsRequest": {
+        "description": "Files to identify by their content, for example files that the user dropped without naming the input they fill.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "Paths of the files.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "files"
+        ]
+      },
+      "FileKinds": {
+        "description": "The kind of each file of a request, in the order of the request.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "One entry per file of the request.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DetectedFile"
+            }
+          }
+        },
+        "required": [
+          "files"
+        ]
+      },
+      "DetectedFile": {
+        "description": "The kind of one file, as the readers of the commands read it.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file, as the request gives it.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Kind of the file, from its content; the file name extension only decides which reader tries first.",
+            "$ref": "#/components/schemas/FileKind"
+          },
+          "commands": {
+            "description": "The analyses whose settings the configuration sets, for a `configuration`: the analysis that its\n`yaml-language-server` schema directive names, or else every analysis that has all of its top-level keys.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppCommand"
+            }
+          },
+          "reason": {
+            "description": "Why no reader reads the file, for an `unknown` file.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "commands"
+        ]
+      },
+      "FileKind": {
+        "description": "Kind of a file.",
+        "oneOf": [
+          {
+            "description": "A tree in Newick or Nexus format, with at least two tips.",
+            "type": "string",
+            "const": "tree"
+          },
+          {
+            "description": "Sequences in FASTA format.",
+            "type": "string",
+            "const": "alignment"
+          },
+          {
+            "description": "A table with a column of sample names.",
+            "type": "string",
+            "const": "metadata"
+          },
+          {
+            "description": "A YAML or JSON configuration of an analysis.",
+            "type": "string",
+            "const": "configuration"
+          },
+          {
+            "description": "A zip archive whose `run.json` is the record of a run.",
+            "type": "string",
+            "const": "run-package"
+          },
+          {
+            "description": "None of the above.",
+            "type": "string",
+            "const": "unknown"
+          }
+        ]
+      },
+      "FileHeadsRequest": {
+        "description": "The first bytes of files that the user opened, to tell run packages and configurations from analysis inputs before\nany upload.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "One entry per file.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileHead"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "files"
+        ]
+      },
+      "FileHead": {
+        "description": "The first bytes of one file.",
+        "type": "object",
+        "properties": {
+          "head": {
+            "description": "The first bytes of the file as text, with each byte sequence that is not UTF-8 replaced.",
+            "type": "string"
+          },
+          "complete": {
+            "description": "Whether `head` holds the whole file.",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "head",
+          "complete"
+        ]
+      },
+      "FileRoles": {
+        "description": "What TreeTime does with each file of a request, in the order of the request.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "One entry per file of the request.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileRole"
+            }
+          }
+        },
+        "required": [
+          "files"
+        ]
+      },
+      "FileRole": {
+        "description": "What TreeTime does with a file that the user opened.",
+        "oneOf": [
+          {
+            "description": "A zip archive, imported as a run package; the import reads and checks the whole package.",
+            "type": "string",
+            "const": "run-package"
+          },
+          {
+            "description": "A configuration of an analysis that the app runs, loaded into the form.",
+            "type": "string",
+            "const": "configuration"
+          },
+          {
+            "description": "Any other file, read as an input of the analysis.",
+            "type": "string",
+            "const": "input"
+          }
+        ]
+      },
+      "StoredInputsRequest": {
+        "description": "Input paths, for example those of a form, to look up in the store of uploaded inputs.",
+        "type": "object",
+        "properties": {
+          "paths": {
+            "description": "Paths of the input files, as the form holds them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "paths"
+        ]
+      },
+      "StoredInputs": {
+        "description": "The inputs of a request that the store of uploaded inputs no longer holds.",
+        "type": "object",
+        "properties": {
+          "missing": {
+            "description": "Paths of the request that name a stored input whose file is gone, because no run references its contents any\nmore, in the order of the request. Paths outside the store, such as files on the computer, are not listed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "missing"
+        ]
+      },
+      "ClockPreviewRequest": {
+        "description": "The settings of a draft to preview the root-to-tip regression of, as the `clock` command computes it.",
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "Command of the draft.",
+            "$ref": "#/components/schemas/AppCommand"
+          },
+          "config": {
+            "description": "Settings of the draft. The preview takes the settings that the `clock` command shares with the draft's command\nand that concern the input data or the analysis, such as the input files, the dates, the rooting, and the clock\nfilter, and ignores the rest.",
+            "$ref": "#/components/schemas/SparseConfig"
+          },
+          "beyond_limit": {
+            "description": "Whether to compute the preview also for a tree with more tips than `tip_limit`.",
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "command",
+          "config"
+        ]
+      },
+      "ClockPreview": {
+        "description": "The root-to-tip regression of a draft, computed as a `clock` run computes it, and its tree, without a run.",
+        "type": "object",
+        "properties": {
+          "tips": {
+            "description": "Number of tips of the tree.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "tip_limit": {
+            "description": "Largest tree, in tips, whose preview the back end computes without `beyond_limit`.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "clock": {
+            "description": "Estimates and root-to-tip regression; absent when the tree has more tips than `tip_limit` and the request does\nnot set `beyond_limit`, when the draft has no metadata, when the draft's command uses no dates, and when the\nregression fails.",
+            "$ref": "#/components/schemas/ClockResults",
+            "x-unset": true
+          },
+          "tree": {
+            "description": "The tree in divergence units, without dates; absent when the tree has more tips than `tip_limit` and the request\ndoes not set `beyond_limit`.",
+            "$ref": "#/components/schemas/PreviewTree",
+            "x-unset": true
+          },
+          "problem": {
+            "description": "Why the root-to-tip regression failed, as the CLI prints the error; the tree then has the root of the input tree\nfile.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "tips",
+          "tip_limit"
+        ]
+      },
+      "ClockResults": {
+        "description": "Results of a `clock` run.",
+        "type": "object",
+        "properties": {
+          "estimates": {
+            "description": "Estimates of the clock model.",
+            "$ref": "#/components/schemas/ClockEstimates"
+          },
+          "statistics": {
+            "description": "Statistics of the root-to-tip regression in display order; empty when the run wrote no clock model.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegressionStatistic"
+            }
+          },
+          "root_to_tip": {
+            "description": "Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.",
+            "$ref": "#/components/schemas/RootToTip",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "estimates",
+          "statistics"
+        ]
+      },
+      "ClockEstimates": {
+        "description": "Estimates of a `clock` run.",
+        "type": "object",
+        "properties": {
+          "clock_rate": {
+            "description": "Clock rate in substitutions per site per year; absent when the run wrote no clock model.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "clock_rate_fixed": {
+            "description": "Whether the clock rate was fixed by the user instead of estimated.",
+            "type": "boolean"
+          },
+          "root_date": {
+            "description": "Root date that the regression line implies: the date at which it reaches zero divergence (x-intercept).",
+            "$ref": "#/components/schemas/YearDate",
+            "x-unset": true
+          },
+          "r": {
+            "description": "Correlation coefficient of the root-to-tip regression; absent for a fixed rate.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "r_squared": {
+            "description": "Coefficient of determination of the root-to-tip regression.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "dated_samples": {
+            "description": "Number of samples with a date.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "outliers": {
+            "description": "Number of dated samples the clock filter flagged as outliers.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "clock_rate_fixed",
+          "dated_samples",
+          "outliers"
+        ]
+      },
+      "RegressionStatistic": {
+        "description": "One statistic of a root-to-tip regression, as Tempest lists them.",
+        "type": "object",
+        "properties": {
+          "statistic": {
+            "description": "Which statistic this is.",
+            "$ref": "#/components/schemas/RegressionStatisticKind"
+          },
+          "label": {
+            "description": "Name of the statistic, for example `Correlation coefficient r`.",
+            "type": "string"
+          },
+          "definition": {
+            "description": "What the statistic measures, in one or two sentences.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of a numeric value; absent for a value without a unit.",
+            "type": "string",
+            "x-unset": true
+          },
+          "value": {
+            "description": "Value of the statistic.",
+            "$ref": "#/components/schemas/StatisticValue"
+          }
+        },
+        "required": [
+          "statistic",
+          "label",
+          "definition",
+          "value"
+        ]
+      },
+      "RegressionStatisticKind": {
+        "description": "A statistic of a root-to-tip regression.",
+        "oneOf": [
+          {
+            "description": "Slope of the regression line.",
+            "type": "string",
+            "const": "clock-rate"
+          },
+          {
+            "description": "Date at which the regression line reaches zero divergence.",
+            "type": "string",
+            "const": "root-date"
+          },
+          {
+            "description": "Correlation coefficient of sampling date and divergence.",
+            "type": "string",
+            "const": "correlation-coefficient"
+          },
+          {
+            "description": "Square of the correlation coefficient.",
+            "type": "string",
+            "const": "r-squared"
+          },
+          {
+            "description": "Mean square of the divergence residuals.",
+            "type": "string",
+            "const": "residual-mean-square"
+          }
+        ]
+      },
+      "StatisticValue": {
+        "description": "Value of a regression statistic.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StatisticValueNumber"
+          },
+          {
+            "$ref": "#/components/schemas/StatisticValueDate"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "number": "#/components/schemas/StatisticValueNumber",
+            "date": "#/components/schemas/StatisticValueDate"
+          }
+        }
+      },
+      "RootToTip": {
+        "description": "The points and line of a root-to-tip regression, as TreeTime fitted it.",
+        "type": "object",
+        "properties": {
+          "points": {
+            "description": "Samples as the regression saw them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RootToTipPoint"
+            }
+          },
+          "line": {
+            "description": "Line of the clock model; absent when the run wrote no clock model.",
+            "$ref": "#/components/schemas/ClockLine",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "points"
+        ]
+      },
+      "RootToTipPoint": {
+        "description": "One sample of a root-to-tip regression.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name of the sample.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date the regression used.",
+            "$ref": "#/components/schemas/YearDate",
+            "x-unset": true
+          },
+          "date_source": {
+            "description": "Where the date came from; absent when the table does not say.",
+            "$ref": "#/components/schemas/ClockDateSource",
+            "x-unset": true
+          },
+          "div": {
+            "description": "Root-to-tip divergence the regression used.",
+            "type": "number",
+            "format": "double"
+          },
+          "predicted_date": {
+            "description": "Date the clock model predicts from the divergence.",
+            "$ref": "#/components/schemas/YearDate"
+          },
+          "residual_days": {
+            "description": "Sampling date minus the predicted date, in days.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "outlier": {
+            "description": "Whether the clock filter flagged the sample as an outlier.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "div",
+          "predicted_date",
+          "outlier"
+        ]
+      },
+      "ClockDateSource": {
+        "description": "Where the date a clock regression used for a sample came from.",
+        "oneOf": [
+          {
+            "description": "The sampling date given in the input.",
+            "type": "string",
+            "const": "input"
+          },
+          {
+            "description": "The date the time tree inferred for a sample without an input date.",
+            "type": "string",
+            "const": "inferred"
+          },
+          {
+            "description": "No date; the sample did not enter the regression.",
+            "type": "string",
+            "const": "missing"
+          }
+        ]
+      },
+      "ClockLine": {
+        "description": "Line of a clock model: divergence = rate * date + intercept.",
+        "type": "object",
+        "properties": {
+          "rate": {
+            "description": "Clock rate in substitutions per site per year.",
+            "type": "number",
+            "format": "double"
+          },
+          "intercept": {
+            "description": "Divergence at year 0.",
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "rate",
+          "intercept"
+        ]
+      },
+      "PreviewTree": {
+        "description": "The tree of a draft, as the preview draws it.",
+        "type": "object",
+        "properties": {
+          "root": {
+            "description": "Where the root of the tree comes from.",
+            "$ref": "#/components/schemas/PreviewRoot"
+          },
+          "auspice": {
+            "description": "The tree as an Auspice document, with the divergence of every node and no dates.",
+            "$ref": "#/components/schemas/AuspiceDocument"
+          }
+        },
+        "required": [
+          "root",
+          "auspice"
+        ]
+      },
+      "PreviewRoot": {
+        "description": "Where the root of a preview tree comes from.",
+        "oneOf": [
+          {
+            "description": "The root that the root-to-tip regression places, as in `clock`.",
+            "type": "string",
+            "const": "regression"
+          },
+          {
+            "description": "The root of the input tree file, because the preview has no regression: the draft has no dates, or the regression\nfailed.",
+            "type": "string",
+            "const": "input"
+          }
+        ]
+      },
+      "AuspiceDocument": {
+        "description": "Auspice JSON of a run, with the color scales the app displays.",
+        "type": "object",
+        "additionalProperties": true
+      },
       "RunList": {
         "description": "Runs, newest first, and the number of runs computing now.",
         "type": "object",
@@ -2162,6 +3546,11 @@
             "description": "Title of the run.",
             "type": "string"
           },
+          "dataset": {
+            "description": "Name of the dataset of the run: the example name, for example `ebola/100`, else the file name of the tree input;\nabsent for a run without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "command": {
             "description": "Command the run executes.",
             "$ref": "#/components/schemas/AppCommand"
@@ -2173,6 +3562,21 @@
           "pinned": {
             "description": "Whether the run is pinned.",
             "type": "boolean"
+          },
+          "source_run_id": {
+            "description": "Run whose settings this run started from. The source may have been deleted since.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
           },
           "created_at": {
             "description": "Time the run was created.",
@@ -2190,8 +3594,15 @@
             "x-unset": true
           },
           "config_hash": {
-            "description": "Hash that identifies runs with the same settings and input contents.",
+            "description": "Hash that identifies runs with the same settings and input contents, leaving out the seed: runs with the same\nhash have the same settings when they have the same `seed`.",
             "type": "string",
+            "x-unset": true
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
             "x-unset": true
           },
           "changed_settings": {
@@ -2204,6 +3615,18 @@
           "headline": {
             "description": "Key results of a finished run.",
             "$ref": "#/components/schemas/RunHeadline"
+          },
+          "package_name": {
+            "description": "Name to save the run package under: the run's title and the start of its id, as in the names of its output\nfiles, for example `ebola-100-time-tree-1a2b3c4d.zip`.",
+            "type": "string"
+          },
+          "log_name": {
+            "description": "Name to save the log of the run under, for example `ebola-100-time-tree-1a2b3c4d.log.txt`.",
+            "type": "string"
+          },
+          "config_name": {
+            "description": "Name to save the configuration of the run under, for example `ebola-100-time-tree-1a2b3c4d.yaml`.",
+            "type": "string"
           }
         },
         "required": [
@@ -2212,14 +3635,15 @@
           "command",
           "status",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "changed_settings",
-          "headline"
+          "headline",
+          "package_name",
+          "log_name",
+          "config_name"
         ]
-      },
-      "JobId": {
-        "description": "Identifier of one command run, unique among the jobs of a process.",
-        "type": "string"
       },
       "RunStatus": {
         "description": "State of a run.",
@@ -2261,7 +3685,7 @@
         "type": "object",
         "properties": {
           "root_date": {
-            "description": "Date of the root of a time tree.",
+            "description": "Date of the root: of the time tree, or where the root-to-tip regression of a clock run reaches zero divergence.",
             "$ref": "#/components/schemas/YearDate",
             "x-unset": true
           },
@@ -2283,25 +3707,6 @@
             "x-unset": true
           }
         }
-      },
-      "YearDate": {
-        "description": "A date as a decimal year and as a calendar day.",
-        "type": "object",
-        "properties": {
-          "year": {
-            "description": "The date as a decimal year, for example `2015.47`.",
-            "type": "number",
-            "format": "double"
-          },
-          "date": {
-            "description": "The calendar day of the date: `YYYY-MM-DD` for the years 0 to 9999, and the signed five-digit year of FITS and ISO 8601 for other years, for example `-01910-05-30`. Year 0 is 1 BCE. Absent when the decimal year lies outside the years -262143 to 262142.",
-            "type": "string",
-            "x-unset": true
-          }
-        },
-        "required": [
-          "year"
-        ]
       },
       "JsonFloat": {
         "description": "A number; infinities and NaN are the strings \"inf\", \"-inf\" and \"nan\".",
@@ -2335,6 +3740,16 @@
             "description": "Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.",
             "type": "boolean",
             "default": false
+          },
+          "source_run_id": {
+            "description": "Run whose settings the new run starts from, such as the source of a variant.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; unset for the user's own files.\nThe run's name starts with it.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "additionalProperties": false,
@@ -2344,7 +3759,7 @@
         ]
       },
       "RunRecord": {
-        "description": "Durable record of one command run, stored as `run.json` in the run's folder.",
+        "description": "Durable record of one command run, stored as `run.json` in the run's folder. Every path in the record that lies in\nthe run's folder or in the store of uploaded inputs is relative to the run's folder: uploads appear as\n`inputs/<name>`, or `inputs/<n>/<name>` when two different uploads share a name, and outputs below `out/`. Inputs\nread from elsewhere keep their absolute paths.",
         "oneOf": [
           {
             "$ref": "#/components/schemas/RunRecordTimetree"
@@ -2382,7 +3797,7 @@
             "type": "string"
           },
           "path": {
-            "description": "Path of the file, as the run read it.",
+            "description": "Path of the file: `inputs/<name>` or `inputs/<n>/<name>` relative to the run's folder for an uploaded file;\na path in the folder of an entry of `input_sets`, such as `inputs/<setting>/...`, for a file of a path template\nthat the input store keeps; the absolute path for a file read from elsewhere.",
             "type": "string"
           },
           "size": {
@@ -2401,6 +3816,42 @@
           "path",
           "size",
           "sha256"
+        ]
+      },
+      "InputSet": {
+        "description": "Folder of a path template whose files the input store keeps as one set.",
+        "type": "object",
+        "properties": {
+          "folder": {
+            "description": "Folder of the files relative to the run's folder, `inputs/<setting>`; the template and its files lie in it.",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "Key of the set in the input store: the SHA-256, as lowercase hexadecimal, of the sorted lines `<sha256>  <path>`,\none per file, with the file's SHA-256 and its path relative to the folder.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder",
+          "sha256"
+        ]
+      },
+      "StoredInput": {
+        "description": "Key of a file in the input store: the SHA-256 of its contents and its file name.",
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "description": "SHA-256 of the file contents, as lowercase hexadecimal.",
+            "type": "string"
+          },
+          "name": {
+            "description": "File name of the upload.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "name"
         ]
       },
       "OutputFile": {
@@ -2565,11 +4016,19 @@
             "items": {
               "type": "string"
             }
+          },
+          "settings": {
+            "description": "Keys of the settings whose command-line flags the error and its causes name, in the order they name them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "message",
-          "causes"
+          "causes",
+          "settings"
         ]
       },
       "UpdateRunRequest": {
@@ -2602,6 +4061,16 @@
             "description": "Configuration that replaces the one given at creation, for example to point at uploaded inputs.",
             "$ref": "#/components/schemas/SparseConfig",
             "x-unset": true
+          },
+          "source_run_id": {
+            "description": "Run whose settings the run starts from; replaces the one given at creation.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; replaces the one given at\ncreation, for example when the user opened an example after the run that holds the uploads was created. The run's\nname starts with it.",
+            "type": "string",
+            "x-unset": true
           }
         },
         "additionalProperties": false
@@ -2613,10 +4082,44 @@
           "cancelled": {
             "description": "Whether cancellation was requested; the run ends with a `cancelled` terminal event.",
             "type": "boolean"
+          },
+          "from": {
+            "description": "Sequence number from which to read the run's events to wait for its terminal event; absent when nothing was\ncancelled.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           }
         },
         "required": [
           "cancelled"
+        ]
+      },
+      "UploadAllowance": {
+        "description": "Bytes that the uploads of a run that has not started may add before its inputs reach the upload limit.",
+        "type": "object",
+        "properties": {
+          "remaining": {
+            "description": "Bytes that the next uploads may add in total; the files that the request names as replaced do not count.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "limit": {
+            "description": "Limit of the total size of the inputs of a run, in bytes.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "limit_text": {
+            "description": "The limit as the upload errors name it, such as `1 GiB`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "remaining",
+          "limit",
+          "limit_text"
         ]
       },
       "RunFile": {
@@ -2625,6 +4128,14 @@
         "properties": {
           "path": {
             "description": "Path relative to the run's `out/` folder, with `/` separators.",
+            "type": "string"
+          },
+          "download_name": {
+            "description": "Name to save the file under: the run's title, the start of its id, and the path, so that the files of different\nruns do not share a name, for example `ebola-100-time-tree-1a2b3c4d.timetree.nwk`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Short name of the file with its format, for example `Dated tree (Newick, branch lengths in years)`; the file name\nfor files the output plan does not name.",
             "type": "string"
           },
           "size": {
@@ -2642,6 +4153,10 @@
             "description": "What the file holds; empty for files the output plan does not name.",
             "type": "string"
           },
+          "main": {
+            "description": "Whether the file is one of the main formats of the command, which the Download menu offers. The list holds these\nfiles first, in menu order, then the other files by path.",
+            "type": "boolean"
+          },
           "alignment": {
             "description": "Alignment file the output belongs to, for an output written once per alignment file.",
             "$ref": "#/components/schemas/OutputAlignment",
@@ -2650,8 +4165,11 @@
         },
         "required": [
           "path",
+          "download_name",
+          "label",
           "size",
-          "description"
+          "description",
+          "main"
         ]
       },
       "RunResults": {
@@ -2676,12 +4194,8 @@
             "description": "Results specific to the command of the run.",
             "$ref": "#/components/schemas/CommandResults"
           },
-          "citation": {
-            "description": "The publication to cite.",
-            "$ref": "#/components/schemas/Citation"
-          },
           "problems": {
-            "description": "Output files that could not be read.",
+            "description": "Output files, and the input tree of an `optimize` or `prune` run, that could not be read.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OutputProblem"
@@ -2691,7 +4205,6 @@
         "required": [
           "models",
           "results",
-          "citation",
           "problems"
         ]
       },
@@ -3097,6 +4610,13 @@
             "$ref": "#/components/schemas/TimetreeEstimates",
             "x-unset": true
           },
+          "statistics": {
+            "description": "Statistics of the root-to-tip regression of the final clock model in display order; empty when the run wrote no\nclock model.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegressionStatistic"
+            }
+          },
           "root_to_tip": {
             "description": "Samples and line of the final clock model; absent when the run wrote no clock regression table.",
             "$ref": "#/components/schemas/RootToTip",
@@ -3118,6 +4638,7 @@
           }
         },
         "required": [
+          "statistics",
           "iterations",
           "skyline"
         ]
@@ -3138,6 +4659,10 @@
           },
           "root_near_interval_edge": {
             "description": "Whether the root date lies within 5% of the interval width from a bound of its interval.",
+            "type": "boolean"
+          },
+          "interval_computable": {
+            "description": "Whether a rerun with confidence intervals on adds the root-date interval: the root is dated, and the run computed\nno interval because its `confidence` setting was off.",
             "type": "boolean"
           },
           "clock_rate": {
@@ -3189,10 +4714,18 @@
             "description": "Coalescent prior the run used.",
             "$ref": "#/components/schemas/CoalescentPrior"
           },
+          "coalescent_summary": {
+            "description": "The coalescent prior in words, for example `Skyline, 20 points, stiffness 2`.",
+            "type": "string"
+          },
           "relaxed_clock": {
             "description": "Relaxed clock the run used.",
             "$ref": "#/components/schemas/RelaxedClock",
             "x-unset": true
+          },
+          "clock_model_summary": {
+            "description": "The clock model in words: `Strict clock`, or the relaxed clock with its parameters.",
+            "type": "string"
           },
           "log_likelihood": {
             "description": "Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).",
@@ -3208,10 +4741,13 @@
         },
         "required": [
           "root_near_interval_edge",
+          "interval_computable",
           "clock_rate_fixed",
           "samples",
           "excluded_samples",
           "coalescent_prior",
+          "coalescent_summary",
+          "clock_model_summary",
           "iterations"
         ]
       },
@@ -3274,112 +4810,6 @@
         "required": [
           "slack",
           "coupling"
-        ]
-      },
-      "RootToTip": {
-        "description": "The points and line of a root-to-tip regression, as TreeTime fitted it.",
-        "type": "object",
-        "properties": {
-          "points": {
-            "description": "Samples as the regression saw them.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RootToTipPoint"
-            }
-          },
-          "line": {
-            "description": "Line of the clock model; absent when the run wrote no clock model.",
-            "$ref": "#/components/schemas/ClockLine",
-            "x-unset": true
-          }
-        },
-        "required": [
-          "points"
-        ]
-      },
-      "RootToTipPoint": {
-        "description": "One sample of a root-to-tip regression.",
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "Name of the sample.",
-            "type": "string"
-          },
-          "date": {
-            "description": "Date the regression used.",
-            "$ref": "#/components/schemas/YearDate",
-            "x-unset": true
-          },
-          "date_source": {
-            "description": "Where the date came from; absent when the table does not say.",
-            "$ref": "#/components/schemas/ClockDateSource",
-            "x-unset": true
-          },
-          "div": {
-            "description": "Root-to-tip divergence the regression used.",
-            "type": "number",
-            "format": "double"
-          },
-          "predicted_date": {
-            "description": "Date the clock model predicts from the divergence.",
-            "$ref": "#/components/schemas/YearDate"
-          },
-          "residual_days": {
-            "description": "Sampling date minus the predicted date, in days.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "outlier": {
-            "description": "Whether the clock filter flagged the sample as an outlier.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "name",
-          "div",
-          "predicted_date",
-          "outlier"
-        ]
-      },
-      "ClockDateSource": {
-        "description": "Where the date a clock regression used for a sample came from.",
-        "oneOf": [
-          {
-            "description": "The sampling date given in the input.",
-            "type": "string",
-            "const": "input"
-          },
-          {
-            "description": "The date the time tree inferred for a sample without an input date.",
-            "type": "string",
-            "const": "inferred"
-          },
-          {
-            "description": "No date; the sample did not enter the regression.",
-            "type": "string",
-            "const": "missing"
-          }
-        ]
-      },
-      "ClockLine": {
-        "description": "Line of a clock model: divergence = rate * date + intercept.",
-        "type": "object",
-        "properties": {
-          "rate": {
-            "description": "Clock rate in substitutions per site per year.",
-            "type": "number",
-            "format": "double"
-          },
-          "intercept": {
-            "description": "Divergence at year 0.",
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "required": [
-          "rate",
-          "intercept"
         ]
       },
       "IterationRow": {
@@ -3478,69 +4908,6 @@
           "value"
         ]
       },
-      "ClockResults": {
-        "description": "Results of a `clock` run.",
-        "type": "object",
-        "properties": {
-          "estimates": {
-            "description": "Estimates of the clock model.",
-            "$ref": "#/components/schemas/ClockEstimates"
-          },
-          "root_to_tip": {
-            "description": "Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.",
-            "$ref": "#/components/schemas/RootToTip",
-            "x-unset": true
-          }
-        },
-        "required": [
-          "estimates"
-        ]
-      },
-      "ClockEstimates": {
-        "description": "Estimates of a `clock` run.",
-        "type": "object",
-        "properties": {
-          "clock_rate": {
-            "description": "Clock rate in substitutions per site per year; absent when the run wrote no clock model.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "clock_rate_fixed": {
-            "description": "Whether the clock rate was fixed by the user instead of estimated.",
-            "type": "boolean"
-          },
-          "r": {
-            "description": "Correlation coefficient of the root-to-tip regression; absent for a fixed rate.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "r_squared": {
-            "description": "Coefficient of determination of the root-to-tip regression.",
-            "type": "number",
-            "format": "double",
-            "x-unset": true
-          },
-          "dated_samples": {
-            "description": "Number of samples with a date.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          },
-          "outliers": {
-            "description": "Number of dated samples the clock filter flagged as outliers.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "clock_rate_fixed",
-          "dated_samples",
-          "outliers"
-        ]
-      },
       "AncestralResults": {
         "description": "Results of an `ancestral` run.",
         "type": "object",
@@ -3622,70 +4989,65 @@
           "branches"
         ]
       },
-      "TreeSummary": {
-        "description": "Summary of a tree an `optimize` or `prune` run wrote.",
+      "TreeChange": {
+        "description": "The tree before and after an `optimize` or `prune` run.",
         "type": "object",
         "properties": {
-          "samples": {
-            "description": "Number of samples.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          },
-          "internal_nodes": {
-            "description": "Number of internal nodes.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          },
           "mutations": {
-            "description": "Number of nucleotide mutations on all branches.",
+            "description": "Number of nucleotide mutations on all branches of the tree the run wrote.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
           },
-          "total_branch_length": {
-            "description": "Sum of the branch lengths in the node data file.",
+          "rows": {
+            "description": "The statistics of both trees by name, in the order to show them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreeStatisticRow"
+            }
+          }
+        },
+        "required": [
+          "mutations",
+          "rows"
+        ]
+      },
+      "TreeStatisticRow": {
+        "description": "One statistic of the input tree and the result tree.",
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "Name of the statistic.",
+            "type": "string"
+          },
+          "count": {
+            "description": "Whether the statistic counts nodes; otherwise it is a length in substitutions per site.",
+            "type": "boolean"
+          },
+          "before": {
+            "description": "Value for the input tree; absent when it cannot be read, and the problems of the results name the cause.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "after": {
+            "description": "Value for the tree the run wrote; absent when the run wrote no Auspice tree.",
             "type": "number",
             "format": "double",
             "x-unset": true
           }
         },
         "required": [
-          "samples",
-          "internal_nodes",
-          "mutations"
-        ]
-      },
-      "Citation": {
-        "description": "The publication to cite for TreeTime.",
-        "type": "object",
-        "properties": {
-          "text": {
-            "description": "Reference in text form.",
-            "type": "string"
-          },
-          "doi": {
-            "description": "DOI of the publication, for example `10.1093/ve/vex042`.",
-            "type": "string"
-          },
-          "url": {
-            "description": "Link to the publication.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text",
-          "doi",
-          "url"
+          "label",
+          "count"
         ]
       },
       "OutputProblem": {
-        "description": "An output file of a run that could not be read.",
+        "description": "A file of a run that could not be read.",
         "type": "object",
         "properties": {
           "path": {
-            "description": "Path of the file relative to the run's `out/` folder.",
+            "description": "Path of the file: relative to the run's `out/` folder for an output file, as the run resolved it for an input.",
             "type": "string"
           },
           "message": {
@@ -3698,18 +5060,22 @@
           "message"
         ]
       },
-      "AuspiceDocument": {
-        "description": "Auspice JSON of a run, with the color scales the app displays.",
-        "type": "object",
-        "additionalProperties": true
-      },
       "RunComparison": {
         "description": "Comparison of two runs: their settings and their results.",
         "type": "object",
         "properties": {
+          "same_analysis": {
+            "description": "Whether both runs are the same analysis, that is, they execute the same command. Runs of different analyses have\nno settings comparison and no estimates.",
+            "type": "boolean"
+          },
           "settings": {
-            "description": "Settings and inputs that differ; absent when the runs execute different commands.",
+            "description": "Settings and inputs that differ; absent when the runs are different analyses.",
             "$ref": "#/components/schemas/SettingsComparison",
+            "x-unset": true
+          },
+          "delta": {
+            "description": "Changes of the root date and the clock rate, for a one-line summary; present when both runs are finished\ntime-tree runs or finished clock runs, and at least one of the two estimates is known in both.",
+            "$ref": "#/components/schemas/EstimateDelta",
             "x-unset": true
           },
           "estimates": {
@@ -3722,14 +5088,17 @@
             "$ref": "#/components/schemas/AncestorComparison",
             "x-unset": true
           }
-        }
+        },
+        "required": [
+          "same_analysis"
+        ]
       },
       "SettingsComparison": {
-        "description": "Settings and inputs that differ between two runs of the same command.",
+        "description": "Settings and inputs that differ between two runs of the same command. The settings that the app sets for every\nrun, the output files and their paths, are not compared.",
         "type": "object",
         "properties": {
           "differences": {
-            "description": "Settings and inputs whose values differ.",
+            "description": "Settings whose resolved values differ, and inputs whose file contents differ.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SettingDifference"
@@ -3741,34 +5110,41 @@
             "format": "uint",
             "minimum": 0
           },
-          "same_config_hash": {
-            "description": "Whether both runs have the same configuration hash: the same settings on the same input contents.",
+          "same_config": {
+            "description": "Whether both runs have the same settings, the seed of the random step included, on the same input contents.",
             "type": "boolean"
           }
         },
         "required": [
           "differences",
           "compared",
-          "same_config_hash"
+          "same_config"
         ]
       },
-      "SettingDifference": {
-        "description": "A setting whose value differs between two runs.",
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/SettingDifferenceSetting"
+      "EstimateDelta": {
+        "description": "Changes of the main estimates from the first run to the second.",
+        "type": "object",
+        "properties": {
+          "root_date_days": {
+            "description": "Root date of the second run minus the root date of the first, in days: the dated root of a time tree, or the\nx-intercept of the root-to-tip regression of a clock run.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
           },
-          {
-            "$ref": "#/components/schemas/SettingDifferenceInput"
+          "clock_rate_percent": {
+            "description": "Change of the clock rate, in percent of the first rate.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "summary": {
+            "description": "The changes in one line, for example `Root date -46 d, clock rate -7.9 %`.",
+            "type": "string"
           }
-        ],
-        "discriminator": {
-          "propertyName": "kind",
-          "mapping": {
-            "setting": "#/components/schemas/SettingDifferenceSetting",
-            "input": "#/components/schemas/SettingDifferenceInput"
-          }
-        }
+        },
+        "required": [
+          "summary"
+        ]
       },
       "EstimateComparison": {
         "description": "Estimates of two time-tree runs and their differences, second minus first.",
@@ -3806,16 +5182,54 @@
             "format": "int64"
           },
           "log_likelihood_change": {
-            "description": "Change of the total log likelihood; absent when either value is missing or not finite.",
+            "description": "Change of the total log likelihood; absent when either value is missing or not finite, or when\n`log_likelihood_mismatches` is not empty.",
             "type": "number",
             "format": "double",
+            "x-unset": true
+          },
+          "log_likelihood_mismatches": {
+            "description": "Why the log likelihoods of the two runs cannot be compared; empty when they can.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LikelihoodMismatch"
+            }
+          },
+          "log_likelihood_not_comparable": {
+            "description": "The mismatches in words, for example `different data, different coalescent prior`; absent when the log\nlikelihoods can be compared.",
+            "type": "string",
             "x-unset": true
           }
         },
         "required": [
           "first",
           "second",
-          "excluded_samples_change"
+          "excluded_samples_change",
+          "log_likelihood_mismatches"
+        ]
+      },
+      "LikelihoodMismatch": {
+        "description": "A difference between two time-tree runs that changes what their log likelihoods measure, so that their difference\nis no measure of fit.",
+        "oneOf": [
+          {
+            "description": "The runs read different input data: different file contents, or different settings of how the files are read.",
+            "type": "string",
+            "const": "data"
+          },
+          {
+            "description": "The runs use different substitution models.",
+            "type": "string",
+            "const": "substitution-model"
+          },
+          {
+            "description": "The runs use different coalescent priors.",
+            "type": "string",
+            "const": "coalescent-prior"
+          },
+          {
+            "description": "The trees of the runs differ in topology, for example because the runs resolved polytomies with different\nrandom seeds or polytomy settings: each node that the resolution adds lowers the log likelihood. Also when a run\nwrote no tree.",
+            "type": "string",
+            "const": "topology"
+          }
         ]
       },
       "AncestorComparison": {
@@ -4191,6 +5605,9 @@
             "$ref": "#/components/schemas/AppEventRunUpdated"
           },
           {
+            "$ref": "#/components/schemas/AppEventRunRemoved"
+          },
+          {
             "$ref": "#/components/schemas/AppEventExamplesDownload"
           },
           {
@@ -4202,6 +5619,7 @@
           "mapping": {
             "run-created": "#/components/schemas/AppEventRunCreated",
             "run-updated": "#/components/schemas/AppEventRunUpdated",
+            "run-removed": "#/components/schemas/AppEventRunRemoved",
             "examples-download": "#/components/schemas/AppEventExamplesDownload",
             "resync": "#/components/schemas/AppEventResync"
           }
@@ -4267,15 +5685,15 @@
         }
       },
       "UploadedInput": {
-        "description": "A file uploaded into a run's `inputs/` folder.",
+        "description": "A file uploaded for a run that has not started.",
         "type": "object",
         "properties": {
           "name": {
-            "description": "File name inside the run's `inputs/` folder.",
+            "description": "File name of the upload.",
             "type": "string"
           },
           "path": {
-            "description": "Path to use for the file in the run's configuration.",
+            "description": "Path to use for the file in the configurations of runs, checks, and other requests.",
             "type": "string"
           },
           "size": {
@@ -4358,6 +5776,13 @@
             "minimum": 0,
             "x-unset": true
           },
+          "options_width": {
+            "description": "Width of the options panel of the analysis workspace in pixels.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0,
+            "x-unset": true
+          },
           "draft": {
             "description": "The unfinished analysis form.",
             "$ref": "#/components/schemas/UiDraft",
@@ -4411,6 +5836,18 @@
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
           },
+          "example": {
+            "description": "Name of the example dataset whose files the form holds, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
+          },
+          "choices": {
+            "description": "The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveChoice"
+            }
+          },
           "view": {
             "$ref": "#/components/schemas/UiSettingsView"
           },
@@ -4431,6 +5868,7 @@
           "command",
           "config",
           "sources",
+          "choices",
           "view",
           "search",
           "changed_only",
@@ -4471,31 +5909,35 @@
         "description": "Where an input file of the form came from.",
         "oneOf": [
           {
-            "description": "An example dataset.",
-            "type": "string",
-            "const": "dataset"
+            "$ref": "#/components/schemas/UiDraftOriginDataset"
           },
           {
-            "description": "A file uploaded to the server.",
-            "type": "string",
-            "const": "upload"
+            "$ref": "#/components/schemas/UiDraftOriginExample"
           },
           {
-            "description": "A file on the computer that runs TreeTime.",
-            "type": "string",
-            "const": "local"
+            "$ref": "#/components/schemas/UiDraftOriginUpload"
           },
           {
-            "description": "An input of an earlier run.",
-            "type": "string",
-            "const": "run"
+            "$ref": "#/components/schemas/UiDraftOriginLocal"
           },
           {
-            "description": "A path from a loaded configuration file.",
-            "type": "string",
-            "const": "config"
+            "$ref": "#/components/schemas/UiDraftOriginRun"
+          },
+          {
+            "$ref": "#/components/schemas/UiDraftOriginConfig"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "dataset": "#/components/schemas/UiDraftOriginDataset",
+            "example": "#/components/schemas/UiDraftOriginExample",
+            "upload": "#/components/schemas/UiDraftOriginUpload",
+            "local": "#/components/schemas/UiDraftOriginLocal",
+            "run": "#/components/schemas/UiDraftOriginRun",
+            "config": "#/components/schemas/UiDraftOriginConfig"
+          }
+        }
       },
       "UiSettingsView": {
         "description": "Which settings the form shows.",
@@ -4636,12 +6078,45 @@
             "items": {
               "$ref": "#/components/schemas/IndexedInput"
             }
+          },
+          "organism": {
+            "description": "Organism of the samples, from the `organism` field of the front matter of the folder's `README.md`, for example\n`Zika virus`.",
+            "type": "string"
+          },
+          "segment": {
+            "description": "Genome segment of the sequences, for a segmented genome, from the `segment` field of the same front matter, for\nexample `NA`.",
+            "type": "string",
+            "x-unset": true
+          },
+          "samples": {
+            "description": "Number of samples: the tips of the tree.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "dates": {
+            "description": "Earliest and latest sampling date of the metadata, when the dataset has dates.",
+            "$ref": "#/components/schemas/DateSpan",
+            "x-unset": true
+          },
+          "sequence_length": {
+            "description": "Number of sites of the alignment, when the dataset has an alignment.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-unset": true
+          },
+          "settings": {
+            "description": "Settings that the commands need to read the files of the dataset, in configuration form, from the `settings`\nfield of the front matter of the folder's `README.md`, for example `metadata_id_columns: [genbank_accession]`\nwhen the tip names of the tree are in a metadata column that is not one of the default name columns. The facts\nof the dataset are read with these settings. Left out when the dataset needs none.",
+            "$ref": "#/components/schemas/SparseConfig"
           }
         },
         "additionalProperties": false,
         "required": [
           "name",
-          "inputs"
+          "inputs",
+          "organism",
+          "samples"
         ]
       },
       "IndexedInput": {
@@ -4773,6 +6248,20 @@
           "download"
         ]
       },
+      "ImportFileRequest": {
+        "description": "A run package to import from a file on disk.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path of the run package.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "path"
+        ]
+      },
       "Workspace": {
         "description": "The runs folder of the running back end, and the folder used when the settings name none.",
         "type": "object",
@@ -4814,11 +6303,11 @@
         "additionalProperties": false
       },
       "SaveRunRequest": {
-        "description": "Where to save an output file of a run, or the archive of all its outputs.",
+        "description": "Where to save an output file of a run, or its run package.",
         "type": "object",
         "properties": {
           "path": {
-            "description": "Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.",
+            "description": "Path of the file relative to the run's `out/` folder. Unset: the run package, a zip archive that recreates the\nrun in the app and reproduces it with the command-line tool.",
             "type": "string",
             "x-unset": true
           },
@@ -4839,6 +6328,10 @@
           "command": {
             "description": "The command.",
             "$ref": "#/components/schemas/AppCommand"
+          },
+          "command_line": {
+            "description": "The command as the command line runs it, for example `treetime timetree`.",
+            "type": "string"
           },
           "title": {
             "description": "Name of the analysis as the app shows it, for example `Time tree`.",
@@ -4866,8 +6359,22 @@
               "type": "string"
             }
           },
-          "main_settings": {
-            "description": "Keys of the settings the form shows first, in the order it shows them.",
+          "sections": {
+            "description": "Sections of the settings form in display order, one per purpose: the settings of the purpose that the app does not\nset, by group.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingSection"
+            }
+          },
+          "main_rows": {
+            "description": "The settings the form shows first, in rows of settings that it edits together, in the order it shows them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MainSettingRow"
+            }
+          },
+          "preview_settings": {
+            "description": "Keys of the settings that the clock preview reads: the input data and analysis settings that the `clock` command\nshares with this command, in catalog order. The preview of a draft changes only when one of them changes.",
             "type": "array",
             "items": {
               "type": "string"
@@ -4890,12 +6397,15 @@
         },
         "required": [
           "command",
+          "command_line",
           "title",
           "description",
           "inputs",
           "uses_dates",
           "groups",
-          "main_settings",
+          "sections",
+          "main_rows",
+          "preview_settings",
           "choices",
           "settings"
         ]
@@ -4961,6 +6471,161 @@
           }
         ]
       },
+      "SettingSection": {
+        "description": "One section of the settings form: the settings of one purpose.",
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "description": "Purpose of the settings of the section.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "title": {
+            "description": "Heading of the section, for example `Output format`.",
+            "type": "string"
+          },
+          "groups": {
+            "description": "Groups of the section, in the order of `groups`; each has a setting of the purpose that the app does not set.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "purpose",
+          "title",
+          "groups"
+        ]
+      },
+      "MainSettingRow": {
+        "description": "One row of the main settings: one or more settings that the form shows and edits together.",
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "Name of the row, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Short line under the name, for example `Tree prior on node times`.",
+            "type": "string",
+            "x-unset": true
+          },
+          "settings": {
+            "description": "The settings of the row, in the order the row shows them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowSetting"
+            }
+          },
+          "control": {
+            "description": "The control that edits the settings.",
+            "$ref": "#/components/schemas/RowControl"
+          }
+        },
+        "required": [
+          "label",
+          "settings",
+          "control"
+        ]
+      },
+      "RowSetting": {
+        "description": "One setting of a row of the main settings.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the setting inside the row, for example `Rate` in the row `Clock rate`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ]
+      },
+      "RowControl": {
+        "description": "Control of a row of the main settings.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RowControlChoice"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlSwitches"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlCoalescent"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlClockFilter"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlSubstitutionModel"
+          },
+          {
+            "$ref": "#/components/schemas/RowControlSetting"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "choice": "#/components/schemas/RowControlChoice",
+            "switches": "#/components/schemas/RowControlSwitches",
+            "coalescent": "#/components/schemas/RowControlCoalescent",
+            "clock-filter": "#/components/schemas/RowControlClockFilter",
+            "substitution-model": "#/components/schemas/RowControlSubstitutionModel",
+            "setting": "#/components/schemas/RowControlSetting"
+          }
+        }
+      },
+      "RowSwitch": {
+        "description": "A switch of a row of the main settings.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the setting the switch turns on or off.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text beside the switch.",
+            "type": "string"
+          },
+          "inverted": {
+            "description": "Whether the switch is on while the setting is off: the setting turns off a step that runs by default.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "text",
+          "inverted"
+        ]
+      },
+      "RowOption": {
+        "description": "An option of a row of the main settings.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The option, for example `skyline`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the option, for example `Skyline`.",
+            "type": "string"
+          },
+          "note": {
+            "description": "What the option does, as the form shows it while the option is picked.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ]
+      },
       "SettingChoice": {
         "description": "Settings that the form shows as one choice between options, for example the clock rate.",
         "type": "object",
@@ -4996,6 +6661,15 @@
           "option": {
             "$ref": "#/components/schemas/ChoiceOptionName"
           },
+          "label": {
+            "description": "Name of the option, for example `Fixed rate`.",
+            "type": "string"
+          },
+          "note": {
+            "description": "What the option does, as the form shows it while the option is picked.",
+            "type": "string",
+            "x-unset": true
+          },
           "patch": {
             "description": "Changes that picking the option makes: settings it writes, and settings it removes so that they take their\ndefaults.",
             "type": "array",
@@ -5013,6 +6687,7 @@
         },
         "required": [
           "option",
+          "label",
           "patch",
           "settings"
         ]
@@ -5036,6 +6711,14 @@
           "group": {
             "description": "Heading of the setting in `--help`.",
             "type": "string"
+          },
+          "purpose": {
+            "description": "What the setting is for, which places it in the form.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "set_by_app": {
+            "description": "Whether the app sets the setting for every run, as it does for the output files and their selection, so that\nthe form does not offer it and comparisons of configurations skip it.",
+            "type": "boolean"
           },
           "role": {
             "description": "What the setting names: a file, or a value.",
@@ -5118,6 +6801,8 @@
           "label",
           "flag",
           "group",
+          "purpose",
+          "set_by_app",
           "role",
           "kind",
           "nullable",
@@ -5214,6 +6899,10 @@
             "description": "The value, as the configuration spells it.",
             "type": "string"
           },
+          "label": {
+            "description": "Name of the value as the form shows it, for example `Least squares`.",
+            "type": "string"
+          },
           "help": {
             "description": "Description of the value, when it has one.",
             "type": "string"
@@ -5221,6 +6910,7 @@
         },
         "required": [
           "value",
+          "label",
           "help"
         ]
       },
@@ -5373,14 +7063,6 @@
             "type": "string",
             "const": "infer"
           }
-        ]
-      },
-      "AlphabetName": {
-        "type": "string",
-        "enum": [
-          "nuc",
-          "aa",
-          "aa-no-stop"
         ]
       },
       "RerootMethod": {
@@ -7345,6 +9027,33 @@
               "$ref": "#/components/schemas/ActiveChoice"
             }
           },
+          "effective": {
+            "description": "The value the run uses for each setting that the configuration leaves at its default, as a short text.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffectiveValue"
+            }
+          },
+          "command_lines": {
+            "description": "The command-line form of each setting for its value in the configuration, in catalog order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingCommandLine"
+            }
+          },
+          "dataset": {
+            "description": "Name of the dataset: the example of the request, else the file name of the tree input; absent without either.",
+            "type": "string",
+            "x-unset": true
+          },
+          "run_differences": {
+            "description": "Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and\ninputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output\nfiles and their paths, are not compared. Absent without `run_id`, and when the run executes another command.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingDifference"
+            },
+            "x-unset": true
+          },
           "status": {
             "type": "string",
             "const": "valid"
@@ -7356,7 +9065,9 @@
           "config",
           "code",
           "checks",
-          "choices"
+          "choices",
+          "effective",
+          "command_lines"
         ]
       },
       "CheckConfigResponseInvalid": {
@@ -7411,6 +9122,25 @@
               "$ref": "#/components/schemas/ActiveChoice"
             }
           },
+          "effective": {
+            "description": "The value the run uses for each setting that the configuration leaves at its default, as a short text, when the\nconfiguration could be merged over the defaults.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffectiveValue"
+            }
+          },
+          "command_lines": {
+            "description": "The command-line form of each setting for its value in the configuration, in catalog order, when the\nconfiguration could be merged over the defaults.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingCommandLine"
+            }
+          },
+          "dataset": {
+            "description": "Name of the dataset: the example of the request, else the file name of the tree input when the configuration\ncould be merged over the defaults; absent without either.",
+            "type": "string",
+            "x-unset": true
+          },
           "status": {
             "type": "string",
             "const": "invalid"
@@ -7424,7 +9154,101 @@
           "problems",
           "messages",
           "checks",
-          "choices"
+          "choices",
+          "effective",
+          "command_lines"
+        ]
+      },
+      "SettingDifferenceSetting": {
+        "description": "A value that controls the analysis.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key path of the setting joined with `.`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "group": {
+            "description": "Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "purpose": {
+            "description": "What the setting is for.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "first": {
+            "description": "Value in the first configuration; absent when it leaves the setting unset.",
+            "$ref": "#/components/schemas/JsonValue",
+            "x-unset": true
+          },
+          "second": {
+            "description": "Value in the second configuration; absent when it leaves the setting unset.",
+            "$ref": "#/components/schemas/JsonValue",
+            "x-unset": true
+          },
+          "kind": {
+            "type": "string",
+            "const": "setting"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "group",
+          "purpose",
+          "kind"
+        ]
+      },
+      "SettingDifferenceInput": {
+        "description": "Input files with different contents.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key path of the setting joined with `.`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the setting, as the setting catalog labels it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "group": {
+            "description": "Group of the setting, as the headings of `treetime <command> --help` name it, for example `Coalescent prior`.",
+            "type": "string"
+          },
+          "purpose": {
+            "description": "What the setting is for.",
+            "$ref": "#/components/schemas/SettingPurpose"
+          },
+          "first": {
+            "description": "Paths of the files of the first configuration.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "second": {
+            "description": "Paths of the files of the second configuration.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "input"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "group",
+          "purpose",
+          "kind",
+          "first",
+          "second"
         ]
       },
       "RunConfigResponseValid": {
@@ -7432,12 +9256,19 @@
         "type": "object",
         "properties": {
           "config": {
-            "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds, and\n`output_all` set to `out`.",
+            "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds,\n`output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.",
             "$ref": "#/components/schemas/SparseConfig"
           },
           "code": {
             "description": "The command line and the YAML config that reproduce the run.",
             "$ref": "#/components/schemas/ConfigCode"
+          },
+          "command_lines": {
+            "description": "The command-line form of each setting of the command for its value in `config`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingCommandLine"
+            }
           },
           "config_hash": {
             "description": "Hash that a run of this configuration records, to find finished runs with the same settings and input\ncontents; absent when an input cannot be read.",
@@ -7449,6 +9280,13 @@
             "type": "string",
             "x-unset": true
           },
+          "seed": {
+            "description": "Seed that the configuration sets for its random step; absent when it sets none, so that the run draws one, and\nwhen the run has no random step. A finished run with the same `config_hash` has the settings of this\nconfiguration when the configuration sets no seed or the seed of that run.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
+          },
           "status": {
             "type": "string",
             "const": "valid"
@@ -7457,7 +9295,8 @@
         "required": [
           "status",
           "config",
-          "code"
+          "code",
+          "command_lines"
         ]
       },
       "RunConfigResponseInvalid": {
@@ -7494,6 +9333,43 @@
           "problems"
         ]
       },
+      "StatisticValueNumber": {
+        "description": "A number.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The number.",
+            "type": "number",
+            "format": "double"
+          },
+          "kind": {
+            "type": "string",
+            "const": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ]
+      },
+      "StatisticValueDate": {
+        "description": "A date.",
+        "type": "object",
+        "properties": {
+          "date": {
+            "description": "The date.",
+            "$ref": "#/components/schemas/YearDate"
+          },
+          "kind": {
+            "type": "string",
+            "const": "date"
+          }
+        },
+        "required": [
+          "kind",
+          "date"
+        ]
+      },
       "RunRecordTimetree": {
         "type": "object",
         "properties": {
@@ -7502,16 +9378,56 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
+          },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
           },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
+          },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
+          },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           },
           "created_at": {
             "description": "Time the run was created.",
@@ -7538,14 +9454,28 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
+            }
+          },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -7590,11 +9520,17 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
+          "prepared",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7611,16 +9547,56 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
+          },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
           },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
+          },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
+          },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           },
           "created_at": {
             "description": "Time the run was created.",
@@ -7647,14 +9623,28 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
+            }
+          },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -7699,11 +9689,17 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
+          "prepared",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7720,16 +9716,56 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
+          },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
           },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
+          },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
+          },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           },
           "created_at": {
             "description": "Time the run was created.",
@@ -7756,14 +9792,28 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
+            }
+          },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -7808,11 +9858,17 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
+          "prepared",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7829,16 +9885,56 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
+          },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
           },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
+          },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
+          },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           },
           "created_at": {
             "description": "Time the run was created.",
@@ -7865,14 +9961,28 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
+            }
+          },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -7917,11 +10027,17 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
+          "prepared",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -7938,16 +10054,56 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "description": "Title shown in run lists. Until the user renames the run, the app names it after its dataset, its analysis, and\nthe analysis settings that differ from those of its source run, or from the defaults for a run without a source,\nfor example `ebola/100, time tree: skyline, confidence`; it names three changed settings and counts the others,\nas in `+2`. A renamed run keeps its title.",
             "type": "string"
+          },
+          "renamed": {
+            "description": "Whether the user renamed the run.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "Name of the example dataset whose files the run reads, for example `ebola/100`; absent for the user's own files.",
+            "type": "string",
+            "x-unset": true
+          },
+          "dataset": {
+            "description": "Name of the dataset of the run: `example`, else the file name of the tree input; absent for a run without either.",
+            "type": "string",
+            "x-unset": true
           },
           "status": {
             "description": "State of the run.",
             "$ref": "#/components/schemas/RunStatus"
           },
+          "prepared": {
+            "description": "Whether the run layer has prepared the run: resolved its configuration, read and hashed its inputs, drawn its\nseed, and set `config_hash`, `changed_settings`, `inputs`, and `seed` from them. Until then these fields hold the\nrequest, and the settings of the run are not those that it computes with.",
+            "type": "boolean"
+          },
           "pinned": {
             "description": "Whether the run is pinned in run lists.",
             "type": "boolean"
+          },
+          "source_run_id": {
+            "description": "Run whose settings this run started from, such as the source of a variant. The source may have been deleted\nsince.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
+          },
+          "group_id": {
+            "description": "Group of related runs in the run history: the group of the source run, or for a run without a source, the group\nof the earliest run with the same input contents, else the run's own id.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "size": {
+            "description": "Size of the run in bytes: its output files and the uploaded inputs that no other run references, as of the\nlast read of the record.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "seed": {
+            "description": "Seed of the random number generator that the run used, for a run with a random step: the configured seed, or\nthe seed the run drew when the configuration sets none.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true
           },
           "created_at": {
             "description": "Time the run was created.",
@@ -7974,14 +10130,28 @@
             "type": "string"
           },
           "inputs": {
-            "description": "Input files the run read.",
+            "description": "Input files the run read. Before the run starts, the uploaded inputs its configuration names.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RunInput"
             }
           },
+          "input_sets": {
+            "description": "Folders of path templates whose files the input store keeps as one set, such as the files of the `translations`\ntemplate of an imported run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputSet"
+            }
+          },
+          "uploads": {
+            "description": "Files uploaded for the run before it started; the run drops them when it starts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredInput"
+            }
+          },
           "config_hash": {
-            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256, and the\noutput paths and the seed removed. Two runs with equal hashes and equal `seed` used the same settings on the same\ninput contents.",
             "type": "string",
             "x-unset": true
           },
@@ -8026,11 +10196,17 @@
         "required": [
           "id",
           "title",
+          "renamed",
           "status",
+          "prepared",
           "pinned",
+          "group_id",
+          "size",
           "created_at",
           "treetime_version",
           "inputs",
+          "input_sets",
+          "uploads",
           "changed_settings",
           "headline",
           "output_files",
@@ -8123,7 +10299,7 @@
             "const": "optimize"
           },
           "data": {
-            "$ref": "#/components/schemas/TreeSummary"
+            "$ref": "#/components/schemas/TreeChange"
           }
         },
         "required": [
@@ -8139,7 +10315,7 @@
             "const": "prune"
           },
           "data": {
-            "$ref": "#/components/schemas/TreeSummary"
+            "$ref": "#/components/schemas/TreeChange"
           }
         },
         "required": [
@@ -8220,73 +10396,6 @@
           "kind",
           "points",
           "stiffness"
-        ]
-      },
-      "SettingDifferenceSetting": {
-        "description": "A value that controls the analysis.",
-        "type": "object",
-        "properties": {
-          "key": {
-            "description": "Key path of the setting joined with `.`.",
-            "type": "string"
-          },
-          "first": {
-            "description": "Value in the first run; absent when the first run does not set the setting.",
-            "$ref": "#/components/schemas/JsonValue",
-            "x-unset": true
-          },
-          "second": {
-            "description": "Value in the second run; absent when the second run does not set the setting.",
-            "$ref": "#/components/schemas/JsonValue",
-            "x-unset": true
-          },
-          "kind": {
-            "type": "string",
-            "const": "setting"
-          }
-        },
-        "required": [
-          "kind",
-          "key"
-        ]
-      },
-      "SettingDifferenceInput": {
-        "description": "Input files, which differ in their paths, their contents, or both.",
-        "type": "object",
-        "properties": {
-          "key": {
-            "description": "Key path of the setting that names the files.",
-            "type": "string"
-          },
-          "first": {
-            "description": "Paths of the files the first run read.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "second": {
-            "description": "Paths of the files the second run read.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "same_content": {
-            "description": "Whether the files of both runs have the same contents.",
-            "type": "boolean"
-          },
-          "kind": {
-            "type": "string",
-            "const": "input"
-          }
-        },
-        "required": [
-          "kind",
-          "key",
-          "first",
-          "second",
-          "same_content"
         ]
       },
       "RunEventStarted": {
@@ -8524,7 +10633,7 @@
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8562,7 +10671,7 @@
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8595,12 +10704,50 @@
           "run"
         ]
       },
+      "AppEventRunRemoved": {
+        "description": "A run was deleted, with its folder and the uploaded inputs that no other run references.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StalePath"
+            }
+          },
+          "id": {
+            "description": "Id of the deleted run.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-removed"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "id"
+        ]
+      },
       "AppEventExamplesDownload": {
         "description": "The download of the example datasets progressed, finished, or failed.",
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8634,11 +10781,11 @@
         ]
       },
       "AppEventResync": {
-        "description": "The stream cannot continue after the requested event, because the server no longer keeps that event or the\nevent belongs to a previous server. Every path in `stale` must be read again; the stream continues with the\nevents after this one.",
+        "description": "The stream cannot continue after the requested event, because the back end no longer keeps that event or the\nevent belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the\nevents after this one.",
         "type": "object",
         "properties": {
           "seq": {
-            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -8742,6 +10889,233 @@
         "required": [
           "state",
           "message"
+        ]
+      },
+      "UiDraftOriginDataset": {
+        "description": "A file of an example dataset in the data folder of the back end.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "dataset"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginExample": {
+        "description": "A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file\nagain when the uploaded copy is gone.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "example"
+          }
+        },
+        "required": [
+          "kind",
+          "path"
+        ]
+      },
+      "UiDraftOriginUpload": {
+        "description": "A file uploaded to TreeTime.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "upload"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginLocal": {
+        "description": "A file on the computer that runs TreeTime.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "local"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginRun": {
+        "description": "An input of an earlier run.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "run"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UiDraftOriginConfig": {
+        "description": "A path from a loaded configuration file.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "config"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "RowControlChoice": {
+        "description": "A choice between options; the choice of the command with this name holds the options and their texts.",
+        "type": "object",
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/ChoiceName"
+          },
+          "kind": {
+            "type": "string",
+            "const": "choice"
+          }
+        },
+        "required": [
+          "kind",
+          "choice"
+        ]
+      },
+      "RowControlSwitches": {
+        "description": "Switches, one per setting.",
+        "type": "object",
+        "properties": {
+          "switches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowSwitch"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "switches"
+          }
+        },
+        "required": [
+          "kind",
+          "switches"
+        ]
+      },
+      "RowControlCoalescent": {
+        "description": "The coalescent prior: no prior, a fixed time scale in years, an optimized time scale, or a skyline.",
+        "type": "object",
+        "properties": {
+          "setting": {
+            "description": "Key of the setting that holds the prior: an option name, or a fixed time scale.",
+            "type": "string"
+          },
+          "skyline_settings": {
+            "description": "Keys of the settings of the skyline, which apply only while the skyline is picked.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "years_suffix": {
+            "description": "Unit suffix of a fixed time scale in years, as the setting takes it after the number: `y` in `50y`.",
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowOption"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "coalescent"
+          }
+        },
+        "required": [
+          "kind",
+          "setting",
+          "skyline_settings",
+          "years_suffix",
+          "options"
+        ]
+      },
+      "RowControlClockFilter": {
+        "description": "The clock filter threshold.",
+        "type": "object",
+        "properties": {
+          "setting": {
+            "description": "Key of the setting that holds the threshold.",
+            "type": "string"
+          },
+          "off": {
+            "description": "Note while the threshold is 0.",
+            "type": "string"
+          },
+          "on": {
+            "description": "Note while the threshold is above 0.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "clock-filter"
+          }
+        },
+        "required": [
+          "kind",
+          "setting",
+          "off",
+          "on"
+        ]
+      },
+      "RowControlSubstitutionModel": {
+        "description": "The substitution model and its parameters.",
+        "type": "object",
+        "properties": {
+          "model_setting": {
+            "description": "Key of the setting that holds the model.",
+            "type": "string"
+          },
+          "parameters_setting": {
+            "description": "Key of the setting that holds the parameters of the model.",
+            "type": "string"
+          },
+          "parameters_example": {
+            "description": "Example of the parameters, as the form shows them in the empty field.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "substitution-model"
+          }
+        },
+        "required": [
+          "kind",
+          "model_setting",
+          "parameters_setting",
+          "parameters_example"
+        ]
+      },
+      "RowControlSetting": {
+        "description": "The control of the one setting of the row.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "setting"
+          }
+        },
+        "required": [
+          "kind"
         ]
       }
     }

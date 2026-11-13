@@ -80,7 +80,7 @@ function lastSeparator(path: string): number {
   return Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 }
 
-function isListInput(command: AppCommand, key: string): boolean {
+export function isListInput(command: AppCommand, key: string): boolean {
   return commandSettings(command).inputs.some((slot) => slot.kind === key && slot.list);
 }
 

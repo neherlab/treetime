@@ -1,3 +1,7 @@
+---
+organism: "Mpox virus"
+---
+
 # `mpox/clade-ii/2000`
 
 ## Translations

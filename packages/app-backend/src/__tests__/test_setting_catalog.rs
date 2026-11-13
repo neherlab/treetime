@@ -3,15 +3,18 @@ mod tests {
   use crate::check_inputs::{InputKind, InputNeed, InputSlot};
   use crate::command::offered_commands;
   use crate::config::catalog::{
-    ListItemKind, SettingKind, SettingOption, SettingRole, SettingSpec, command_settings, setting_catalog,
+    ListItemKind, SettingKind, SettingOption, SettingPurpose, SettingRole, SettingSection, SettingSpec,
+    command_settings, setting_catalog,
   };
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
   use helpers::spec;
   use itertools::Itertools;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
+  use std::collections::BTreeMap;
   use treetime_utils::{o, vec_of_owned};
 
   #[test]
@@ -67,6 +70,64 @@ mod tests {
   }
 
   #[test]
+  fn test_setting_catalog_timetree_sections_group_the_settings_by_purpose() {
+    assert_eq!(
+      vec![
+        SettingSection {
+          purpose: SettingPurpose::Data,
+          title: o!("Input data"),
+          groups: vec_of_owned!["Input data"],
+        },
+        SettingSection {
+          purpose: SettingPurpose::Analysis,
+          title: o!("Analysis"),
+          groups: vec_of_owned![
+            "Molecular clock",
+            "Rooting",
+            "Branch lengths",
+            "Dating",
+            "Polytomies",
+            "Coalescent prior",
+            "Substitution model",
+            "Ancestral reconstruction",
+          ],
+        },
+        SettingSection {
+          purpose: SettingPurpose::Output,
+          title: o!("Output format"),
+          groups: vec_of_owned!["Output"],
+        },
+        SettingSection {
+          purpose: SettingPurpose::Ordering,
+          title: o!("Tree ordering and reproducibility"),
+          groups: vec_of_owned!["Tree ordering", "Reproducibility"],
+        },
+      ],
+      command_settings(AppCommand::Timetree).unwrap().sections
+    );
+  }
+
+  #[test]
+  fn test_setting_catalog_timetree_form_offers_only_the_output_format() {
+    let offered = command_settings(AppCommand::Timetree)
+      .unwrap()
+      .settings
+      .into_iter()
+      .filter(|spec| spec.purpose == SettingPurpose::Output && !spec.set_by_app)
+      .map(|spec| spec.key)
+      .collect_vec();
+    assert_eq!(
+      vec_of_owned![
+        "newick_annotations",
+        "divergence_units",
+        "ambiguity_threshold",
+        "ambiguity_outputs"
+      ],
+      offered
+    );
+  }
+
+  #[test]
   fn test_setting_catalog_settings_are_ordered_by_group() {
     for command in offered_commands() {
       let settings = command_settings(command).unwrap();
@@ -77,6 +138,46 @@ mod tests {
         .collect_vec();
       assert!(group_order.is_sorted(), "{command}: {group_order:?}");
     }
+  }
+
+  #[test]
+  fn test_setting_catalog_timetree_purposes() {
+    let counts = command_settings(AppCommand::Timetree)
+      .unwrap()
+      .settings
+      .iter()
+      .counts_by(|spec| spec.purpose);
+    assert_eq!(
+      btreemap! {
+        SettingPurpose::Data => 13,
+        SettingPurpose::Analysis => 33,
+        SettingPurpose::Output => 22,
+        SettingPurpose::Ordering => 5,
+      },
+      counts.into_iter().collect::<BTreeMap<_, _>>()
+    );
+  }
+
+  #[rstest]
+  #[case::input_data(    ("Input data",       SettingRole::Input),  SettingPurpose::Data)]
+  #[case::output(        ("Output",           SettingRole::Setting), SettingPurpose::Output)]
+  #[case::output_path(   ("Output",           SettingRole::Output), SettingPurpose::Output)]
+  #[case::tree_ordering( ("Tree ordering",    SettingRole::Input),  SettingPurpose::Ordering)]
+  #[case::seed(          ("Reproducibility",  SettingRole::Setting), SettingPurpose::Ordering)]
+  #[case::clock_input(   ("Molecular clock",  SettingRole::Input),  SettingPurpose::Analysis)]
+  #[case::rooting(       ("Rooting",          SettingRole::Setting), SettingPurpose::Analysis)]
+  #[trace]
+  fn test_setting_catalog_purpose_follows_heading_and_role(
+    #[case] (heading, role): (&str, SettingRole),
+    #[case] expected: SettingPurpose,
+  ) {
+    let actual = offered_commands()
+      .flat_map(|command| command_settings(command).unwrap().settings)
+      .filter(|spec| spec.group == heading && spec.role == role)
+      .map(|spec| spec.purpose)
+      .unique()
+      .collect_vec();
+    assert_eq!(vec![expected], actual);
   }
 
   #[test]
@@ -102,6 +203,8 @@ mod tests {
         label: o!("Clock rate"),
         flag: o!("--clock-rate"),
         group: o!("Molecular clock"),
+        purpose: SettingPurpose::Analysis,
+        set_by_app: false,
         role: SettingRole::Setting,
         kind: SettingKind::Number,
         nullable: true,
@@ -129,16 +232,22 @@ mod tests {
         label: o!("Coalescent prior"),
         flag: o!("--coalescent"),
         group: o!("Coalescent prior"),
+        purpose: SettingPurpose::Analysis,
+        set_by_app: false,
         role: SettingRole::Setting,
         kind: SettingKind::EnumOrText,
         nullable: true,
         options: vec![
           SettingOption {
             value: o!("opt"),
+
+            label: o!("Optimized constant"),
             help: o!(""),
           },
           SettingOption {
             value: o!("skyline"),
+
+            label: o!("Skyline"),
             help: o!(""),
           },
         ],
@@ -289,6 +398,8 @@ mod tests {
       vec![
         SettingOption {
           value: o!("auto"),
+
+          label: o!("Automatic"),
           help: o!(
             "`input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site, \
              `marginal` otherwise"
@@ -296,10 +407,14 @@ mod tests {
         },
         SettingOption {
           value: o!("input"),
+
+          label: o!("Input"),
           help: o!("Keep the branch lengths of the input tree")
         },
         SettingOption {
           value: o!("marginal"),
+
+          label: o!("Marginal"),
           help: o!("Estimate the branch lengths from the alignment by marginal ancestral reconstruction")
         },
       ],

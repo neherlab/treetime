@@ -69,6 +69,7 @@ mod tests {
           json!([
             { "path": "/api/runs", "scope": "subtree" },
             { "path": "/api/clade-in-runs", "scope": "exact" },
+            { "path": "/api/compare", "scope": "subtree" },
             { "path": "/api/examples", "scope": "exact" },
             { "path": "/api/examples/download", "scope": "exact" },
           ])
@@ -91,6 +92,7 @@ mod tests {
       json!([
         { "path": "/api/runs", "scope": "subtree" },
         { "path": "/api/clade-in-runs", "scope": "exact" },
+        { "path": "/api/compare", "scope": "subtree" },
         { "path": "/api/examples", "scope": "exact" },
         { "path": "/api/examples/download", "scope": "exact" },
       ]),
@@ -155,6 +157,7 @@ mod tests {
         StalePath::exact("/api/runs"),
         StalePath::subtree(format!("/api/runs/{id}")),
         StalePath::exact("/api/clade-in-runs"),
+        StalePath::subtree("/api/compare"),
       ]
     };
     let (a, b) = (first.id.as_str(), second.id.as_str());
@@ -294,6 +297,8 @@ mod tests {
         command: AppCommand::Clock,
         config: sparse(json!({ "tree": zika.join("tree.nwk"), "metadata": zika.join("metadata.tsv") })),
         defer_start: true,
+        source_run_id: None,
+        example: None,
       }
     }
 

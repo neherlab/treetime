@@ -61,9 +61,14 @@ function appEvent(seq: number, kind: "resync" | "run-updated", stale: StalePath[
           command: "clock",
           status: "ok",
           pinned: false,
+          group_id: "abc",
+          size: 0,
           created_at: "2026-09-25T08:00:00Z",
           changed_settings: [],
           headline: {},
+          package_name: "abc.zip",
+          log_name: "abc.log.txt",
+          config_name: "abc.yaml",
         },
       };
 }

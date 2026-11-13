@@ -43,7 +43,7 @@ describe("inputs", () => {
 
 describe("slot facts", () => {
   const facts = {
-    tree: { tips: 86, internal_nodes: 61, polytomies: 15, unnamed_tips: 0, duplicate_node_names: [] },
+    tree: { tips: 86, internal_nodes: 61, polytomies: 15, unnamed_tips: 0, duplicate_node_names: [], tip_names: [] },
     alignments: [
       {
         number: 1,
@@ -55,6 +55,7 @@ describe("slot facts", () => {
       },
     ],
     metadata: { rows: 86, columns: ["name", "date"], id_column: "name", date_column: "date" },
+    detected: {},
     problems: [{ input: "tree" as const, message: "bad" }],
   };
 

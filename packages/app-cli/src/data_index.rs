@@ -1,6 +1,6 @@
 use crate::cli::diagnostics::entry::check_pipeline;
 use crate::cli::pipeline::resolve::PipelineDoc;
-use app_backend::datasets::{DataIndex, IndexedStep};
+use app_backend::datasets::{DataIndex, IndexedStep, dataset_input_facts};
 use app_commands::command::AppCommand;
 use app_commands::config::source::{ConfigSource, parse_config_document};
 use eyre::{Report, WrapErr};
@@ -24,6 +24,7 @@ pub fn generate_data_index(data_dir: &Path, file_list: &str) -> Result<DataIndex
     |path| file_size(&data_dir.join(path)),
     |path| read_file_to_string(data_dir.join(path)),
     pipeline_steps,
+    |inputs, settings| dataset_input_facts(data_dir, inputs, settings),
   )
 }
 

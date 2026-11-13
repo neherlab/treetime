@@ -1,3 +1,4 @@
+use crate::config::choices::ActiveChoice;
 use crate::job::JobId;
 use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
@@ -82,6 +83,11 @@ pub struct UiSettings {
   #[deser(default)]
   pub sidebar_width: Option<u32>,
 
+  /// Width of the options panel of the analysis workspace in pixels.
+  #[schemars(default)]
+  #[deser(default)]
+  pub options_width: Option<u32>,
+
   /// The unfinished analysis form.
   #[schemars(default)]
   #[deser(default)]
@@ -147,6 +153,13 @@ pub struct UiDraft {
   /// The run that holds the uploaded input files of the form.
   pub upload_run_id: Option<JobId>,
 
+  /// Name of the example dataset whose files the form holds, for example `ebola/100`; absent for the user's own files.
+  pub example: Option<String>,
+
+  /// The options that the form picked for the choices of the command, which `configCheck` takes as `choices`.
+  #[deser(default)]
+  pub choices: Vec<ActiveChoice>,
+
   pub view: UiSettingsView,
 
   /// Text of the settings search field.
@@ -176,13 +189,19 @@ pub struct UiDraftSource {
 }
 
 /// Where an input file of the form came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "lowercase")]
-#[deser(rename_all = "lowercase")]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(tag = "kind", rename_all = "kebab-case")]
+#[deser(tag = "kind", rename_all = "kebab-case")]
 pub enum UiDraftOrigin {
-  /// An example dataset.
+  /// A file of an example dataset in the data folder of the back end.
   Dataset,
-  /// A file uploaded to the server.
+  /// A file of an example dataset, fetched from the example index and uploaded to TreeTime. The form fetches the file
+  /// again when the uploaded copy is gone.
+  Example {
+    /// Path of the file in the example index, relative to the data folder, for example `ebola/100/tree.nwk`.
+    path: String,
+  },
+  /// A file uploaded to TreeTime.
   Upload,
   /// A file on the computer that runs TreeTime.
   Local,

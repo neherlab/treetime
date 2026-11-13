@@ -9,7 +9,6 @@
       "packages/app-napi",
       "packages/app-ui",
       "packages/app-wasm",
-      "packages/app-web",
       "packages/app-web2",
       "packages/design"
     ],
@@ -38,7 +37,6 @@
   "scripts": {
     "build:desktop": "bun run --cwd packages/app-desktop build",
     "build:docs": "bun run --cwd packages/app-docs build",
-    "build:web": "bun run --cwd packages/app-web build",
     "build:web2": "bun run --cwd packages/app-web2 build",
     "coverage": "bun test --parallel --coverage --coverage-reporter=text --coverage-reporter=lcov --coverage-dir=tmp/coverage/ts",
     "dev:desktop": "bun run --cwd packages/app-desktop dev",

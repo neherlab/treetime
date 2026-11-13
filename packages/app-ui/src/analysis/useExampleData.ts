@@ -1,13 +1,17 @@
-import type { AppCommand, IndexedDataset } from "@neherlab/app-contracts";
+import { type AppCommand, errorMessage, type IndexedDataset } from "@neherlab/app-contracts";
 import { examples } from "@neherlab/app-contracts/client";
+import { toast } from "@neherlab/design/ui/toast";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
+import { commandSettings } from "../settings/catalog";
+import { normalizeConfig } from "../settings/config";
 import { inputSettingKeys } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
+import type { QueuedExample } from "../store/draftSchema";
 import { applyDraftInputs } from "./draftInputs";
 import {
   type ConfigInput,
@@ -29,6 +33,8 @@ import { draftUploadPaths, type StoredFile, storedSource, storedValue } from "./
 import { claimInputs } from "./inputClaims";
 import { type ConfigLoadResult, SUPERSEDED, useConfigLoader } from "./useConfigLoader";
 import { useRunUploads } from "./useRunUploads";
+
+const EXAMPLE_COMMAND: AppCommand = "timetree";
 
 export function useExampleIndex(): ExampleIndexQuery {
   const host = useHost();
@@ -64,7 +70,7 @@ export function useExampleConfigLoader() {
 
       const { command } = useDraftStore.getState().draft;
       const isCurrent = claimInputs([...new Set([...inputSettingKeys(command), ...inputSettingKeys(config.command)])]);
-      const runId = await uploadRun(config.command);
+      const runId = await uploadRun(config.command, isCurrent.selection);
       const replaces = draftUploadPaths(useDraftStore.getState().draft);
       const uploaded: UploadedConfigInput[] = [];
 
@@ -101,20 +107,26 @@ export function useExampleConfigLoader() {
   );
 }
 
-export function useDatasetLoader() {
+export function useOpenExample() {
   const navigate = useNavigate();
-  const { uploadRun, uploadFiles, release, releaseFromPendingRun } = useRunUploads();
+  const { release } = useRunUploads();
+  const uploadExampleInputs = useExampleInputsUpload();
 
   return useCallback(
-    async (examples: ExampleIndex, dataset: IndexedDataset, command: AppCommand) => {
-      const inputs = indexedDatasetInputs(dataset, command);
+    async (examples: ExampleIndex, dataset: IndexedDataset): Promise<void> => {
+      const { discard } = useDraftStore.getState();
+      discard("new", EXAMPLE_COMMAND);
+      const { draft, load } = useDraftStore.getState();
+      const specs = commandSettings(EXAMPLE_COMMAND).settings;
+      load({ ...draft, config: normalizeConfig(specs, { ...draft.config, ...dataset.settings }) });
+      const inputs = indexedDatasetInputs(dataset, EXAMPLE_COMMAND);
 
       if (examples.origin === "local") {
         applyDraftInputs(
           inputs.map((input) => {
             const { key, value, label } = localInputAssignment(examples.folder, input);
 
-            return { key, value, source: { label, origin: "dataset" } };
+            return { key, value, source: { label, origin: { kind: "dataset" } } };
           }),
           release,
         );
@@ -123,17 +135,57 @@ export function useDatasetLoader() {
         return;
       }
 
+      if (await uploadExampleInputs(inputs, EXAMPLE_COMMAND)) {
+        await navigate({ to: "/new" });
+      }
+    },
+    [navigate, release, uploadExampleInputs],
+  );
+}
+
+export function useQueuedExamples(): void {
+  const queued = useDraftStore((state) => state.queuedExamples);
+  const command = useDraftStore((state) => state.draft.command);
+  const uploadExampleInputs = useExampleInputsUpload();
+
+  useEffect(() => {
+    if (queued.length === 0) {
+      return;
+    }
+
+    useDraftStore.getState().takeQueuedExamples();
+    void refetchExamples(uploadExampleInputs, queued, command);
+  }, [command, queued, uploadExampleInputs]);
+}
+
+async function refetchExamples(
+  upload: (inputs: readonly QueuedExample[], command: AppCommand) => Promise<boolean>,
+  queued: readonly QueuedExample[],
+  command: AppCommand,
+): Promise<void> {
+  try {
+    await upload(queued, command);
+  } catch (error: unknown) {
+    toast.add({ title: "The example files cannot be fetched again", description: errorMessage(error) });
+  }
+}
+
+function useExampleInputsUpload() {
+  const { uploadRun, uploadFiles, release, releaseFromPendingRun } = useRunUploads();
+
+  return useCallback(
+    async (inputs: readonly QueuedExample[], command: AppCommand): Promise<boolean> => {
       const isCurrent = claimInputs(inputs.map((input) => input.key));
       const files = await Promise.all(inputs.map(async (input) => fetchExampleFile(exampleDataBase(), input.path)));
 
       if (!isCurrent()) {
-        return;
+        return false;
       }
 
-      const runId = await uploadRun(command);
+      const runId = await uploadRun(command, isCurrent.selection);
 
       if (!isCurrent(runId)) {
-        return;
+        return false;
       }
 
       const replaced = new Set(inputs.map((input) => input.key));
@@ -145,7 +197,7 @@ export function useDatasetLoader() {
           stored.map((file) => file.path),
         );
 
-        return;
+        return false;
       }
 
       applyDraftInputs(
@@ -155,18 +207,21 @@ export function useDatasetLoader() {
 
           return value === undefined
             ? []
-            : [{ key: input.key, value, source: { ...storedSource(file), origin: "upload", run_id: runId } }];
+            : [
+                {
+                  key: input.key,
+                  value,
+                  source: { ...storedSource(file), origin: { kind: "example", path: input.path }, run_id: runId },
+                },
+              ];
         }),
         release,
       );
-      await navigate({ to: "/new" });
-    },
-    [navigate, release, releaseFromPendingRun, uploadFiles, uploadRun],
-  );
-}
 
-export function exampleDataBase(): string {
-  return import.meta.env.BASE_URL;
+      return true;
+    },
+    [release, releaseFromPendingRun, uploadFiles, uploadRun],
+  );
 }
 
 export interface ExampleIndexQuery {
@@ -196,4 +251,8 @@ async function uploadConfigInputs(
 interface UploadedConfigInput {
   input: ConfigInput;
   stored: StoredFile[];
+}
+
+function exampleDataBase(): string {
+  return import.meta.env.BASE_URL;
 }

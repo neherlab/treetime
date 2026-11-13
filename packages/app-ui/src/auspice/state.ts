@@ -27,7 +27,7 @@ export interface AuspiceMetadataState {
   colorings: Readonly<Record<string, AuspiceColoring>>;
 }
 
-interface AuspiceColoring {
+export interface AuspiceColoring {
   title?: string;
   type: string;
 }
@@ -65,6 +65,7 @@ export interface AuspiceNode {
 
 export interface AuspiceControlsState {
   colorBy: string;
+  layout: string;
   distanceMeasure: string;
   availableDistanceMeasures: readonly string[];
   panelLayout: AuspicePanelLayout;

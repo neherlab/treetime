@@ -99,6 +99,14 @@ impl TreetimeAncestralArgs {
     &self.sequences.alignments
   }
 
+  pub fn seed(&self) -> Option<u64> {
+    self.seed
+  }
+
+  pub fn random_step(&self) -> Option<&'static str> {
+    (self.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile")
+  }
+
   pub fn planned_paths(&self, resolved: &ResolvedOutputs) -> Result<BTreeMap<OutputSelection, Vec<PathBuf>>, Report> {
     let mut paths = resolved.paths_by_selection();
     if self.translations.is_some()

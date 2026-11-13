@@ -1,4 +1,4 @@
-import type { RunRecord } from "@neherlab/app-contracts";
+import type { RunRecord, SparseConfig } from "@neherlab/app-contracts";
 
 import { commandSettings } from "../catalog";
 import { defaultConfig } from "../config";
@@ -11,29 +11,42 @@ const RECORD: RunRecord = {
   title: "Baseline",
   command: "clock",
   config: {
-    tree: "/runs/r0/inputs/tree.nwk",
+    tree: "inputs/tree.nwk",
     metadata: "/data/zika/86/metadata.tsv",
     keep_root: true,
-    output_all: "/runs/r1/out",
+    output_all: "out",
     output_selection: ["nwk", "auspice"],
   },
   status: "ok",
+  prepared: true,
   pinned: false,
+  renamed: false,
+  group_id: "r1",
+  size: 30,
   created_at: "2026-09-25T08:00:00Z",
   treetime_version: "1.0.0",
   inputs: [
-    { setting: "tree", path: "/runs/r0/inputs/tree.nwk", size: 10, sha256: "a" },
+    { setting: "tree", path: "inputs/tree.nwk", size: 10, sha256: "a" },
     { setting: "metadata", path: "/data/zika/86/metadata.tsv", size: 20, sha256: "b" },
   ],
+  input_sets: [],
+  uploads: [],
   changed_settings: ["keep_root"],
   headline: {},
   output_files: [],
   warnings: [],
 };
 
+const SETTINGS: SparseConfig = {
+  tree: "/runs/.inputs/a/tree.nwk",
+  metadata: "/data/zika/86/metadata.tsv",
+  keep_root: true,
+  output_selection: ["nwk", "auspice"],
+};
+
 describe("edit and run again", () => {
-  test("keeps the changed settings and inputs of the run, drops its output paths and leaves its default outputs to the new settings", () => {
-    const draft = rerunDraft(RECORD);
+  test("keeps the changed settings and the requestable input paths of the run, drops its output paths and leaves its default outputs to the new settings", () => {
+    const draft = rerunDraft(RECORD, SETTINGS);
 
     expect({
       tree: draft.config["tree"],
@@ -42,7 +55,7 @@ describe("edit and run again", () => {
       selection: draft.config["output_selection"],
       labels: draft.inputLabels,
     }).toStrictEqual({
-      tree: "/runs/r0/inputs/tree.nwk",
+      tree: "/runs/.inputs/a/tree.nwk",
       keepRoot: true,
       outputAll: undefined,
       selection: [],
@@ -50,21 +63,37 @@ describe("edit and run again", () => {
     });
   });
 
-  test("keeps an output selection that the run chose", () => {
-    const draft = rerunDraft({ ...RECORD, changed_settings: ["keep_root", "output_selection"] });
+  test("leaves the output selection to the app, which sets it for every run", () => {
+    const draft = rerunDraft({ ...RECORD, changed_settings: ["keep_root", "output_selection"] }, SETTINGS);
 
-    expect(draft.config["output_selection"]).toStrictEqual(["nwk", "auspice"]);
+    expect(draft.config["output_selection"]).toStrictEqual(DEFAULT_CLOCK_CONFIG["output_selection"]);
   });
 
   test("leaves a setting that the run left at its default to the default of the new draft", () => {
-    const draft = rerunDraft({ ...RECORD, config: { ...RECORD.config, allow_negative_rate: true } });
+    const draft = rerunDraft(RECORD, { ...SETTINGS, allow_negative_rate: true });
 
     expect(draft.config["allow_negative_rate"]).toStrictEqual(DEFAULT_CLOCK_CONFIG["allow_negative_rate"]);
   });
 
+  test("keeps the seed that a time tree run drew, so the new run repeats its random step", () => {
+    const record: RunRecord = {
+      ...RECORD,
+      command: "timetree",
+      config: { tree: "inputs/tree.nwk" },
+      seed: 4_242,
+      changed_settings: [],
+    };
+
+    expect(rerunDraft(record, { tree: "/runs/.inputs/a/tree.nwk" }).config["seed"]).toBe(4_242);
+  });
+
+  test("leaves the seed out for a command without a random step", () => {
+    expect(rerunDraft({ ...RECORD, seed: 4_242 }, SETTINGS).config["seed"]).toBeUndefined();
+  });
+
   test("the original record is not changed", () => {
     const before = JSON.stringify(RECORD);
-    rerunDraft(RECORD);
+    rerunDraft(RECORD, SETTINGS);
 
     expect(JSON.stringify(RECORD)).toStrictEqual(before);
   });

@@ -1,4 +1,5 @@
 import type { BackendStopped } from "@neherlab/app-ui/host";
+import type { BlobPortRequest } from "@neherlab/app-ui/port";
 import type { FetchPort } from "@neherlab/app-ui/port-fetch";
 import pWaitFor from "p-wait-for";
 
@@ -46,7 +47,7 @@ describe("connection start", () => {
   test("a ready worker gives every port listener the page end of the channel", async () => {
     const host = fakeHost();
     const connection = new WorkerConnection(host);
-    const ports: FetchPort[] = [];
+    const ports: Array<FetchPort<BlobPortRequest>> = [];
 
     connection.onPort((port) => {
       ports.push(port);
@@ -83,6 +84,7 @@ describe("connection failures", () => {
         {
           reason: "the back end could not start: When creating the runs directory '/treetime/runs': unsupported",
           restarts: false,
+          requested: false,
         },
       ],
       1,
@@ -106,6 +108,7 @@ describe("connection failures", () => {
         {
           reason: "the back end could not start: loading the WebAssembly module failed: HTTP status 404",
           restarts: false,
+          requested: false,
         },
       ],
       [],
@@ -116,7 +119,7 @@ describe("connection failures", () => {
     const host = fakeHost();
     const connection = new WorkerConnection(host);
     const stops: BackendStopped[] = [];
-    const ports: FetchPort[] = [];
+    const ports: Array<FetchPort<BlobPortRequest>> = [];
 
     connection.onStopped((stop) => {
       stops.push(stop);
@@ -135,6 +138,7 @@ describe("connection failures", () => {
         {
           reason: "the back end stopped and restarts: panicked at src/run.rs:1:1: index out of bounds",
           restarts: true,
+          requested: false,
         },
       ],
       1,
@@ -157,7 +161,7 @@ describe("connection failures", () => {
     host.workers[0]?.fail("Uncaught ZodError");
 
     expect([stops, host.workers.length]).toStrictEqual([
-      [{ reason: "the back end stopped and restarts: Uncaught ZodError", restarts: true }],
+      [{ reason: "the back end stopped and restarts: Uncaught ZodError", restarts: true, requested: false }],
       2,
     ]);
   });
@@ -175,7 +179,7 @@ describe("connection failures", () => {
     host.workers[0]?.fail("SyntaxError: Unexpected token");
 
     expect([stops, host.workers.length]).toStrictEqual([
-      [{ reason: "the back end could not start: SyntaxError: Unexpected token", restarts: false }],
+      [{ reason: "the back end could not start: SyntaxError: Unexpected token", restarts: false, requested: false }],
       1,
     ]);
   });
@@ -193,7 +197,11 @@ describe("connection failures", () => {
     host.workers[0]?.emit({ kind: "ready", extra: true });
 
     expect(stops).toStrictEqual([
-      { reason: "the back end could not start: the back end worker sent a malformed message", restarts: false },
+      {
+        reason: "the back end could not start: the back end worker sent a malformed message",
+        restarts: false,
+        requested: false,
+      },
     ]);
   });
 });

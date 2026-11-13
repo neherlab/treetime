@@ -5,12 +5,12 @@ import {
   browserPreferencesStorage,
   ErrorBoundary,
   PreferencesProvider,
+  publishBackendStop,
   QueryProvider,
   reloadOnChunkError,
-  TAB_BACKEND,
   ThemeProvider,
 } from "@neherlab/app-ui";
-import { createPortFetch } from "@neherlab/app-ui/port-fetch";
+import { createBlobPortFetch } from "@neherlab/app-ui/port-fetch";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -32,7 +32,7 @@ const connection = new WorkerConnection(browserWorkerHost(jobs));
 
 const client = createApiClient({
   baseUrl: globalThis.location.origin,
-  fetch: createPortFetch(connection, { transferBodies: true }),
+  fetch: createBlobPortFetch(connection, publishBackendStop),
 });
 
 const preferences = browserPreferencesStorage(globalThis.localStorage, globalThis.sessionStorage);
@@ -47,7 +47,7 @@ if (root) {
           <QueryProvider>
             <ApiProvider client={client}>
               <PreferencesProvider storage={preferences}>
-                <App host={null} browserBackend={TAB_BACKEND} />
+                <App host={null} />
               </PreferencesProvider>
             </ApiProvider>
           </QueryProvider>

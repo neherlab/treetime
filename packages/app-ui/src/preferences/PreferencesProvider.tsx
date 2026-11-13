@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 
-import { lostFilesMessage } from "../analysis/lostRuns";
+import { lostFilesMessage, reloadedFilesMessage } from "../analysis/lostRuns";
 import { useApiContext } from "../api/context";
 import { LoadingState } from "../components/PageShell";
+import { useHost } from "../host-context";
 import { reportToConsole, type PreferencesStorage } from "./storage";
 import { applyPreferences, PreferencesSaver, restorePreferences } from "./sync";
 
@@ -14,13 +15,18 @@ const PREFERENCES_KEY = ["preferences"] as const;
 export function PreferencesProvider({ storage, children }: { storage: PreferencesStorage; children: React.ReactNode }) {
   const { setTheme } = useTheme();
   const { client } = useApiContext();
+  const host = useHost();
 
   const { data: restored, error } = useQuery({
     queryKey: PREFERENCES_KEY,
     queryFn: async () => {
-      const { preferences, dropped } = await restorePreferences(client, await storage.load(), reportToConsole);
+      const { preferences, dropped, examples } = await restorePreferences(
+        client,
+        await storage.load(),
+        reportToConsole,
+      );
 
-      applyPreferences(preferences, setTheme);
+      applyPreferences(preferences, examples, setTheme);
 
       return { dropped };
     },
@@ -36,9 +42,9 @@ export function PreferencesProvider({ storage, children }: { storage: Preference
   useEffect(() => {
     if (!reported.current && dropped !== undefined && dropped.length > 0) {
       reported.current = true;
-      toast.add(lostFilesMessage(dropped));
+      toast.add(host === null ? reloadedFilesMessage(dropped) : lostFilesMessage(dropped));
     }
-  }, [dropped]);
+  }, [dropped, host]);
 
   useEffect(() => {
     if (!loaded) {

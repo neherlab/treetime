@@ -5,6 +5,8 @@
 - **Keyboard**: Auspice 3.2.0 hides the checkbox of each toggle with `display: none`, so the keyboard skips all toggles (such as "Show all labels" and the entropy panel toggle). Panel section headers and the buttons of filter badges react to clicks only. Selects (including the geographic resolution select of the map and the Branch Length select), panel toggles and filter badge buttons have no accessible names
 - **Toggle height on border-box pages**: a toggle container has a fixed height of 21 px, and some toggles add padding through their `style` prop. The Tailwind base styles of the TreeTime apps size every box as `border-box`, so the padding shrinks the toggle instead of adding space, and the toggle label overlaps the next control, for example "Show all labels" over "Tip Labels"
 
+The run page shows a compact toolbar over the tree (`ViewerToolbar`, `packages/app-ui/src/auspice/ViewerToolbar.tsx`: coloring, layout, search, zoom to the root), and its "View options" button opens the full Auspice sidebar with these controls, so the patched controls stay one click away. The toolbar sets the same Auspice state as the sidebar; a change of the patched controls must keep the two in step.
+
 TreeTime fixes these in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`: the checkbox of a toggle stays in place, invisible and focusable, with a focus ring on the slider; panel headers and filter badge buttons react to Enter and Space; the controls get names; and the toggle container keeps `content-box` sizing.
 
 ## Code

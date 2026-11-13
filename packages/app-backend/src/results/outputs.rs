@@ -84,10 +84,10 @@ pub fn shown_auspice(output_files: &[OutputFile]) -> Option<&OutputFile> {
     .min_by_key(|file| file.alignment.as_ref().map_or(0, |alignment| alignment.number))
 }
 
-/// An output file of a run that could not be read.
+/// A file of a run that could not be read.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct OutputProblem {
-  /// Path of the file relative to the run's `out/` folder.
+  /// Path of the file: relative to the run's `out/` folder for an output file, as the run resolved it for an input.
   pub path: String,
   /// Why the file could not be read.
   pub message: String,
@@ -109,11 +109,7 @@ pub fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
       OutputSelection::ClockModel,
       OutputSelection::Rtt,
     ],
-    AppCommand::Optimize => &[
-      OutputSelection::Auspice,
-      OutputSelection::NodeData,
-      OutputSelection::Model,
-    ],
+    AppCommand::Optimize => &[OutputSelection::Auspice, OutputSelection::Model],
     AppCommand::Homoplasy => &[OutputSelection::Auspice, OutputSelection::HomoplasyStats],
     AppCommand::Ancestral | AppCommand::Mugration => &[OutputSelection::Auspice, OutputSelection::Model],
     AppCommand::Prune => &[OutputSelection::Auspice],

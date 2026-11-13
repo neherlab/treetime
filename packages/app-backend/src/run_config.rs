@@ -1,7 +1,10 @@
 use crate::command::AppCommandExt;
-use crate::config::code::{ConfigCode, config_code};
+use crate::config::catalog::command_settings;
+use crate::config::code::{ConfigCode, SettingCommandLine, config_code, setting_command_lines};
+use crate::runs::input_store::InputStore;
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::ConfigHook;
+use crate::runs::run_paths::PortablePaths;
 use app_commands::command::AppCommand;
 use app_commands::config::source::{ConfigProblem, InvalidConfig};
 use app_commands::json_value::SparseConfig;
@@ -16,25 +19,39 @@ use treetime_utils::make_error;
 
 pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
 
-pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigResponse {
-  let resolved = request
-    .command
+pub fn run_config(request: &RunConfigRequest, confine: &ConfigHook, store: &InputStore) -> RunConfigResponse {
+  let command = request.command;
+  let resolved = command
     .prepare_run(
       &Value::Object(request.config.0.clone()),
       Path::new(RUN_CONFIG_OUTPUT_DIR),
     )
-    .and_then(|prepared| Ok((config_code(request.command, &prepared.config)?, prepared.config)));
+    .and_then(|prepared| {
+      let mut config = prepared.config.clone();
+      PortablePaths::of_settings(command, &config, store)?.apply(command, &mut config)?;
+      let seed = prepared.args.random_step().and_then(|_| prepared.args.seed());
+      let command_lines = setting_command_lines(command, &command_settings(command)?.settings, &config)?;
+      Ok((
+        config_code(command, &config)?,
+        command_lines,
+        config,
+        prepared.config,
+        seed,
+      ))
+    });
   match resolved {
-    Ok((code, config)) => {
-      let (config_hash, config_hash_error) = match config_hash(request.command, &config, confine) {
+    Ok((code, command_lines, config, requested, seed)) => {
+      let (config_hash, config_hash_error) = match config_hash(command, &requested, confine) {
         Ok(hash) => (Some(hash), None),
         Err(report) => (None, Some(format!("{report:#}"))),
       };
       RunConfigResponse::Valid {
         config: SparseConfig(config),
-        code,
+        code: Box::new(code),
+        command_lines,
         config_hash,
         config_hash_error,
+        seed,
       }
     },
     Err(report) => RunConfigResponse::invalid(&report),
@@ -61,16 +78,22 @@ pub struct RunConfigRequest {
 pub enum RunConfigResponse {
   /// The configuration is accepted.
   Valid {
-    /// The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
-    /// `output_all` set to `out`.
+    /// The configuration as the run records it, with every default filled in, the outputs the run layer adds,
+    /// `output_all` set to `out`, and each uploaded input at its path in the run's folder, `inputs/<name>`.
     config: SparseConfig,
     /// The command line and the YAML config that reproduce the run.
-    code: ConfigCode,
+    code: Box<ConfigCode>,
+    /// The command-line form of each setting of the command for its value in `config`.
+    command_lines: Vec<SettingCommandLine>,
     /// Hash that a run of this configuration records, to find finished runs with the same settings and input
     /// contents; absent when an input cannot be read.
     config_hash: Option<String>,
     /// Why `config_hash` is absent.
     config_hash_error: Option<String>,
+    /// Seed that the configuration sets for its random step; absent when it sets none, so that the run draws one, and
+    /// when the run has no random step. A finished run with the same `config_hash` has the settings of this
+    /// configuration when the configuration sets no seed or the seed of that run.
+    seed: Option<u64>,
   },
   /// The configuration is rejected.
   Invalid {
@@ -94,7 +117,7 @@ impl RunConfigResponse {
   }
 }
 
-fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: ConfigHook) -> Result<String, Report> {
+fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: &ConfigHook) -> Result<String, Report> {
   let mut confined = Value::Object(config.clone());
   confine(&mut confined)?;
   let Value::Object(confined) = confined else {

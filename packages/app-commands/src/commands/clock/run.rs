@@ -1,4 +1,4 @@
-use crate::commands::clock::args::TreetimeClockArgs;
+use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -10,7 +10,7 @@ use app_output::command_outputs::CommandKind;
 use app_output::output_plan::output_unavailable;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use app_output::table_output::table_write_file;
-use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
+use app_output::tree_output::{auspice_view, tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeSet;
 use treetime::cancel::Cancel;
@@ -23,6 +23,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
+use treetime_io::auspice_types::AuspiceTree;
+use treetime_io::nwk::NwkParse;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_clock(
@@ -35,33 +37,7 @@ pub fn run_clock(
   stages.report("Reading input", 0.0, "");
 
   let resolved = clock_args.outputs.resolve()?;
-  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect, log)?;
-  let names = nwk_parsed.names;
-  let graph = nwk_parsed.graph;
-  let branch_lengths = nwk_parsed.branch_lengths;
-  let input_order = leaf_order(&graph);
-
-  let dates = read_input_dates(&clock_args.dates, &graph, &names, log)?;
-
-  let params = ClockParams {
-    clock_filter: clock_args.clock_filter,
-    allow_negative_rate: clock_args.allow_negative_rate,
-    reroot_spec: clock_args
-      .reroot
-      .as_ref()
-      .map(|reroot| reroot.spec(&graph, &names))
-      .transpose()?,
-    prune_tips: clock_args.prune_tips.resolve(&graph, &names, log)?,
-  };
-
-  let input = ClockInput {
-    graph,
-    names,
-    dates,
-    branch_lengths,
-  };
-
-  let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
+  let ClockFit { output, input_order } = fit_clock(clock_args, cancel, stages, log)?;
   let pipeline::ClockOutput {
     mut graph,
     inputs,
@@ -91,9 +67,118 @@ pub fn run_clock(
   })
 }
 
+pub fn clock_regression(
+  raw: TreetimeClockArgsRaw,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<ClockRegression, Report> {
+  let clock_args = TreetimeClockArgs::try_from(raw)?;
+  cancel.check()?;
+  let ClockFit { output, .. } = fit_clock(&clock_args, cancel, stages, log)?;
+  let tip_names = output
+    .graph
+    .get_leaves()
+    .map(|leaf| output.names[leaf.key()].to_owned())
+    .collect();
+  let tree = auspice_view(
+    &divergence_tree(
+      &output.graph,
+      &output.names,
+      &output.branch_lengths,
+      Divergence::Values(&output.divergences),
+    ),
+    CommandKind::Clock,
+  )?;
+  Ok(ClockRegression {
+    clock_model: output.clock_model,
+    regression_results: output.regression_results,
+    tip_names,
+    tree,
+  })
+}
+
+pub fn input_tree_view(tree: &NwkParse) -> Result<AuspiceTree, Report> {
+  auspice_view(
+    &divergence_tree(
+      &tree.graph,
+      &tree.names,
+      &tree.branch_lengths,
+      Divergence::CumulativeBranchLength,
+    ),
+    CommandKind::Clock,
+  )
+}
+
+pub struct ClockRegression {
+  pub clock_model: ClockModel,
+  pub regression_results: Vec<ClockRegressionResult>,
+  pub tip_names: BTreeSet<String>,
+  pub tree: AuspiceTree,
+}
+
+fn divergence_tree<'a>(
+  graph: &'a Graph,
+  names: &'a NodeNames,
+  branch_lengths: &'a EdgeMap<Option<f64>>,
+  divergence: Divergence<'a>,
+) -> AnnotatedGraph<'a> {
+  AnnotatedGraph {
+    graph,
+    names,
+    divergence_branch_lengths: branch_lengths,
+    time_branch_lengths: None,
+    divergence,
+    sequences: None,
+    dates: None,
+    traits: None,
+  }
+}
+
 pub struct ClockResult {
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
+}
+
+fn fit_clock(
+  clock_args: &TreetimeClockArgs,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<ClockFit, Report> {
+  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect, log)?;
+  let names = nwk_parsed.names;
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
+  let input_order = leaf_order(&graph);
+
+  let dates = read_input_dates(&clock_args.dates, &graph, &names, log)?;
+
+  let params = ClockParams {
+    clock_filter: clock_args.clock_filter,
+    allow_negative_rate: clock_args.allow_negative_rate,
+    reroot_spec: clock_args
+      .reroot
+      .as_ref()
+      .map(|reroot| reroot.spec(&graph, &names))
+      .transpose()?,
+    prune_tips: clock_args.prune_tips.resolve(&graph, &names, log)?,
+  };
+
+  let input = ClockInput {
+    graph,
+    names,
+    dates,
+    branch_lengths,
+  };
+
+  let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
+  Ok(ClockFit { output, input_order })
+}
+
+struct ClockFit {
+  output: pipeline::ClockOutput,
+  input_order: Vec<GraphNodeKey>,
 }
 
 fn write_clock_run_outputs(

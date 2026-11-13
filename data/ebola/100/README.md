@@ -1,3 +1,7 @@
+---
+organism: "Ebola virus"
+---
+
 # `ebola/100`
 
 Subsample of `ebola/362` (100 sequences).

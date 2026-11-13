@@ -1,3 +1,7 @@
+---
+organism: "Mycobacterium tuberculosis"
+---
+
 # `tb/20`
 
 Subsample of `tb/149` (20 sequences).

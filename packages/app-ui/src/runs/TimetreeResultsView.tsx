@@ -1,13 +1,11 @@
-import type { RunRecord, CoalescentPrior, TimetreeResults, TimetreeEstimates } from "@neherlab/app-contracts";
-import { useCallback, useMemo } from "react";
+import type { RunRecord, TimetreeEstimates, TimetreeResults } from "@neherlab/app-contracts";
+import { useCallback } from "react";
 
-import { Panel, SummaryStrip, type SummaryEntry } from "../components/Panel";
-import { formatDuration, formatLevel, formatRate, rSquaredText, yearDateText } from "../format";
-import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
+import { Panel } from "../components/Panel";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { SelectionPanel } from "./SelectionPanel";
-import { SkylinePlot } from "./SkylinePlot";
+import { TimetreeEstimatesPanel } from "./TimetreeEstimates";
 import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 
@@ -42,8 +40,6 @@ function TimetreeView({
   estimates: TimetreeEstimates;
   tree: TreeData;
 }) {
-  const summary = useMemo(() => timetreeSummary(record, estimates), [estimates, record]);
-
   const aside = useCallback(
     (link: TreeLink) => <TimetreeAside record={record} tree={tree} data={data} link={link} />,
     [data, record, tree],
@@ -51,8 +47,8 @@ function TimetreeView({
 
   return (
     <div className="grid gap-4">
-      <SummaryStrip entries={summary} />
-      <TreeView data={tree} colorBy={initialColorBy(tree.tree, TIMETREE_COLORINGS)} aside={aside} />
+      <TimetreeEstimatesPanel record={record} estimates={estimates} />
+      <TreeView data={tree} colorBy={initialColorBy(tree.tree, TIMETREE_COLORINGS)} entropy={false} aside={aside} />
     </div>
   );
 }
@@ -68,17 +64,17 @@ function TimetreeAside({
   data: TimetreeResults;
   link: TreeLink;
 }) {
-  const regression = data.root_to_tip;
-
-  const { points, line } = useRootToTip(regression);
+  const { points, line } = useRootToTip(data.root_to_tip);
+  const root = tree.tree.nodes[0];
+  const selected = link.focus !== undefined && link.focus !== root;
 
   return (
     <>
-      <SelectionPanel runId={record.id} title={record.title} tree={tree.tree} link={link} />
+      {selected && <SelectionPanel runId={record.id} title={record.title} tree={tree.tree} link={link} />}
       <Panel
         figure
         title="Root-to-tip regression"
-        hint="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
+        hint="Samples as the final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
       >
         {points.length === 0 ? (
           <p className="text-muted-foreground px-2 py-3 text-sm">This run wrote no clock regression table.</p>
@@ -92,131 +88,6 @@ function TimetreeAside({
           />
         )}
       </Panel>
-      {data.skyline.length > 0 && (
-        <Panel
-          figure
-          title="Coalescent time scale"
-          hint={
-            <>
-              Estimate of <i>T</i>
-              <sub>c</sub> in years with its interval. The effective population size equals <i>T</i>
-              <sub>c</sub> multiplied by the number of generations per year. Shown up to the latest sample.
-            </>
-          }
-        >
-          <SkylinePlot segments={data.skyline} until={data.estimates?.latest_sample?.year} />
-        </Panel>
-      )}
     </>
   );
-}
-
-function timetreeSummary(record: RunRecord, estimates: TimetreeEstimates): SummaryEntry[] {
-  const relax = estimates.relaxed_clock;
-  const r = estimates.r ?? undefined;
-  const excluded = estimates.excluded_samples;
-
-  return [
-    rootEntry(estimates),
-    rateEntry(estimates),
-    {
-      label: "Temporal signal",
-      value: r === undefined ? "not computed" : `r = ${r.toFixed(3)}`,
-      detail: estimates.clock_rate_fixed ? "Fixed clock rate" : rSquaredText(estimates.r_squared),
-    },
-    {
-      label: "Samples",
-      value: String(estimates.samples),
-      detail: excluded === 0 ? "All in the clock model" : `${excluded} without usable date or clock outliers`,
-      tone: excluded === 0 ? undefined : "caution",
-    },
-    {
-      label: "Coalescent prior",
-      value: coalescentPriorText(estimates.coalescent_prior),
-      detail: relax === undefined ? "Strict clock" : `Relaxed clock: slack ${relax.slack}, coupling ${relax.coupling}`,
-    },
-    likelihoodEntry(record, estimates),
-  ];
-}
-
-function coalescentPriorText(prior: CoalescentPrior): string {
-  if (prior.kind === "fixed") {
-    return prior.unit === "substitutions-per-site"
-      ? `Constant size, Tc = ${prior.tc} substitutions per site`
-      : `Constant size, Tc = ${prior.tc}`;
-  }
-
-  if (prior.kind === "optimized") {
-    return "Constant size, optimized Tc";
-  }
-
-  if (prior.kind === "skyline") {
-    return `Skyline, ${prior.points} points, stiffness ${prior.stiffness}`;
-  }
-
-  return "None";
-}
-
-function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
-  const date = estimates.root_date;
-
-  if (date === undefined) {
-    return { label: "Root date", value: "not dated" };
-  }
-
-  const interval = estimates.root_interval;
-  const edge = estimates.root_near_interval_edge;
-
-  return {
-    label: "Root date",
-    value: yearDateText(date),
-    detail:
-      interval === undefined
-        ? "No interval computed"
-        : `${formatLevel(interval.level)}: ${yearDateText(interval.lower)} to ${yearDateText(interval.upper)}${edge ? "; the estimate lies at the interval edge" : ""}`,
-    tone: edge ? "caution" : undefined,
-  };
-}
-
-function rateEntry(estimates: TimetreeEstimates): SummaryEntry {
-  const rate = estimates.clock_rate;
-
-  if (rate === undefined) {
-    return { label: "Clock rate", value: "not written" };
-  }
-
-  const std = estimates.clock_rate_std ?? undefined;
-
-  const detail = estimates.clock_rate_fixed
-    ? std === undefined
-      ? "Fixed"
-      : `Fixed, std. dev. ${formatRate(std)}`
-    : std === undefined
-      ? "No standard deviation computed"
-      : `± ${formatRate(std)} (1 std. dev.)`;
-
-  return { label: "Clock rate", value: `${formatRate(rate)} /site/yr`, detail };
-}
-
-function likelihoodEntry(record: RunRecord, estimates: TimetreeEstimates): SummaryEntry {
-  const written = estimates.log_likelihood;
-
-  const runTime = record.duration_seconds === undefined ? "" : `, ${formatDuration(record.duration_seconds)}`;
-
-  const iterations = `${estimates.iterations} ${estimates.iterations === 1 ? "iteration" : "iterations"}${runTime}`;
-
-  if (written === undefined) {
-    return { label: "Log likelihood", value: "not written", detail: iterations };
-  }
-
-  const value = fromJsonFloat(written);
-
-  return Number.isFinite(value)
-    ? { label: "Log likelihood", value: value.toFixed(1), detail: iterations }
-    : {
-        label: "Log likelihood",
-        value: "not finite",
-        detail: `${nonFiniteLabel(value)}; ${iterations}`,
-        tone: "fault",
-      };
 }

@@ -51,6 +51,7 @@ describe("backend_process stops", () => {
     expect(backendStop({ code: 0, requested: false, startError, exitTimes: [], now: 0 })).toStrictEqual({
       reason: "the back end could not start: When opening the runs folder '/r': denied",
       restarts: false,
+      requested: false,
       error: startError,
     });
   });
@@ -59,6 +60,7 @@ describe("backend_process stops", () => {
     expect(backendStop({ code: 0, requested: true, startError, exitTimes: [], now: 0 })).toStrictEqual({
       reason: "the back end restarts to open the new runs folder; the request was not answered",
       restarts: true,
+      requested: true,
     });
   });
 

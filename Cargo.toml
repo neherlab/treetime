@@ -21,13 +21,13 @@ package.authors = [
 
 
 members = [
+  "packages/app-api",
   "packages/app-backend",
   "packages/app-cli",
   "packages/app-commands",
   "packages/app-datasets",
   "packages/app-napi",
   "packages/app-output",
-  "packages/app-server",
   "packages/app-wasm",
   "packages/treetime",
   "packages/treetime-analytical",
@@ -56,7 +56,7 @@ members = [
 opt-level = 2
 
 # Development build with optimized workspace crates, for long runs on real
-# datasets and the dev server. Rebuilds are slower than `dev`.
+# datasets. Rebuilds are slower than `dev`.
 [profile.dev-opt]
 inherits = "dev"
 opt-level = 1
@@ -153,7 +153,6 @@ eyre = "=0.6.14"
 fontdb = "=0.23.0"
 gcollections = "=1.6.0"
 getset = "=0.1.7"
-headers = "=0.4.1"
 heck = "=0.5.0"
 indexmap = { version = "=2.14.2", features = ["rayon"] }
 indicatif = "=0.18.6"
@@ -225,11 +224,9 @@ tiny-skia = "=0.12.0"
 tokio = "=1.53.3"
 tokio-stream = "=0.1.19"
 tokio-util = { version = "=0.7.19", features = ["io", "io-util"] }
-tower = { version = "=0.5.3", default-features = false, features = ["timeout", "util"] }
+tower = { version = "=0.5.3", default-features = false, features = ["util"] }
 tower-http = { version = "=0.7.1", features = [
   "catch-panic",
-  "compression-gzip",
-  "compression-zstd",
   "set-header",
 ] }
 usvg = "=0.47.0"
@@ -237,12 +234,12 @@ wasm-bindgen = "=0.2.129"
 wasm-bindgen-futures = "=0.4.79"
 zip = { version = "=9.0.5", default-features = false, features = ["deflate-flate2"] }
 
+app-api = { path = "packages/app-api" }
 app-backend = { path = "packages/app-backend" }
 app-commands = { path = "packages/app-commands", default-features = false }
 app-datasets = { path = "packages/app-datasets" }
 app-napi = { path = "packages/app-napi" }
 app-output = { path = "packages/app-output" }
-app-server = { path = "packages/app-server" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
 treetime-charts = { path = "packages/treetime-charts" }

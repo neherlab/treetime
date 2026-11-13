@@ -19,40 +19,65 @@ const DRAFT: UiDraft = {
     metadata: "/treetime/runs/r2/inputs/dates.tsv",
   },
   sources: {
-    tree: { label: "tree.nwk", origin: "upload", run_id: "r1" },
-    metadata: { label: "dates.tsv", origin: "run", run_id: "r2" },
+    tree: { label: "tree.nwk", origin: { kind: "upload" }, run_id: "r1" },
+    metadata: { label: "dates.tsv", origin: { kind: "run" }, run_id: "r2" },
   },
   upload_run_id: "r1",
 };
 
 describe("lost runs of a draft", () => {
   test("the files of a run that the back end no longer has leave the form", async () => {
-    const server = new FakeServer({ "GET /api/runs/r2": () => json(R2) });
+    const server = new FakeServer({
+      "GET /api/runs/r2": () => json(R2),
+      "POST /api/stored-inputs": () => json({ missing: ["/treetime/runs/r1/inputs/tree.nwk"] }),
+    });
 
     const expected: UiDraft = {
       ...FRESH,
       config: { ...FRESH.config, metadata: "/treetime/runs/r2/inputs/dates.tsv" },
-      sources: { metadata: { label: "dates.tsv", origin: "run", run_id: "r2" } },
+      sources: { metadata: { label: "dates.tsv", origin: { kind: "run" }, run_id: "r2" } },
     };
 
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
       draft: expected,
       dropped: ["tree.nwk"],
+      examples: [],
       runs: new Map([["r2", R2]]),
     });
-    expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r1", "GET /api/runs/r2"]);
+    expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r1", "GET /api/runs/r2", "POST /api/stored-inputs"]);
   });
 
   test("a draft whose runs all exist stays as it is", async () => {
-    const server = new FakeServer({ "GET /api/runs/r1": () => json(R1), "GET /api/runs/r2": () => json(R2) });
+    const server = new FakeServer({
+      "GET /api/runs/r1": () => json(R1),
+      "GET /api/runs/r2": () => json(R2),
+      "POST /api/stored-inputs": () => json({ missing: [] }),
+    });
 
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
       draft: DRAFT,
       dropped: [],
+      examples: [],
       runs: new Map([
         ["r1", R1],
         ["r2", R2],
       ]),
+    });
+  });
+
+  test("a file of a lost run that another run still holds stays in the form", async () => {
+    const server = new FakeServer({
+      "GET /api/runs/r2": () => json(R2),
+      "POST /api/stored-inputs": () => json({ missing: [] }),
+    });
+
+    const { upload_run_id: _lost, ...expected } = DRAFT;
+
+    await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
+      draft: expected,
+      dropped: [],
+      examples: [],
+      runs: new Map([["r2", R2]]),
     });
   });
 
@@ -62,6 +87,7 @@ describe("lost runs of a draft", () => {
     await expect(forgetLostRuns(server.client(), FRESH)).resolves.toStrictEqual({
       draft: FRESH,
       dropped: [],
+      examples: [],
       runs: new Map(),
     });
     expect(server.keys()).toStrictEqual([]);

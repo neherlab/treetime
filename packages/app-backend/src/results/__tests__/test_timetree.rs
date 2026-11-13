@@ -4,8 +4,8 @@ mod tests {
   use crate::results::__tests__::test_tree::tests::helpers::fixture;
   use crate::results::clock::{ClockLine, RootToTip, RootToTipPoint, root_to_tip};
   use crate::results::timetree::{
-    CoalescentPrior, FixedTcUnit, RelaxedClock, TimetreeEstimates, TimetreeOutputs, coalescent_prior, relaxed_clock,
-    timetree_results,
+    CoalescentPrior, FixedTcUnit, RelaxedClock, TimetreeEstimates, TimetreeOutputs, clock_model_summary,
+    coalescent_prior, relaxed_clock, timetree_results,
   };
   use crate::results::tree::{DateInterval, ResultTree};
   use crate::results::year_date::YearDate;
@@ -45,6 +45,7 @@ mod tests {
         level: 0.9,
       }),
       root_near_interval_edge: false,
+      interval_computable: false,
       clock_rate: Some(1e-3),
       clock_rate_std: Some(2e-4),
       clock_rate_fixed: false,
@@ -54,7 +55,9 @@ mod tests {
       latest_sample: Some(YearDate::new(2015.0)),
       excluded_samples: 1,
       coalescent_prior: CoalescentPrior::None,
+      coalescent_summary: o!("None"),
       relaxed_clock: None,
+      clock_model_summary: o!("Strict clock"),
       log_likelihood: Some(JsonFloat(-110.5)),
       iterations: 2,
     };
@@ -84,6 +87,48 @@ mod tests {
     assert_eq!(
       Some(true),
       results.estimates.map(|estimates| estimates.root_near_interval_edge)
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::confidence_off(     true,  false, false, true)]
+  #[case::confidence_on(      true,  false, true,  false)]
+  #[case::interval_written(   true,  true,  false, false)]
+  #[case::root_not_dated(     false, false, false, false)]
+  #[trace]
+  fn test_timetree_estimates_offer_the_interval_only_when_a_rerun_adds_it(
+    #[case] dated: bool,
+    #[case] interval: bool,
+    #[case] confidence: bool,
+    #[case] expected: bool,
+  ) -> Result<(), Report> {
+    let mut auspice = fixture();
+    if dated {
+      if !interval {
+        auspice.tree.node_attrs.num_date.as_mut().unwrap().confidence = None;
+      }
+    } else {
+      auspice.tree.node_attrs.num_date = None;
+    }
+    let tree = ResultTree::from_auspice(&auspice)?;
+
+    let results = timetree_results(
+      &TimetreeOutputs {
+        tree: Some(&tree),
+        clock_model: None,
+        clock_rows: None,
+        node_data_clock: None,
+        trace: &[],
+        coalescent: &[],
+      },
+      &config(|config| config.confidence = confidence),
+    );
+
+    assert_eq!(
+      Some(expected),
+      results.estimates.map(|estimates| estimates.interval_computable)
     );
     Ok(())
   }
@@ -131,6 +176,27 @@ mod tests {
     let config = config(|config| config.coalescent = coalescent.map(|text| parse_coalescent(text).unwrap()));
 
     assert_eq!(expected, coalescent_prior(&config));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::none(         CoalescentPrior::None,                                                                  "None")]
+  #[case::substitutions(CoalescentPrior::Fixed { tc: o!("0.01"), unit: FixedTcUnit::SubstitutionsPerSite }, "Constant size, Tc = 0.01 substitutions per site")]
+  #[case::time(         CoalescentPrior::Fixed { tc: o!("26w"), unit: FixedTcUnit::Time },                   "Constant size, Tc = 26w")]
+  #[case::optimized(    CoalescentPrior::Optimized,                                                             "Constant size, optimized Tc")]
+  #[case::skyline(      CoalescentPrior::Skyline { points: 20, stiffness: 2.0 },                                "Skyline, 20 points, stiffness 2")]
+  #[trace]
+  fn test_coalescent_prior_summary_names_the_prior_and_its_settings(#[case] prior: CoalescentPrior, #[case] expected: &str) {
+    assert_eq!(expected, prior.summary());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::strict( None,                                             "Strict clock")]
+  #[case::relaxed(Some(RelaxedClock { slack: 1.0, coupling: 0.5 }), "Relaxed clock: slack 1, coupling 0.5")]
+  #[trace]
+  fn test_clock_model_summary_names_the_clock_model(#[case] relaxed: Option<RelaxedClock>, #[case] expected: &str) {
+    assert_eq!(expected, clock_model_summary(relaxed));
   }
 
   #[test]

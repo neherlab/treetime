@@ -1,16 +1,19 @@
 use crate::chunks::ChunkReader;
 use app_backend::job::{CancelToken, JobEvent, run_job_step};
 use app_backend::runs::errors::invalid;
-use app_backend::runs::files::{FileChunks, list_run_files, resolve_run_file};
+use app_backend::runs::files::{FileChunks, out_file_paths, resolve_run_file};
 use app_backend::runs::inputs::file_sha256;
 use app_backend::runs::lifecycle::{JobInput, RunJob, RunOutcome, compute_run};
+use app_backend::runs::run_paths::OUT_DIR;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use js_sys::{Function, Promise};
 use log::error;
+use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
+use treetime::progress::{LogEvent, LogLevel};
 use treetime_utils::error::report_to_string;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use wasm_bindgen::JsValue;
@@ -35,6 +38,12 @@ const RUN_THREAD_NAME: &str = "treetime-run";
 
 #[cfg(target_feature = "atomics")]
 const RUN_MESSAGE_CAPACITY: usize = 256;
+
+#[cfg(target_feature = "atomics")]
+const MODULE_KIND: &str = "threaded";
+
+#[cfg(not(target_feature = "atomics"))]
+const MODULE_KIND: &str = "single-threaded";
 
 #[cfg(not(target_feature = "atomics"))]
 thread_local! {
@@ -95,6 +104,7 @@ impl Job {
     EVENT_SINK.with_borrow_mut(|sink| *sink = Some(on_event));
     let outcome = compute(
       &self.job,
+      1,
       || Ok(()),
       |event| {
         EVENT_SINK.with_borrow(|sink| match sink {
@@ -140,14 +150,12 @@ impl Job {
 
   #[wasm_bindgen(js_name = outputFiles)]
   pub fn output_files(&self) -> Result<Vec<String>, JsError> {
-    list_run_files(&self.job.out_dir, &[])
-      .map(|files| files.into_iter().map(|file| file.path).collect_vec())
-      .map_err(|report| js_error(&report))
+    out_file_paths(Path::new(OUT_DIR)).map_err(|report| js_error(&report))
   }
 
   #[wasm_bindgen(js_name = readOutput)]
   pub fn read_output(&self, path: &str) -> Result<ChunkReader, JsError> {
-    resolve_run_file(&self.job.out_dir, path)
+    resolve_run_file(Path::new(OUT_DIR), path)
       .and_then(|path| FileChunks::open(&path))
       .map(ChunkReader::from)
       .map_err(|report| js_error(&report))
@@ -176,11 +184,15 @@ fn open_job(job_json: &str, jobs: u32) -> Result<RunJob, Report> {
     return Err(invalid("a run worker needs at least 1 thread, got 0"));
   }
   let job: RunJob = json_read_str(job_json).wrap_err("When reading the job of a run worker")?;
+  fs::create_dir_all(&job.run_dir).wrap_err_with(|| format!("When creating '{}'", job.run_dir.display()))?;
+  env::set_current_dir(&job.run_dir)
+    .wrap_err_with(|| format!("When entering the run folder '{}'", job.run_dir.display()))?;
   let folders = job
     .inputs
     .iter()
     .filter_map(|input| input.path.parent())
-    .chain([job.out_dir.as_path()])
+    .filter(|folder| !folder.as_os_str().is_empty())
+    .chain([Path::new(OUT_DIR)])
     .unique();
   for folder in folders {
     fs::create_dir_all(folder).wrap_err_with(|| format!("When creating '{}'", folder.display()))?;
@@ -192,6 +204,7 @@ fn open_job(job_json: &str, jobs: u32) -> Result<RunJob, Report> {
 fn compute_on_run_thread(job: &RunJob, jobs: usize, sender: &Sender<RunMessage>) {
   let outcome = compute(
     job,
+    jobs,
     || init_thread_pool(jobs).wrap_err_with(|| format!("When starting {jobs} threads for the run")),
     |event| send_run_message(sender, RunMessage::Event(event)),
   );
@@ -205,17 +218,29 @@ fn send_run_message(sender: &Sender<RunMessage>, message: RunMessage) {
   }
 }
 
+pub(crate) fn module_log(threads: usize) -> JobEvent {
+  let unit = if threads == 1 { "thread" } else { "threads" };
+  JobEvent::Log {
+    data: LogEvent {
+      level: LogLevel::Info,
+      message: format!("The run uses the {MODULE_KIND} WebAssembly module with {threads} {unit}"),
+    },
+  }
+}
+
 fn compute(
   job: &RunJob,
+  threads: usize,
   start: impl FnOnce() -> Result<(), Report>,
   emit: impl Fn(JobEvent) + Send + Sync,
 ) -> RunOutcome {
+  emit(module_log(threads));
   let cancel = CancelToken::default();
   match run_job_step(&job.id, &cancel, || {
     start()?;
     check_inputs(job)
   }) {
-    Ok(()) => compute_run(job, &cancel, emit),
+    Ok(()) => compute_run(&job.id, job.command, &job.config.0, Path::new(OUT_DIR), &cancel, emit),
     Err(terminal) => RunOutcome {
       terminal,
       warnings: vec![],

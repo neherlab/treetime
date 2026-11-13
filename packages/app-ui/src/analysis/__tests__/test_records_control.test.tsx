@@ -13,6 +13,8 @@ const ENTRIES: SettingSpec = {
   label: "Entries",
   flag: "--entries",
   group: "Input data",
+  purpose: "data",
+  set_by_app: false,
   role: "setting",
   kind: "records",
   nullable: false,
@@ -47,8 +49,8 @@ const ENTRIES: SettingSpec = {
       kind: "enum",
       nullable: true,
       options: [
-        { value: "infer", help: "" },
-        { value: "jc69", help: "" },
+        { value: "infer", label: "Infer GTR", help: "" },
+        { value: "jc69", label: "JC69", help: "" },
       ],
       item_kind: "string",
       documented_default: "infer",
@@ -190,7 +192,7 @@ function Form({ value }: { value: FormValue | undefined }) {
 
   return (
     <FormProvider {...form}>
-      <SettingControl command="ancestral" spec={ENTRIES} label="Entries" />
+      <SettingControl command="ancestral" spec={ENTRIES} label="Entries" scope="all" />
       <SettingValue />
     </FormProvider>
   );

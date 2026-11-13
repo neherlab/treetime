@@ -9,11 +9,18 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import type { AuspiceControlsState, AuspiceNode, AuspiceState, AuspiceThunk } from "./state";
 import { createAuspiceStore, type AuspiceStore } from "./store";
+import { useAuspiceStoreSlot } from "./storeSlot";
 
 const FOCUS_MIN_CLADE_TIPS = 20;
 
 export function useAuspiceStore(document: AuspiceDocument, colorBy: string | undefined): AuspiceStore {
-  return useMemo(() => loadedStore(document, colorBy), [colorBy, document]);
+  const slot = useAuspiceStoreSlot();
+
+  return useMemo(
+    () =>
+      slot === undefined ? loadedStore(document, colorBy) : slot.store(document, () => loadedStore(document, colorBy)),
+    [colorBy, document, slot],
+  );
 }
 
 export function useTwoTreeStore(first: AuspiceDocument, second: AuspiceDocument, names: TreeNames): AuspiceStore {

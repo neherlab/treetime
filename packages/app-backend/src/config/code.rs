@@ -1,4 +1,7 @@
-use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
+use crate::command::AppCommandExt;
+use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_line_name, command_settings};
+use crate::config::effective::value_text;
+use crate::results::citation::{Citation, citation};
 use crate::run_config::RUN_CONFIG_OUTPUT_DIR;
 use app_commands::command::AppCommand;
 use app_commands::config::settings::has_path;
@@ -12,6 +15,7 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
+use treetime_schema::{skip_serializing_optionals, version_info};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_report;
 
@@ -39,7 +43,10 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
 
   let command_line = command_line(command, &cli, &inputs, &changed, output_dir)?;
   let yaml = yaml(command, &inputs, &changed, output_dir)?;
+  let citation = citation();
   Ok(ConfigCode {
+    methods: methods(command, &changed, &citation),
+    citation,
     config_file: CONFIG_FILE.to_owned(),
     config_command: config_command(command),
     command_line_text: command_line_text(&command_line),
@@ -47,6 +54,45 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
     command_line,
     yaml,
   })
+}
+
+pub fn setting_command_lines(
+  command: AppCommand,
+  settings: &[SettingSpec],
+  config: &Map<String, Value>,
+) -> Result<Vec<SettingCommandLine>, Report> {
+  let cli = command.cli_command();
+  settings
+    .iter()
+    .map(|spec| {
+      let arg = cli
+        .get_arguments()
+        .find(|arg| arg.get_long() == spec.flag.strip_prefix("--"))
+        .ok_or_else(|| make_report!("setting `{}` has no command-line flag", spec.key))?;
+      let text = config
+        .get(&spec.key)
+        .and_then(|value| setting_tokens(arg, &spec.flag, value))
+        .map(|tokens| quote_tokens(&tokens))
+        .transpose()?;
+      Ok(SettingCommandLine {
+        key: spec.key.clone(),
+        text,
+      })
+    })
+    .try_collect()
+}
+
+/// The command-line form of a setting for its value in a configuration.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct SettingCommandLine {
+  /// Key of the setting.
+  pub key: String,
+  /// The flag and its value as a command line takes them, quoted for the shell, for example `--clock-filter 4` or
+  /// `--outgroup 'A/x 1'`; absent when the command line leaves the setting out for this value: a switch that is off,
+  /// an unset value, or an empty list.
+  pub text: Option<String>,
 }
 
 /// A command line and a YAML config that reproduce a configuration.
@@ -64,6 +110,58 @@ pub struct ConfigCode {
   pub config_file: String,
   /// The command line that runs the saved YAML config.
   pub config_command: String,
+  /// A methods paragraph for a publication: the analysis, the TreeTime version, and the key settings that differ from
+  /// their defaults.
+  pub methods: String,
+  /// The publication to cite for TreeTime.
+  pub citation: Citation,
+}
+
+fn methods(command: AppCommand, changed: &[(&SettingSpec, Value)], citation: &Citation) -> String {
+  let (key, other): (Vec<_>, Vec<_>) = changed
+    .iter()
+    .partition(|(spec, _)| command.main_settings().contains(&spec.key.as_str()));
+  let analysis = format!(
+    "We used the {} analysis of TreeTime {} ({}; command `treetime {command}`).",
+    lowercase_first(command.title()),
+    version_info().version,
+    citation.short,
+  );
+  let key_settings = (!key.is_empty()).then(|| {
+    format!(
+      "Key settings changed from their defaults: {}.",
+      key
+        .iter()
+        .map(|(spec, value)| format!("{} = {}", lowercase_first(&spec.label), prose_value(value)))
+        .join(", ")
+    )
+  });
+  let rest = match (key.is_empty(), other.len()) {
+    (true, 0) => "All settings had their default values.".to_owned(),
+    (false, 0) => "All other settings had their default values.".to_owned(),
+    (_, 1) => "One further setting differs from its default, as the configuration lists it.".to_owned(),
+    (_, count) => format!("{count} further settings differ from their defaults, as the configuration lists them."),
+  };
+  [Some(analysis), key_settings, Some(rest)]
+    .into_iter()
+    .flatten()
+    .join(" ")
+}
+
+fn prose_value(value: &Value) -> String {
+  match value {
+    Value::Bool(true) => "on".to_owned(),
+    Value::Bool(false) => "off".to_owned(),
+    Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) | Value::Object(_) => value_text(Some(value)),
+  }
+}
+
+fn lowercase_first(text: &str) -> String {
+  let mut chars = text.chars();
+  match (chars.next(), chars.clone().next()) {
+    (Some(first), Some(second)) if !second.is_uppercase() => first.to_lowercase().chain(chars).collect(),
+    _ => text.to_owned(),
+  }
 }
 
 fn changed_settings<'a>(settings: &'a CommandSettings, config: &Map<String, Value>) -> Vec<(&'a SettingSpec, Value)> {
@@ -86,7 +184,7 @@ fn command_line(
   output_dir: &str,
 ) -> Result<Vec<CodeLine>, Report> {
   let mut lines = vec![CodeLine {
-    text: format!("treetime {command}"),
+    text: command_line_name(command),
     kind: CodeLineKind::Command,
   }];
   for (settings, kind) in [(inputs, CodeLineKind::Input), (changed, CodeLineKind::Changed)] {

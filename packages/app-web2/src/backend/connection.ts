@@ -1,13 +1,14 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { BackendStopped } from "@neherlab/app-ui/host";
+import type { BlobPortRequest } from "@neherlab/app-ui/port";
 import type { FetchConnection, FetchPort } from "@neherlab/app-ui/port-fetch";
 import { match } from "ts-pattern";
 
 import { type WorkerEvent, type WorkerStart, workerEventSchema } from "./protocol";
 
-export class WorkerConnection implements FetchConnection {
+export class WorkerConnection implements FetchConnection<BlobPortRequest> {
   readonly #host: WorkerHost;
-  readonly #portListeners = new Set<(port: FetchPort) => void>();
+  readonly #portListeners = new Set<(port: FetchPort<BlobPortRequest>) => void>();
   readonly #stopListeners = new Set<(stop: BackendStopped) => void>();
   #module: Promise<WebAssembly.Module> | undefined;
   #worker: RunningWorker | undefined;
@@ -17,7 +18,7 @@ export class WorkerConnection implements FetchConnection {
     this.#host = host;
   }
 
-  onPort(listener: (port: FetchPort) => void): void {
+  onPort(listener: (port: FetchPort<BlobPortRequest>) => void): void {
     this.#portListeners.add(listener);
 
     const port = this.#worker?.port;
@@ -70,7 +71,7 @@ export class WorkerConnection implements FetchConnection {
   }
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- worker messages arrive untyped; they are parsed with the event schema
-  #receive(running: RunningWorker, port: FetchPort, data: unknown): void {
+  #receive(running: RunningWorker, port: FetchPort<BlobPortRequest>, data: unknown): void {
     const event = workerEventSchema.safeParse(data);
 
     if (!event.success) {
@@ -92,7 +93,7 @@ export class WorkerConnection implements FetchConnection {
       .exhaustive();
   }
 
-  #ready(running: RunningWorker, port: FetchPort): void {
+  #ready(running: RunningWorker, port: FetchPort<BlobPortRequest>): void {
     if (this.#worker !== running) {
       return;
     }
@@ -114,7 +115,7 @@ export class WorkerConnection implements FetchConnection {
       return;
     }
 
-    this.#end(running, { reason: `the back end stopped and restarts: ${message}`, restarts: true });
+    this.#end(running, { reason: `the back end stopped and restarts: ${message}`, restarts: true, requested: false });
     this.#start();
   }
 
@@ -124,7 +125,7 @@ export class WorkerConnection implements FetchConnection {
     }
 
     this.#stopped = true;
-    this.#end(running, { reason: `the back end could not start: ${message}`, restarts: false });
+    this.#end(running, { reason: `the back end could not start: ${message}`, restarts: false, requested: false });
   }
 
   #end(running: RunningWorker, stop: BackendStopped): void {
@@ -171,11 +172,11 @@ export interface BackendWorker {
 }
 
 export interface WorkerChannel {
-  port1: FetchPort;
+  port1: FetchPort<BlobPortRequest>;
   port2: MessagePort;
 }
 
 interface RunningWorker {
   worker: BackendWorker;
-  port: FetchPort | undefined;
+  port: FetchPort<BlobPortRequest> | undefined;
 }

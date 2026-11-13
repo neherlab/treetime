@@ -1,27 +1,25 @@
-import type { JsonValue, SettingSpec } from "@neherlab/app-contracts";
+import type { JsonValue, SettingCommandLine, SettingOption, SettingSpec } from "@neherlab/app-contracts";
+import { Button } from "@neherlab/design/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@neherlab/design/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@neherlab/design/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@neherlab/design/ui/tooltip";
 import type { ReactNode } from "react";
-import Markdown, { type Components } from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
+import Info from "~icons/lucide/info";
 
 import { m, useLocale, type Locale } from "../i18n/locale";
+import { type MarkdownComponents, MarkdownText } from "../markdown";
 import { documentedDefault } from "./config";
 import { isJsonObject } from "./json";
 import { formatList } from "./lists";
 
-const REMARK_PLUGINS = [remarkGfm, remarkHtmlAsText];
-
-const REHYPE_PLUGINS = [rehypeSanitize];
-
 const CODE_CLASS = "bg-muted text-foreground rounded-sm px-1 py-px font-mono text-[0.92em]";
 
-const INLINE_COMPONENTS: Components = {
+const INLINE_COMPONENTS: MarkdownComponents = {
   p: ({ children }) => <span>{children}</span>,
   code: ({ children }) => <code className={CODE_CLASS}>{children}</code>,
 };
 
-const BLOCK_COMPONENTS: Components = {
+const BLOCK_COMPONENTS: MarkdownComponents = {
   p: ({ children }) => <p className="mt-1.5">{children}</p>,
   code: ({ children }) => <code className={CODE_CLASS}>{children}</code>,
 };
@@ -34,9 +32,99 @@ export function SettingSummary({ spec, label }: { spec: SettingSpec; label: Reac
       {label} <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>{" "}
       {spec.role === "setting" && (
         <span className="text-muted-foreground text-xs">
-          {m.settings_default({ value: defaultText(documentedDefault(spec), locale) }, { locale })}
+          {m.settings_default({ value: defaultText(documentedDefault(spec), locale, spec.options) }, { locale })}
         </span>
       )}
+    </div>
+  );
+}
+
+export function SettingHelpPopover({
+  spec,
+  commandLine,
+}: {
+  spec: SettingSpec;
+  commandLine: SettingCommandLine | undefined;
+}) {
+  const locale = useLocale();
+
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={m.settings_about({ label: spec.label }, { locale })}
+                  className="text-muted-foreground"
+                />
+              }
+            />
+          }
+        >
+          <Info aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent>{m.settings_about({ label: spec.label }, { locale })}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="start" className="grid w-96 max-w-[calc(100vw-2rem)] gap-2.5">
+        <span className="font-bold">{spec.label}</span>
+        <div className="text-muted-foreground grid gap-1.5">
+          <MarkdownText
+            text={[spec.help, spec.more].filter((text) => text !== "").join("\n\n")}
+            components={BLOCK_COMPONENTS}
+          />
+        </div>
+        {spec.options.length > 0 && (
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+            {spec.options.map((option) => (
+              <div key={option.value} className="contents">
+                <dt>
+                  {option.label} <code className={CODE_CLASS}>{option.value}</code>
+                </dt>
+                <dd className="text-muted-foreground">{option.help}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <SettingCommandLineNote spec={spec} commandLine={commandLine} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function SettingCommandLineNote({
+  spec,
+  commandLine,
+}: {
+  spec: SettingSpec;
+  commandLine: SettingCommandLine | undefined;
+}) {
+  const locale = useLocale();
+
+  if (commandLine === undefined) {
+    return null;
+  }
+
+  return (
+    <p className="text-xs">
+      {m.settings_command_line({}, { locale })}:{" "}
+      {commandLine.text === undefined ? (
+        m.settings_command_line_left_out({ flag: spec.flag }, { locale })
+      ) : (
+        <code className={CODE_CLASS}>{commandLine.text}</code>
+      )}
+    </p>
+  );
+}
+
+export function SettingHelpText({ spec }: { spec: SettingSpec }) {
+  return (
+    <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
+      <MarkdownText text={spec.help} components={INLINE_COMPONENTS} />
     </div>
   );
 }
@@ -46,18 +134,14 @@ export function SettingHelp({ spec }: { spec: SettingSpec }) {
 
   return (
     <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
-      <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={INLINE_COMPONENTS}>
-        {spec.help}
-      </Markdown>
+      <MarkdownText text={spec.help} components={INLINE_COMPONENTS} />
       {spec.more !== "" && (
         <Collapsible className="inline">
           <CollapsibleTrigger className="text-primary ml-1 underline-offset-4 hover:underline">
             {m.settings_more({}, { locale })}
           </CollapsibleTrigger>
           <CollapsibleContent hiddenUntilFound>
-            <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={BLOCK_COMPONENTS}>
-              {spec.more}
-            </Markdown>
+            <MarkdownText text={spec.more} components={BLOCK_COMPONENTS} />
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -65,13 +149,19 @@ export function SettingHelp({ spec }: { spec: SettingSpec }) {
   );
 }
 
-export function defaultText(value: JsonValue | undefined, locale: Locale): string {
+export function defaultText(
+  value: JsonValue | undefined,
+  locale: Locale,
+  options: readonly SettingOption[] = [],
+): string {
   if (value === undefined) {
     return m.settings_not_set({}, { locale });
   }
 
   if (Array.isArray(value)) {
-    return value.length === 0 ? m.settings_none({}, { locale }) : formatList(value);
+    return value.length === 0
+      ? m.settings_none({}, { locale })
+      : formatList(value.map((item) => optionLabel(item, options)));
   }
 
   if (value === true) {
@@ -82,24 +172,9 @@ export function defaultText(value: JsonValue | undefined, locale: Locale): strin
     return m.settings_off({}, { locale });
   }
 
-  return isJsonObject(value) ? JSON.stringify(value) : String(value);
+  return isJsonObject(value) ? JSON.stringify(value) : String(optionLabel(value, options));
 }
 
-function remarkHtmlAsText() {
-  return htmlAsText;
-}
-
-function htmlAsText(node: MarkdownNode): void {
-  if (node.type === "html") {
-    node.type = "text";
-  }
-
-  for (const child of node.children ?? []) {
-    htmlAsText(child);
-  }
-}
-
-interface MarkdownNode {
-  type: string;
-  children?: MarkdownNode[];
+function optionLabel<T extends JsonValue>(value: T, options: readonly SettingOption[]): T | string {
+  return options.find((option) => option.value === value)?.label ?? value;
 }

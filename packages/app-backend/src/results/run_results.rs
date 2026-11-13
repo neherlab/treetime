@@ -1,6 +1,5 @@
 use crate::command::{OutputAlignment, OutputFile};
 use crate::job::JobId;
-use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
 use crate::results::homoplasy::{HomoplasyResults, homoplasy_results};
 use crate::results::models::{RunModels, run_models};
@@ -9,10 +8,14 @@ use crate::results::mutations::{AncestralResults, ancestral_results};
 use crate::results::outputs::{OutputProblem, RunOutputs, shown_auspice};
 use crate::results::timetree::{TimetreeOutputs, TimetreeResults, timetree_results};
 use crate::results::tree::ResultTree;
+use crate::results::tree_change::{TreeChange, TreeStatistics, input_tree_statistics, tree_change};
 use crate::runs::errors::conflict;
+use crate::runs::input_store::InputStore;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
+use crate::runs::run_paths::{OUT_DIR, resolve_path};
 use app_commands::command_config::CommandConfig;
+use app_commands::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
@@ -20,11 +23,10 @@ use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
-use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
 pub fn run_results(manager: &RunManager, id: &JobId) -> Result<RunResults, Report> {
   let record = finished_record(manager, id)?;
-  results_of_record(&record, &manager.store().out_dir(id))
+  results_of_record(&record, &manager.store().run_dir(id), manager.input_store())
 }
 
 pub fn finished_record(manager: &RunManager, id: &JobId) -> Result<RunRecord, Report> {
@@ -39,7 +41,8 @@ pub fn finished_record(manager: &RunManager, id: &JobId) -> Result<RunRecord, Re
   Ok(record)
 }
 
-pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResults, Report> {
+pub fn results_of_record(record: &RunRecord, run_dir: &Path, store: &InputStore) -> Result<RunResults, Report> {
+  let out_dir = run_dir.join(OUT_DIR);
   let RunOutputs {
     auspice,
     tree,
@@ -50,8 +53,9 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
     trace,
     coalescent,
     homoplasy,
-    problems,
-  } = RunOutputs::read(record.config.command(), out_dir, &record.output_files);
+    mut problems,
+  } = RunOutputs::read(record.config.command(), &out_dir, &record.output_files);
+  let input = InputTree { record, run_dir, store };
   let results = match &record.config {
     CommandConfig::Timetree { config } => CommandResults::Timetree(Box::new(timetree_results(
       &TimetreeOutputs {
@@ -81,15 +85,24 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
         .ok_or_else(|| make_report!("mugration run `{}` names no attribute", record.id.as_str()))?;
       CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?)
     },
-    CommandConfig::Optimize { .. } => CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref())),
-    CommandConfig::Prune { .. } => CommandResults::Prune(tree_summary(tree.as_ref(), None)),
+    CommandConfig::Optimize { config } => CommandResults::Optimize(tree_change(
+      input
+        .statistics(&config.tree, config.newick_dialect, &mut problems)
+        .as_ref(),
+      tree.as_ref(),
+    )),
+    CommandConfig::Prune { config } => CommandResults::Prune(tree_change(
+      input
+        .statistics(&config.tree, config.newick_dialect, &mut problems)
+        .as_ref(),
+      tree.as_ref(),
+    )),
   };
   Ok(RunResults {
     tree,
     tree_alignment: tree_alignment(&record.output_files),
     models: run_models(gtr.as_ref()),
     results,
-    citation: citation(),
     problems,
   })
 }
@@ -107,9 +120,7 @@ pub struct RunResults {
   pub models: RunModels,
   /// Results specific to the command of the run.
   pub results: CommandResults,
-  /// The publication to cite.
-  pub citation: Citation,
-  /// Output files that could not be read.
+  /// Output files, and the input tree of an `optimize` or `prune` run, that could not be read.
   pub problems: Vec<OutputProblem>,
 }
 
@@ -123,8 +134,8 @@ pub enum CommandResults {
   Ancestral(AncestralResults),
   Homoplasy(Box<HomoplasyResults>),
   Mugration(MugrationResults),
-  Optimize(TreeSummary),
-  Prune(TreeSummary),
+  Optimize(TreeChange),
+  Prune(TreeChange),
 }
 
 fn tree_alignment(output_files: &[OutputFile]) -> Option<OutputAlignment> {
@@ -136,29 +147,29 @@ fn tree_alignment(output_files: &[OutputFile]) -> Option<OutputAlignment> {
     .and_then(|file| file.alignment.clone())
 }
 
-fn tree_summary(tree: Option<&ResultTree>, node_data: Option<&AugurNodeDataJsonRefine>) -> TreeSummary {
-  let samples = tree.map_or(0, |tree| tree.tips().count());
-  TreeSummary {
-    samples,
-    internal_nodes: tree.map_or(0, |tree| tree.nodes.len() - samples),
-    mutations: tree.map_or(0, |tree| tree.nodes.iter().map(|node| node.mutations.len()).sum()),
-    total_branch_length: node_data
-      .filter(|data| !data.nodes.is_empty())
-      .map(|data| data.nodes.values().map(|node| node.branch_length).sum()),
-  }
+struct InputTree<'a> {
+  record: &'a RunRecord,
+  run_dir: &'a Path,
+  store: &'a InputStore,
 }
 
-/// Summary of a tree an `optimize` or `prune` run wrote.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct TreeSummary {
-  /// Number of samples.
-  pub samples: usize,
-  /// Number of internal nodes.
-  pub internal_nodes: usize,
-  /// Number of nucleotide mutations on all branches.
-  pub mutations: usize,
-  /// Sum of the branch lengths in the node data file.
-  pub total_branch_length: Option<f64>,
+impl InputTree<'_> {
+  fn statistics(
+    &self,
+    tree: &TreeArgs,
+    dialect: TreeDialectArgs,
+    problems: &mut Vec<OutputProblem>,
+  ) -> Option<TreeStatistics> {
+    let path = resolve_path(tree.tree.as_deref()?, self.record, self.run_dir, self.store);
+    match input_tree_statistics(&path, dialect.newick_dialect.dialect()) {
+      Ok(statistics) => Some(statistics),
+      Err(report) => {
+        problems.push(OutputProblem {
+          path: path.to_string_lossy().into_owned(),
+          message: format!("{report:#}"),
+        });
+        None
+      },
+    }
+  }
 }

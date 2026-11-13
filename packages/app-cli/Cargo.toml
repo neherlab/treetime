@@ -67,8 +67,8 @@ tikv-jemallocator = { workspace = true }
 "heap-profiling" = ["tikv-jemallocator/profiling", "tikv-jemallocator/stats"]
 
 [dev-dependencies]
+app-api = { workspace = true }
 app-napi = { workspace = true }
-app-server = { workspace = true }
 approx = { workspace = true }
 axum = { workspace = true }
 napi = { workspace = true }
@@ -76,8 +76,8 @@ pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-tokio-util = { workspace = true }
 tower = { workspace = true }
+zip = { workspace = true }
 
 [lints]
 workspace = true

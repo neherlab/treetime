@@ -1,11 +1,11 @@
 # jemalloc keeps freed pages per arena, so peak RSS overstates live memory
 
-The Linux builds of the CLI and the API server allocate through jemalloc with its default configuration. jemalloc keeps freed pages resident for its decay time, separately in each arena. When the work of a run spreads over all worker threads, the freed pages of every thread's arena stay resident at the same time, and peak resident memory (peak RSS) is much higher than the memory that the run actually holds. A memory limit (cgroup, container, or batch-job limit) counts these pages like live data.
+The Linux builds of the CLI allocate through jemalloc with its default configuration. jemalloc keeps freed pages resident for its decay time, separately in each arena. When the work of a run spreads over all worker threads, the freed pages of every thread's arena stay resident at the same time, and peak resident memory (peak RSS) is much higher than the memory that the run actually holds. A memory limit (cgroup, container, or batch-job limit) counts these pages like live data.
 
 ## Allocator setup
 
-- `static GLOBAL` in [packages/app-cli/src/bin/treetime.rs#L1-L8](../../packages/app-cli/src/bin/treetime.rs#L1-L8) and in [packages/app-server/src/bin/treetime-server.rs#L1-L8](../../packages/app-server/src/bin/treetime-server.rs#L1-L8): `tikv_jemallocator::Jemalloc` as the global allocator on x86_64 and aarch64 Linux (gnu and musl). jemalloc is built without a symbol prefix and also replaces `malloc` and `free` of the C library, so the C code of these binaries allocates through it too (`docs/en/development/performance.md`, section "Allocator"). Other targets and the N-API module (`packages/app-napi`) use the system allocator
-- No `malloc_conf` is set: the binaries define no `malloc_conf` symbol, and no build sets `JEMALLOC_SYS_WITH_MALLOC_CONF`. Only `MALLOC_CONF` at run time changes the configuration
+- `static GLOBAL` in [packages/app-cli/src/bin/treetime.rs#L1-L8](../../packages/app-cli/src/bin/treetime.rs#L1-L8): `tikv_jemallocator::Jemalloc` as the global allocator on x86_64 and aarch64 Linux (gnu and musl). jemalloc is built without a symbol prefix and also replaces `malloc` and `free` of the C library, so the C code of the binary allocates through it too (`docs/en/development/performance.md`, section "Allocator"). Other targets and the N-API module (`packages/app-napi`) use the system allocator
+- No `malloc_conf` is set: the binary defines no `malloc_conf` symbol, and no build sets `JEMALLOC_SYS_WITH_MALLOC_CONF`. Only `MALLOC_CONF` at run time changes the configuration
 - jemalloc 5.3 defaults (`tikv-jemalloc-sys` 0.6.1): `dirty_decay_ms` 10000 (freed pages stay resident for about 10 s), `muzzy_decay_ms` 0, and 4 automatic arenas per CPU (`narenas_ratio` 4). jemalloc assigns each thread to one arena, and an arena reuses only its own freed pages
 
 ## Measurement
@@ -48,7 +48,7 @@ Profiling build of `rust` `abad3947e` (jemalloc served the Rust allocations, and
 
 ## Fix direction
 
-Set the decay or arena configuration of jemalloc in the binaries, for example a short `dirty_decay_ms` or fewer arenas (`narenas`). Embed the setting at build time with the `malloc_conf` symbol or `JEMALLOC_SYS_WITH_MALLOC_CONF`, so every run uses it without an environment variable.
+Set the decay or arena configuration of jemalloc in the CLI binary, for example a short `dirty_decay_ms` or fewer arenas (`narenas`). Embed the setting at build time with the `malloc_conf` symbol or `JEMALLOC_SYS_WITH_MALLOC_CONF`, so every run uses it without an environment variable.
 
 > [!IMPORTANT]
 > **Investigation required.** The time cost of these settings is not measured. Returning freed pages at once adds `madvise` calls and page faults when the memory is used again, and fewer arenas add lock contention between worker threads. Measure wall time, user time, and peak RSS for each candidate setting on the caterpillar `mugration` case and on large standard datasets (for example `timetree dengue/2000`, `ancestral mpox/clade-ii/2000`, `ancestral --representation=dense rsv/a/2000`) at 1 and 20 threads, and keep a setting only when it does not slow these runs down. Also measure the page faults of `optimize --representation=dense rsv/a/500`: a setting that keeps freed pages for reuse in the same thread lowers its 1.2 million faults, and a shorter decay raises them.

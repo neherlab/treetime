@@ -4,7 +4,7 @@
 #
 # Run just recipes as checks, in parallel by default, and keep going past
 # failures. A check is a recipe name, followed by its arguments separated by
-# colons: `build-web:prod` runs `just build-web prod`. Each check writes its
+# colons: `build-wasm:prod` runs `just build-wasm prod`. Each check writes its
 # output to tmp/checks/<check>.log. Prints nothing when every check passes. A
 # FAIL line is printed as each check fails, and the output of every failed
 # check and the list of failed checks at the end. Exits 1 when any check failed.
@@ -17,7 +17,7 @@
 # Examples:
 #   $0 fmt-check lint typecheck
 #   $0 --serial test
-#   $0 build-web:prod
+#   $0 build-wasm:prod
 #
 set -euo pipefail
 shopt -s inherit_errexit

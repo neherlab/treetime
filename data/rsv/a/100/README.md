@@ -1,3 +1,7 @@
+---
+organism: "Respiratory syncytial virus A"
+---
+
 # `rsv/a/100`
 
 Subsample of `rsv/a/500` (100 sequences).

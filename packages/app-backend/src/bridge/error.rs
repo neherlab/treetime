@@ -1,11 +1,11 @@
-use crate::runs::errors::{InvalidRunRequest, RunConflict, RunNotFound, UploadTooLarge};
+use crate::runs::errors::{InvalidRunRequest, PackageTooLarge, RunConflict, RunNotFound, UploadTooLarge};
 use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use std::any::Any;
 use treetime_utils::error::{ReportChain, panic_message};
 
-/// Error of a back-end operation, as the web server and the desktop back end report it.
+/// Error of a back-end operation, as the API routes report it.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ErrorResponse {
   /// Class of the error.
@@ -36,14 +36,14 @@ impl ErrorResponse {
   }
 }
 
-/// Class of a back-end error. The web server answers each class with its own HTTP status.
+/// Class of a back-end error. The API routes answer each class with its own HTTP status.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "snake_case")]
 #[deser(rename_all = "snake_case")]
 pub enum ErrorCode {
   /// The run or file does not exist.
   NotFound,
-  /// The inputs of a run exceed the upload limit.
+  /// The inputs of a run or a run package exceed the upload limit.
   UploadTooLarge,
   /// The run is in a state that does not allow the operation.
   Conflict,
@@ -51,10 +51,6 @@ pub enum ErrorCode {
   InvalidRequest,
   /// The path exists, but not for the request's method.
   MethodNotAllowed,
-  /// The server does not answer requests for the host the request names.
-  Forbidden,
-  /// The server did not finish the request in time.
-  Timeout,
   /// The back end failed.
   InternalError,
 }
@@ -63,7 +59,7 @@ impl ErrorCode {
   pub fn of(report: &Report) -> Self {
     if report.downcast_ref::<RunNotFound>().is_some() {
       Self::NotFound
-    } else if report.downcast_ref::<UploadTooLarge>().is_some() {
+    } else if report.downcast_ref::<UploadTooLarge>().is_some() || report.downcast_ref::<PackageTooLarge>().is_some() {
       Self::UploadTooLarge
     } else if report.downcast_ref::<RunConflict>().is_some() {
       Self::Conflict

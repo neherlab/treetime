@@ -17,17 +17,26 @@ import ArrowLeftRight from "~icons/lucide/arrow-left-right";
 
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
+import { isNotFound } from "../api/retry";
 import { LoadingState, PageShell } from "../components/PageShell";
 import { Panel } from "../components/Panel";
-import { formatLevel, formatRate, formatSignedDays, yearDateText } from "../format";
+import { formatLevel, formatSignedDays, yearDateText } from "../format";
 import { useLocale } from "../i18n/locale";
+import { formatSignificant } from "../results/estimates";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { commandSettings } from "../settings/catalog";
-import { defaultText } from "../settings/help";
+import { defaultText, SettingHelpPopover } from "../settings/help";
 import { baseName } from "../settings/inputs";
 import type { RunTree } from "./CompareTrees";
 import { DateIntervals } from "./DateIntervals";
+import { MissingRun } from "./MissingRun";
 import { ShiftPlot } from "./ShiftPlot";
+
+const SIDE_LABELS = { first: "A", second: "B" } as const;
+
+const RATE_DIGITS = 3;
+
+const CORRELATION_DIGITS = 3;
 
 const CompareTrees = lazy(async () => ({ default: (await import("./CompareTrees")).CompareTrees }));
 
@@ -38,6 +47,14 @@ export function ComparePage({ first, second }: { first: string; second: string }
 
   if (left?.data === undefined || right?.data === undefined) {
     const error = left?.error ?? right?.error ?? null;
+
+    if (error !== null && isNotFound(error)) {
+      return (
+        <PageShell>
+          <MissingRun />
+        </PageShell>
+      );
+    }
 
     return error === null ? (
       <LoadingState text="Loading the runs" />
@@ -92,6 +109,15 @@ function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
         ))}
       {comparison !== undefined && (
         <>
+          {!comparison.same_analysis && (
+            <Alert>
+              <AlertTitle>Different analyses</AlertTitle>
+              <AlertDescription>
+                A is {commandSettings(left.command).title}, B is {commandSettings(right.command).title}. The runs have
+                no settings or estimates to compare.
+              </AlertDescription>
+            </Alert>
+          )}
           {timetrees && <TimetreeEstimatesComparison left={left} right={right} comparison={comparison} />}
           <SettingsDifferences left={left} right={right} settings={comparison.settings ?? undefined} />
         </>
@@ -171,7 +197,7 @@ function figureRun(record: RunRecord) {
   return { id: record.id, title: record.title, command: record.command };
 }
 
-function RunPicker({ current, other, side }: { current: RunRecord; other: RunRecord; side: "first" | "second" }) {
+function RunPicker({ current, other, side }: { current: RunRecord; other: RunRecord; side: Side }) {
   const { data } = useApi((context) => runsList(context));
   const navigate = useNavigate();
   const runs = useMemo(() => (data?.runs ?? []).filter((run) => run.id !== other.id), [data, other.id]);
@@ -187,19 +213,22 @@ function RunPicker({ current, other, side }: { current: RunRecord; other: RunRec
   );
 
   return (
-    <NativeSelect
-      size="sm"
-      aria-label={side === "first" ? "First run" : "Second run"}
-      value={current.id}
-      onChange={onChange}
-      className="max-w-[min(18rem,100%)] font-bold"
-    >
-      {runs.map((run) => (
-        <NativeSelectOption key={run.id} value={run.id}>
-          {run.title} ({commandSettings(run.command).title})
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-muted-foreground font-bold">{SIDE_LABELS[side]}</span>
+      <NativeSelect
+        size="sm"
+        aria-label={side === "first" ? "Run A" : "Run B"}
+        value={current.id}
+        onChange={onChange}
+        className="max-w-[min(18rem,100%)] font-bold"
+      >
+        {runs.map((run) => (
+          <NativeSelectOption key={run.id} value={run.id}>
+            {run.title} ({commandSettings(run.command).title})
+          </NativeSelectOption>
+        ))}
+      </NativeSelect>
+    </span>
   );
 }
 
@@ -221,7 +250,7 @@ function SettingsDifferences({
         settings === undefined
           ? "The runs use different analyses"
           : differences.length === 0
-            ? settings.same_config_hash
+            ? settings.same_config
               ? "None: same settings on the same input contents"
               : "None"
             : `${differences.length} of ${settings.compared}`
@@ -233,10 +262,10 @@ function SettingsDifferences({
             <TableRow>
               <TableHead>Setting</TableHead>
               <TableHead>
-                <RunLink record={left} />
+                <RunLink side="first" record={left} />
               </TableHead>
               <TableHead>
-                <RunLink record={right} />
+                <RunLink side="second" record={right} />
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -258,36 +287,38 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
   return (
     <TableRow>
       <TableCell className="whitespace-normal">
-        {spec?.label ?? difference.key} <code className="text-muted-foreground font-mono text-xs">{spec?.flag}</code>
+        {spec?.label ?? difference.key}{" "}
+        {spec !== undefined && <SettingHelpPopover spec={spec} commandLine={undefined} />}
         {difference.kind === "input" && (
-          <span className="text-muted-foreground block text-xs">
-            {difference.same_content ? "Same file contents" : "Different file contents"}
-          </span>
+          <span className="text-muted-foreground block text-xs">Different file contents</span>
         )}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
         {difference.kind === "input"
           ? difference.first.map(baseName).join(", ")
-          : defaultText(difference.first, locale)}
+          : defaultText(difference.first, locale, spec?.options)}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
         {difference.kind === "input"
           ? difference.second.map(baseName).join(", ")
-          : defaultText(difference.second, locale)}
+          : defaultText(difference.second, locale, spec?.options)}
       </TableCell>
     </TableRow>
   );
 }
 
-function RunLink({ record }: { record: RunRecord }) {
+function RunLink({ side, record }: { side: Side; record: RunRecord }) {
   return (
-    <Link
-      to="/runs/$id/results"
-      params={{ id: record.id }}
-      className="text-primary font-bold underline-offset-4 hover:underline"
-    >
-      {record.title}
-    </Link>
+    <>
+      <span className="text-muted-foreground mr-1.5">{SIDE_LABELS[side]}</span>
+      <Link
+        to="/runs/$id/results"
+        params={{ id: record.id }}
+        className="text-primary font-bold underline-offset-4 hover:underline"
+      >
+        {record.title}
+      </Link>
+    </>
   );
 }
 
@@ -352,12 +383,12 @@ function TimetreeEstimatesComparison({
               <TableRow>
                 <TableHead>Estimate</TableHead>
                 <TableHead>
-                  <RunLink record={left} />
+                  <RunLink side="first" record={left} />
                 </TableHead>
                 <TableHead>
-                  <RunLink record={right} />
+                  <RunLink side="second" record={right} />
                 </TableHead>
-                <TableHead>Difference</TableHead>
+                <TableHead>Difference (B - A)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -381,8 +412,8 @@ function TimetreeEstimatesComparison({
               />
               <EstimateRow
                 label="r"
-                first={a.r === undefined ? "-" : a.r.toFixed(3)}
-                second={b.r === undefined ? "-" : b.r.toFixed(3)}
+                first={a.r === undefined ? "-" : formatSignificant(a.r, CORRELATION_DIGITS)}
+                second={b.r === undefined ? "-" : formatSignificant(b.r, CORRELATION_DIGITS)}
                 difference=""
               />
               <EstimateRow
@@ -396,9 +427,9 @@ function TimetreeEstimatesComparison({
                 first={likelihoodText(a)}
                 second={likelihoodText(b)}
                 difference={
-                  likelihoodChange === undefined
-                    ? "-"
-                    : `${likelihoodChange > 0 ? "+" : ""}${likelihoodChange.toFixed(1)}`
+                  estimates.log_likelihood_not_comparable === undefined
+                    ? likelihoodChangeText(likelihoodChange)
+                    : `not comparable: ${estimates.log_likelihood_not_comparable}`
                 }
               />
             </TableBody>
@@ -469,7 +500,9 @@ function daysDifference(days: number | undefined): string {
 function rateText(estimates: TimetreeEstimates): string {
   const rate = estimates.clock_rate;
 
-  return rate === undefined ? "-" : `${formatRate(rate)}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
+  return rate === undefined
+    ? "-"
+    : `${formatSignificant(rate, RATE_DIGITS, "scientific")}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
 }
 
 function likelihoodText(estimates: TimetreeEstimates): string {
@@ -484,6 +517,12 @@ function likelihoodText(estimates: TimetreeEstimates): string {
   return Number.isFinite(value) ? value.toFixed(1) : `not finite (${nonFiniteLabel(value)})`;
 }
 
+function likelihoodChangeText(change: number | undefined): string {
+  return change === undefined ? "-" : `${change > 0 ? "+" : ""}${change.toFixed(1)}`;
+}
+
 function signedCount(count: number): string {
   return count === 0 ? "0" : `${count > 0 ? "+" : ""}${count}`;
 }
+
+type Side = keyof typeof SIDE_LABELS;

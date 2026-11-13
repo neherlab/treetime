@@ -47,8 +47,9 @@ pub(crate) fn input_branch_model(
       } else {
         model
       };
-      let gtr = model.build(model_alphabet(&model, alphabet))?;
-      log_gtr(&gtr, model.name(), log)?;
+      let alphabet = model_alphabet(&model, alphabet);
+      let gtr = model.build(alphabet)?;
+      log_gtr(&gtr, model.name(), alphabet, log)?;
       (saturated_difference(gtr.pi()), None)
     },
     TimetreeSequences::Alignments(input) => {

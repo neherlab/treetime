@@ -44,12 +44,6 @@
       "path": "./packages/app-wasm/tsconfig.json"
     },
     {
-      "path": "./packages/app-web/tsconfig.json"
-    },
-    {
-      "path": "./packages/app-web/tsconfig.node.json"
-    },
-    {
       "path": "./packages/app-web2/tsconfig.json"
     },
     {

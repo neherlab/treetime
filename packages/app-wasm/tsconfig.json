@@ -5,6 +5,6 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["smoke.ts"],
+  "include": ["smoke.ts", "preview-timing.ts"],
   "references": [{ "path": "../app-contracts/tsconfig.generated.json" }]
 }

@@ -6,7 +6,7 @@ The package wrote these components itself, without a registry source: `copy-butt
 
 ## Source
 
-- Registry: `https://ui.shadcn.com/r/styles/base-vega/<name>.json`, the `files[0].content` field, fetched on 2026-09-28 (`dropdown-menu` on 2026-10-24; `avatar`, `breadcrumb`, `hover-card`, `pagination`, `popover`, `scroll-area`, `select`, and `skeleton` on 2026-10-29)
+- Registry: `https://ui.shadcn.com/r/styles/base-vega/<name>.json`, the `files[0].content` field, fetched on 2026-09-28 (`dropdown-menu` on 2026-10-24; `avatar`, `breadcrumb`, `hover-card`, `pagination`, `popover`, `scroll-area`, `select`, and `skeleton` on 2026-10-29; `resizable` on 2026-11-12)
 - Style: `base-vega`, built on Base UI (`@base-ui/react`)
 - Stylesheet: `shadcn.css` is `dist/tailwind.css` of the `shadcn` npm package 4.21.0, copied verbatim
 - License: MIT (<https://github.com/shadcn-ui/ui/blob/main/LICENSE.md>)
@@ -31,7 +31,9 @@ A component refreshed from the registry needs these changes again.
 - **`chart.tsx`**: no chart config, generated style element or legend; charts take their colors from `runs/palette.ts`. The tooltip frame is exported for custom tooltips, and the tooltip marks each series with an SVG swatch instead of inline styles
 - **`command.tsx`**: built on Base UI Autocomplete instead of `cmdk`, with the class names of the registry component. `Command` is an always-open inline list that highlights the first match
 - **`sidebar.tsx`**: only the left, off-canvas sidebar with the mobile sheet. No rail, icon mode, floating or inset variants, sub-menus, menu actions, badges, skeletons, tooltips or cookie persistence. The desktop sidebar has a resize handle on its right edge (drag, arrow keys, Home and End; double-click resets). Its width, 340 px by default and bounded by `sidebar-width.ts`, comes from the `width` and `onWidthChange` props, which the app keeps with its preferences, and is set as the only inline custom property; the mobile sheet width is a Tailwind class. `useMediaQuery` from `@mantine/hooks` detects the mobile layout, and `useHotkey` from `@tanstack/react-hotkeys` binds Mod+B
-- **`toggle-group.tsx`**: holds the toggle variants (`toggle.tsx` is not vendored), sets the gap with a class for each supported spacing (0, 1, 2) instead of an inline custom property, and memoizes its context value
+- **`toggle-group.tsx`**: holds the toggle variants (`toggle.tsx` is not vendored), sets the gap with a class for each supported spacing (0, 1, 2) instead of an inline custom property, and memoizes its context value. A pressed item takes the accent (`selected` background, `primary` text), so the selected option of a segmented control stands out in both themes
+- **`button.tsx`**: the default variant turns gray when disabled (`muted` background and text) instead of a faded blue, so a disabled primary action does not look clickable
+- **`resizable.tsx`**: imports the parts of `react-resizable-panels` by name, has no grip element, and colors the handle in the accent while the pointer hovers or drags it
 - **`input-group.tsx`**: the group is a `label` element, so a click anywhere in it focuses the input; the addon has no click handler and neither element has `role="group"`
 - **`field.tsx`**: the field has no `role="group"`, which gave assistive technology an unnamed group
 - **`toast.tsx`**: the default action and close buttons are module constants

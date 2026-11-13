@@ -12,6 +12,8 @@ pub const RUNS_PATH: &str = "/api/runs";
 
 pub const CLADE_IN_RUNS_PATH: &str = "/api/clade-in-runs";
 
+pub const COMPARE_PATH: &str = "/api/compare";
+
 pub const EXAMPLES_PATH: &str = "/api/examples";
 
 pub const EXAMPLES_DOWNLOAD_PATH: &str = "/api/examples/download";
@@ -21,6 +23,7 @@ pub fn run_stale_paths(id: &JobId) -> Vec<StalePath> {
     StalePath::exact(RUNS_PATH),
     StalePath::subtree(format!("{RUNS_PATH}/{}", id.as_str())),
     StalePath::exact(CLADE_IN_RUNS_PATH),
+    StalePath::subtree(COMPARE_PATH),
   ]
 }
 
@@ -93,6 +96,7 @@ pub fn resync_stale_paths() -> Vec<StalePath> {
   vec![
     StalePath::subtree(RUNS_PATH),
     StalePath::exact(CLADE_IN_RUNS_PATH),
+    StalePath::subtree(COMPARE_PATH),
     StalePath::exact(EXAMPLES_PATH),
     StalePath::exact(EXAMPLES_DOWNLOAD_PATH),
   ]
@@ -110,7 +114,7 @@ pub type AppSubscriber = Box<dyn FnMut(&AppEvent) -> bool + Send>;
 #[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct AppEvent {
   /// Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-  /// restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+  /// restarted back end numbers its events above those of the earlier back end. Subscribing from `seq + 1` resumes after
   /// the event.
   pub seq: u64,
   /// Time the event was recorded.
@@ -176,13 +180,18 @@ pub enum AppChange {
     /// The run after the change.
     run: RunSummary,
   },
+  /// A run was deleted, with its folder and the uploaded inputs that no other run references.
+  RunRemoved {
+    /// Id of the deleted run.
+    id: JobId,
+  },
   /// The download of the example datasets progressed, finished, or failed.
   ExamplesDownload {
     /// The download after the change.
     download: ExamplesDownload,
   },
-  /// The stream cannot continue after the requested event, because the server no longer keeps that event or the
-  /// event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+  /// The stream cannot continue after the requested event, because the back end no longer keeps that event or the
+  /// event belongs to an earlier back end. Every path in `stale` must be read again; the stream continues with the
   /// events after this one.
   Resync,
 }

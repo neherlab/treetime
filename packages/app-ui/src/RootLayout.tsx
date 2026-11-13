@@ -4,12 +4,16 @@ import { fitSidebarWidth, sidebarWidthOrDefault } from "@neherlab/design/ui/side
 import { TooltipProvider } from "@neherlab/design/ui/tooltip";
 import { Outlet } from "@tanstack/react-router";
 
+import { useDraftSession } from "./analysis/useDraftSession";
 import { useNativeThemeSync } from "./hooks/useNativeThemeSync";
+import { AppNotices } from "./notices/AppNotices";
+import { useLeaveGuard } from "./notices/useLeaveGuard";
 import { AppSidebar } from "./shell/AppSidebar";
 import { CommandPalette } from "./shell/CommandPalette";
+import { RunActionDialogs } from "./shell/runActions";
 import { SiteHeader } from "./shell/SiteHeader";
+import { useAppFileDrop } from "./shell/useAppFileDrop";
 import { useGlobalShortcuts } from "./shell/useGlobalShortcuts";
-import { useYamlDrop } from "./shell/useYamlDrop";
 import { WorkspaceDialog } from "./shell/WorkspaceDialog";
 import { usePreferencesStore } from "./store/preferences";
 
@@ -18,7 +22,9 @@ export const MAIN_SCROLL_ID = "main-scroll";
 export function RootLayout() {
   useNativeThemeSync();
   useGlobalShortcuts();
-  const { getRootProps, getInputProps } = useYamlDrop();
+  useDraftSession();
+  useLeaveGuard();
+  const { getRootProps, getInputProps } = useAppFileDrop();
   const { width: viewportWidth } = useViewportSize();
   const storedWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.preferences.sidebar_width));
   const sidebarWidth = fitSidebarWidth(storedWidth, viewportWidth);
@@ -40,12 +46,14 @@ export function RootLayout() {
             data-scroll-restoration-id={MAIN_SCROLL_ID}
             className="@container min-h-0 overflow-y-auto overscroll-contain"
           >
+            <AppNotices />
             <Outlet />
           </SidebarInset>
         </div>
       </SidebarProvider>
       <CommandPalette />
       <WorkspaceDialog />
+      <RunActionDialogs />
     </TooltipProvider>
   );
 }

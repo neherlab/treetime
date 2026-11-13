@@ -29,7 +29,6 @@ use treetime::ancestral::attach::sanitize_to_alphabet;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
-use treetime::partition::marginal::sample::SampleMode;
 use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
@@ -95,8 +94,7 @@ pub fn run_ancestral_reconstruction(
 
   let mut seq_sink = AncestralSeqSink::new(&resolved, descs, ambiguity)?;
 
-  let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
-  let seed = SeedArgs::resolve(args.seed, random_step, log);
+  let seed = SeedArgs::resolve(args.seed, args.random_step(), log);
   let params = ancestral_params(args, seed);
 
   let output = pipeline::run(

@@ -78,6 +78,14 @@ impl TreetimeHomoplasyArgs {
   pub fn alignments(&self) -> &[PathBuf] {
     &self.sequences.alignments
   }
+
+  pub fn seed(&self) -> Option<u64> {
+    self.seed
+  }
+
+  pub fn random_step(&self) -> Option<&'static str> {
+    (self.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile")
+  }
 }
 
 impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {

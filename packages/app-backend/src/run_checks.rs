@@ -1,5 +1,7 @@
 use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputNeed};
 use crate::command::AppCommandExt;
+use crate::config::catalog::SettingSpec;
+use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOptionName};
 use app_commands::command::AppCommand;
 use app_commands::commands::shared::argument_error::ArgumentError;
 use app_commands::commands::shared::partition::ConfigPartitions;
@@ -8,9 +10,11 @@ use app_commands::config::source::ConfigProblem;
 use app_commands::json_value::JsonValue;
 use deser::Serialize;
 use itertools::Itertools;
+use regex::{Captures, Regex};
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
 use std::iter;
+use std::sync::LazyLock;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::string::name_list;
@@ -21,13 +25,21 @@ const DATE_COLUMN_SETTING: &str = "date_column";
 
 const ALLOW_MISSING_SEQUENCES_SETTING: &str = "allow_missing_sequences";
 
-const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 9] = [
+const OUTGROUP_SETTING: &str = "outgroup";
+
+#[expect(clippy::expect_used, reason = "the pattern is a constant that compiles")]
+static FLAG: LazyLock<Regex> = LazyLock::new(|| {
+  Regex::new(r"(?<flag>--[a-z0-9][a-z0-9-]*)(?:=(?<value>[^\s,;:()]+))?").expect("the flag pattern is valid")
+});
+
+const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 10] = [
   missing_inputs,
   unreadable_inputs,
   rejected_config,
   duplicate_names,
   unaligned_sequences,
   partitions,
+  outgroup,
   tips_without_sequence,
   metadata,
   dates_rounded_to_the_month,
@@ -68,7 +80,10 @@ fn rejected_config(context: &CheckContext<'_>) -> Vec<RunCheck> {
     .enumerate()
     .map(|(index, message)| RunCheck {
       settings: rejection.settings.to_vec(),
-      ..block(format!("config-{index}"), message)
+      ..block(
+        format!("config-{index}"),
+        with_setting_labels(&message, context.settings),
+      )
     })
     .collect()
 }
@@ -185,7 +200,54 @@ fn partitions(context: &CheckContext<'_>) -> Vec<RunCheck> {
     .downcast_ref::<ArgumentError>()
     .map(|error| error.settings.iter().map(String::as_str).collect_vec())
     .unwrap_or_default();
-  vec![block("partitions", sentence(&message)).concerning(&settings)]
+  vec![block("partitions", with_setting_labels(&sentence(&message), context.settings)).concerning(&settings)]
+}
+
+pub fn named_settings<'a>(texts: impl IntoIterator<Item = &'a str>, settings: &[SettingSpec]) -> Vec<String> {
+  texts
+    .into_iter()
+    .flat_map(|text| FLAG.captures_iter(text))
+    .filter_map(|captures| settings.iter().find(|spec| spec.flag == captures["flag"]))
+    .map(|spec| spec.key.clone())
+    .unique()
+    .collect()
+}
+
+#[expect(clippy::string_slice, reason = "a match of the pattern starts at a char boundary")]
+fn with_setting_labels(message: &str, settings: &[SettingSpec]) -> String {
+  FLAG
+    .replace_all(message, |captures: &Captures<'_>| {
+      let flag = &captures["flag"];
+      let Some(spec) = settings.iter().find(|spec| spec.flag == flag) else {
+        return captures[0].to_owned();
+      };
+      let start = captures.get(0).map_or(0, |found| found.start());
+      let label = if starts_sentence(&message[..start]) {
+        sentence(&spec.label)
+      } else {
+        in_sentence(&spec.label)
+      };
+      match captures.name("value") {
+        Some(value) => format!("{label} \"{}\"", value.as_str()),
+        None => label,
+      }
+    })
+    .into_owned()
+}
+
+fn starts_sentence(before: &str) -> bool {
+  let before = before.trim_end();
+  before.is_empty() || before.ends_with(['.', '!', '?'])
+}
+
+fn in_sentence(label: &str) -> String {
+  let mut chars = label.chars();
+  match (chars.next(), chars.next()) {
+    (Some(first), Some(second)) if !second.is_uppercase() => {
+      first.to_lowercase().chain(label.chars().skip(1)).collect()
+    },
+    _ => label.to_owned(),
+  }
 }
 
 fn sentence(message: &str) -> String {
@@ -211,6 +273,46 @@ fn alignment_lengths(context: &CheckContext<'_>, config: &Map<String, Value>) ->
         .map(|alignment| alignment.min_length)
     })
     .collect()
+}
+
+fn outgroup(context: &CheckContext<'_>) -> Vec<RunCheck> {
+  let Some(config) = context.config else {
+    return vec![];
+  };
+  let tips = config
+    .get(OUTGROUP_SETTING)
+    .and_then(Value::as_array)
+    .map(|tips| tips.iter().filter_map(Value::as_str).collect_vec())
+    .unwrap_or_default();
+  let picked = context
+    .choices
+    .iter()
+    .any(|active| active.choice == ChoiceName::Root && active.option == ChoiceOptionName::Outgroup);
+  if tips.is_empty() {
+    return if picked {
+      vec![block("outgroup-empty", "Name at least one outgroup tip.".to_owned()).concerning(&[OUTGROUP_SETTING])]
+    } else {
+      vec![]
+    };
+  }
+  let Some(tree) = context.facts.and_then(|facts| facts.tree.as_ref()) else {
+    return vec![];
+  };
+  let missing = tips
+    .into_iter()
+    .filter(|tip| tree.tip_names.binary_search_by(|name| name.as_str().cmp(tip)).is_err())
+    .map(str::to_owned)
+    .collect_vec();
+  if missing.is_empty() {
+    return vec![];
+  }
+  vec![
+    block(
+      "outgroup-not-in-tree",
+      format!("The tree has no tip named {}.", name_list(&missing)),
+    )
+    .concerning(&[OUTGROUP_SETTING]),
+  ]
 }
 
 fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
@@ -383,7 +485,9 @@ fn several_alignments(context: &CheckContext<'_>) -> bool {
 
 pub struct CheckContext<'a> {
   pub command: AppCommand,
+  pub settings: &'a [SettingSpec],
   pub config: Option<&'a Map<String, Value>>,
+  pub choices: &'a [ActiveChoice],
   pub rejection: Option<ConfigRejection<'a>>,
   pub facts: Option<&'a InputFacts>,
 }

@@ -1,3 +1,7 @@
+---
+organism: "Respiratory syncytial virus A"
+---
+
 # `rsv/a/2000`
 
 ## Translations

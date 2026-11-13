@@ -1,7 +1,8 @@
 use crate::check_inputs::InputSlot;
 use crate::command::{AppCommandExt, ensure_in_apps, offered_commands};
 use crate::config::choices::{SettingChoice, setting_choices};
-use crate::config::labels::setting_label;
+use crate::config::labels::{option_label, setting_label};
+use crate::config::rows::{MainSettingRow, main_setting_rows};
 use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::setting_arg;
 use app_commands::config::cli_rules::setting_conflicts;
@@ -13,9 +14,27 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
 use treetime_schema::UNSET_KEY;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::{make_error, make_report};
+
+pub const OUTPUT_SELECTION_KEY: &str = "output_selection";
+
+const SECTIONS: [(SettingPurpose, &str); 4] = [
+  (SettingPurpose::Data, "Input data"),
+  (SettingPurpose::Analysis, "Analysis"),
+  (SettingPurpose::Output, "Output format"),
+  (SettingPurpose::Ordering, "Tree ordering and reproducibility"),
+];
+
+const PURPOSES: [(PurposeRule, SettingPurpose); 5] = [
+  (PurposeRule::Heading("Input data"), SettingPurpose::Data),
+  (PurposeRule::Heading("Output"), SettingPurpose::Output),
+  (PurposeRule::Role(SettingRole::Output), SettingPurpose::Output),
+  (PurposeRule::Heading("Tree ordering"), SettingPurpose::Ordering),
+  (PurposeRule::Heading("Reproducibility"), SettingPurpose::Ordering),
+];
 
 pub fn setting_catalog() -> Result<SettingCatalog, Report> {
   Ok(SettingCatalog {
@@ -77,17 +96,50 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     })
     .collect();
   let settings = settings.into_iter().map(|(_, _, spec)| spec).collect_vec();
+  let choices = setting_choices(command, &settings)?;
+  let sections = setting_sections(&settings, &groups);
+  let preview_settings = clock_preview_settings(command, &settings)?;
   Ok(CommandSettings {
     command,
+    command_line: command_line_name(command),
     title: command.title().to_owned(),
     description: command.description().to_owned(),
     inputs,
     uses_dates: command.uses_dates(),
     groups,
-    main_settings: command.main_settings().iter().map(|key| (*key).to_owned()).collect(),
-    choices: setting_choices(command, &settings)?,
+    sections,
+    main_rows: main_setting_rows(command, command.main_settings(), &settings, &choices)?,
+    preview_settings,
+    choices,
     settings,
   })
+}
+
+pub fn command_line_name(command: AppCommand) -> String {
+  format!("treetime {command}")
+}
+
+fn clock_preview_settings(command: AppCommand, settings: &[SettingSpec]) -> Result<Vec<String>, Report> {
+  let read = |spec: &SettingSpec| matches!(spec.purpose, SettingPurpose::Data | SettingPurpose::Analysis);
+  let clock: BTreeSet<String> = if command == AppCommand::Clock {
+    settings
+      .iter()
+      .filter(|spec| read(spec))
+      .map(|spec| spec.key.clone())
+      .collect()
+  } else {
+    command_settings(AppCommand::Clock)?
+      .preview_settings
+      .into_iter()
+      .collect()
+  };
+  Ok(
+    settings
+      .iter()
+      .filter(|spec| clock.contains(&spec.key))
+      .map(|spec| spec.key.clone())
+      .collect(),
+  )
 }
 
 /// Settings of every command the app runs, as the settings form shows them.
@@ -102,6 +154,8 @@ pub struct SettingCatalog {
 pub struct CommandSettings {
   /// The command.
   pub command: AppCommand,
+  /// The command as the command line runs it, for example `treetime timetree`.
+  pub command_line: String,
   /// Name of the analysis as the app shows it, for example `Time tree`.
   pub title: String,
   /// One sentence on what the analysis does.
@@ -112,12 +166,51 @@ pub struct CommandSettings {
   pub uses_dates: bool,
   /// Setting groups, in the order `treetime <command> --help` lists their headings.
   pub groups: Vec<String>,
-  /// Keys of the settings the form shows first, in the order it shows them.
-  pub main_settings: Vec<String>,
+  /// Sections of the settings form in display order, one per purpose: the settings of the purpose that the app does not
+  /// set, by group.
+  pub sections: Vec<SettingSection>,
+  /// The settings the form shows first, in rows of settings that it edits together, in the order it shows them.
+  pub main_rows: Vec<MainSettingRow>,
+  /// Keys of the settings that the clock preview reads: the input data and analysis settings that the `clock` command
+  /// shares with this command, in catalog order. The preview of a draft changes only when one of them changes.
+  pub preview_settings: Vec<String>,
   /// Settings that the form shows as one choice between options.
   pub choices: Vec<SettingChoice>,
   /// Every setting of the command, by group, in the order `--help` lists them.
   pub settings: Vec<SettingSpec>,
+}
+
+/// One section of the settings form: the settings of one purpose.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct SettingSection {
+  /// Purpose of the settings of the section.
+  pub purpose: SettingPurpose,
+  /// Heading of the section, for example `Output format`.
+  pub title: String,
+  /// Groups of the section, in the order of `groups`; each has a setting of the purpose that the app does not set.
+  pub groups: Vec<String>,
+}
+
+fn setting_sections(settings: &[SettingSpec], groups: &[String]) -> Vec<SettingSection> {
+  SECTIONS
+    .iter()
+    .filter_map(|(purpose, title)| {
+      let members = groups
+        .iter()
+        .filter(|group| {
+          settings
+            .iter()
+            .any(|spec| spec.purpose == *purpose && !spec.set_by_app && spec.group == **group)
+        })
+        .cloned()
+        .collect_vec();
+      (!members.is_empty()).then(|| SettingSection {
+        purpose: *purpose,
+        title: (*title).to_owned(),
+        groups: members,
+      })
+    })
+    .collect()
 }
 
 fn setting_spec(
@@ -141,11 +234,14 @@ fn setting_spec(
   let value = value_spec(schema, property, &key)?;
   let base = deref(schema, property)?;
 
+  let role = SettingRole::from(setting.path_role);
   Ok(SettingSpec {
     label: setting_label(&key),
     flag: format!("--{long}"),
     group: group.to_owned(),
-    role: setting.path_role.into(),
+    purpose: SettingPurpose::of(group, role),
+    set_by_app: role == SettingRole::Output || key == OUTPUT_SELECTION_KEY,
+    role,
     kind: value.kind,
     nullable: value.nullable,
     options: value.options,
@@ -192,6 +288,11 @@ pub struct SettingSpec {
   pub flag: String,
   /// Heading of the setting in `--help`.
   pub group: String,
+  /// What the setting is for, which places it in the form.
+  pub purpose: SettingPurpose,
+  /// Whether the app sets the setting for every run, as it does for the output files and their selection, so that
+  /// the form does not offer it and comparisons of configurations skip it.
+  pub set_by_app: bool,
   /// What the setting names: a file, or a value.
   pub role: SettingRole,
   /// Form of the value, which selects the control that edits it.
@@ -237,6 +338,38 @@ pub enum SettingRole {
   InputTemplate,
   /// Path of an output file.
   Output,
+}
+
+/// What a setting is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum SettingPurpose {
+  /// How the input files are read.
+  Data,
+  /// A model, method, or parameter of the analysis.
+  Analysis,
+  /// What the run writes, and in which format.
+  Output,
+  /// The order of the tree in the outputs, and the random seed: settings that change no inferred value.
+  Ordering,
+}
+
+impl SettingPurpose {
+  fn of(heading: &str, role: SettingRole) -> Self {
+    PURPOSES
+      .iter()
+      .find(|(rule, _)| match rule {
+        PurposeRule::Heading(known) => *known == heading,
+        PurposeRule::Role(known) => *known == role,
+      })
+      .map_or(Self::Analysis, |(_, purpose)| *purpose)
+  }
+}
+
+enum PurposeRule {
+  Heading(&'static str),
+  Role(SettingRole),
 }
 
 impl From<Option<PathRole>> for SettingRole {
@@ -452,10 +585,12 @@ fn enum_options(schema: &Value, node: &Value) -> Result<Vec<SettingOption>, Repo
     .filter_map(Value::as_str)
     .map(|value| SettingOption {
       value: value.to_owned(),
+      label: option_label(value),
       help: String::new(),
     });
   let constant = target.get("const").and_then(Value::as_str).map(|value| SettingOption {
     value: value.to_owned(),
+    label: option_label(value),
     help: Description::parse(target.get("description").and_then(Value::as_str).unwrap_or("")).help,
   });
   let mut options = direct.chain(constant).collect_vec();
@@ -483,6 +618,8 @@ fn has_free_value(schema: &Value, node: &Value) -> Result<bool, Report> {
 pub struct SettingOption {
   /// The value, as the configuration spells it.
   pub value: String,
+  /// Name of the value as the form shows it, for example `Least squares`.
+  pub label: String,
   /// Description of the value, when it has one.
   pub help: String,
 }

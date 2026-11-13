@@ -1,6 +1,7 @@
 use crate::json_float::JsonFloat;
 use crate::results::run_results::{CommandResults, results_of_record};
 use crate::results::year_date::YearDate;
+use crate::runs::input_store::InputStore;
 use crate::runs::record::RunRecord;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
@@ -8,8 +9,8 @@ use schemars::JsonSchema;
 use std::path::Path;
 use treetime_schema::skip_serializing_optionals;
 
-pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, Report> {
-  let results = results_of_record(record, out_dir)?;
+pub fn run_headline(record: &RunRecord, run_dir: &Path, store: &InputStore) -> Result<RunHeadline, Report> {
+  let results = results_of_record(record, run_dir, store)?;
   Ok(match results.results {
     CommandResults::Timetree(results) => results
       .estimates
@@ -21,7 +22,7 @@ pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, R
       })
       .unwrap_or_default(),
     CommandResults::Clock(results) => RunHeadline {
-      root_date: None,
+      root_date: results.estimates.root_date,
       clock_rate: results.estimates.clock_rate.map(JsonFloat),
       r_squared: results.estimates.r_squared.map(JsonFloat),
       ..RunHeadline::default()
@@ -42,7 +43,7 @@ pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, R
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RunHeadline {
-  /// Date of the root of a time tree.
+  /// Date of the root: of the time tree, or where the root-to-tip regression of a clock run reaches zero divergence.
   pub root_date: Option<YearDate>,
   /// Clock rate in substitutions per site per year.
   pub clock_rate: Option<JsonFloat>,

@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <up|serve|health|status|up-web2|serve-web2|docs|docs-prod|desktop>
+# Usage: $0 <health|status|up-web2|serve-web2|docs|docs-prod|desktop>
 #
-# Servers of the web app: the API server (treetime-server), and in development
-# the Vite dev server, which proxies /api to it. The web2 app needs no API
-# server: its back end is the WebAssembly build in a web worker of the page, so
-# it runs from one Vite server.
+# Development servers of the apps. The web2 app needs no API server: its back
+# end is the WebAssembly build in a web worker of the page, so it runs from one
+# Vite server.
 #
-#   up          Start both development servers in the foreground until Ctrl-C
-#   serve       Build the web app and the API server for production and serve both
-#               from one port in the foreground until Ctrl-C
-#   health      Probe both development servers; exit 1 when one is absent, not
+#   health      Probe the web2 development server; exit 1 when it is absent, not
 #               answering, or started from another commit than the checkout HEAD
-#   status      Print the resolved ports and URLs and what each server was started from
+#   status      Print the resolved ports and URLs and what the web2 server was started from
 #   up-web2     Start the web2 development server in the foreground until Ctrl-C;
 #               both WebAssembly modules must be built (just build-wasm, just
 #               build-wasm-mt)
@@ -29,22 +25,16 @@
 #               server, in the foreground until Ctrl-C
 #
 # Each checkout takes its ports from its port slot (dev/lib/ports.sh), so
-# worktrees run side by side: the main checkout uses 14000-14007, and a linked
+# worktrees run side by side: the main checkout uses 14000-14004, and a linked
 # worktree the ports of the slot it claims. TREETIME_PORT_SLOT selects the slot,
 # which dev/docker/run claims on the host and passes into the container.
-# TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT, TREETIME_WEB2_PORT,
-# TREETIME_WEB2_SERVE_PORT, TREETIME_DOCS_PORT, TREETIME_DOCS_SERVE_PORT and
-# TREETIME_DESKTOP_PORT override single ports.
+# TREETIME_WEB2_PORT, TREETIME_WEB2_SERVE_PORT, TREETIME_DOCS_PORT,
+# TREETIME_DOCS_SERVE_PORT and TREETIME_DESKTOP_PORT override single ports.
 #
-# Each mode keeps its runs in its own directory of the checkout:
-#
-#   tmp/app/web-dev/runs    runs of the development servers (up)
-#   tmp/app/web-prod/runs   runs of the production server (serve)
-#
-# A route launcher on the host can publish the web development server through an
+# A route launcher on the host can publish the web2 development server through an
 # HTTPS proxy. The launcher writes the assigned hostnames to
 # tmp/portless/web.hostnames.json as {"hostnames": [...], "urls": [...]} and then
-# starts `up`, which writes the port of the web server to tmp/portless/web.json
+# starts `up-web2`, which writes the port of the web2 server to tmp/portless/web.json
 # as {"port": <n>} once the server answers. `status` prints the URLs. Without a
 # launcher, nobody reads web.json and the server has no public hostname.
 #
@@ -56,9 +46,7 @@ cd "${root}"
 # shellcheck source=lib/ports.sh
 source "${root}/dev/lib/ports.sh"
 
-web_dev_dir="tmp/app/web-dev"
-web_prod_dir="tmp/app/web-prod"
-state_dir="${root}/${web_dev_dir}/servers"
+state_dir="${root}/tmp/app/servers"
 route_dir="${root}/tmp/portless"
 
 resolve() {
@@ -70,14 +58,11 @@ resolve() {
     return 1
   fi
   export TREETIME_PORT_SLOT
-  export TREETIME_API_PORT="${TREETIME_API_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 0)}"
-  export TREETIME_WEB_PORT="${TREETIME_WEB_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 1)}"
-  export TREETIME_SERVE_PORT="${TREETIME_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 2)}"
-  export TREETIME_WEB2_PORT="${TREETIME_WEB2_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 3)}"
-  export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 4)}"
-  export TREETIME_DOCS_PORT="${TREETIME_DOCS_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 5)}"
-  export TREETIME_DOCS_SERVE_PORT="${TREETIME_DOCS_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 6)}"
-  export TREETIME_DESKTOP_PORT="${TREETIME_DESKTOP_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 7)}"
+  export TREETIME_WEB2_PORT="${TREETIME_WEB2_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 0)}"
+  export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 1)}"
+  export TREETIME_DOCS_PORT="${TREETIME_DOCS_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 2)}"
+  export TREETIME_DOCS_SERVE_PORT="${TREETIME_DOCS_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 3)}"
+  export TREETIME_DESKTOP_PORT="${TREETIME_DESKTOP_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 4)}"
 }
 
 commit() {
@@ -117,13 +102,6 @@ write_route_request() {
   mv -f -- "${tmp}" "${route_dir}/${1}.json"
 }
 
-prefix() {
-  local line
-  while IFS= read -r line; do
-    printf '[%s] %s\n' "${1}" "${line}"
-  done
-}
-
 stop_servers() {
   local pid
   for pid in "${pids[@]}"; do
@@ -131,123 +109,77 @@ stop_servers() {
   done
 }
 
-up() {
-  resolve
-  rm -rf "${state_dir}"
-  local api_url="http://127.0.0.1:${TREETIME_API_PORT}/api/version"
-  local web_url="http://127.0.0.1:${TREETIME_WEB_PORT}/"
-  local url
-  for url in "${api_url}" "${web_url}"; do
-    if probe "${url}" 2>/dev/null; then
-      printf 'A server already answers at %s; stop it before starting another (just status)\n' "${url}" >&2
-      return 1
-    fi
-  done
-
-  pids=()
-  # Each server runs in its own process group, so stopping it reaches cargo's child too.
-  # A signal ends the script through exit, so the EXIT trap stops both groups.
-  set -m
-  trap stop_servers EXIT
-  trap 'exit 129' HUP
-  trap 'exit 130' INT
-  trap 'exit 143' TERM
-
-  printf 'Starting the API server on http://127.0.0.1:%s\n' "${TREETIME_API_PORT}" >&2
-  PORT="${TREETIME_API_PORT}" cargo run --locked --bin treetime-server -- --runs-dir="${web_dev_dir}/runs" \
-    > >(prefix api) 2>&1 &
-  pids+=("$!")
-  wait_ready "${api_url}" 900 "${pids[0]}" || {
-    printf 'The API server did not answer at %s\n' "${api_url}" >&2
-    return 1
-  }
-  write_state api "${api_url}"
-
-  printf 'Starting the web server on http://127.0.0.1:%s\n' "${TREETIME_WEB_PORT}" >&2
-  bun run --cwd packages/app-web dev > >(prefix web) 2>&1 &
-  pids+=("$!")
-  wait_ready "${web_url}" 300 "${pids[1]}" || {
-    printf 'The web server did not answer at %s\n' "${web_url}" >&2
-    return 1
-  }
-  write_state web "${web_url}"
-  write_route_request web "${TREETIME_WEB_PORT}"
-
-  printf 'Ready: %s (Ctrl-C to stop)\n' "${web_url}" >&2
-  wait -n "${pids[@]}"
-}
-
-serve() {
-  resolve
-  local url="http://127.0.0.1:${TREETIME_SERVE_PORT}"
-  if probe "${url}/api/version" 2>/dev/null; then
-    printf 'A server already answers at %s; stop it before starting another\n' "${url}" >&2
+health() {
+  local state="${state_dir}/web2.json" url started
+  if [[ ! -f "${state}" ]]; then
+    printf 'web2: not started (start it with: just up-web2)\n' >&2
     return 1
   fi
-
-  bun run --silent build:web
-  cargo build --locked --release --bin treetime-server
-
-  printf 'Serving the production web app on %s (Ctrl-C to stop)\n' "${url}" >&2
-  STATIC_DIR=packages/app-web/dist PORT="${TREETIME_SERVE_PORT}" exec cargo run --locked --release --bin treetime-server -- \
-    --runs-dir="${web_prod_dir}/runs"
-}
-
-health() {
-  local svc state url started rc=0
-  for svc in api web; do
-    state="${state_dir}/${svc}.json"
-    if [[ ! -f "${state}" ]]; then
-      printf '%s: not started (start it with: just up)\n' "${svc}" >&2
-      rc=1
-      continue
-    fi
-    url="$(jq -r '.url' "${state}")"
-    started="$(jq -r '.commit' "${state}")"
-    if ! probe "${url}"; then
-      printf '%s: not answering at %s\n' "${svc}" "${url}" >&2
-      rc=1
-    elif [[ "${started}" != "$(commit)" ]]; then
-      printf '%s: stale, started from %s while the checkout is at %s\n' "${svc}" "${started}" "$(commit)" >&2
-      rc=1
-    else
-      printf '%s: ok at %s\n' "${svc}" "${url}"
-    fi
-  done
-  return "${rc}"
+  url="$(jq -r '.url' "${state}")"
+  started="$(jq -r '.commit' "${state}")"
+  if ! probe "${url}"; then
+    printf 'web2: not answering at %s\n' "${url}" >&2
+    return 1
+  fi
+  if [[ "${started}" != "$(commit)" ]]; then
+    printf 'web2: stale, started from %s while the checkout is at %s\n' "${started}" "$(commit)" >&2
+    return 1
+  fi
+  printf 'web2: ok at %s\n' "${url}"
 }
 
 status() {
   resolve
   printf 'port slot %s\n' "${TREETIME_PORT_SLOT}"
-  printf 'api   port %s\n' "${TREETIME_API_PORT}"
-  printf 'web   port %s\n' "${TREETIME_WEB_PORT}"
-  printf 'serve port %s\n' "${TREETIME_SERVE_PORT}"
   printf 'web2  port %s\n' "${TREETIME_WEB2_PORT}"
   printf 'web2 serve port %s\n' "${TREETIME_WEB2_SERVE_PORT}"
   printf 'docs  port %s\n' "${TREETIME_DOCS_PORT}"
   printf 'docs serve port %s\n' "${TREETIME_DOCS_SERVE_PORT}"
   printf 'desktop port %s\n' "${TREETIME_DESKTOP_PORT}"
   if [[ -f "${route_dir}/web.hostnames.json" ]]; then
-    jq -r '.urls[] | "web   public URL \(.)"' "${route_dir}/web.hostnames.json"
+    jq -r '.urls[] | "web2  public URL \(.)"' "${route_dir}/web.hostnames.json"
   else
-    printf 'web   no public hostname\n'
+    printf 'web2  no public hostname\n'
   fi
   printf 'checkout HEAD %s\n' "$(commit)"
-  local svc
-  for svc in api web; do
-    if [[ -f "${state_dir}/${svc}.json" ]]; then
-      jq -r --arg svc "${svc}" '"\($svc)  started from \(.commit) at \(.url)"' "${state_dir}/${svc}.json"
-    else
-      printf '%s  not started\n' "${svc}"
-    fi
-  done
+  if [[ -f "${state_dir}/web2.json" ]]; then
+    jq -r '"web2  started from \(.commit) at \(.url)"' "${state_dir}/web2.json"
+  else
+    printf 'web2  not started\n'
+  fi
 }
 
 up_web2() {
   resolve
-  printf 'Starting the web2 server on http://127.0.0.1:%s (Ctrl-C to stop)\n' "${TREETIME_WEB2_PORT}" >&2
-  exec bun run --cwd packages/app-web2 dev
+  local url="http://127.0.0.1:${TREETIME_WEB2_PORT}/"
+  # The state file describes the server that answers now, so a rejected start leaves it to that server.
+  if probe "${url}" 2>/dev/null; then
+    printf 'A server already answers at %s; stop it before starting another (just status)\n' "${url}" >&2
+    return 1
+  fi
+  rm -f -- "${state_dir}/web2.json"
+
+  pids=()
+  # The server runs in its own process group, so stopping it reaches the children of bun too.
+  # A signal ends the script through exit, so the EXIT trap stops the group.
+  set -m
+  trap stop_servers EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  printf 'Starting the web2 server on %s\n' "${url}" >&2
+  bun run --cwd packages/app-web2 dev &
+  pids+=("$!")
+  wait_ready "${url}" 300 "${pids[0]}" || {
+    printf 'The web2 server did not answer at %s\n' "${url}" >&2
+    return 1
+  }
+  write_state web2 "${url}"
+  write_route_request web "${TREETIME_WEB2_PORT}"
+
+  printf 'Ready: %s (Ctrl-C to stop)\n' "${url}" >&2
+  wait -n "${pids[@]}"
 }
 
 serve_web2() {
@@ -275,7 +207,7 @@ desktop() {
 }
 
 case "${1:-}" in
-up | serve | health | status | desktop) "${1}" ;;
+health | status | desktop) "${1}" ;;
 up-web2 | serve-web2 | docs | docs-prod) "${1//-/_}" ;;
 *)
   sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2

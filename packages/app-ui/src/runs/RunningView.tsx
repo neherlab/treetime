@@ -6,16 +6,17 @@ import { Progress, ProgressLabel, ProgressValue } from "@neherlab/design/ui/prog
 import { Spinner } from "@neherlab/design/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@neherlab/design/ui/table";
 import { useToastManager } from "@neherlab/design/ui/toast";
-import { useCallback, useState } from "react";
+import { cn } from "cn";
+import { useCallback, useMemo, useState } from "react";
 
 import { useApiMutation } from "../api/hooks";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
-import { formatRate } from "../format";
+import { formatDuration, formatRate } from "../format";
 import { nonFiniteLabel } from "../results/numbers";
-import type { IterationPoint, LogFilter, RunProgress } from "../results/progress";
+import { stageSections, type IterationPoint, type LogFilter, type RunProgress } from "../results/progress";
 import { RateTrace } from "./RateTrace";
-import { StageLog } from "./StageLog";
+import { STAGE_ICONS, StageLog } from "./StageLog";
 
 const LIVE_FILTERS: ReadonlyArray<{ value: LogFilter; label: string }> = [
   { value: "all", label: "All" },
@@ -25,28 +26,47 @@ const LIVE_FILTERS: ReadonlyArray<{ value: LogFilter; label: string }> = [
 export function RunningView({ record, progress }: { record: RunRecord; progress: RunProgress }) {
   const [filter, setFilter] = useState<LogFilter>("all");
   const percent = Math.round(Math.min(1, Math.max(0, progress.fraction)) * 100);
+  const stages = useMemo(() => stageSections(progress), [progress]);
 
   return (
-    <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_26rem]">
-      <StageLog
-        progress={progress}
-        filter={filter}
-        query=""
-        hint="Open stages follow new lines until you scroll up"
-        actions={<OptionToggle label="Log filter" value={filter} onChange={setFilter} options={LIVE_FILTERS} />}
-      />
-      <div className="grid content-start gap-4">
-        <Panel title="Progress" hint={progress.message === "" ? undefined : progress.message}>
-          <div className="p-3.5">
+    <div className={cn("grid gap-4", progress.iterations.length > 0 && "@3xl:grid-cols-[minmax(0,1fr)_26rem]")}>
+      <div className="grid min-w-0 content-start gap-4">
+        <Panel
+          title="Stages"
+          hint={progress.message === "" ? undefined : progress.message}
+          actions={record.status === "running" ? <CancelButton id={record.id} /> : undefined}
+        >
+          <div className="grid gap-3 p-3.5">
             <Progress value={percent} aria-label="Run progress">
               <ProgressLabel className="sr-only">Run progress</ProgressLabel>
               <ProgressValue />
             </Progress>
+            {stages.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Waiting for the first stage.</p>
+            ) : (
+              <ol className="grid gap-1.5 text-sm">
+                {stages.map((stage) => (
+                  <li key={stage.key} className="flex items-center gap-2">
+                    {STAGE_ICONS[stage.state]}
+                    <span className={cn("min-w-0 flex-1 truncate", stage.state === "running" && "font-bold")}>
+                      {stage.name}
+                    </span>
+                    <span className="text-muted-foreground text-xs tabular-nums">{formatDuration(stage.seconds)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         </Panel>
-        {progress.iterations.length > 0 && <IterationPanel iterations={progress.iterations} />}
-        {record.status === "running" && <CancelButton id={record.id} />}
+        <StageLog
+          progress={progress}
+          filter={filter}
+          query=""
+          hint="Open stages follow new lines until you scroll up"
+          actions={<OptionToggle label="Log filter" value={filter} onChange={setFilter} options={LIVE_FILTERS} />}
+        />
       </div>
+      {progress.iterations.length > 0 && <IterationPanel iterations={progress.iterations} />}
     </div>
   );
 }
@@ -118,7 +138,7 @@ function CancelButton({ id }: { id: string }) {
   const onCancel = useCallback(() => void cancel(), [cancel]);
 
   return (
-    <Button type="button" variant="destructive" onClick={onCancel} disabled={busy}>
+    <Button type="button" variant="destructive" size="sm" onClick={onCancel} disabled={busy}>
       {busy && <Spinner />}
       Cancel run
     </Button>

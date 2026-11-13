@@ -1,17 +1,16 @@
 use crate::chunks::ChunkReader;
 use crate::exchange::{Exchange, PortExchange};
 use crate::jobs::{JobExecutor, JobOrder};
+use app_api::port::port_request;
+use app_api::routes::api_router;
+use app_api::state::{RouterConfig, confined_service};
 use app_backend::bridge::executor::RunExecutor;
 use app_backend::runs::errors::invalid;
-use app_server::port::port_request;
-use app_server::routes::api_router;
-use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig, server_service};
 use axum::Router;
 use eyre::Report;
 use itertools::izip;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
 use treetime_utils::error::report_to_string;
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
 
@@ -29,7 +28,7 @@ impl Backend {
   pub fn new() -> Result<Self, JsError> {
     let jobs = Arc::new(JobExecutor::default());
     let executor: Arc<dyn RunExecutor> = Arc::<JobExecutor>::clone(&jobs);
-    web_router(browser_config(), executor)
+    web_router(Path::new(RUNS_DIR), executor)
       .map(|router| Self { router, jobs })
       .map_err(|report| JsError::new(&report_to_string(&report)))
   }
@@ -40,13 +39,16 @@ impl Backend {
     url: &str,
     #[wasm_bindgen(js_name = headerNames)] header_names: Vec<String>,
     #[wasm_bindgen(js_name = headerValues)] header_values: Vec<String>,
-    body: Option<Vec<u8>>,
+    #[wasm_bindgen(js_name = hasBody)] has_body: bool,
   ) -> Exchange {
+    let router = self.router.clone();
+    let request = header_list(header_names, header_values).and_then(|headers| port_request(method, url, headers, None));
     Exchange {
-      inner: PortExchange::start(
-        self.router.clone(),
-        header_list(header_names, header_values).and_then(|headers| port_request(method, url, headers, body)),
-      ),
+      inner: if has_body {
+        PortExchange::start_streaming(router, request)
+      } else {
+        PortExchange::start(router, request)
+      },
     }
   }
 
@@ -123,19 +125,9 @@ impl Backend {
   }
 }
 
-pub(crate) fn web_router(config: ServerConfig, executor: Arc<dyn RunExecutor>) -> Result<Router, Report> {
-  let (router, _) = api_router(server_service(&config, executor)?, config)?;
+pub(crate) fn web_router(runs_dir: &Path, executor: Arc<dyn RunExecutor>) -> Result<Router, Report> {
+  let (router, _) = api_router(confined_service(runs_dir, executor)?, RouterConfig::default())?;
   Ok(router)
-}
-
-fn browser_config() -> ServerConfig {
-  ServerConfig {
-    runs_dir: PathBuf::from(RUNS_DIR),
-    max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-    max_grid_points: None,
-    shutdown: CancellationToken::new(),
-    settings: None,
-  }
 }
 
 pub(crate) fn header_list(names: Vec<String>, values: Vec<String>) -> Result<Vec<(String, String)>, Report> {

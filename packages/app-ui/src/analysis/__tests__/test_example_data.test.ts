@@ -8,13 +8,14 @@ import {
   indexedDatasetInputs,
   localExampleIndex,
   localInputAssignment,
-  matchingExampleFiles,
   uploadedConfigInputs,
   webExampleIndex,
 } from "../exampleData";
 
 const ZIKA_20: IndexedDataset = {
   name: "zika/20",
+  organism: "Zika virus",
+  samples: 20,
   inputs: [
     { kind: "tree", path: "zika/20/tree.nwk" },
     { kind: "alignment", path: "zika/20/aln.fasta.xz" },
@@ -112,7 +113,7 @@ describe("example data", () => {
     );
   });
 
-  test("a config replaces each input it reads with the uploads, lists as lists", () => {
+  test("a config replaces each input it reads with the uploads, lists as lists, and keeps the example path of each", () => {
     const uploaded = [...configInputs(CLOCK), ...configInputs(TIMETREE)].map((input, index) => ({
       input,
       stored: input.paths.map((path) => ({
@@ -129,9 +130,19 @@ describe("example data", () => {
         alignment: ["/up/2"],
       },
       sources: {
-        metadata: { label: "metadata.tsv", size: 7, origin: "upload", run_id: "r1" },
-        tree: { label: "tree.nwk", size: 7, origin: "upload", run_id: "r1" },
-        alignment: { label: "aln.fasta.xz", size: 7, origin: "upload", run_id: "r1" },
+        metadata: {
+          label: "metadata.tsv",
+          size: 7,
+          origin: { kind: "example", path: "zika/20/metadata.tsv" },
+          run_id: "r1",
+        },
+        tree: { label: "tree.nwk", size: 7, origin: { kind: "example", path: "zika/20/tree.nwk" }, run_id: "r1" },
+        alignment: {
+          label: "aln.fasta.xz",
+          size: 7,
+          origin: { kind: "example", path: "flu/h3n2/20/aln.fasta.xz" },
+          run_id: "r1",
+        },
       },
     });
   });
@@ -149,15 +160,5 @@ describe("example data", () => {
       appConfigs(localExampleIndex({ folder: "/examples", index })).map((config) => config.path),
       appConfigs(localExampleIndex({ folder: "/examples" })),
     ]).toStrictEqual([[CLOCK.path, TIMETREE.path], [CLOCK.path, TIMETREE.path], []]);
-  });
-
-  test.each([
-    ["", FILES.map((file) => file.path)],
-    ["zika tree", ["zika/20/tree.nwk"]],
-    ["weights", ["zika/country_weights.csv"]],
-    ["nwk", ["ebola/20/tree.nwk", "zika/20/tree.nwk"]],
-    ["sars", []],
-  ])("the example files matching %j are %j", (query, paths) => {
-    expect(matchingExampleFiles(FILES, query).map((file) => file.path)).toStrictEqual(paths);
   });
 });

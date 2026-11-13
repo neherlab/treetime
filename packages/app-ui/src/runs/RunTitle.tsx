@@ -86,7 +86,7 @@ export function RunTitle({ record }: { record: RunRecord }) {
 
   return (
     <div className="flex items-center gap-1">
-      <h1 className="font-heading text-2xl leading-tight font-bold">{record.title}</h1>
+      <h2 className="font-heading text-2xl leading-tight font-bold">{record.title}</h2>
       <Button
         type="button"
         variant="ghost"

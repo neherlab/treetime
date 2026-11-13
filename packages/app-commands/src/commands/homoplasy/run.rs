@@ -22,7 +22,6 @@ use treetime::branch_lengths::branch_lengths_or_zero;
 use treetime::cancel::Cancel;
 use treetime::homoplasy;
 use treetime::homoplasy::pipeline::{HomoplasyInput, HomoplasyParams};
-use treetime::partition::marginal::sample::SampleMode;
 use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
@@ -83,8 +82,7 @@ pub fn run_homoplasy(
     .topology_order
     .resolve(&input.graph, &names, None, args.newick_dialect)?;
 
-  let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
-  let seed = SeedArgs::resolve(args.seed, random_step, log);
+  let seed = SeedArgs::resolve(args.seed, args.random_step(), log);
   let params = homoplasy_ancestral_params(args, seed);
   let output = ancestral::pipeline::run(&params, input, None, cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;

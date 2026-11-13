@@ -22,7 +22,7 @@ import { LogLines } from "./LogLines";
 
 const NO_OVERRIDES: ReadonlyMap<string, boolean> = new Map();
 
-const STAGE_ICONS = {
+export const STAGE_ICONS = {
   running: <Spinner aria-label="Running" className="text-primary size-3.5 shrink-0" />,
   done: <CircleCheck aria-label="Done" className="text-success size-3.5 shrink-0" />,
   stopped: <CircleX aria-label="Stopped" className="text-destructive size-3.5 shrink-0" />,

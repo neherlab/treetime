@@ -1,6 +1,9 @@
 use crate::bridge::executor::RunExecutor;
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
 use crate::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
+use crate::clock_preview::{ClockPreview, ClockPreviewRequest, clock_preview};
+use crate::config::catalog::command_settings;
+use crate::file_kinds::{FileKinds, FileKindsRequest, file_kinds};
 use crate::job::JobId;
 use crate::results::auspice::{AuspiceDocument, run_auspice};
 use crate::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
@@ -10,14 +13,19 @@ use crate::run_config::{RunConfigRequest, RunConfigResponse, run_config};
 use crate::run_limits::RunLimits;
 use crate::runs::errors::invalid;
 use crate::runs::files::RunFile;
+use crate::runs::input_store::{StoredInputs, StoredInputsRequest};
+use crate::runs::inputs::{InputHashes, draft_inputs};
 use crate::runs::manager::{ConfigHook, RunManager};
 use crate::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
+use crate::runs::setting_differences::{ComparedConfig, SettingDifference, compared_inputs, setting_differences};
 use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
 use eyre::Report;
+use itertools::Itertools;
 use serde_json::Value;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use treetime_schema::{VersionInfo, version_info};
 use treetime_utils::make_error;
@@ -27,6 +35,7 @@ pub struct AppService {
   policy: Arc<dyn InputPolicy>,
   limits: Arc<RunLimits>,
   executor: Arc<dyn RunExecutor>,
+  input_hashes: InputHashes,
 }
 
 impl AppService {
@@ -41,6 +50,7 @@ impl AppService {
       policy,
       limits: Arc::new(limits),
       executor,
+      input_hashes: InputHashes::default(),
     }
   }
 
@@ -53,7 +63,20 @@ impl AppService {
   }
 
   pub fn check_config(&self, request: &CheckConfigRequest) -> Result<CheckConfigResponse, Report> {
-    Ok(check_config(request))
+    let mut response = check_config(request);
+    if let (
+      Some(run_id),
+      CheckConfigResponse::Valid {
+        command,
+        config,
+        run_differences,
+        ..
+      },
+    ) = (&request.run_id, &mut response)
+    {
+      *run_differences = self.differences_from_run(run_id, *command, config)?;
+    }
+    Ok(response)
   }
 
   pub fn run_config(&self, request: &RunConfigRequest) -> Result<RunConfigResponse, Report> {
@@ -66,22 +89,36 @@ impl AppService {
       config,
     };
     let hook = self.hook(request.command);
-    Ok(run_config(&request, hook))
+    Ok(run_config(&request, &hook, self.runs.input_store()))
   }
 
   pub fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {
-    let mut config = Value::Object(request.config.0);
-    self
-      .policy
-      .confine(request.command, &mut config)
-      .map_err(|err| invalid(format!("{err:#}")))?;
-    let Value::Object(config) = config else {
-      return Err(invalid("a command configuration must be a mapping of settings"));
-    };
+    let config = self.confined(request.command, request.config)?;
     check_inputs(&CheckInputsRequest {
       command: request.command,
-      config: SparseConfig(config),
+      config,
     })
+  }
+
+  pub fn file_kinds(&self, request: &FileKindsRequest) -> Result<FileKinds, Report> {
+    let files = request
+      .files
+      .iter()
+      .map(|path| self.policy.confine_path(path))
+      .try_collect()
+      .map_err(|err: Report| invalid(format!("{err:#}")))?;
+    Ok(file_kinds(&FileKindsRequest { files }))
+  }
+
+  pub fn stored_inputs(&self, request: &StoredInputsRequest) -> StoredInputs {
+    StoredInputs {
+      missing: self.runs.input_store().missing(&request.paths),
+    }
+  }
+
+  pub fn clock_preview(&self, request: ClockPreviewRequest) -> Result<ClockPreview, Report> {
+    let config = self.confined(request.command, request.config)?;
+    clock_preview(&ClockPreviewRequest { config, ..request })
   }
 
   pub fn list_runs(&self) -> Result<RunList, Report> {
@@ -110,10 +147,18 @@ impl AppService {
     self.runs.update(id, request)
   }
 
+  pub fn delete_run(&self, id: &JobId) -> Result<(), Report> {
+    self.runs.delete(id)
+  }
+
+  pub fn run_settings(&self, id: &JobId) -> Result<SparseConfig, Report> {
+    self.runs.settings(id)
+  }
+
   pub fn cancel_run(&self, id: &JobId) -> Result<CancelRunResponse, Report> {
-    let cancelled = self.runs.cancel(id)?;
+    let response = self.runs.cancel_request(id)?;
     self.executor.cancel(id);
-    Ok(CancelRunResponse { cancelled })
+    Ok(response)
   }
 
   pub fn run_files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
@@ -134,6 +179,49 @@ impl AppService {
 
   pub fn clade_in_runs(&self, request: &CladeRequest) -> Result<CladeInRuns, Report> {
     clade_in_runs(&self.runs, request)
+  }
+
+  fn differences_from_run(
+    &self,
+    id: &JobId,
+    command: AppCommand,
+    draft: &SparseConfig,
+  ) -> Result<Option<Vec<SettingDifference>>, Report> {
+    let record = self.runs.get(id)?;
+    if record.config.command() != command {
+      return Ok(None);
+    }
+    let catalog = command_settings(command)?;
+    let mut draft = draft.0.clone();
+    self.limits.apply(command, &mut draft)?;
+    let store = self.runs.input_store();
+    let draft_inputs = draft_inputs(command, &draft, |path| {
+      self.input_hashes.sha256(store, &self.policy.confine_path(path)?)
+    })?;
+    let run_inputs = compared_inputs(&record.inputs);
+    Ok(Some(setting_differences(
+      &catalog,
+      &ComparedConfig {
+        settings: &record.config.settings()?,
+        inputs: &run_inputs,
+      },
+      &ComparedConfig {
+        settings: &draft,
+        inputs: &draft_inputs,
+      },
+    )))
+  }
+
+  fn confined(&self, command: AppCommand, config: SparseConfig) -> Result<SparseConfig, Report> {
+    let mut config = Value::Object(config.0);
+    self
+      .policy
+      .confine(command, &mut config)
+      .map_err(|err| invalid(format!("{err:#}")))?;
+    let Value::Object(config) = config else {
+      return Err(invalid("a command configuration must be a mapping of settings"));
+    };
+    Ok(SparseConfig(config))
   }
 
   fn hook(&self, command: AppCommand) -> ConfigHook {
@@ -162,6 +250,8 @@ impl AppService {
 
 pub trait InputPolicy: Send + Sync {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report>;
+
+  fn confine_path(&self, path: &Path) -> Result<PathBuf, Report>;
 }
 
 pub struct Unconfined;
@@ -169,5 +259,9 @@ pub struct Unconfined;
 impl InputPolicy for Unconfined {
   fn confine(&self, _command: AppCommand, _config: &mut Value) -> Result<(), Report> {
     Ok(())
+  }
+
+  fn confine_path(&self, path: &Path) -> Result<PathBuf, Report> {
+    Ok(path.to_path_buf())
   }
 }

@@ -1,8 +1,7 @@
 import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
-import { runsList } from "@neherlab/app-contracts/client";
-import { Badge } from "@neherlab/design/ui/badge";
 import { Button } from "@neherlab/design/ui/button";
 import { Checkbox } from "@neherlab/design/ui/checkbox";
+import { DropdownMenuItem } from "@neherlab/design/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@neherlab/design/ui/input-group";
 import { Kbd } from "@neherlab/design/ui/kbd";
 import {
@@ -10,43 +9,45 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@neherlab/design/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@neherlab/design/ui/toggle-group";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useHotkey } from "@tanstack/react-hotkeys";
+import { Link, useParams } from "@tanstack/react-router";
+import { cn } from "cn";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
 import Plus from "~icons/lucide/plus";
 import Search from "~icons/lucide/search";
 
-import { useApi } from "../api/hooks";
+import { useNewAnalysis } from "../analysis/useDraftSession";
 import { toggledChoice } from "../components/toggleChoice";
-import { headlineText } from "../format";
+import { dayLabel, formatBytes, headlineText } from "../format";
 import { COMMANDS, commandSettings } from "../settings/catalog";
 import { useShellStore } from "../store/shell";
-import { changedFlags, groupRuns, listedRuns } from "./runList";
+import { comparePair } from "./comparePair";
+import { RunActionsMenu, useRunActions } from "./runActions";
+import { groupRuns, type RunEntry } from "./runList";
 import { StatusIcon, statusLabel } from "./StatusIcon";
 import { RUN_FILTER_ID } from "./useGlobalShortcuts";
-
-const FLAGS_SHOWN = 2;
+import { useListedRuns } from "./useListedRuns";
 
 const ALL_COMMANDS = "all";
 
+const DEPTH_INDENT = ["", "pl-6", "pl-10", "pl-14"] as const;
+
 export function AppSidebar() {
-  const { data, error } = useApi((context) => runsList(context));
   const runFilter = useShellStore((state) => state.runFilter);
   const commandFilter = useShellStore((state) => state.commandFilter);
-  const allRuns = useMemo(() => listedRuns(data?.runs ?? [], "", null), [data]);
-  const runs = useMemo(() => listedRuns(allRuns, runFilter, commandFilter), [allRuns, runFilter, commandFilter]);
-  const groups = useMemo(() => groupRuns(runs, DateTime.now()), [runs]);
+  const { all, runs, loaded, error } = useListedRuns(runFilter, commandFilter);
+  const groups = useMemo(() => groupRuns(runs), [runs]);
 
   const commands = useMemo(
-    () => COMMANDS.flatMap(({ command }) => (allRuns.some((run) => run.command === command) ? [command] : [])),
-    [allRuns],
+    () => COMMANDS.flatMap(({ command }) => (all.some((run) => run.command === command) ? [command] : [])),
+    [all],
   );
 
   return (
@@ -62,35 +63,30 @@ export function AppSidebar() {
             The runs cannot be listed: {error.message}
           </p>
         )}
-        <nav aria-label="Runs" className="flex flex-col gap-2">
+        <nav aria-label="Runs" className="flex flex-col">
           {groups.map((group) => (
-            <SidebarGroup key={group.label}>
-              <SidebarGroupLabel render={renderHeading} className="justify-between">
-                <span>{group.label}</span>
-                <span className="tabular-nums">{group.runs.length}</span>
-              </SidebarGroupLabel>
-              <SidebarMenu>
-                {group.runs.map((run) => (
-                  <RunItem key={run.id} run={run} />
+            <SidebarGroup key={group.id} className="border-b py-1.5 last:border-b-0">
+              <SidebarMenu aria-label={group.entries[0]?.run.title}>
+                {group.entries.map((entry) => (
+                  <RunItem key={entry.run.id} entry={entry} />
                 ))}
               </SidebarMenu>
             </SidebarGroup>
           ))}
         </nav>
-        {groups.length === 0 && data !== undefined && (
+        {groups.length === 0 && loaded && (
           <p className="text-muted-foreground px-4 py-6 text-center text-sm">
-            {allRuns.length === 0 ? "No runs yet. Start a new analysis." : "No run matches the filter."}
+            {all.length === 0 ? "No runs yet. Start a new analysis." : "No run matches the filter."}
           </p>
         )}
       </SidebarContent>
-      <CompareFooter />
+      <SelectionFooter runs={all} />
     </Sidebar>
   );
 }
 
 function NewAnalysisButton() {
-  const navigate = useNavigate();
-  const openNew = useCallback(() => void navigate({ to: "/new" }), [navigate]);
+  const openNew = useNewAnalysis();
 
   return (
     <Button className="w-full" onClick={openNew}>
@@ -120,7 +116,7 @@ function RunFilter() {
         type="search"
         value={runFilter}
         onChange={onFilter}
-        placeholder="Filter by name or setting"
+        placeholder="Filter by name"
         aria-label="Filter runs"
       />
       <InputGroupAddon align="inline-end">
@@ -167,21 +163,43 @@ function CommandFilter({ commands }: { commands: readonly AppCommand[] }) {
   );
 }
 
-function RunItem({ run }: { run: RunSummary }) {
+function RunItem({ entry: { run, depth } }: { entry: RunEntry }) {
   const currentId = useParams({ strict: false, select: (params) => params.id });
-  const flags = changedFlags(run);
+  const selecting = useShellStore((state) => state.selectedIds.length > 0);
+  const selected = useShellStore((state) => state.selectedIds.includes(run.id));
+  const toggleSelected = useShellStore((state) => state.toggleSelected);
   const headline = run.status === "ok" ? headlineText(run.headline) : "";
+  const onToggle = useCallback(() => toggleSelected(run.id), [run.id, toggleSelected]);
+
+  const onClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (selecting || event.metaKey || event.ctrlKey || event.shiftKey) {
+        event.preventDefault();
+        toggleSelected(run.id);
+      }
+    },
+    [run.id, selecting, toggleSelected],
+  );
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className={DEPTH_INDENT[Math.min(depth, DEPTH_INDENT.length - 1)]}>
       <SidebarMenuButton
         isActive={run.id === currentId}
-        className="h-auto items-start py-1.5 pr-8"
-        render={<Link to="/runs/$id/results" params={{ id: run.id }} />}
+        className={cn("h-auto items-start py-1.5 pr-8", selected && "bg-sidebar-accent ring-primary/40 ring-1")}
+        render={<Link to="/runs/$id/results" params={{ id: run.id }} onClick={onClick} />}
       >
-        <span className="mt-0.5" title={statusLabel(run.status)}>
-          <StatusIcon status={run.status} />
-        </span>
+        {selecting ? (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={onToggle}
+            aria-label={`Select ${run.title}`}
+            className="mt-0.5"
+          />
+        ) : (
+          <span className="mt-0.5" title={statusLabel(run.status)}>
+            <StatusIcon status={run.status} />
+          </span>
+        )}
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="flex items-baseline gap-2">
             <span className="truncate font-bold" title={run.title}>
@@ -189,71 +207,55 @@ function RunItem({ run }: { run: RunSummary }) {
             </span>
             <span className="text-muted-foreground ml-auto text-xs whitespace-nowrap">{headline}</span>
           </span>
-          <span className="text-muted-foreground flex items-center gap-1 overflow-hidden text-xs">
-            <span className="text-primary font-bold">{run.command}</span>
-            {flags.slice(0, FLAGS_SHOWN).map((flag) => (
-              <Badge
-                key={flag}
-                variant="secondary"
-                title={flag}
-                className="text-muted-foreground h-4 max-w-[26ch] rounded-sm px-1 font-mono font-normal"
-              >
-                <span className="min-w-0 truncate">{flag}</span>
-              </Badge>
-            ))}
-            {flags.length > FLAGS_SHOWN && <span>+{flags.length - FLAGS_SHOWN}</span>}
+          <span className="text-muted-foreground truncate text-xs">
+            {dayLabel(run.created_at, DateTime.now())}, {formatBytes(run.size)}
           </span>
         </span>
       </SidebarMenuButton>
-      {run.status === "ok" && <CompareToggle run={run} />}
+      <div className="absolute top-1.5 right-1">
+        <RunActionsMenu run={run}>
+          <DropdownMenuItem onClick={onToggle}>{selected ? "Deselect" : "Select"}</DropdownMenuItem>
+        </RunActionsMenu>
+      </div>
     </SidebarMenuItem>
   );
 }
 
-function CompareToggle({ run }: { run: RunSummary }) {
-  const compareIds = useShellStore((state) => state.compareIds);
-  const toggleCompare = useShellStore((state) => state.toggleCompare);
-  const onCompare = useCallback(() => toggleCompare(run.id), [run.id, toggleCompare]);
+function SelectionFooter({ runs }: { runs: readonly RunSummary[] }) {
+  const selectedIds = useShellStore((state) => state.selectedIds);
+  const clearSelection = useShellStore((state) => state.clearSelection);
+  const actions = useRunActions();
+  const selected = useMemo(() => runs.filter((run) => selectedIds.includes(run.id)), [runs, selectedIds]);
+  const pair = useMemo(() => comparePair(selectedIds, runs), [runs, selectedIds]);
+  const onDelete = useCallback(() => actions.remove(selected), [actions, selected]);
 
-  return (
-    <Checkbox
-      checked={compareIds.includes(run.id)}
-      onCheckedChange={onCompare}
-      title="Select to compare"
-      aria-label={`Select ${run.title} to compare`}
-      className="bg-sidebar absolute right-2 bottom-2"
-    />
-  );
-}
+  useHotkey("Escape", clearSelection, { enabled: selected.length > 0 });
 
-function CompareFooter() {
-  const compareIds = useShellStore((state) => state.compareIds);
-  const clearCompare = useShellStore((state) => state.clearCompare);
-  const [first, second] = compareIds;
-
-  if (first === undefined) {
+  if (selected.length === 0) {
     return null;
   }
 
   return (
     <SidebarFooter className="border-t">
       <div className="flex items-center gap-2 text-xs">
-        <span className="text-muted-foreground flex-1">
-          {second === undefined ? "Select one more run to compare" : "2 runs selected"}
+        <span className="text-muted-foreground flex-1" aria-live="polite">
+          {selected.length === 1 ? "1 run selected" : `${selected.length} runs selected`}
         </span>
-        {second !== undefined && (
-          <Button size="xs" nativeButton={false} render={<Link to="/compare/$a/$b" params={{ a: first, b: second }} />}>
+        {pair !== undefined && (
+          <Button size="xs" nativeButton={false} render={<Link to="/compare/$a/$b" params={pair} />}>
             Compare
           </Button>
         )}
-        <Button size="xs" variant="ghost" onClick={clearCompare}>
+        <Button size="xs" variant="outline" onClick={onDelete}>
+          Delete
+        </Button>
+        <Button size="xs" variant="ghost" onClick={clearSelection}>
           Clear
         </Button>
       </div>
+      {selected.length === 1 && (
+        <p className="text-muted-foreground text-xs">Select one more finished run to compare.</p>
+      )}
     </SidebarFooter>
   );
-}
-
-function renderHeading({ children, ...props }: React.ComponentProps<"h2">) {
-  return <h2 {...props}>{children}</h2>;
 }

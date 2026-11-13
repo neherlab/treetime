@@ -1,4 +1,4 @@
-import type { JsonValue, SettingSpec } from "@neherlab/app-contracts";
+import type { JsonValue, SettingCommandLine, SettingSpec } from "@neherlab/app-contracts";
 import { within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -6,13 +6,15 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { inAct, registerDom } from "../../__tests__/dom";
 import { LocaleProvider, type Locale } from "../../i18n/locale";
-import { defaultText, SettingHelp, SettingSummary } from "../help";
+import { defaultText, SettingCommandLineNote, SettingHelp } from "../help";
 
 const TREE_DIALECT: SettingSpec = {
   key: "newick_dialect",
   label: "Newick dialect",
   flag: "--newick-dialect",
   group: "Input data",
+  purpose: "data",
+  set_by_app: false,
   role: "setting",
   kind: "text",
   nullable: false,
@@ -70,18 +72,23 @@ describe("setting help", () => {
   });
 });
 
-describe("setting summary", () => {
-  test.each<[Locale, string]>([
-    ["en", "Default: classic,beast"],
-    ["de", "Standard: classic,beast"],
-  ])("shows the label, the flag, and the default in %s", (locale, expected) => {
-    render(<SettingSummary spec={TREE_DIALECT} label={<h3>Newick dialect</h3>} />, locale);
+describe("command line note of a setting", () => {
+  test.each<[string, SettingCommandLine | undefined, string | null]>([
+    [
+      "the command line of the value",
+      { key: "newick_dialect", text: "--newick-dialect beast" },
+      "Command line: --newick-dialect beast",
+    ],
+    [
+      "a value that the command line leaves out",
+      { key: "newick_dialect" },
+      "Command line: --newick-dialect is left out for this value",
+    ],
+    ["no command line without a value", undefined, null],
+  ])("names %s", (_, commandLine, expected) => {
+    render(<SettingCommandLineNote spec={TREE_DIALECT} commandLine={commandLine} />, "en");
 
-    expect([
-      page().getByRole("heading").textContent,
-      page().getByText("--newick-dialect").tagName,
-      page().getByText(expected).tagName,
-    ]).toStrictEqual(["Newick dialect", "CODE", "SPAN"]);
+    expect(page().queryByText(/^Command line:/u)?.textContent ?? null).toBe(expected);
   });
 });
 
@@ -100,6 +107,20 @@ describe("default text", () => {
     ["an object in en", { name: "cp3" }, "en", '{"name":"cp3"}'],
   ])("writes %s", (_, value, locale, expected) => {
     expect(defaultText(value, locale)).toBe(expected);
+  });
+
+  test.each<[string, JsonValue, string]>([
+    ["an option value", "opt", "Optimized constant"],
+    ["a text value of an enum-or-text setting", "26w", "26w"],
+    ["a number of an enum-or-text setting", 0.01, "0.01"],
+    ["a list of option values", ["opt", "skyline"], "Optimized constant Skyline"],
+  ])("writes %s with the label of its option", (_, value, expected) => {
+    const options = [
+      { value: "opt", label: "Optimized constant", help: "" },
+      { value: "skyline", label: "Skyline", help: "" },
+    ];
+
+    expect(defaultText(value, "en", options)).toBe(expected);
   });
 });
 

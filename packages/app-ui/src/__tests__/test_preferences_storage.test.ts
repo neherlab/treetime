@@ -25,6 +25,14 @@ describe("preferences storage browser", () => {
     await expect(tab.reload().load()).resolves.toStrictEqual({ sidebar_width: 420, draft });
   });
 
+  test("the width of the options panel loads back in a new tab", async () => {
+    const browser = new Browser();
+
+    await browser.tab().save({ options_width: 512, draft });
+
+    await expect(browser.tab().load()).resolves.toStrictEqual({ options_width: 512 });
+  });
+
   test("the theme is not stored, because next-themes stores it and keeps the tabs in step", async () => {
     const browser = new Browser();
 
@@ -103,6 +111,23 @@ describe("preferences storage browser", () => {
         reports.push(message);
       },
       { [DRAFT_STORAGE_KEY]: "{" },
+    );
+
+    await expect(tab.load()).resolves.toStrictEqual({ sidebar_width: 420 });
+    expect(reports).toHaveLength(1);
+  });
+
+  test("a form saved in an older shape is ignored and reported, so the tab starts with an empty form", async () => {
+    const reports: string[] = [];
+    const { choices: _choices, ...older } = draft;
+    const saved = { ...older, sources: { tree: { label: "tree.nwk", origin: "upload", run_id: "r1" } } };
+    const browser = new Browser({ [PREFERENCES_STORAGE_KEY]: '{"sidebar_width":420}' });
+
+    const tab = browser.tab(
+      (message) => {
+        reports.push(message);
+      },
+      { [DRAFT_STORAGE_KEY]: JSON.stringify(saved) },
     );
 
     await expect(tab.load()).resolves.toStrictEqual({ sidebar_width: 420 });

@@ -43,7 +43,12 @@ mod tests {
                   .chain(option.patch.iter().map(|patch| patch.key.clone()))
               }))
           })
-          .chain(settings.main_settings.iter().cloned())
+          .chain(
+            settings
+              .main_rows
+              .iter()
+              .flat_map(|row| row.settings.iter().map(|setting| setting.key.clone())),
+          )
           .collect_vec();
         named
           .into_iter()
@@ -118,16 +123,22 @@ mod tests {
         options: vec![
           ChoiceOption {
             option: ChoiceOptionName::Reroot,
+            label: o!("Reroot"),
+            note: None,
             patch: patch(reroot_method, None, None),
             settings: vec_of_owned!["reroot"],
           },
           ChoiceOption {
             option: ChoiceOptionName::Outgroup,
-            patch: patch(None, Some(json!(["outgroup_tip"])), None),
+            label: o!("Outgroup"),
+            note: Some(o!("The root is placed on the branch above the most recent common ancestor of the named tips.")),
+            patch: patch(None, None, None),
             settings: vec_of_owned!["outgroup"],
           },
           ChoiceOption {
             option: ChoiceOptionName::Keep,
+            label: o!("Keep root"),
+            note: Some(o!("The input root is kept; use this when the input tree is already rooted.")),
             patch: patch(None, None, Some(json!(true))),
             settings: vec![],
           },
@@ -152,7 +163,7 @@ mod tests {
     let mut draft = fresh_draft(command);
     draft.extend(rooting.as_object().unwrap().clone());
 
-    let root = active_choices_of(command, &Value::Object(draft))
+    let root = active_choices_of(command, &Value::Object(draft), &[])
       .into_iter()
       .find(|active| active.choice == ChoiceName::Root);
 
@@ -190,13 +201,47 @@ mod tests {
                 choice: choice.choice,
                 option: option.option,
               };
-              let reported = active_choices_of(command, &Value::Object(draft));
+              let reported = active_choices_of(command, &Value::Object(draft), &[expected]);
               (!reported.contains(&expected)).then(|| format!("{command}: {expected:?} not in {reported:?}"))
             })
           })
       })
       .collect_vec();
     assert_eq!(Vec::<String>::new(), mismatches);
+  }
+
+  #[test]
+  fn test_choices_never_fill_a_tip_name() {
+    let filled = offered_commands()
+      .flat_map(|command| command_settings(command).unwrap().choices)
+      .flat_map(|choice| choice.options)
+      .flat_map(|option| option.patch)
+      .filter(|patch| patch.key == "outgroup" && patch.value.is_some())
+      .collect_vec();
+    assert_eq!(Vec::<SettingPatch>::new(), filled);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::outgroup_without_tips(ChoiceOptionName::Outgroup, json!({}),                      ChoiceOptionName::Outgroup)]
+  #[case::outgroup_with_tips(   ChoiceOptionName::Outgroup, json!({ "outgroup": ["A"] }),   ChoiceOptionName::Outgroup)]
+  #[case::reroot_with_tips(     ChoiceOptionName::Reroot,   json!({ "outgroup": ["A"] }),   ChoiceOptionName::Outgroup)]
+  #[case::outgroup_kept_root(   ChoiceOptionName::Outgroup, json!({ "keep_root": true }),   ChoiceOptionName::Keep)]
+  #[trace]
+  fn test_choices_picked_option_counts_while_the_config_agrees(
+    #[case] picked: ChoiceOptionName,
+    #[case] rooting: Value,
+    #[case] expected: ChoiceOptionName,
+  ) {
+    let mut draft = fresh_draft(AppCommand::Timetree);
+    draft.extend(rooting.as_object().unwrap().clone());
+    let picked = ActiveChoice { choice: ChoiceName::Root, option: picked };
+
+    let root = active_choices_of(AppCommand::Timetree, &Value::Object(draft), &[picked])
+      .into_iter()
+      .find(|active| active.choice == ChoiceName::Root);
+
+    assert_eq!(Some(ActiveChoice { choice: ChoiceName::Root, option: expected }), root);
   }
 
   #[test]
@@ -231,6 +276,10 @@ mod tests {
     use serde_json::Value;
 
     pub(super) fn check(command: AppCommand, config: &Value) -> CheckConfigResponse {
+      check_picked(command, config, &[])
+    }
+
+    pub(super) fn check_picked(command: AppCommand, config: &Value, picked: &[ActiveChoice]) -> CheckConfigResponse {
       check_config(&CheckConfigRequest {
         command,
         text: serde_json::to_string(config).unwrap(),
@@ -238,11 +287,14 @@ mod tests {
         input_facts: None,
         folder: None,
         replace_inputs: SparseConfig::default(),
+        choices: picked.to_vec(),
+        run_id: None,
+        example: None,
       })
     }
 
-    pub(super) fn active_choices_of(command: AppCommand, config: &Value) -> Vec<ActiveChoice> {
-      match check(command, config) {
+    pub(super) fn active_choices_of(command: AppCommand, config: &Value, picked: &[ActiveChoice]) -> Vec<ActiveChoice> {
+      match check_picked(command, config, picked) {
         CheckConfigResponse::Valid { choices, .. } | CheckConfigResponse::Invalid { choices, .. } => choices,
       }
     }

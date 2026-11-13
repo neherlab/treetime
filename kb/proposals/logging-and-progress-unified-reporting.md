@@ -21,7 +21,7 @@ The workspace has two independent reporting paths. Diagnostics go through the `l
 
 ## Examples
 
-Each example opens with what it shows, then gives the code and the output it produces now, then the code and the output after the change, then names the packages that produce the result. Outputs are those of the current formatter in `packages/treetime-utils/src/init/global.rs`, the bar template in `packages/app-cli/src/cli/progress.rs`, and the serializers in `packages/app-server/src/sse.rs` and `packages/app-napi/src/progress.rs`.
+Each example opens with what it shows, then gives the code and the output it produces now, then the code and the output after the change, then names the packages that produce the result. Outputs are those of the current formatter in `packages/treetime-utils/src/init/global.rs`, the bar template in `packages/app-cli/src/cli/progress.rs`, and the serializers in `packages/app-api/src/sse.rs` and `packages/app-napi/src/progress.rs`.
 
 ### Diagnostic call site
 

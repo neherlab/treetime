@@ -192,20 +192,28 @@ const CLOCK_FILTER: SettingSpec = spec({
 
 const SETTINGS: CommandSettings = {
   command: "clock",
+  command_line: "treetime clock",
   title: "Clock signal",
   description: "Estimate the clock rate.",
   inputs: [
     { kind: "tree", need: "required", label: "Tree", formats: "Newick or Nexus", extensions: ["nwk"], list: false },
   ],
   uses_dates: true,
+  preview_settings: [],
   groups: ["Input data", "Molecular clock"],
-  main_settings: [],
+  sections: [
+    { purpose: "data", title: "Input data", groups: ["Input data"] },
+    { purpose: "analysis", title: "Analysis", groups: ["Molecular clock"] },
+  ],
+  main_rows: [],
   choices: [],
   settings: [TREE, CLOCK_RATE, CLOCK_FILTER],
 };
 
 function spec(fields: Pick<SettingSpec, "key" | "label" | "flag" | "group"> & Partial<SettingSpec>): SettingSpec {
   return {
+    purpose: "analysis",
+    set_by_app: false,
     role: "setting",
     kind: "number",
     nullable: true,

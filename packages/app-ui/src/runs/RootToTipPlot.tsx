@@ -141,6 +141,9 @@ export function RootToTipPlot({
           />
         </ScatterChart>
       </ChartContainer>
+      {series.offAxes.length > 0 && (
+        <p className="text-muted-foreground px-2 pt-1 text-xs">{offAxesNote(series.offAxes.length)}</p>
+      )}
     </div>
   );
 }
@@ -280,4 +283,10 @@ function lineSegment(frame: PlotFrame, line: RttLine | undefined) {
 
 function divergenceTick(value: number): string {
   return value === 0 ? "0" : value.toExponential(1);
+}
+
+export function offAxesNote(count: number): string {
+  const samples = count === 1 ? "1 sample lies" : `${count} samples lie`;
+
+  return `${samples} outside the axes and appear as open marks at the edge. Turn off "Fit axes to the samples in the clock model" to show them in place.`;
 }

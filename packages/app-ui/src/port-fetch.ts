@@ -1,25 +1,31 @@
 import { ApiError } from "@neherlab/app-contracts/client";
 
 import type { BackendStopped } from "./host";
-import { type PortHeader, type PortMessage, type PortReply, type PortRequest, portReplySchema } from "./port";
+import {
+  type AnyPortRequest,
+  type BlobPortRequest,
+  type PortHeader,
+  type PortReply,
+  type PortRequest,
+  portReplySchema,
+} from "./port";
 
-export interface FetchPort {
-  postMessage(message: PortMessage): void;
-  postMessage(message: PortMessage, transfer: ArrayBuffer[]): void;
+export interface FetchPort<R extends AnyPortRequest = PortRequest> {
+  postMessage(message: PortMessageOf<R>): void;
   addEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
   start(): void;
 }
 
-export interface FetchConnection {
-  onPort(listener: (port: FetchPort) => void): void;
+export interface FetchConnection<R extends AnyPortRequest = PortRequest> {
+  onPort(listener: (port: FetchPort<R>) => void): void;
   onStopped(listener: (stop: BackendStopped) => void): void;
 }
 
-export interface PortFetchOptions {
-  transferBodies?: boolean;
-}
+export type PortMessageOf<R extends AnyPortRequest> = { kind: "request"; request: R } | { kind: "abort"; seq: number };
 
 export type PortFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+export type StopListener = (stop: BackendStopped) => void;
 
 const SERVER_ERROR_STATUS = 500;
 
@@ -29,25 +35,44 @@ const MALFORMED_REPLY = "the back end sent a malformed message";
 
 const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
-export function createPortFetch(connection: FetchConnection, options: PortFetchOptions = {}): PortFetch {
-  const client = new PortClient(connection, options.transferBodies ?? false);
+export function createPortFetch(connection: FetchConnection, onStop: StopListener = ignoreStop): PortFetch {
+  const client = new PortClient(connection, onStop);
 
   return async (input, init) => {
     const request = new Request(input, init);
-    const body = request.body === null ? undefined : new Uint8Array(await request.arrayBuffer());
-    const url = new URL(request.url);
+    const head = requestHead(request);
 
-    const portRequest: Omit<PortRequest, "seq"> = {
-      method: request.method,
-      url: `${url.pathname}${url.search}`,
-      headers: Array.from(request.headers, ([name, value]) => ({ name, value })),
-    };
+    const prepared: Omit<PortRequest, "seq"> =
+      request.body === null ? head : { ...head, body: new Uint8Array(await request.arrayBuffer()) };
 
-    if (body !== undefined) {
-      portRequest.body = body;
-    }
+    return client.exchange((seq) => ({ seq, ...prepared }), request.signal);
+  };
+}
 
-    return client.exchange(portRequest, request.signal);
+export function createBlobPortFetch(
+  connection: FetchConnection<BlobPortRequest>,
+  onStop: StopListener = ignoreStop,
+): PortFetch {
+  const client = new PortClient(connection, onStop);
+
+  return async (input, init) => {
+    const request = new Request(input, init);
+    const head = requestHead(request);
+
+    const prepared: Omit<BlobPortRequest, "seq"> =
+      request.body === null ? head : { ...head, body: await request.blob() };
+
+    return client.exchange((seq) => ({ seq, ...prepared }), request.signal);
+  };
+}
+
+function requestHead(request: Request): Omit<PortRequest, "seq" | "body"> {
+  const url = new URL(request.url);
+
+  return {
+    method: request.method,
+    url: `${url.pathname}${url.search}`,
+    headers: Array.from(request.headers, ([name, value]) => ({ name, value })),
   };
 }
 
@@ -56,16 +81,16 @@ interface Exchange {
   fail(error: Error): void;
 }
 
-class PortClient {
-  private port: FetchPort | undefined;
-  private readonly waiting = new Map<number, PortRequest>();
+class PortClient<R extends AnyPortRequest> {
+  private port: FetchPort<R> | undefined;
+  private readonly waiting = new Map<number, R>();
   private readonly exchanges = new Map<number, Exchange>();
   private nextSeq = 0;
   private failure: Error | undefined;
-  private readonly transferBodies: boolean;
+  private readonly onStop: StopListener;
 
-  constructor(connection: FetchConnection, transferBodies: boolean) {
-    this.transferBodies = transferBodies;
+  constructor(connection: FetchConnection<R>, onStop: StopListener) {
+    this.onStop = onStop;
     connection.onPort((port) => {
       this.connect(port);
     });
@@ -74,7 +99,7 @@ class PortClient {
     });
   }
 
-  exchange(request: Omit<PortRequest, "seq">, signal: AbortSignal): Promise<Response> {
+  exchange(build: (seq: number) => R, signal: AbortSignal): Promise<Response> {
     if (signal.aborted) {
       return Promise.reject(abortReason(signal));
     }
@@ -149,11 +174,11 @@ class PortClient {
         fail,
       });
       signal.addEventListener("abort", abort, { once: true });
-      this.send({ seq, ...request });
+      this.send(build(seq));
     });
   }
 
-  private send(request: PortRequest): void {
+  private send(request: R): void {
     if (this.port === undefined) {
       this.waiting.set(request.seq, request);
     } else {
@@ -169,17 +194,11 @@ class PortClient {
     this.port?.postMessage({ kind: "abort", seq });
   }
 
-  private post(port: FetchPort, request: PortRequest): void {
-    const buffer = this.transferBodies ? request.body?.buffer : undefined;
-
-    if (buffer instanceof ArrayBuffer) {
-      port.postMessage({ kind: "request", request }, [buffer]);
-    } else {
-      port.postMessage({ kind: "request", request });
-    }
+  private post(port: FetchPort<R>, request: R): void {
+    port.postMessage({ kind: "request", request });
   }
 
-  private connect(port: FetchPort): void {
+  private connect(port: FetchPort<R>): void {
     this.port = port;
     this.failure = undefined;
     port.addEventListener("message", (event) => {
@@ -210,7 +229,8 @@ class PortClient {
     }
   }
 
-  private stop({ reason, restarts, error: startError }: BackendStopped): void {
+  private stop(stop: BackendStopped): void {
+    const { reason, restarts, error: startError } = stop;
     this.port = undefined;
     const error = startError === undefined ? new TypeError(reason) : new ApiError(SERVER_ERROR_STATUS, startError);
 
@@ -224,6 +244,8 @@ class PortClient {
         exchange.fail(error);
       }
     }
+
+    this.onStop(stop);
   }
 }
 
@@ -241,6 +263,8 @@ function response(
 
   return new Response(new ReadableStream<Uint8Array>({ start, cancel }), init);
 }
+
+function ignoreStop(): void {}
 
 function abortReason(signal: AbortSignal): Error {
   const reason: unknown = signal.reason;

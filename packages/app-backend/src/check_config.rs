@@ -1,9 +1,13 @@
 use crate::check_inputs::InputFacts;
 use crate::command::AppCommandExt;
-use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
+use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
 use crate::config::choices::{ActiveChoice, active_choices};
-use crate::config::code::{ConfigCode, config_code};
+use crate::config::code::{ConfigCode, SettingCommandLine, config_code, setting_command_lines};
+use crate::config::effective::{EffectiveValue, effective_values};
+use crate::job::JobId;
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
+use crate::runs::run_name::draft_dataset_label;
+use crate::runs::setting_differences::SettingDifference;
 use app_commands::command::AppCommand;
 use app_commands::commands::shared::argument_error::ArgumentError;
 use app_commands::config::resolve_paths::resolve_config_paths_where;
@@ -33,20 +37,26 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     .unwrap_or(request.command);
   let facts = request.input_facts.as_ref();
   let source = ConfigSource::new(SOURCE_NAME, request.text.as_str());
-  let settings = match command_settings(command) {
-    Ok(settings) => settings.settings,
-    Err(report) => return invalid(command, &report, None, &[], facts),
+  let catalog = match command_settings(command) {
+    Ok(catalog) => catalog,
+    Err(report) => return invalid(command, &report, None, None, request, Merged::default()),
   };
+  let settings = &catalog.settings;
   let prepared = parse_config_document(&source, &request.text).and_then(|document| {
-    let (text, document) = with_replaced_inputs(&settings, &request.text, document, &request.replace_inputs)?;
+    let (text, document) = with_replaced_inputs(settings, &request.text, document, &request.replace_inputs)?;
     let mut text_keys = top_level_keys(&document);
     text_keys.retain(|key| !request.replace_inputs.contains_key(key));
-    let (text, document) = with_inputs(&settings, &text, document, &request.inputs)?;
-    Ok((text, text_keys, command.config_over_defaults(&document)?))
+    let (text, document) = with_inputs(settings, &text, document, &request.inputs)?;
+    let config = command.config_over_defaults(&document)?;
+    let merged = Merged {
+      effective: effective_values(command, settings, &config)?,
+      command_lines: setting_command_lines(command, settings, &config)?,
+    };
+    Ok((text, text_keys, config, merged))
   });
-  let (text, text_keys, config) = match prepared {
+  let (text, text_keys, config, merged) = match prepared {
     Ok(prepared) => prepared,
-    Err(report) => return invalid(command, &report, None, &settings, facts),
+    Err(report) => return invalid(command, &report, None, Some(&catalog), request, Merged::default()),
   };
   let resolved = command.prepare_text(SOURCE_NAME, &text).and_then(|prepared| {
     let mut config = prepared.config;
@@ -54,22 +64,32 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
       resolve_text_paths(command, &mut config, folder, &text_keys)?;
     }
     command.remove_output_paths(&mut config)?;
-    Ok((config_code(command, &config)?, config))
+    let command_lines = setting_command_lines(command, settings, &config)?;
+    Ok((config_code(command, &config)?, command_lines, config))
   });
   match resolved {
-    Ok((code, config)) => CheckConfigResponse::Valid {
-      command,
-      choices: active_choices(command, &settings, &config),
-      checks: run_checks(&CheckContext {
+    Ok((code, command_lines, config)) => {
+      let choices = active_choices(command, &catalog.choices, settings, &config, &request.choices);
+      CheckConfigResponse::Valid {
         command,
-        config: Some(&config),
-        rejection: None,
-        facts,
-      }),
-      config: SparseConfig(config),
-      code,
+        checks: run_checks(&CheckContext {
+          command,
+          settings,
+          config: Some(&config),
+          choices: &choices,
+          rejection: None,
+          facts,
+        }),
+        choices,
+        effective: merged.effective,
+        command_lines,
+        dataset: draft_dataset_label(request.example.as_deref(), Some(&config)),
+        config: SparseConfig(config),
+        code: Box::new(code),
+        run_differences: None,
+      }
     },
-    Err(report) => invalid(command, &report, Some(&config), &settings, facts),
+    Err(report) => invalid(command, &report, Some(&config), Some(&catalog), request, merged),
   }
 }
 
@@ -105,15 +125,35 @@ pub struct CheckConfigRequest {
   #[schemars(default)]
   #[deser(default)]
   pub folder: Option<PathBuf>,
+  /// The options that the form picked for the choices of the command. A picked option counts while the configuration
+  /// has every value that picking it writes, for example `outgroup` before the user names a tip; otherwise the
+  /// configuration selects the option.
+  #[schemars(default, transform = field_default::<Vec<ActiveChoice>>)]
+  #[deser(default)]
+  pub choices: Vec<ActiveChoice>,
+  /// Run to compare the configuration with, for example the run whose results the app shows beside the form. The
+  /// answer then lists the settings whose resolved values differ from those of the run.
+  #[schemars(default)]
+  #[deser(default)]
+  pub run_id: Option<JobId>,
+  /// Name of the example dataset whose files the configuration reads, for example `ebola/100`; unset for the user's
+  /// own files. The answer names the dataset after it.
+  #[schemars(default)]
+  #[deser(default)]
+  pub example: Option<String>,
 }
 
 fn invalid(
   command: AppCommand,
   report: &Report,
   config: Option<&Map<String, Value>>,
-  settings: &[SettingSpec],
-  facts: Option<&InputFacts>,
+  catalog: Option<&CommandSettings>,
+  request: &CheckConfigRequest,
+  merged: Merged,
 ) -> CheckConfigResponse {
+  let facts = request.input_facts.as_ref();
+  let picked = request.choices.as_slice();
+  let dataset = draft_dataset_label(request.example.as_deref(), config);
   let invalid = report.downcast_ref::<InvalidConfig>();
   let ReportChain { message, causes } = ReportChain::of(report);
   let problems = InvalidConfig::problems_of(report);
@@ -128,17 +168,24 @@ fn invalid(
     settings: argument_settings,
   };
   let messages = rejection_messages(&rejection, false);
+  let choices = config
+    .zip(catalog)
+    .map(|(config, catalog)| active_choices(command, &catalog.choices, &catalog.settings, config, picked))
+    .unwrap_or_default();
   let checks = run_checks(&CheckContext {
     command,
+    settings: catalog.map(|catalog| catalog.settings.as_slice()).unwrap_or_default(),
     config,
+    choices: &choices,
     rejection: Some(rejection),
     facts,
   });
   CheckConfigResponse::Invalid {
     command,
-    choices: config
-      .map(|config| active_choices(command, settings, config))
-      .unwrap_or_default(),
+    choices,
+    effective: merged.effective,
+    command_lines: merged.command_lines,
+    dataset,
     rendered: invalid.map(|invalid| invalid.rendered.clone()),
     messages,
     checks,
@@ -162,11 +209,21 @@ pub enum CheckConfigResponse {
     /// The configuration with every default filled in and without output paths, which the app sets for each run.
     config: SparseConfig,
     /// The command line and the YAML config that reproduce the configuration.
-    code: ConfigCode,
+    code: Box<ConfigCode>,
     /// Findings about the configuration and its input files.
     checks: Vec<RunCheck>,
     /// The option of each choice of the command that the configuration selects.
     choices: Vec<ActiveChoice>,
+    /// The value the run uses for each setting that the configuration leaves at its default, as a short text.
+    effective: Vec<EffectiveValue>,
+    /// The command-line form of each setting for its value in the configuration, in catalog order.
+    command_lines: Vec<SettingCommandLine>,
+    /// Name of the dataset: the example of the request, else the file name of the tree input; absent without either.
+    dataset: Option<String>,
+    /// Settings whose resolved values differ between the run of `run_id` (first) and the configuration (second), and
+    /// inputs whose file contents differ, in catalog order. The settings that the app sets for every run, the output
+    /// files and their paths, are not compared. Absent without `run_id`, and when the run executes another command.
+    run_differences: Option<Vec<SettingDifference>>,
   },
   /// The configuration is rejected.
   Invalid {
@@ -187,7 +244,22 @@ pub enum CheckConfigResponse {
     /// The option of each choice of the command that the configuration selects, when the configuration could be
     /// merged over the defaults.
     choices: Vec<ActiveChoice>,
+    /// The value the run uses for each setting that the configuration leaves at its default, as a short text, when the
+    /// configuration could be merged over the defaults.
+    effective: Vec<EffectiveValue>,
+    /// The command-line form of each setting for its value in the configuration, in catalog order, when the
+    /// configuration could be merged over the defaults.
+    command_lines: Vec<SettingCommandLine>,
+    /// Name of the dataset: the example of the request, else the file name of the tree input when the configuration
+    /// could be merged over the defaults; absent without either.
+    dataset: Option<String>,
   },
+}
+
+#[derive(Default)]
+struct Merged {
+  effective: Vec<EffectiveValue>,
+  command_lines: Vec<SettingCommandLine>,
 }
 
 fn top_level_keys(document: &Value) -> BTreeSet<String> {

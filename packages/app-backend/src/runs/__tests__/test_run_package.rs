@@ -1,0 +1,741 @@
+#[cfg(test)]
+mod tests {
+  use crate::__tests__::test_support::tests::{sparse, unconfined, upload_bytes};
+  use crate::results::run_results::run_results;
+  use crate::runs::__tests__::test_run_storage::tests::helpers::{ZIKA, run_with_uploads, start_from};
+  use crate::runs::app_events::AppChange;
+  use crate::runs::files::RUN_DOWNLOAD_CHUNK_SIZE;
+  use crate::runs::input_store::format_size;
+  use crate::runs::manager::RunManager;
+  use crate::runs::package_reader::RECORD_SIZE_LIMIT;
+  use crate::runs::record::{CreateRunRequest, RunStatus, StartRunRequest};
+  use app_commands::command::AppCommand;
+  use helpers::{
+    Damage, damaged, data_dir, declared_smaller, entry_text, import, import_limited, package_bytes, package_entries,
+    padded_record, record_json, staged_folders, subscribe_changes, written_package,
+  };
+  use indoc::indoc;
+  use itertools::Itertools;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use serde_json::json;
+  use std::fs;
+  use std::io::Cursor;
+  use tempfile::tempdir;
+  use treetime_utils::assert_error;
+  use zip::CompressionMethod;
+
+  #[test]
+  fn test_run_package_import_in_another_runs_folder_recreates_the_run_and_its_results() {
+    let (source_root, target_root) = (tempdir().unwrap(), tempdir().unwrap());
+    let source = RunManager::open(source_root.path()).unwrap();
+    let record = run_with_uploads(
+      &source,
+      AppCommand::Timetree,
+      ZIKA,
+      &json!({ "max_iter": 1, "sequence_length": 10807 }),
+    );
+    let target = RunManager::open(target_root.path()).unwrap();
+
+    let imported = import(&target, &package_bytes(&source, &record.id)).unwrap();
+
+    assert_eq!(
+      (
+        RunStatus::Ok,
+        record_json(&source.get(&record.id).unwrap()),
+        run_results(&source, &record.id).unwrap()
+      ),
+      (
+        imported.status,
+        record_json(&imported),
+        run_results(&target, &imported.id).unwrap()
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_import_beside_its_source_gets_a_new_id_and_emits_one_run_created_event() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let bytes = package_bytes(&runs, &record.id);
+    let changes = subscribe_changes(&runs);
+
+    let imported = import(&runs, &bytes).unwrap();
+
+    let mut expected = record_json(&runs.get(&record.id).unwrap());
+    expected["id"] = json!(imported.id.as_str());
+    expected["group_id"] = json!(imported.id.as_str());
+    let changes = changes.lock();
+    let [AppChange::RunCreated { run }] = changes.as_slice() else {
+      panic!("expected one run-created change, got {changes:?}");
+    };
+    assert_eq!(
+      (
+        expected,
+        run_results(&runs, &record.id).unwrap(),
+        imported.id.clone(),
+        true
+      ),
+      (
+        record_json(&imported),
+        run_results(&runs, &imported.id).unwrap(),
+        run.id.clone(),
+        imported.id != record.id
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_holds_the_run_folder_the_inputs_the_yaml_config_and_its_command() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let folder = format!("treetime-{}", record.id.as_str());
+
+    let entries = package_entries(&package_bytes(&runs, &record.id));
+
+    let expected_names = ["run.json", "run.yaml", "command.sh", "events.jsonl"]
+      .into_iter()
+      .map(str::to_owned)
+      .chain(["inputs/metadata.tsv".to_owned(), "inputs/tree.nwk".to_owned()])
+      .chain(
+        runs
+          .files(&record.id)
+          .unwrap()
+          .into_iter()
+          .map(|file| format!("out/{}", file.path)),
+      )
+      .map(|name| format!("{folder}/{name}"))
+      .sorted()
+      .collect_vec();
+    let yaml = entry_text(&entries, &format!("{folder}/run.yaml"));
+    assert_eq!(
+      (
+        expected_names,
+        indoc! {r#"
+          #!/bin/sh
+          # Reproduces the run with the TreeTime command-line tool. Run it in this folder: the outputs replace the files in out/.
+          treetime clock --config run.yaml
+        "#}
+        .to_owned(),
+        (true, true, true),
+      ),
+      (
+        entries.iter().map(|(name, _, _)| name.clone()).sorted().collect_vec(),
+        entry_text(&entries, &format!("{folder}/command.sh")),
+        (
+          yaml.lines().any(|line| line == r#"tree: "inputs/tree.nwk""#),
+          yaml.lines().any(|line| line == r#"metadata: "inputs/metadata.tsv""#),
+          yaml.lines().any(|line| line == r#"output_all: "out""#),
+        ),
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_copies_inputs_from_outside_the_runs_folder_and_the_imported_run_reruns() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(&root.path().join("desktop")).unwrap();
+    let data = data_dir().join(ZIKA);
+    let created = runs
+      .create(&CreateRunRequest {
+        command: AppCommand::Clock,
+        config: sparse(json!({ "tree": data.join("tree.nwk"), "metadata": data.join("metadata.tsv") })),
+        defer_start: true,
+        source_run_id: None,
+        example: None,
+      })
+      .unwrap();
+    runs
+      .start(&created.id, &StartRunRequest::default(), unconfined())
+      .unwrap()
+      .run();
+    let record = runs.get(&created.id).unwrap();
+    let bytes = package_bytes(&runs, &record.id);
+    let packaged = entry_text(
+      &package_entries(&bytes),
+      &format!("treetime-{}/run.json", record.id.as_str()),
+    );
+    let packaged: serde_json::Value = serde_json::from_str(&packaged).unwrap();
+    let target = RunManager::open(&root.path().join("web")).unwrap();
+
+    let imported = import(&target, &bytes).unwrap();
+    let rerun = start_from(&target, &target.settings(&imported.id).unwrap(), Some(&imported.id));
+
+    assert_eq!(
+      (
+        (RunStatus::Ok, true),
+        (
+          json!("inputs/tree.nwk"),
+          json!("inputs/metadata.tsv"),
+          vec![json!("inputs/metadata.tsv"), json!("inputs/tree.nwk")]
+        ),
+        (RunStatus::Ok, true),
+      ),
+      (
+        (
+          record.status,
+          record.inputs.iter().all(|input| input.path.is_absolute())
+        ),
+        (
+          packaged["config"]["tree"].clone(),
+          packaged["config"]["metadata"].clone(),
+          packaged["inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|input| input["path"].clone())
+            .sorted_by_key(ToString::to_string)
+            .collect_vec()
+        ),
+        (
+          rerun.status,
+          run_results(&target, &imported.id).unwrap().problems.is_empty()
+        ),
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::entry_outside_the_package(Damage::EntryOutside)]
+  #[case::input_path_outside(       Damage::InputPathOutside)]
+  #[case::absolute_setting_path(    Damage::AbsoluteSetting)]
+  #[case::input_size(               Damage::InputSize)]
+  #[case::input_sha256(             Damage::InputSha256)]
+  #[case::missing_output_file(      Damage::MissingOutput)]
+  #[case::run_not_ended(            Damage::NotEnded)]
+  #[case::not_a_zip_archive(        Damage::NotZip)]
+  #[trace]
+  fn test_run_package_import_refuses_a_damaged_package_and_leaves_no_partial_run(#[case] damage: Damage) {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let inputs = runs.input_store().keys().unwrap();
+    let (bytes, message) = damaged(&package_bytes(&runs, &record.id), &record, damage);
+
+    assert_error!(import(&runs, &bytes), message);
+    assert_eq!(
+      (vec![record.id], inputs, 0),
+      (
+        runs.store().list().unwrap().into_iter().map(|run| run.id).collect_vec(),
+        runs.input_store().keys().unwrap(),
+        staged_folders(root.path()),
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_import_refuses_a_record_that_unpacks_above_the_record_limit() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let bytes = padded_record(&written_package(&runs, &record.id), &record, RECORD_SIZE_LIMIT + 1);
+
+    let result = import(&runs, &bytes);
+
+    assert_eq!((true, 0), (bytes.len() < 1 << 20, staged_folders(root.path())));
+    assert_error!(
+      result,
+      "`run.json` of the run package is larger than 8 MiB, the limit of a run record"
+    );
+  }
+
+  #[test]
+  fn test_run_package_import_refuses_an_entry_with_more_content_than_its_header_declares() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let output = format!("out/{}", record.output_files[0].path.display());
+    let entry = format!("treetime-{}/{output}", record.id.as_str());
+    let bytes = declared_smaller(&written_package(&runs, &record.id), &entry, 10);
+
+    let result = import(&runs, &bytes);
+
+    assert_eq!(
+      (vec![record.id], 0),
+      (
+        runs.store().list().unwrap().into_iter().map(|run| run.id).collect_vec(),
+        staged_folders(root.path())
+      )
+    );
+    assert_error!(
+      result,
+      format!(
+        "the file `{output}` of the run package cannot be read: File is larger than its declared uncompressed size"
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::uploaded_package_over_the_limit(0)]
+  #[case::unpacked_package_over_the_limit(1)]
+  #[trace]
+  fn test_run_package_import_refuses_a_package_over_the_upload_limit(#[case] above_upload: usize) {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let bytes = written_package(&runs, &record.id);
+    let limit = bytes.len() - 1 + above_upload;
+
+    let result = import_limited(&runs, &bytes, limit);
+
+    assert_eq!(
+      (vec![record.id], 0),
+      (
+        runs.store().list().unwrap().into_iter().map(|run| run.id).collect_vec(),
+        staged_folders(root.path())
+      )
+    );
+    assert_error!(
+      result,
+      format!(
+        "a run package is limited to {}, the upload limit, both as uploaded and unpacked; the package is larger",
+        format_size(limit)
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_of_a_run_that_has_not_ended_is_refused() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = runs
+      .create(&CreateRunRequest {
+        command: AppCommand::Clock,
+        config: sparse(json!({})),
+        defer_start: true,
+        source_run_id: None,
+        example: None,
+      })
+      .unwrap();
+    assert_error!(
+      runs.package(&created.id).map(|_| ()),
+      format!(
+        "run `{}` has not ended (status `created`); a run package holds a run that has ended",
+        created.id.as_str()
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_chunks_stay_within_the_chunk_size_and_store_every_entry() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let large = b"ACGT"
+      .iter()
+      .copied()
+      .cycle()
+      .take(3 * RUN_DOWNLOAD_CHUNK_SIZE + 17)
+      .collect_vec();
+    fs::write(runs.store().out_dir(&record.id).join("large.fasta"), &large).unwrap();
+
+    let chunks: Vec<Vec<u8>> = runs.package(&record.id).unwrap().chunks().try_collect().unwrap();
+
+    let entries = package_entries(&chunks.concat());
+    let large_name = format!("treetime-{}/out/large.fasta", record.id.as_str());
+    assert_eq!(
+      (true, true, Some(large)),
+      (
+        chunks.iter().all(|chunk| chunk.len() <= RUN_DOWNLOAD_CHUNK_SIZE),
+        entries
+          .iter()
+          .all(|(_, method, _)| *method == CompressionMethod::Stored),
+        entries
+          .iter()
+          .find(|(name, _, _)| *name == large_name)
+          .map(|(_, _, content)| content.clone()),
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_written_to_a_file_deflates_the_entries_of_the_stream() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let mut written = Cursor::new(vec![]);
+
+    runs.package(&record.id).unwrap().write(&mut written).unwrap();
+
+    let streamed = package_entries(&package_bytes(&runs, &record.id));
+    let written = package_entries(&written.into_inner());
+    assert_eq!(
+      (
+        streamed
+          .iter()
+          .map(|(name, _, content)| (name.clone(), content.clone()))
+          .collect_vec(),
+        true
+      ),
+      (
+        written
+          .iter()
+          .map(|(name, _, content)| (name.clone(), content.clone()))
+          .collect_vec(),
+        written
+          .iter()
+          .all(|(_, method, _)| *method == CompressionMethod::Deflated)
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_chunks_end_after_a_file_that_cannot_be_read() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let record = run_with_uploads(&runs, AppCommand::Clock, ZIKA, &json!({}));
+    let mut chunks = runs.package(&record.id).unwrap().chunks();
+    let removed = runs.store().out_dir(&record.id).join("clock.clock-model.json");
+    fs::remove_file(&removed).unwrap();
+
+    let mut items = chunks.by_ref().collect_vec();
+    let last = items.pop().unwrap();
+
+    assert_eq!(
+      (true, None),
+      (
+        items.iter().all(Result::is_ok),
+        chunks.next().map(|chunk| chunk.is_ok())
+      )
+    );
+    assert_error!(
+      last,
+      format!(
+        "When opening '{}': No such file or directory (os error 2)",
+        removed.display()
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_package_of_a_translations_template_reads_the_uploaded_annotation_of_the_run() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let data = data_dir().join("rsv/a/20").canonicalize().unwrap();
+    let created = runs
+      .create(&CreateRunRequest {
+        command: AppCommand::Ancestral,
+        config: sparse(json!({})),
+        defer_start: true,
+        source_run_id: None,
+        example: None,
+      })
+      .unwrap();
+    let annotation = indoc! {"
+      ##gff-version 3
+      EPI_ISL_412866\tfeature\tCDS\t4652\t5617\t.\t+\t0\tName=G
+      EPI_ISL_412866\tfeature\tCDS\t5697\t7421\t.\t+\t0\tName=F
+    "};
+    let uploaded = upload_bytes(
+      &runs,
+      &created.id,
+      "annotation.gff3",
+      &[],
+      annotation.as_bytes(),
+      1 << 24,
+    )
+    .unwrap();
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(json!({
+        "tree": data.join("tree.nwk"),
+        "alignment": [data.join("aln.fasta.xz")],
+        "translations": data.join("translations/{cds}.fasta.xz"),
+        "annotation": uploaded.path,
+        "cds_selection": ["F", "G"],
+      }))),
+      source_run_id: None,
+      example: None,
+    };
+    runs.start(&created.id, &request, unconfined()).unwrap().run();
+    let record = runs.get(&created.id).unwrap();
+
+    let translations = package_entries(&package_bytes(&runs, &created.id))
+      .into_iter()
+      .filter_map(|(name, _, _)| {
+        name
+          .split_once("/inputs/translations/")
+          .map(|(_, file)| file.to_owned())
+      })
+      .sorted()
+      .collect_vec();
+
+    assert_eq!(
+      (RunStatus::Ok, vec!["F.fasta.xz".to_owned(), "G.fasta.xz".to_owned()]),
+      (record.status, translations),
+      "{:?}",
+      record.error
+    );
+  }
+
+  mod helpers {
+    use crate::job::JobId;
+    use crate::runs::app_events::AppChange;
+    use crate::runs::manager::RunManager;
+    use crate::runs::record::RunRecord;
+    use eyre::Report;
+    use parking_lot::Mutex;
+    use serde_json::{Value, json};
+    use std::fs;
+    use std::io::{Cursor, Read, Write};
+    use std::path::{Path, PathBuf};
+    use std::sync::Arc;
+    use treetime_utils::io::json::to_json_value;
+    use zip::write::SimpleFileOptions;
+    use zip::{CompressionMethod, ZipArchive, ZipWriter};
+
+    #[derive(Clone, Copy, Debug)]
+    pub(super) enum Damage {
+      EntryOutside,
+      InputPathOutside,
+      AbsoluteSetting,
+      InputSize,
+      InputSha256,
+      MissingOutput,
+      NotEnded,
+      NotZip,
+    }
+
+    pub(super) fn damaged(bytes: &[u8], record: &RunRecord, damage: Damage) -> (Vec<u8>, String) {
+      let folder = format!("treetime-{}", record.id.as_str());
+      let tree = record
+        .inputs
+        .iter()
+        .find(|input| input.path == Path::new("inputs/tree.nwk"))
+        .unwrap();
+      let outside = |path: &str| {
+        format!(
+          "the run package names `{path}`, a path outside the package; every path of a run package is relative and \
+           inside it"
+        )
+      };
+      let mismatch = |listed_size: usize, listed_sha256: &str| {
+        format!(
+          "input `inputs/tree.nwk` of the run package does not match its run.json: the file has {} bytes and SHA-256 {}, \
+           run.json lists {listed_size} bytes and SHA-256 {listed_sha256}",
+          tree.size, tree.sha256
+        )
+      };
+      let edit_tree = |edit: &dyn Fn(&mut Value)| {
+        edit_record(bytes, &folder, |record| {
+          let input = record["inputs"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|input| input["path"] == json!("inputs/tree.nwk"))
+            .unwrap();
+          edit(input);
+        })
+      };
+      match damage {
+        Damage::EntryOutside => {
+          let name = format!("{folder}/../evil.txt");
+          (
+            rewrite(bytes, |_, content| Some(content), &[(&name, b"evil")]),
+            outside(&name),
+          )
+        },
+        Damage::InputPathOutside => (
+          edit_tree(&|input| input["path"] = json!("../tree.nwk")),
+          outside("../tree.nwk"),
+        ),
+        Damage::AbsoluteSetting => (
+          edit_record(bytes, &folder, |record| record["config"]["tree"] = json!("/etc/hosts")),
+          outside("/etc/hosts"),
+        ),
+        Damage::InputSize => (
+          edit_tree(&|input| input["size"] = json!(tree.size + 1)),
+          mismatch(tree.size + 1, &tree.sha256),
+        ),
+        Damage::InputSha256 => {
+          let sha256 = "0".repeat(64);
+          (
+            edit_tree(&|input| input["sha256"] = json!(sha256)),
+            mismatch(tree.size, &sha256),
+          )
+        },
+        Damage::MissingOutput => {
+          let output = record.output_files[0].path.to_string_lossy().into_owned();
+          let removed = format!("{folder}/out/{output}");
+          (
+            rewrite(bytes, |name, content| (name != removed).then_some(content), &[]),
+            format!("the run package holds no output file `out/{output}`, which its run.json lists"),
+          )
+        },
+        Damage::NotEnded => (
+          edit_record(bytes, &folder, |record| record["status"] = json!("running")),
+          format!(
+            "the run package holds run `{}`, which has not ended (status `running`); a run package holds a run that \
+             has ended",
+            record.id.as_str()
+          ),
+        ),
+        Damage::NotZip => (
+          b"not a zip archive".to_vec(),
+          "the file is not a run package: it is not a zip archive: invalid Zip archive: Could not find EOCD".to_owned(),
+        ),
+      }
+    }
+
+    fn edit_record(bytes: &[u8], folder: &str, edit: impl Fn(&mut Value)) -> Vec<u8> {
+      let run_file = format!("{folder}/run.json");
+      rewrite(
+        bytes,
+        |name, content| {
+          if name != run_file {
+            return Some(content);
+          }
+          let mut record: Value = serde_json::from_slice(&content).unwrap();
+          edit(&mut record);
+          Some(serde_json::to_vec_pretty(&record).unwrap())
+        },
+        &[],
+      )
+    }
+
+    fn rewrite(bytes: &[u8], edit: impl Fn(&str, Vec<u8>) -> Option<Vec<u8>>, extra: &[(&str, &[u8])]) -> Vec<u8> {
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      let mut writer = ZipWriter::new(Cursor::new(vec![]));
+      for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = vec![];
+        file.read_to_end(&mut content).unwrap();
+        if let Some(content) = edit(&name, content) {
+          writer.start_file(name, SimpleFileOptions::default()).unwrap();
+          writer.write_all(&content).unwrap();
+        }
+      }
+      for (name, content) in extra {
+        writer.start_file(*name, SimpleFileOptions::default()).unwrap();
+        writer.write_all(content).unwrap();
+      }
+      writer.finish().unwrap().into_inner()
+    }
+
+    pub(super) fn import(runs: &Arc<RunManager>, bytes: &[u8]) -> Result<RunRecord, Report> {
+      import_limited(runs, bytes, 1 << 30)
+    }
+
+    pub(super) fn import_limited(runs: &Arc<RunManager>, bytes: &[u8], limit: usize) -> Result<RunRecord, Report> {
+      let mut import = runs.begin_import(limit)?;
+      for chunk in bytes.chunks(1000) {
+        import.write(chunk)?;
+      }
+      import.finish()
+    }
+
+    pub(super) fn written_package(runs: &RunManager, id: &JobId) -> Vec<u8> {
+      let mut written = Cursor::new(vec![]);
+      runs.package(id).unwrap().write(&mut written).unwrap();
+      written.into_inner()
+    }
+
+    pub(super) fn padded_record(bytes: &[u8], record: &RunRecord, size: usize) -> Vec<u8> {
+      let run_file = format!("treetime-{}/run.json", record.id.as_str());
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      let mut writer = ZipWriter::new(Cursor::new(vec![]));
+      let deflated = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+      for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = vec![];
+        file.read_to_end(&mut content).unwrap();
+        if name == run_file {
+          content.resize(size, b' ');
+        }
+        writer.start_file(name, deflated).unwrap();
+        writer.write_all(&content).unwrap();
+      }
+      writer.finish().unwrap().into_inner()
+    }
+
+    #[expect(
+      clippy::little_endian_bytes,
+      reason = "zip headers store sizes in little-endian byte order"
+    )]
+    pub(super) fn declared_smaller(bytes: &[u8], entry: &str, size: u32) -> Vec<u8> {
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      let mut writer = ZipWriter::new(Cursor::new(vec![]));
+      let stored = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+      for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = vec![];
+        file.read_to_end(&mut content).unwrap();
+        writer.start_file(name, stored).unwrap();
+        writer.write_all(&content).unwrap();
+      }
+      let mut bytes = writer.finish().unwrap().into_inner();
+      for (signature, size_offset, name_offset) in [(b"PK\x03\x04", 22, 30), (b"PK\x01\x02", 24, 46)] {
+        let start = (0..bytes.len() - 4)
+          .find(|start| {
+            bytes[*start..].starts_with(signature) && bytes[start + name_offset..].starts_with(entry.as_bytes())
+          })
+          .unwrap();
+        bytes[start + size_offset..start + size_offset + 4].copy_from_slice(&size.to_le_bytes());
+      }
+      bytes
+    }
+
+    pub(super) fn package_bytes(runs: &RunManager, id: &JobId) -> Vec<u8> {
+      let mut bytes = vec![];
+      runs.package(id).unwrap().stream(&mut bytes).unwrap();
+      bytes
+    }
+
+    pub(super) fn package_entries(bytes: &[u8]) -> Vec<(String, CompressionMethod, Vec<u8>)> {
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      (0..archive.len())
+        .map(|index| {
+          let mut file = archive.by_index(index).unwrap();
+          let mut content = vec![];
+          file.read_to_end(&mut content).unwrap();
+          (file.name().unwrap().into_owned(), file.compression(), content)
+        })
+        .collect()
+    }
+
+    pub(super) fn entry_text(entries: &[(String, CompressionMethod, Vec<u8>)], name: &str) -> String {
+      let (_, _, content) = entries.iter().find(|(entry, _, _)| entry == name).unwrap();
+      String::from_utf8(content.clone()).unwrap()
+    }
+
+    pub(super) fn record_json(record: &RunRecord) -> Value {
+      to_json_value(record).unwrap()
+    }
+
+    pub(super) fn subscribe_changes(runs: &RunManager) -> Arc<Mutex<Vec<AppChange>>> {
+      let changes = Arc::new(Mutex::new(vec![]));
+      let seen = Arc::clone(&changes);
+      runs.app_events().subscribe(
+        None,
+        Box::new(move |event| {
+          seen.lock().push(event.change.clone());
+          true
+        }),
+      );
+      changes
+    }
+
+    pub(super) fn staged_folders(root: &Path) -> usize {
+      let staging = root.join(".staging");
+      if staging.exists() {
+        fs::read_dir(staging).unwrap().count()
+      } else {
+        0
+      }
+    }
+
+    pub(super) fn data_dir() -> PathBuf {
+      Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .canonicalize()
+        .unwrap()
+    }
+  }
+}

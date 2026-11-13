@@ -1,23 +1,29 @@
-use crate::check_inputs::InputKind;
+use crate::check_inputs::{CheckInputsRequest, DateSpan, InputFacts, InputKind, check_inputs};
 use app_commands::command::AppCommand;
 use app_commands::config::properties::{PathRole, setting_properties};
 use app_commands::config::resolve_paths::resolve_config_paths_where;
-use app_commands::yaml::yaml_value_read_str;
+use app_commands::json_value::SparseConfig;
+use app_commands::yaml::{yaml_read_str, yaml_value_read_str};
 use app_datasets::{DatasetFiles, ExampleFile, TREE_FILE, example_configs, group_datasets};
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use relative_path::{Component, RelativePath};
 use schemars::JsonSchema;
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::str::FromStr;
 use strum::VariantNames;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::io::compression::remove_compression_ext;
 use treetime_utils::{make_error, make_report};
 
 pub const DATA_INDEX_FILE: &str = "index.json";
+
+const README_FILE: &str = "README.md";
+
+const FRONT_MATTER_FENCE: &str = "---";
 
 const PIPELINE_COMMAND: &str = "pipeline";
 
@@ -27,10 +33,33 @@ const DATASET_INPUTS: [(InputKind, &[&str]); 3] = [
   (InputKind::Metadata, &["metadata.tsv", "metadata.csv"]),
 ];
 
+pub fn dataset_input_facts(
+  data_dir: &Path,
+  inputs: &[IndexedInput],
+  settings: &SparseConfig,
+) -> Result<InputFacts, Report> {
+  let config: Map<String, Value> = settings
+    .iter()
+    .map(|(key, value)| (key.clone(), value.clone()))
+    .chain(inputs.iter().map(|input| {
+      let path = data_dir.join(&input.path);
+      let value = match input.kind {
+        InputKind::Alignment => json!([path]),
+        InputKind::Tree | InputKind::Metadata => json!(path),
+      };
+      (input.kind.setting().to_owned(), value)
+    }))
+    .collect();
+  check_inputs(&CheckInputsRequest {
+    command: AppCommand::Timetree,
+    config: SparseConfig(config),
+  })
+}
+
 /// Index of the example data in the `data/` folder of the repository: every tracked file outside hidden files and
 /// folders, the datasets, the example configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
 /// separators. The apps read the example data only through this index.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct DataIndex {
@@ -49,8 +78,9 @@ impl DataIndex {
   pub fn new(
     paths: Vec<String>,
     mut size: impl FnMut(&str) -> Result<u64, Report>,
-    read: impl FnMut(&str) -> Result<String, Report>,
+    mut read: impl FnMut(&str) -> Result<String, Report>,
     pipeline_steps: impl Fn(&str) -> Result<Vec<IndexedStep>, Report>,
+    mut input_facts: impl FnMut(&[IndexedInput], &SparseConfig) -> Result<InputFacts, Report>,
   ) -> Result<Self, Report> {
     if let Some(path) = paths.iter().find(|path| !is_data_path(path)) {
       return make_error!("the file list names '{path}', which is not a normalized path relative to the data folder");
@@ -68,8 +98,11 @@ impl DataIndex {
     let tracked: BTreeSet<&str> = files.iter().map(|file| file.path.as_str()).collect();
     let datasets = group_datasets(tracked.iter().copied())
       .iter()
-      .map(IndexedDataset::new)
-      .collect();
+      .map(|dataset| {
+        IndexedDataset::new(dataset, &tracked, &mut read, &mut input_facts)
+          .wrap_err_with(|| format!("When indexing dataset '{}'", dataset.name))
+      })
+      .try_collect()?;
     let commands = AppCommand::VARIANTS
       .iter()
       .copied()
@@ -107,7 +140,9 @@ pub struct IndexedFile {
 }
 
 /// A folder of the data folder that holds a `tree.nwk`.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct IndexedDataset {
@@ -116,20 +151,88 @@ pub struct IndexedDataset {
   /// The files of the folder that fill command inputs, at most one per kind. A compressed file fills the input of its
   /// uncompressed name.
   pub inputs: Vec<IndexedInput>,
+  /// Organism of the samples, from the `organism` field of the front matter of the folder's `README.md`, for example
+  /// `Zika virus`.
+  pub organism: String,
+  /// Genome segment of the sequences, for a segmented genome, from the `segment` field of the same front matter, for
+  /// example `NA`.
+  pub segment: Option<String>,
+  /// Number of samples: the tips of the tree.
+  pub samples: usize,
+  /// Earliest and latest sampling date of the metadata, when the dataset has dates.
+  pub dates: Option<DateSpan>,
+  /// Number of sites of the alignment, when the dataset has an alignment.
+  pub sequence_length: Option<usize>,
+  /// Settings that the commands need to read the files of the dataset, in configuration form, from the `settings`
+  /// field of the front matter of the folder's `README.md`, for example `metadata_id_columns: [genbank_accession]`
+  /// when the tip names of the tree are in a metadata column that is not one of the default name columns. The facts
+  /// of the dataset are read with these settings. Left out when the dataset needs none.
+  #[schemars(default, skip_serializing_if = "no_settings")]
+  #[deser(default, skip_serializing_if = no_settings)]
+  pub settings: SparseConfig,
 }
 
 impl IndexedDataset {
-  fn new(dataset: &DatasetFiles) -> Self {
-    Self {
-      name: dataset.name.clone(),
-      inputs: dataset_inputs(dataset)
-        .map(|(kind, file)| IndexedInput {
-          kind,
-          path: join_data_path(&dataset.name, file),
-        })
-        .collect(),
+  fn new(
+    dataset: &DatasetFiles,
+    tracked: &BTreeSet<&str>,
+    read: &mut impl FnMut(&str) -> Result<String, Report>,
+    input_facts: &mut impl FnMut(&[IndexedInput], &SparseConfig) -> Result<InputFacts, Report>,
+  ) -> Result<Self, Report> {
+    let inputs = dataset_inputs(dataset)
+      .map(|(kind, file)| IndexedInput {
+        kind,
+        path: join_data_path(&dataset.name, file),
+      })
+      .collect_vec();
+    let readme = join_data_path(&dataset.name, README_FILE);
+    if !tracked.contains(readme.as_str()) {
+      return make_error!("the folder has no tracked `{README_FILE}`, whose front matter names the organism");
     }
+    let DatasetReadme {
+      organism,
+      segment,
+      settings,
+    } =
+      readme_front_matter(&read(&readme)?).wrap_err_with(|| format!("When reading the front matter of '{readme}'"))?;
+    let facts = input_facts(&inputs, &settings)?;
+    if let Some(problem) = facts.problems.first() {
+      return make_error!("the input {} cannot be read: {}", problem.input, problem.message);
+    }
+    let tree = facts
+      .tree
+      .as_ref()
+      .ok_or_else(|| make_report!("the facts of the inputs have no tree"))?;
+    Ok(Self {
+      name: dataset.name.clone(),
+      inputs,
+      organism,
+      segment,
+      samples: tree.tips,
+      dates: facts
+        .metadata
+        .as_ref()
+        .and_then(|metadata| metadata.dates.as_ref())
+        .and_then(|dates| dates.span.clone()),
+      sequence_length: facts.detected.sequence_length.as_ref().map(|length| length.length),
+      settings,
+    })
   }
+}
+
+fn no_settings(settings: &SparseConfig) -> bool {
+  settings.is_empty()
+}
+
+/// The front matter of the `README.md` of a dataset.
+#[derive(Clone, Debug, Deserialize)]
+#[deser(deny_unknown_fields)]
+struct DatasetReadme {
+  organism: String,
+  #[deser(default)]
+  segment: Option<String>,
+  #[deser(default)]
+  settings: SparseConfig,
 }
 
 /// A file of a dataset that fills a command input.
@@ -221,6 +324,20 @@ pub struct IndexedStep {
   /// Command the step runs. It may be a command that only the command-line tool runs.
   #[schemars(with = "String")]
   pub command: AppCommand,
+}
+
+fn readme_front_matter(text: &str) -> Result<DatasetReadme, Report> {
+  let mut lines = text.lines();
+  if lines.next().map(str::trim_end) != Some(FRONT_MATTER_FENCE) {
+    return make_error!("the file does not start with a front matter line `{FRONT_MATTER_FENCE}`");
+  }
+  let front_matter = lines
+    .take_while_inclusive(|line| line.trim_end() != FRONT_MATTER_FENCE)
+    .collect_vec();
+  match front_matter.split_last() {
+    Some((last, fields)) if last.trim_end() == FRONT_MATTER_FENCE => yaml_read_str(&fields.join("\n")),
+    _ => make_error!("the front matter has no closing line `{FRONT_MATTER_FENCE}`"),
+  }
 }
 
 fn dataset_inputs(dataset: &DatasetFiles) -> impl Iterator<Item = (InputKind, &String)> {

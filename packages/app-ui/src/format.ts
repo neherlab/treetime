@@ -82,10 +82,6 @@ export function formatRate(rate: number): string {
   return rate.toExponential(SIGNIFICANT_DIGITS - 1);
 }
 
-export function rSquaredText(rSquared: number | undefined): string | undefined {
-  return rSquared === undefined ? undefined : `R² = ${rSquared.toFixed(3)}`;
-}
-
 export function formatLevel(level: number): string {
   return `${Math.round(level * 100)}%`;
 }

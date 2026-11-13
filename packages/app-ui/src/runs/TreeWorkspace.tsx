@@ -23,16 +23,25 @@ export interface TreeLink {
   stateColors: (attribute: string) => ReadonlyMap<string, string>;
 }
 
+export type TreeLayout = "tree" | "aside";
+
+const ASIDE_GRID: Readonly<Record<TreeLayout, string>> = {
+  tree: "grid min-w-0 grid-cols-1 gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)]",
+  aside: "grid min-w-0 grid-cols-1 gap-4 @3xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]",
+};
+
 export function TreeWorkspace({
   data,
   colorBy,
   entropy,
+  primary = "tree",
   aside,
   below,
 }: {
   data: TreeData;
   colorBy: string | undefined;
   entropy?: boolean | undefined;
+  primary?: TreeLayout | undefined;
   aside?: ((link: TreeLink) => ReactNode) | undefined;
   below?: ((link: TreeLink) => ReactNode) | undefined;
 }) {
@@ -41,20 +50,33 @@ export function TreeWorkspace({
   const { data: version } = useApi((context) => getVersion(context), { staleTime: Infinity });
   const runs = useMemo(() => [data.run] as const, [data.run]);
 
+  const tree = (
+    <ErrorBoundary FallbackComponent={TreeFailure}>
+      <AuspiceTree store={store} runs={runs} version={version?.version} entropy={entropy} />
+    </ErrorBoundary>
+  );
+
+  const side = aside === undefined ? undefined : <div className="grid min-w-0 content-start gap-4">{aside(link)}</div>;
+
   return (
     <div className="@container grid min-w-0 gap-4">
-      <div
-        className={
-          aside === undefined
-            ? "grid min-w-0 grid-cols-1 gap-4"
-            : "grid min-w-0 grid-cols-1 gap-4 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]"
-        }
-      >
-        <ErrorBoundary FallbackComponent={TreeFailure}>
-          <AuspiceTree store={store} runs={runs} version={version?.version} entropy={entropy} />
-        </ErrorBoundary>
-        {aside !== undefined && <div className="grid min-w-0 content-start gap-4">{aside(link)}</div>}
-      </div>
+      {side === undefined ? (
+        tree
+      ) : (
+        <div className={ASIDE_GRID[primary]}>
+          {primary === "tree" ? (
+            <>
+              {tree}
+              {side}
+            </>
+          ) : (
+            <>
+              {side}
+              {tree}
+            </>
+          )}
+        </div>
+      )}
       {below?.(link)}
     </div>
   );

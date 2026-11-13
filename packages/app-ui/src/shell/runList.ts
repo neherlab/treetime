@@ -1,51 +1,84 @@
-import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
-import type { DateTime } from "luxon";
+import type { AppCommand, JobId, RunSummary } from "@neherlab/app-contracts";
+import { DateTime } from "luxon";
 
-import { dayLabel } from "../format";
 import { fuzzyFilter } from "../fuzzy";
 import { commandSettings } from "../settings/catalog";
 
-interface RunGroup {
-  label: string;
-  runs: RunSummary[];
+export interface RunGroup {
+  id: JobId;
+  entries: RunEntry[];
 }
 
-export function listedRuns(runs: readonly RunSummary[], filter: string, command: AppCommand | null): RunSummary[] {
-  const candidates = runs.filter((run) => run.status !== "created" && (command === null || run.command === command));
+export interface RunEntry {
+  run: RunSummary;
+  depth: number;
+}
+
+export function listedRuns(
+  runs: readonly RunSummary[],
+  filter: string,
+  command: AppCommand | null,
+  hidden: ReadonlySet<JobId> = new Set(),
+): RunSummary[] {
+  const candidates = runs.filter(
+    (run) => run.status !== "created" && !hidden.has(run.id) && (command === null || run.command === command),
+  );
 
   return fuzzyFilter(candidates, filter, (run) =>
-    [run.title, run.command, commandSettings(run.command).title, ...changedFlags(run)].join(" "),
+    [run.title, run.command, commandSettings(run.command).title].join(" "),
   );
 }
 
-export function groupRuns(runs: readonly RunSummary[], now: DateTime): RunGroup[] {
-  const groups: RunGroup[] = [];
-  const pinned = runs.filter((run) => run.pinned);
+export function groupRuns(runs: readonly RunSummary[]): RunGroup[] {
+  const ids = new Set(runs.map((run) => run.id));
+  const byGroup = Object.groupBy(runs, (run) => run.group_id);
 
-  if (pinned.length > 0) {
-    groups.push({ label: "Pinned", runs: pinned });
-  }
-
-  for (const run of runs) {
-    if (run.pinned) {
-      continue;
-    }
-
-    const label = dayLabel(run.created_at, now);
-    const group = groups.find((candidate) => candidate.label === label && candidate.label !== "Pinned");
-
-    if (group === undefined) {
-      groups.push({ label, runs: [run] });
-    } else {
-      group.runs.push(run);
-    }
-  }
-
-  return groups;
+  return Object.entries(byGroup)
+    .flatMap(([id, members]) => (members === undefined ? [] : [{ id, members }]))
+    .toSorted((left, right) => compareGroups(right.members, left.members))
+    .map(({ id, members }) => ({ id, entries: derivationOrder(members, ids) }));
 }
 
-export function changedFlags(run: RunSummary): string[] {
-  const flags = new Map(commandSettings(run.command).settings.map((spec) => [spec.key, spec.flag]));
+export function newestRun(group: RunGroup): RunSummary | undefined {
+  return group.entries.map((entry) => entry.run).toSorted((left, right) => created(right) - created(left))[0];
+}
 
-  return run.changed_settings.map((key) => flags.get(key) ?? key);
+export function groupedRunOrder(groups: readonly RunGroup[]): RunSummary[] {
+  return groups.flatMap((group) => group.entries.map((entry) => entry.run));
+}
+
+function derivationOrder(members: readonly RunSummary[], listed: ReadonlySet<JobId>): RunEntry[] {
+  const sorted = members.toSorted((left, right) => created(left) - created(right));
+  const earlier = new Map(sorted.map((run, index) => [run.id, index]));
+
+  const parentOf = (run: RunSummary, index: number) => {
+    const source = run.source_run_id;
+
+    return source !== undefined && listed.has(source) && (earlier.get(source) ?? index) < index ? source : "";
+  };
+
+  const children = Object.groupBy(sorted, parentOf);
+
+  const visit = (run: RunSummary, depth: number): RunEntry[] => [
+    { run, depth },
+    ...(children[run.id] ?? []).flatMap((child) => visit(child, depth + 1)),
+  ];
+
+  return (children[""] ?? []).flatMap((root) => visit(root, 0));
+}
+
+function compareGroups(left: readonly RunSummary[], right: readonly RunSummary[]): number {
+  return Number(isPinned(left)) - Number(isPinned(right)) || latest(left) - latest(right);
+}
+
+function isPinned(members: readonly RunSummary[]): boolean {
+  return members.some((run) => run.pinned);
+}
+
+function latest(members: readonly RunSummary[]): number {
+  return Math.max(...members.map(created));
+}
+
+function created(run: RunSummary): number {
+  return DateTime.fromISO(run.created_at).toMillis();
 }

@@ -62,5 +62,8 @@
   "docs_version_banner": "These are the docs of TreeTime {current}. The recommended version is {preferred}.",
   "docs_version_banner_link": "Open this page in {preferred}",
   "docs_locale_en": "English",
-  "docs_locale_de": "Deutsch"
+  "docs_locale_de": "Deutsch",
+  "settings_about": "About {label}",
+  "settings_command_line": "Command line",
+  "settings_command_line_left_out": "{flag} is left out for this value"
 }

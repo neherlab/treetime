@@ -90,11 +90,7 @@ pub fn run_timetree_estimation(
   let sequence_outputs_requested =
     sequence_outputs_requested(&resolved, mutation_units, !reconstructed_nuc_fasta.is_empty());
   let mut trace_sink = TimetreeTraceSink::new(resolved.path(OutputSelection::Tracelog), stages)?;
-  let seed = SeedArgs::resolve(
-    args.seed,
-    (!args.dating.keep_polytomies).then_some("Polytomy resolution"),
-    log,
-  );
+  let seed = SeedArgs::resolve(args.seed, args.random_step(), log);
   let reroot_spec = args
     .reroot
     .as_ref()

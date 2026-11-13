@@ -1,16 +1,18 @@
 #[cfg(test)]
 mod tests {
-  use crate::check_inputs::InputKind;
+  use crate::check_inputs::{InputFacts, InputKind, InputProblem};
   use crate::datasets::{
     DataIndex, IndexedConfig, IndexedDataset, IndexedFile, IndexedInput, IndexedPipeline, IndexedStep,
   };
   use app_commands::command::AppCommand;
-  use helpers::{config_text, index_of};
+  use app_commands::json_value::SparseConfig;
+  use helpers::{ORGANISM, TIPS, config_text, facts, index_of, readme};
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::{assert_error, o, vec_of_owned};
+  use serde_json::json;
+  use treetime_utils::{assert_error, make_error, o, vec_of_owned};
 
   #[test]
   fn test_datasets_index_maps_compressed_inputs_and_lists_every_file_but_itself() {
@@ -31,6 +33,10 @@ mod tests {
       DataIndex {
         files: vec![
           IndexedFile {
+            path: o!("sc2/5100/README.md"),
+            size: 18,
+          },
+          IndexedFile {
             path: o!("sc2/5100/aln.fasta.xz"),
             size: 21,
           },
@@ -44,6 +50,10 @@ mod tests {
           },
           IndexedFile {
             path: o!("sc2/5100/tree.nwk"),
+            size: 17,
+          },
+          IndexedFile {
+            path: o!("zika/86/README.md"),
             size: 17,
           },
           IndexedFile {
@@ -72,6 +82,12 @@ mod tests {
                 path: o!("sc2/5100/metadata.tsv.xz"),
               },
             ],
+            organism: o!(ORGANISM),
+            segment: None,
+            samples: TIPS,
+            dates: None,
+            sequence_length: None,
+            settings: SparseConfig::default(),
           },
           IndexedDataset {
             name: o!("zika/86"),
@@ -79,6 +95,12 @@ mod tests {
               kind: InputKind::Tree,
               path: o!("zika/86/tree.nwk"),
             }],
+            organism: o!(ORGANISM),
+            segment: None,
+            samples: TIPS,
+            dates: None,
+            sequence_length: None,
+            settings: SparseConfig::default(),
           },
         ],
         configs: vec![],
@@ -221,7 +243,7 @@ mod tests {
     .unwrap();
     assert_eq!(
       (
-        vec_of_owned!["a/clock.yaml", "a/tree.nwk"],
+        vec_of_owned!["a/README.md", "a/clock.yaml", "a/tree.nwk"],
         vec_of_owned!["a"],
         vec_of_owned!["a/clock.yaml"]
       ),
@@ -264,6 +286,7 @@ mod tests {
           command: AppCommand::Timetree,
         }])
       },
+      |_, _| Ok(facts()),
     )
     .unwrap();
     assert_eq!(
@@ -282,25 +305,165 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_datasets_index_reads_organism_and_segment_from_the_readme_front_matter() {
+    let readme = readme("Influenza A virus H3N2", Some("NA"));
+    let index = index_of(&["flu/tree.nwk", "flu/README.md"], &[("flu/README.md", &readme)]).unwrap();
+    assert_eq!(
+      vec![(o!("Influenza A virus H3N2"), Some(o!("NA")))],
+      index
+        .datasets
+        .into_iter()
+        .map(|dataset| (dataset.organism, dataset.segment))
+        .collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_datasets_index_reads_the_dataset_settings_with_the_facts_of_its_inputs() {
+    let readme = indoc! {r#"
+      ---
+      organism: Dengue virus
+      settings:
+        metadata_id_columns:
+          - genbank_accession
+      ---
+    "#};
+    let settings = SparseConfig(
+      json!({ "metadata_id_columns": ["genbank_accession"] })
+        .as_object()
+        .unwrap()
+        .clone(),
+    );
+    let mut facts_settings = vec![];
+    let index = DataIndex::new(
+      vec_of_owned!["dengue/tree.nwk", "dengue/README.md"],
+      |_| Ok(1),
+      |_| Ok(readme.to_owned()),
+      |_| make_error!("the test reads no pipeline"),
+      |_, settings| {
+        facts_settings.push(settings.clone());
+        Ok(facts())
+      },
+    )
+    .unwrap();
+    assert_eq!(
+      (vec![settings.clone()], vec![settings]),
+      (
+        facts_settings,
+        index
+          .datasets
+          .into_iter()
+          .map(|dataset| dataset.settings)
+          .collect::<Vec<_>>()
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_front_matter(    "# Dataset\n",                    "When indexing dataset 'a': When reading the front matter of 'a/README.md': the file does not start with a front matter line `---`")]
+  #[case::unclosed(           "---\norganism: Zika virus\n",    "When indexing dataset 'a': When reading the front matter of 'a/README.md': the front matter has no closing line `---`")]
+  #[case::without_organism(   "---\nsegment: L\n---\n",         "When indexing dataset 'a': When reading the front matter of 'a/README.md': MissingField: missing field `organism` at line 1 column 11")]
+  #[trace]
+  fn test_datasets_index_rejects_a_readme_without_organism(#[case] readme: &str, #[case] expected: &str) {
+    assert_error!(index_of(&["a/tree.nwk", "a/README.md"], &[("a/README.md", readme)]), expected);
+  }
+
+  #[test]
+  fn test_datasets_index_rejects_a_dataset_without_readme() {
+    assert_error!(
+      DataIndex::new(
+        vec_of_owned!["a/tree.nwk"],
+        |_| Ok(1),
+        |_| make_error!("the test reads no file"),
+        |_| make_error!("the test reads no pipeline"),
+        |_, _| Ok(facts()),
+      ),
+      "When indexing dataset 'a': the folder has no tracked `README.md`, whose front matter names the organism"
+    );
+  }
+
+  #[test]
+  fn test_datasets_index_rejects_a_dataset_whose_inputs_cannot_be_read() {
+    let readme = readme(ORGANISM, None);
+    assert_error!(
+      DataIndex::new(
+        vec_of_owned!["a/tree.nwk", "a/README.md"],
+        |_| Ok(1),
+        |_| Ok(readme.clone()),
+        |_| make_error!("the test reads no pipeline"),
+        |_, _| {
+          Ok(InputFacts {
+            problems: vec![InputProblem {
+              input: InputKind::Tree,
+              alignment: None,
+              message: o!("the tree is empty"),
+            }],
+            ..InputFacts::default()
+          })
+        },
+      ),
+      "When indexing dataset 'a': the input tree cannot be read: the tree is empty"
+    );
+  }
+
   mod helpers {
+    use crate::check_inputs::{InputFacts, TreeFacts};
     use crate::datasets::DataIndex;
     use app_datasets::schema_directive;
     use eyre::Report;
+    use itertools::Itertools;
     use treetime_utils::{make_error, make_internal_report};
 
+    pub(super) const ORGANISM: &str = "Test virus";
+
+    pub(super) const TIPS: usize = 3;
+
     pub(super) fn index_of(paths: &[&str], contents: &[(&str, &str)]) -> Result<DataIndex, Report> {
+      let readmes = paths
+        .iter()
+        .filter_map(|path| path.strip_suffix("tree.nwk"))
+        .map(|folder| format!("{folder}README.md"))
+        .collect_vec();
+      let readme = readme(ORGANISM, None);
       DataIndex::new(
-        paths.iter().map(|path| (*path).to_owned()).collect(),
+        paths
+          .iter()
+          .map(|path| (*path).to_owned())
+          .chain(readmes.iter().cloned())
+          .collect(),
         |path| Ok(u64::try_from(path.len()).unwrap()),
         |path| {
           contents
             .iter()
             .find(|(name, _)| *name == path)
             .map(|(_, content)| (*content).to_owned())
+            .or_else(|| readmes.iter().any(|name| name == path).then(|| readme.clone()))
             .ok_or_else(|| make_internal_report!("the test has no content for '{path}'"))
         },
         |_| make_error!("the test reads no pipeline"),
+        |_, _| Ok(facts()),
       )
+    }
+
+    pub(super) fn facts() -> InputFacts {
+      InputFacts {
+        tree: Some(TreeFacts {
+          tips: TIPS,
+          internal_nodes: 2,
+          polytomies: 0,
+          unnamed_tips: 0,
+          duplicate_node_names: vec![],
+          tip_names: vec![],
+        }),
+        ..InputFacts::default()
+      }
+    }
+
+    pub(super) fn readme(organism: &str, segment: Option<&str>) -> String {
+      let segment = segment.map_or_else(String::new, |segment| format!("segment: {segment}\n"));
+      format!("---\norganism: {organism}\n{segment}---\n\n# Dataset\n")
     }
 
     pub(super) fn config_text(command: &str, settings: &str) -> String {

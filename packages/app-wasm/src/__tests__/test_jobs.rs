@@ -22,7 +22,7 @@ mod tests {
       panic!("expected one order, got {orders:?}");
     };
     let job: RunJob = json_read_str(order.job.as_deref().unwrap()).unwrap();
-    let paths = vec![run.alignment.clone(), run.tree.clone()];
+    let paths = vec![PathBuf::from("inputs/aln.fasta.xz"), PathBuf::from("inputs/tree.nwk")];
     assert_eq!(
       (
         "start",
@@ -41,6 +41,23 @@ mod tests {
   }
 
   #[tokio::test]
+  async fn test_jobs_input_of_a_job_reads_the_uploaded_file() {
+    let run = started_run().await;
+    let read = |path: &str| -> Vec<u8> {
+      run
+        .jobs
+        .read_input(&run.id, path)
+        .unwrap()
+        .flat_map(Result::unwrap)
+        .collect()
+    };
+    assert_eq!(
+      (fs::read(&run.tree).unwrap(), fs::read(&run.alignment).unwrap()),
+      (read("inputs/tree.nwk"), read("inputs/aln.fasta.xz"))
+    );
+  }
+
+  #[tokio::test]
   async fn test_jobs_cancel_ends_the_run_cancelled_and_refuses_a_later_completion() {
     let run = started_run().await;
     run.jobs.take_orders().unwrap();
@@ -53,7 +70,7 @@ mod tests {
     assert_eq!(
       (
         200,
-        json!({ "cancelled": true }),
+        json!({ "cancelled": true, "from": 1 }),
         vec![("cancel", run.id.clone())],
         true,
         false,
@@ -94,6 +111,7 @@ mod tests {
         json!({
           "message": "unreachable",
           "causes": ["thread 'main' panicked at src/lib.rs:1:1: index out of bounds"],
+          "settings": [],
         })
       ),
       (failed, record["status"].clone(), record["error"].clone())
@@ -106,7 +124,7 @@ mod tests {
     run.jobs.fail(&run.id, vec![]).unwrap();
     let (_, record) = call(&run.router, "GET", &format!("/api/runs/{}", run.id)).await;
     assert_eq!(
-      json!({ "message": "the run worker stopped without an error message", "causes": [] }),
+      json!({ "message": "the run worker stopped without an error message", "causes": [], "settings": [] }),
       record["error"]
     );
   }
@@ -189,14 +207,12 @@ mod tests {
 
   mod helpers {
     use super::{JobExecutor, PathBuf, PortExchange, Router, web_router};
+    use app_api::port::port_request;
     use app_backend::bridge::executor::RunExecutor;
-    use app_server::port::port_request;
-    use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use serde_json::{Value, json};
     use std::fs;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
-    use tokio_util::sync::CancellationToken;
 
     pub(super) struct StartedRun {
       pub router: Router,
@@ -211,17 +227,7 @@ mod tests {
       let runs_dir = tempdir().unwrap();
       let jobs = Arc::new(JobExecutor::default());
       let executor: Arc<dyn RunExecutor> = Arc::<JobExecutor>::clone(&jobs);
-      let router = web_router(
-        ServerConfig {
-          runs_dir: runs_dir.path().to_owned(),
-          max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
-          max_grid_points: None,
-          shutdown: CancellationToken::new(),
-          settings: None,
-        },
-        executor,
-      )
-      .unwrap();
+      let router = web_router(runs_dir.path(), executor).unwrap();
       let body = json!({ "command": "ancestral", "config": {}, "defer_start": true });
       let (status, record) = send(&router, "POST", "/api/runs", Some(body)).await;
       assert_eq!(200, status, "{record}");

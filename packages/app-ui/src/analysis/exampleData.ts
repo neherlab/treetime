@@ -4,14 +4,13 @@ import {
   type ExamplesFolder,
   type IndexedConfig,
   type IndexedDataset,
-  type IndexedFile,
   type InputKind,
   type SparseConfig,
+  type UiDraftOrigin,
   type UiDraftSource,
   zDataIndex,
 } from "@neherlab/app-contracts";
 
-import { fuzzyFilter } from "../fuzzy";
 import { commandSettings, isAppCommand } from "../settings/catalog";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import { type StoredFile, storedSource, storedValue } from "./fileSelection";
@@ -31,8 +30,16 @@ export function exampleDataUrl(base: string, path: string): string {
 export async function fetchExampleIndex(base: string, signal?: AbortSignal): Promise<DataIndex> {
   const response = await fetchExampleData(base, DATA_INDEX_FILE, signal);
 
+  const index: unknown = await response.json();
+
+  assertDataIndex(index);
+
+  return index;
+}
+
+function assertDataIndex(value: unknown): asserts value is DataIndex {
   // oxlint-disable-next-line custom/no-contract-parse -- the index is a static file of the app, which the generated client does not fetch
-  return zDataIndex.parse(await response.json());
+  zDataIndex.parse(value);
 }
 
 export async function fetchExampleFile(base: string, path: string): Promise<File> {
@@ -90,7 +97,7 @@ export function uploadedConfigInputs(
 ): UploadedInputs {
   const uploaded = inputs.flatMap(({ input, stored }) => {
     const value = storedValue(stored, input.list);
-    const source: UiDraftSource = { ...storedSource(stored), origin: "upload", run_id: runId };
+    const source: UiDraftSource = { ...storedSource(stored), origin: exampleOrigin(input.paths), run_id: runId };
 
     return value === undefined ? [] : [{ key: input.key, value, source }];
   });
@@ -101,8 +108,10 @@ export function uploadedConfigInputs(
   };
 }
 
-export function matchingExampleFiles(files: readonly IndexedFile[], query: string): IndexedFile[] {
-  return fuzzyFilter(files, query, (file) => file.path);
+function exampleOrigin(paths: readonly string[]): UiDraftOrigin {
+  const [path, ...others] = paths;
+
+  return path === undefined || others.length > 0 ? { kind: "upload" } : { kind: "example", path };
 }
 
 export type AppConfig = IndexedConfig & { command: AppCommand };

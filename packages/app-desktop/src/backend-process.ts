@@ -15,12 +15,12 @@ export interface BackendExit {
 
 export function backendStop({ code, requested, startError, exitTimes, now }: BackendExit): BackendStopped {
   if (startError !== undefined && !requested) {
-    return { reason: startFailureReason(startError), restarts: false, error: startError };
+    return { reason: startFailureReason(startError), restarts: false, requested, error: startError };
   }
 
   const restarts = requested || shouldRestart(exitTimes, now);
 
-  return { reason: stopReason(code, requested, restarts), restarts };
+  return { reason: stopReason(code, requested, restarts), restarts, requested };
 }
 
 export function shouldRestart(exitTimes: readonly number[], now: number): boolean {

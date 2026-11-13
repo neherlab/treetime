@@ -2,24 +2,26 @@
 mod tests {
   use crate::__tests__::test_support::tests::sparse;
   use crate::command::OutputAlignment;
+  use crate::config::catalog::SettingPurpose;
   use crate::json_float::JsonFloat;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
-  use crate::results::compare::compare_runs;
+  use crate::results::compare::{EstimateDelta, LikelihoodMismatch, compare_runs, likelihood_mismatch_text};
   use crate::results::models::{RunModel, RunModels};
+  use crate::results::outputs::OutputProblem;
   use crate::results::run_results::{CommandResults, RunResults, run_results};
   use crate::results::tree::ResultTree;
   use crate::runs::headline::RunHeadline;
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
-  use crate::runs::setting_differences::SettingDifference;
+  use crate::runs::setting_differences::{DifferenceValues, SettingDifference};
   use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
   use helpers::{auspice_path, clock_model, finished_run, output_path, timetree_config, zika};
-  use itertools::izip;
+  use itertools::{Itertools, izip};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -27,8 +29,9 @@ mod tests {
   use tempfile::tempdir;
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
+  use treetime_utils::datetime::year_fraction::year_fraction_days_between;
   use treetime_utils::io::json::{json_read_file, to_json_value};
-  use treetime_utils::{assert_error, vec_of_owned};
+  use treetime_utils::{assert_error, pretty_assert_relative_eq, pretty_assert_ulps_eq, vec_of_owned};
 
   #[test]
   fn test_run_results_show_the_tree_of_the_first_alignment_file() -> Result<(), Report> {
@@ -175,6 +178,35 @@ mod tests {
         recurrent_substitutions: None,
       },
       runs.get(&id)?.headline
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_headline_of_a_clock_run_holds_the_root_date_of_the_regression() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Clock,
+      json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv") }),
+    );
+
+    let CommandResults::Clock(clock) = run_results(&runs, &id)?.results else {
+      panic!("a clock run has clock results");
+    };
+    let estimates = clock.estimates;
+    assert_eq!(
+      (
+        true,
+        RunHeadline {
+          root_date: estimates.root_date.clone(),
+          clock_rate: estimates.clock_rate.map(JsonFloat),
+          r_squared: estimates.r_squared.map(JsonFloat),
+          recurrent_substitutions: None,
+        }
+      ),
+      (estimates.root_date.is_some(), runs.get(&id)?.headline)
     );
     Ok(())
   }
@@ -366,6 +398,104 @@ mod tests {
   }
 
   #[test]
+  fn test_run_results_of_a_prune_run_describe_the_tree_before_and_after() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let inputs = tempdir()?;
+    let tree = inputs.path().join("tree.nwk");
+    fs::write(&tree, "((A:0.1,B:0.1):0.1,(C:0.2,D:0.3):0.05,E:0.3);\n")?;
+    let id = finished_run(&runs, AppCommand::Prune, json!({ "tree": tree, "remove": ["E"] }));
+
+    let CommandResults::Prune(change) = run_results(&runs, &id)?.results else {
+      panic!("a prune run has prune results");
+    };
+
+    let [samples, internal, polytomies, length] = change.rows.as_slice() else {
+      panic!("a tree change has four statistics");
+    };
+    assert_eq!(
+      vec![
+        (o!("Samples"), true, Some(5.0), Some(4.0)),
+        (o!("Internal nodes"), true, Some(3.0), Some(3.0)),
+        (o!("Polytomies"), true, Some(1.0), Some(0.0)),
+      ],
+      [samples, internal, polytomies]
+        .map(|row| (row.label.clone(), row.count, row.before, row.after))
+        .to_vec()
+    );
+    assert_eq!((o!("Total branch length"), false), (length.label.clone(), length.count));
+    pretty_assert_ulps_eq!(
+      1.15,
+      length.before.expect("the input tree has branch lengths"),
+      max_ulps = 4
+    );
+    pretty_assert_ulps_eq!(
+      0.85,
+      length.after.expect("the result tree has branch lengths"),
+      max_ulps = 4
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_prune_run_name_an_input_tree_that_is_gone() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let inputs = tempdir()?;
+    let tree = inputs.path().join("tree.nwk");
+    fs::write(&tree, "((A:0.1,B:0.1):0.1,C:0.3);\n")?;
+    let id = finished_run(&runs, AppCommand::Prune, json!({ "tree": tree, "remove": ["C"] }));
+    fs::remove_file(&tree)?;
+
+    let results = run_results(&runs, &id)?;
+
+    let CommandResults::Prune(change) = &results.results else {
+      panic!("a prune run has prune results");
+    };
+    assert_eq!(
+      (
+        None,
+        vec![OutputProblem {
+          path: tree.display().to_string(),
+          message: format!(
+            "When opening file '{}': No such file or directory (os error 2)",
+            tree.display()
+          ),
+        }]
+      ),
+      (change.rows.iter().find_map(|row| row.before), results.problems)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_files_list_the_main_formats_of_a_time_tree_first_in_menu_order() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
+
+    let files = runs.files(&id)?;
+
+    let main = files
+      .iter()
+      .take_while(|file| file.main)
+      .map(|file| (file.path.as_str(), file.label.as_str()))
+      .collect::<Vec<_>>();
+    assert_eq!(
+      (
+        vec![
+          ("timetree.auspice.json", "Auspice JSON"),
+          ("timetree.nwk", "Dated tree (Newick, branch lengths in years)"),
+          ("timetree.nexus", "Dated tree with node annotations (Nexus)"),
+        ],
+        true
+      ),
+      (main.clone(), files.iter().skip(main.len()).all(|file| !file.main))
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_run_results_refuse_a_run_that_did_not_finish() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
@@ -373,6 +503,8 @@ mod tests {
       command: AppCommand::Clock,
       config: sparse(json!({ "tree": zika("tree.nwk") })),
       defer_start: true,
+      source_run_id: None,
+      example: None,
     })?;
 
     assert_error!(
@@ -419,6 +551,8 @@ mod tests {
       command: AppCommand::Clock,
       config: sparse(json!({ "tree": zika("tree.nwk") })),
       defer_start: true,
+      source_run_id: None,
+      example: None,
     })?;
 
     assert_error!(
@@ -437,20 +571,64 @@ mod tests {
     let comparison = compare_runs(&runs, &id, &id)?;
 
     let settings = comparison.settings.expect("both runs execute the same command");
+    assert_eq!(
+      Some(EstimateDelta {
+        root_date_days: Some(0.0),
+        clock_rate_percent: Some(0.0),
+        summary: o!("Root date 0 d, clock rate 0.0 %"),
+      }),
+      comparison.delta
+    );
     let estimates = comparison.estimates.expect("both runs are time trees");
     let ancestors = comparison.ancestors.expect("both runs are time trees");
     assert_eq!(
-      (true, true),
-      (settings.differences.is_empty(), settings.same_config_hash)
+      (true, true, true),
+      (
+        comparison.same_analysis,
+        settings.differences.is_empty(),
+        settings.same_config
+      )
     );
     assert_eq!(
-      (Some(0.0), Some(0.0), 0, ancestors.ancestors, true),
+      (Some(0.0), Some(0.0), 0, Some(0.0), vec![], ancestors.ancestors, true),
       (
         estimates.root_shift_days,
         estimates.clock_rate_change_percent,
         estimates.excluded_samples_change,
+        estimates.log_likelihood_change,
+        estimates.log_likelihood_mismatches,
         ancestors.shifts.len(),
         ancestors.shifts.iter().all(|shift| shift.shift_days == 0.0)
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_compare_runs_with_different_drawn_seeds_have_different_configs() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let mut config = timetree_config(None);
+    config
+      .as_object_mut()
+      .expect("a configuration is a mapping")
+      .remove("seed");
+    let first = finished_run(&runs, AppCommand::Timetree, config.clone());
+    let second = finished_run(&runs, AppCommand::Timetree, config);
+
+    let settings = compare_runs(&runs, &first, &second)?
+      .settings
+      .expect("both runs execute the same command");
+
+    assert_eq!(
+      (vec![o!("seed")], false),
+      (
+        settings
+          .differences
+          .iter()
+          .map(|difference| difference.key.clone())
+          .collect_vec(),
+        settings.same_config
       )
     );
     Ok(())
@@ -469,17 +647,60 @@ mod tests {
 
     assert_eq!(
       (
-        vec![SettingDifference::Setting {
+        vec![SettingDifference {
           key: o!("clock_rate"),
-          first: None,
-          second: Some(JsonValue(json!(1e-3))),
+          label: o!("Clock rate"),
+          group: o!("Molecular clock"),
+          purpose: SettingPurpose::Analysis,
+          values: DifferenceValues::Setting {
+            first: None,
+            second: Some(JsonValue(json!(1e-3))),
+          },
         }],
         false,
         true,
       ),
-      (settings.differences, settings.same_config_hash, settings.compared > 1)
+      (settings.differences, settings.same_config, settings.compared > 1)
     );
     Ok(())
+  }
+
+  #[test]
+  fn test_compare_runs_with_different_coalescent_priors_leaves_out_the_log_likelihood_change() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let first = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
+    let mut optimized = timetree_config(None);
+    optimized["coalescent"] = json!("opt");
+    let second = finished_run(&runs, AppCommand::Timetree, optimized);
+
+    let estimates = compare_runs(&runs, &first, &second)?
+      .estimates
+      .expect("both runs are time trees");
+
+    assert_eq!(
+      (true, None),
+      (
+        estimates
+          .log_likelihood_mismatches
+          .contains(&LikelihoodMismatch::CoalescentPrior),
+        estimates.log_likelihood_change
+      )
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::comparable(vec![],                                                                None)]
+  #[case::one(       vec![LikelihoodMismatch::CoalescentPrior],                             Some("different coalescent prior"))]
+  #[case::two(       vec![LikelihoodMismatch::Data, LikelihoodMismatch::Topology],          Some("different data, different tree topology"))]
+  #[trace]
+  fn test_compare_likelihood_mismatch_text_names_each_mismatch(
+    #[case] mismatches: Vec<LikelihoodMismatch>,
+    #[case] expected: Option<&str>,
+  ) {
+    assert_eq!(expected.map(str::to_owned), likelihood_mismatch_text(&mismatches));
   }
 
   #[test]
@@ -496,8 +717,48 @@ mod tests {
     let comparison = compare_runs(&runs, &timetree, &clock)?;
 
     assert_eq!(
-      (None, None, None),
-      (comparison.settings, comparison.estimates, comparison.ancestors)
+      (false, None, None, None, None),
+      (
+        comparison.same_analysis,
+        comparison.settings,
+        comparison.delta,
+        comparison.estimates,
+        comparison.ancestors
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_compare_clock_runs_gives_the_change_of_the_regression_root_date_and_clock_rate() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let config =
+      |keep_root: bool| json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv"), "keep_root": keep_root });
+    let first = finished_run(&runs, AppCommand::Clock, config(false));
+    let second = finished_run(&runs, AppCommand::Clock, config(true));
+    let (first_model, second_model) = (clock_model(&runs, &first)?, clock_model(&runs, &second)?);
+    let days =
+      year_fraction_days_between(first_model.t_mrca(), second_model.t_mrca()).expect("both dates are in range");
+    let percent = (second_model.clock_rate() / first_model.clock_rate() - 1.0) * 100.0;
+
+    let delta = compare_runs(&runs, &first, &second)?
+      .delta
+      .expect("both runs are clock runs");
+
+    assert_eq!(
+      (format!("Root date {days:+.0} d, clock rate {percent:+.1} %"), true),
+      (delta.summary.clone(), days.round() != 0.0)
+    );
+    pretty_assert_ulps_eq!(
+      days,
+      delta.root_date_days.expect("both runs have a root date"),
+      max_ulps = 4
+    );
+    pretty_assert_relative_eq!(
+      percent,
+      delta.clock_rate_percent.expect("both runs have a clock rate"),
+      max_relative = 1e-9
     );
     Ok(())
   }
@@ -585,6 +846,8 @@ mod tests {
           command,
           config: sparse(config),
           defer_start: true,
+          source_run_id: None,
+          example: None,
         })
         .unwrap();
       runs
