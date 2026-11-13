@@ -33,7 +33,6 @@ rand_distr = { workspace = true }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
-maplit = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
