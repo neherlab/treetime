@@ -51,6 +51,26 @@
       "x-unset": true,
       "x-cli-flag": "--tree"
     },
+    "segment_trees": {
+      "description": "Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name\n\nEvery node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node\nof the graph. A node that a segment only passes through stays in that segment's tree as a node with one child.\nAn edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with\n`--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "x-path": "input",
+      "x-cli-flag": "--segment-trees"
+    },
+    "segment_alignments": {
+      "description": "Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order\n\nUse instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "x-path": "input",
+      "x-cli-flag": "--segment-alignments"
+    },
     "newick_dialect": {
       "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The\nstructure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick\nwith support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx\n(`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST\nannotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.",
       "type": "string",
@@ -281,6 +301,12 @@
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--keep-polytomies"
+    },
+    "no_cross_parent_messages": {
+      "description": "On a graph of segment trees, leave the messages from the other parents out of the message to a parent\n\nA node with several parents sends each parent its subtree, combined by default with the messages that its other\nparents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree\nalone. Applies only with `--segment-trees`.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--no-cross-parent-messages"
     },
     "no_collapse_short_branches": {
       "description": "Disable collapsing of short internal branches.\n\nBy default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all\nalignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x.\nThe substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy.\nEdges above internal nodes with a date are kept. When set, such edges are kept.",
