@@ -5,7 +5,7 @@
 `GraphSchedule::new()` indexes a graph once and gives every pass the same validated order. It works on rooted directed acyclic graphs (DAGs): a node may have several parents, and the graph may have several roots. The schedule borrows the graph, so the topology cannot change while a schedule exists. The graph keeps the index of its schedule (orders and neighbor slices) until its topology changes: every pass on an unchanged graph reuses it, and every change of nodes, edges, child order, or root order drops it. A timetree run builds dozens of schedules on the same topology, so a rebuild per pass cost about 1 % of its wall time at 20 threads.
 
 - **Adjacency**: the parents of each node in `inbound()` order and the children in `outbound()` order, each with its edge key, in flat arrays indexed by node key. `parent_slot(edge)` is the position of an edge among the parents of its child, `child_slot(edge)` its position among the children of its parent. The slots belong to edges, because a shared child has a different position in each parent
-- **Validation**: the graph must have a root ("The graph has no root: every node has a parent"), and the preorder must visit every node, which holds exactly when the graph has no cycle. Otherwise the error names a node on a cycle ("The graph has a cycle through node {key}"), found by a walk from an unvisited node along unvisited parents until a node repeats
+- **Validation**: the graph must have a root ("The graph has no root: every node has a parent"), and the preorder must visit every node, which holds exactly when the graph has no cycle. Otherwise the error names a node on a cycle ("The graph has a cycle through node {key}"), found by a walk from an unvisited node along unvisited parents until a node repeats. `find_cycle()` returns the nodes of that cycle, so that callers can name them
 - **Preorder**: a stack starts with the roots in `graph.roots` order; a node is pushed when its last parent is visited, so every node comes after all its parents. On a tree this is the depth-first preorder with children in `outbound()` order
 - **Postorder**: the depth-first finish order (<a id="cite-1"></a>[Cormen et al. 2022](https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/) [[1](#ref-1)], Chapter 22.3) with explicit enter and exit frames on one stack. Each node appears once, after all its children. Reversed preorder is a different order on trees (siblings come in reverse), so the schedule keeps both
 - **Sequential loops**: every serial pass iterates `schedule.preorder()` or `schedule.postorder()` and reads neighbors through `parents(key)` and `children(key)`, which are slices into the schedule, so a visit allocates nothing
@@ -40,6 +40,32 @@ v1: [`packages/treetime-graph/src/schedule_scan.rs`](../../packages/treetime-gra
 Serial forward-reachability query: whether a directed path runs from one node to another along edge directions. A depth-first walk over outbound edges with a visited set for cycle termination.
 
 v1: [`packages/treetime-graph/src/reachability.rs`](../../packages/treetime-graph/src/reachability.rs).
+
+---
+
+## Edge Scopes
+
+An edge scope records which sites of each segment an edge carries, so that every site has its own tree on one graph (reassortment, crossover recombination; [kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md)). `EdgeScopes` maps each edge to one `SiteScope` per segment; an edge without an entry carries nothing. A segment is one of the inputs the scopes refer to (one per segment tree and its alignment), and site coordinates are those of the segment.
+
+- **`SiteScope`**: `Empty`, `Full`, or `Ranges` of half-open site ranges, kept sorted, disjoint, and non-adjacent. Reassortment needs only `Empty` and `Full`, which do not allocate; up to two ranges per segment (one crossover) stay inline in a `SmallVec`, and up to four segments per edge stay inline. Union, overlap, and subset tests use the interval helpers of `treetime-utils`. The segment length is not part of a scope, so ranges are never a superset of `Full`
+- **Validation** (`EdgeScopes::validate()`), per node and segment: the scopes of the parent edges are disjoint (every site has at most one parent), and the scope of every parent edge is a subset of the union of the child edge scopes (an edge carries only sites its child holds). Leaves hold every site. Errors name the nodes
+
+v1: [`packages/treetime-graph/src/scope.rs`](../../packages/treetime-graph/src/scope.rs).
+
+---
+
+## Merging Trees by Name
+
+`merge_trees_by_name()` builds one graph from one tree per segment. A name that occurs in several trees is one node, and a parent-child pair that occurs in several trees is one edge, whose scope is `Full` for every segment whose tree contains it. Nodes are created in the preorder of the first tree that contains them, edges likewise, so child order follows the input trees.
+
+- **Names**: every node of every tree needs a name, unique within its tree. Generated names of unnamed nodes would merge unrelated nodes, so unnamed nodes are an error
+- **Branch lengths**: the lengths of a shared edge must agree within `SHARED_BRANCH_LENGTH_TOLERANCE` (1e-6, absolute and relative to the longer length), which covers Newick files written with six decimals. A length that only one tree gives is kept
+- **Pass-through nodes**: a node that a segment only passes through stays in that segment's tree as a node with one child, so that an edge shared by several segments is one edge
+- **Checks**: each input is a tree; the merged graph is acyclic, else the error lists the cycle by name (two trees order the same nodes in opposite ways); the scopes pass the validation above
+
+`segment_trees_read_files()` reads the tree files (Newick or Nexus) and merges them; segment `i` is the `i`-th file.
+
+v1: [`packages/treetime-graph/src/merge_by_name.rs`](../../packages/treetime-graph/src/merge_by_name.rs), [`packages/treetime-io/src/tree.rs`](../../packages/treetime-io/src/tree.rs).
 
 ---
 
@@ -82,5 +108,7 @@ v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-gr
 | [`packages/treetime-graph/src/schedule.rs`](../../packages/treetime-graph/src/schedule.rs)             | Graph schedule: orders, checks, tree handle |
 | [`packages/treetime-graph/src/schedule_scan.rs`](../../packages/treetime-graph/src/schedule_scan.rs)   | Parallel down and up scans                  |
 | [`packages/treetime-graph/src/reachability.rs`](../../packages/treetime-graph/src/reachability.rs)     | Forward reachability query                  |
+| [`packages/treetime-graph/src/scope.rs`](../../packages/treetime-graph/src/scope.rs)                   | Edge scopes and their validation            |
+| [`packages/treetime-graph/src/merge_by_name.rs`](../../packages/treetime-graph/src/merge_by_name.rs)   | Merge of segment trees by node name         |
 | [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)           | Edge collapse                               |
 | [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) | Topology ordering                           |
