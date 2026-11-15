@@ -1,4 +1,5 @@
 use crate::edge::GraphEdgeKey;
+use crate::graph::Graph;
 use crate::key_map::{EdgeMap, NodeMap};
 use crate::node::GraphNodeKey;
 use crate::schedule::GraphSchedule;
@@ -355,6 +356,31 @@ impl Inheritance {
       nodes.insert(key, node);
     }
     Ok(NodeEdgeMaps { nodes, edges })
+  }
+
+  pub fn subgraph(&self, graph: &Graph) -> Result<Graph, Report> {
+    let schedule = GraphSchedule::new(graph)?;
+    self.require_one_parent(&schedule)?;
+    let dropped_nodes = graph
+      .node_keys()
+      .filter(|&key| !self.holds(&schedule, key))
+      .collect_vec();
+    let dropped_edges = graph
+      .get_edges()
+      .map(|edge| edge.key())
+      .filter(|&edge| !self.carries(edge))
+      .collect_vec();
+    let mut subgraph = graph.clone();
+    for edge in dropped_edges {
+      subgraph.remove_edge(edge)?;
+    }
+    for node in dropped_nodes {
+      subgraph
+        .take_node(node)
+        .ok_or_else(|| make_internal_report!("Node {node} is missing from the copy of its graph"))?;
+    }
+    subgraph.build()?;
+    Ok(subgraph)
   }
 
   pub fn require_one_parent(&self, schedule: &GraphSchedule<'_>) -> Result<(), Report> {
