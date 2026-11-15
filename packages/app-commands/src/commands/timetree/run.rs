@@ -5,6 +5,7 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::branch_length_mode::settle_branch_length_outputs;
 use crate::commands::timetree::initialization::load_input_data;
+use crate::commands::timetree::segments::run_segment_timetree_command;
 use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
@@ -51,6 +52,9 @@ pub fn run_timetree_estimation(
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   cancel.check()?;
+  if args.tree_input.is_segments() {
+    return run_segment_timetree_command(args, cancel, stages, log);
+  }
   stages.report("Loading input", 0.0, "");
 
   let mut resolved = args.outputs.resolve()?;
@@ -319,7 +323,7 @@ fn write_result_outputs(
   let run = RefineRun {
     alignments: &args.sequences.alignments,
     mutation_counts: mutation_counts.as_ref(),
-    input_tree: Some(args.tree.as_path()),
+    input_tree: args.tree_input.tree(),
     clock_model: Some(&clock_model),
   };
   write_timetree_trees(&trees, &run, resolved, log)

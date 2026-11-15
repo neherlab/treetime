@@ -1,10 +1,11 @@
-use crate::annotated_graph::{AnnotatedTreeView, TreeDates};
+use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeDates};
 use crate::table_output::planned_table_format;
 use eyre::{Report, WrapErr};
 use std::io::Write;
 use std::iter::once;
 use std::path::Path;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_io::csv::{CsvWriter, TableFormat};
 use treetime_utils::datetime::year_fraction::year_fraction_to_datestring;
 use treetime_utils::io::file::write_file_with;
@@ -15,16 +16,26 @@ const CONFIDENCE_COMMENT: &str = "#Lower and upper bound delineate the 90% max p
 const MISSING_DATE: &str = "--";
 
 pub fn write_dates_table_file(tree: &AnnotatedTreeView<'_>, path: &Path) -> Result<(), Report> {
+  write_nodes_dates_table_file(tree.graph(), tree.tree().preorder(), path)
+}
+
+pub fn write_graph_dates_table_file(graph: &AnnotatedGraph<'_>, path: &Path) -> Result<(), Report> {
+  let schedule = GraphSchedule::new(graph.graph)?;
+  write_nodes_dates_table_file(graph, schedule.preorder(), path)
+}
+
+fn write_nodes_dates_table_file(graph: &AnnotatedGraph<'_>, order: &[GraphNodeKey], path: &Path) -> Result<(), Report> {
   let format = planned_table_format(path)?;
-  write_file_with(path, |writer| write_dates_table(tree, writer, format)).wrap_err("When writing the node dates table")
+  write_file_with(path, |writer| write_dates_table(graph, order, writer, format))
+    .wrap_err("When writing the node dates table")
 }
 
 pub(crate) fn write_dates_table<W: Write>(
-  tree: &AnnotatedTreeView<'_>,
+  graph: &AnnotatedGraph<'_>,
+  order: &[GraphNodeKey],
   mut writer: W,
   format: TableFormat,
 ) -> Result<(), Report> {
-  let graph = tree.graph();
   let dates = graph
     .dates
     .as_ref()
@@ -40,7 +51,7 @@ pub(crate) fn write_dates_table<W: Write>(
     &[]
   };
   csv.write_record(["#node", "date", "numeric date"].iter().chain(bounds))?;
-  tree.tree().preorder().iter().try_for_each(|&key| {
+  order.iter().try_for_each(|&key| {
     let name = graph.names[key].to_owned();
     csv.write_record(once(name).chain(date_fields(dates, key, with_confidence)))
   })?;
