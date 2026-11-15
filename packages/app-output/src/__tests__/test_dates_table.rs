@@ -257,7 +257,8 @@ mod tests {
         ..annotated(topology)
       };
       let mut buf = Vec::new();
-      write_dates_table(&AnnotatedTreeView::new(&graph)?, &mut buf, format)?;
+      let view = AnnotatedTreeView::new(&graph)?;
+      write_dates_table(&graph, view.tree().preorder(), &mut buf, format)?;
       Ok(String::from_utf8(buf)?)
     }
   }

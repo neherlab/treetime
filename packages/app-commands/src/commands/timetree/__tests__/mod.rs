@@ -8,3 +8,4 @@ mod test_mutation_outputs;
 mod test_node_names;
 mod test_pipeline;
 mod test_reconstructed_fasta;
+mod test_segment_trees;
