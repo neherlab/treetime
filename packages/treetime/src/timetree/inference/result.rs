@@ -9,28 +9,38 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::coordinates_coincide;
 use treetime_primitives::LogLh;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NodeBackward {
   pub(crate) subtree: TimeDistribution,
-  pub(crate) to_parent: TimeDistribution,
+  pub(crate) to_parents: PerEdge<TimeDistribution>,
   pub(crate) subtree_origin: GridOrigin,
-  pub(crate) to_parent_origin: GridOrigin,
+  pub(crate) to_parent_origins: PerEdge<GridOrigin>,
+}
+
+#[cfg(test)]
+impl NodeBackward {
+  pub(crate) fn to_parent(&self) -> &TimeDistribution {
+    const NONE: &TimeDistribution = &None;
+    self.to_parents.first().unwrap_or(NONE)
+  }
 }
 
 pub(crate) fn log_marginal_likelihood(
   backward: &NodeMap<NodeBackward>,
-  root: GraphNodeKey,
+  roots: &[GraphNodeKey],
   coalescent: Option<&CoalescentPrior>,
 ) -> Result<Option<f64>, Report> {
   let normalization = coalescent.map_or(0.0, CoalescentPrior::log_normalization);
-  backward
-    .get(root)
-    .and_then(|node| node.subtree.as_deref())
-    .map(|subtree| Ok(subtree.log_mass()? + normalization))
-    .transpose()
+  let masses = roots
+    .iter()
+    .filter_map(|&root| backward.get(root).and_then(|node| node.subtree.as_deref()))
+    .map(Distribution::log_mass)
+    .collect::<Result<Vec<_>, Report>>()?;
+  Ok((!masses.is_empty()).then(|| masses.iter().sum::<f64>() + normalization))
 }
 
 pub(crate) fn given_times(graph: &Graph, constraints: &DateConstraints) -> Result<NodeTimes, Report> {

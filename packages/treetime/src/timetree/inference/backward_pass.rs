@@ -34,6 +34,7 @@ pub(crate) fn propagate_distributions_backward(
 ) -> Result<NodeMap<NodeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
+  let from_parents = EdgeMap::new();
   let pass = BackwardPass {
     schedule: &schedule,
     constraints,
@@ -41,12 +42,46 @@ pub(crate) fn propagate_distributions_backward(
     branches,
     max_points,
     fft_plans,
+    from_parents: &from_parents,
+    parent_messages: ParentMessages::AllEdges,
   };
-  let outputs = schedule.scan_up(
-    bad_branches.iter().map(|(key, &bad_branch)| (key, bad_branch)),
-    |key, bad_branch, messages| pass.node(key, bad_branch, messages),
-  )?;
-  Ok(outputs.into_map())
+  pass.run(bad_branches)
+}
+
+pub(crate) fn propagate_distributions_backward_on_graph(
+  graph: &Graph,
+  inputs: &BackwardInputs<'_>,
+  from_parents: &EdgeMap<Arc<Distribution<NegLog>>>,
+  parent_messages: ParentMessages,
+) -> Result<NodeMap<NodeBackward>, Report> {
+  let schedule = GraphSchedule::new(graph)?;
+  let pass = BackwardPass {
+    schedule: &schedule,
+    constraints: inputs.constraints,
+    coalescent_model: inputs.coalescent_model,
+    branches: inputs.branches,
+    max_points: inputs.max_points,
+    fft_plans: inputs.fft_plans,
+    from_parents,
+    parent_messages,
+  };
+  pass.run(inputs.bad_branches)
+}
+
+pub(crate) struct BackwardInputs<'a> {
+  pub constraints: &'a DateConstraints,
+  pub coalescent_model: Option<&'a CoalescentPrior>,
+  pub bad_branches: &'a NodeMap<bool>,
+  pub branches: &'a EdgeMap<BranchLikelihood>,
+  pub max_points: MaxGridPoints,
+  pub fft_plans: &'a FftPlans,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum ParentMessages {
+  #[default]
+  AllEdges,
+  ChildrenOnly,
 }
 
 struct BackwardPass<'a> {
@@ -56,15 +91,27 @@ struct BackwardPass<'a> {
   branches: &'a EdgeMap<BranchLikelihood>,
   max_points: MaxGridPoints,
   fft_plans: &'a FftPlans,
+  from_parents: &'a EdgeMap<Arc<Distribution<NegLog>>>,
+  parent_messages: ParentMessages,
 }
 
+type ParentSlotMessages = Arc<PerEdge<TimeMessage>>;
+
 impl BackwardPass<'_> {
+  fn run(&self, bad_branches: &NodeMap<bool>) -> Result<NodeMap<NodeBackward>, Report> {
+    let outputs = self.schedule.scan_up(
+      bad_branches.iter().map(|(key, &bad_branch)| (key, bad_branch)),
+      |key, bad_branch, messages| self.node(key, bad_branch, &messages),
+    )?;
+    Ok(outputs.into_map())
+  }
+
   fn node(
     &self,
     key: GraphNodeKey,
     bad_branch: bool,
-    messages: PerEdge<TimeMessage>,
-  ) -> Result<(NodeBackward, TimeMessage), Report> {
+    messages: &[ParentSlotMessages],
+  ) -> Result<(NodeBackward, ParentSlotMessages), Report> {
     let BackwardPass {
       schedule,
       constraints,
@@ -72,12 +119,14 @@ impl BackwardPass<'_> {
       branches,
       max_points,
       fft_plans,
+      ..
     } = *self;
     let date_constraint = applied_date_constraint(constraints, key, bad_branch);
     let children = schedule.children(key);
     let messages = izip!(children, messages)
-      .filter_map(|(&(child, _), message)| {
-        let distribution = message.distribution?;
+      .filter_map(|(&(child, edge_key), messages)| {
+        let message = messages.get(schedule.parent_slot(edge_key))?;
+        let distribution = message.distribution.clone()?;
         let operand = GridOperand::of(OperandRole::ChildMessage(child), &distribution, message.origin);
         Some((distribution, operand))
       })
@@ -98,29 +147,63 @@ impl BackwardPass<'_> {
       Some(Arc::new(distribution))
     };
 
-    let to_parent = schedule
-      .parents(key)
-      .first()
-      .map(|&(_, edge_key)| {
+    let parents = schedule.parents(key);
+    let to_parents = parents
+      .iter()
+      .enumerate()
+      .map(|(slot, &(_, edge_key))| {
+        let base = self.base_for_parent(key, slot, subtree.as_ref())?;
         send_backward_message(
           key,
           bad_branch,
-          subtree.as_deref(),
+          base.as_deref(),
           subtree_origin,
           &branches[&edge_key],
           max_points,
           fft_plans,
         )
       })
-      .transpose()?
-      .unwrap_or_default();
+      .collect::<Result<PerEdge<_>, Report>>()?;
     let output = NodeBackward {
       subtree,
-      to_parent: to_parent.distribution.clone(),
+      to_parents: to_parents.iter().map(|message| message.distribution.clone()).collect(),
       subtree_origin,
-      to_parent_origin: to_parent.origin,
+      to_parent_origins: to_parents.iter().map(|message| message.origin).collect(),
     };
-    Ok((output, to_parent))
+    Ok((output, Arc::new(to_parents)))
+  }
+
+  fn base_for_parent(
+    &self,
+    key: GraphNodeKey,
+    slot: usize,
+    subtree: Option<&Arc<Distribution<NegLog>>>,
+  ) -> Result<Option<Arc<Distribution<NegLog>>>, Report> {
+    let parents = self.schedule.parents(key);
+    if parents.len() < 2 || self.parent_messages == ParentMessages::ChildrenOnly {
+      return Ok(subtree.cloned());
+    }
+    let others = parents
+      .iter()
+      .enumerate()
+      .filter(|&(other, _)| other != slot)
+      .filter_map(|(_, (_, edge_key))| self.from_parents.get(edge_key))
+      .collect_vec();
+    if others.is_empty() {
+      return Ok(subtree.cloned());
+    }
+    let factors = subtree
+      .into_iter()
+      .chain(others)
+      .map(Arc::as_ref)
+      .filter(|factor| !matches!(factor, Distribution::Empty))
+      .collect_vec();
+    let product = distribution_product(&factors, self.max_points)
+      .wrap_err_with(|| format!("When combining the messages to the parents of node {key}"))?;
+    if matches!(product, Distribution::Empty) {
+      return Ok(None);
+    }
+    Ok(Some(Arc::new(product.repeak()?)))
   }
 }
 

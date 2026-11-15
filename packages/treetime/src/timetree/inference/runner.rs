@@ -7,15 +7,17 @@ use crate::optimize::indel::IndelPolicy;
 use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::inference::backward_pass::propagate_distributions_backward;
+use crate::timetree::inference::backward_pass::{
+  BackwardInputs, ParentMessages, propagate_distributions_backward_on_graph,
+};
 use crate::timetree::inference::bad_branches::derive_bad_branches;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
-use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward_on_graph};
 use crate::timetree::inference::grid_request::{ClockRateEffect, GridOperation, GridRequest, WrapGridRequest};
 use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
-  BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, TimeInference, log_marginal_likelihood,
-  runs_backwards,
+  BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, PosteriorView, TimeInference,
+  log_marginal_likelihood, runs_backwards,
 };
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -26,6 +28,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
 use treetime_ops::FftPlans;
 use treetime_primitives::LogLh;
@@ -42,12 +45,25 @@ pub(crate) const EPS: f64 = 5e-4;
 
 pub(crate) const TRIM_EPS: f64 = 1e-9;
 
+const MAX_SWEEPS: usize = 20;
+
+const SWEEP_TOLERANCE: f64 = 1e-4;
+
 pub(crate) fn run_timetree(
   inputs: &TimeInferenceInputs<'_>,
   coalescent: Option<&CoalescentPrior>,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
-  infer_times(inputs, coalescent, log).map_err(|report| {
+  run_timetree_with(inputs, coalescent, ParentMessages::AllEdges, log)
+}
+
+pub(crate) fn run_timetree_with(
+  inputs: &TimeInferenceInputs<'_>,
+  coalescent: Option<&CoalescentPrior>,
+  parent_messages: ParentMessages,
+  log: &dyn LogSink,
+) -> Result<TimeInference, Report> {
+  infer_times(inputs, coalescent, parent_messages, log).map_err(|report| {
     explain_grid_point_limit(
       report,
       inputs.names,
@@ -62,6 +78,7 @@ pub(crate) fn run_timetree(
 fn infer_times(
   inputs: &TimeInferenceInputs<'_>,
   coalescent: Option<&CoalescentPrior>,
+  parent_messages: ParentMessages,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
   let TimeInferenceInputs {
@@ -107,23 +124,14 @@ fn infer_times(
     },
   };
 
-  progress_info!(log, "## Propagating distributions backward");
-  let backward = propagate_distributions_backward(
-    graph,
-    date_constraints,
-    coalescent,
-    &bad_branches,
-    &branches,
-    max_grid_points,
+  let backward_inputs = BackwardInputs {
+    constraints: date_constraints,
+    coalescent_model: coalescent,
+    bad_branches: &bad_branches,
+    branches: &branches,
+    max_points: max_grid_points,
     fft_plans,
-  )?;
-
-  let log_lh_time = log_marginal_likelihood(&backward, graph.root_key()?, coalescent)?.map(LogLh::new);
-  if let Some(log_lh) = log_lh_time {
-    progress_info!(log, "**Log marginal likelihood of node times:** {:.4}", log_lh.value());
-  }
-
-  progress_info!(log, "## Propagating distributions forward");
+  };
   let forward_inputs = ForwardPassInputs {
     constraints: date_constraints,
     bad_branches: &bad_branches,
@@ -133,13 +141,18 @@ fn infer_times(
     max_points: max_grid_points,
     fft_plans,
   };
-  let posterior = propagate_distributions_forward(
+  let (log_lh_time, posterior) = sweep_time_passes(
     graph,
+    &backward_inputs,
     &forward_inputs,
-    backward,
+    parent_messages,
     |key, view| NodePosterior::summarize(key, view, posterior_summaries),
+    |posterior: &NodePosterior| posterior.likely_time,
     log,
   )?;
+  if let Some(log_lh) = log_lh_time {
+    progress_info!(log, "**Log marginal likelihood of node times:** {:.4}", log_lh.value());
+  }
 
   progress_info!(log, "# Timetree inference completed");
   Ok(TimeInference {
@@ -253,6 +266,74 @@ fn clock_rate_advice(effect: ClockRateEffect, stage: GridStage) -> String {
       float_to_significant_digits(clock_rate, 3)
     ),
   }
+}
+
+pub(crate) fn sweep_time_passes<S: Send + Sync>(
+  graph: &Graph,
+  backward_inputs: &BackwardInputs<'_>,
+  forward_inputs: &ForwardPassInputs<'_>,
+  parent_messages: ParentMessages,
+  summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
+  likely_time: impl Fn(&S) -> Option<f64>,
+  log: &dyn LogSink,
+) -> Result<(Option<LogLh>, NodeMap<S>), Report> {
+  let schedule = GraphSchedule::new(graph)?;
+  let roots = schedule.roots().to_vec();
+  let has_parents = schedule.preorder().iter().any(|&key| schedule.parents(key).len() > 1);
+  let mut from_parents = EdgeMap::new();
+  let mut previous: Option<NodeMap<Option<f64>>> = None;
+  let mut sweep = 0;
+  loop {
+    sweep += 1;
+    progress_info!(log, "## Propagating distributions backward");
+    let backward = propagate_distributions_backward_on_graph(graph, backward_inputs, &from_parents, parent_messages)?;
+    let log_lh_time = log_marginal_likelihood(&backward, &roots, backward_inputs.coalescent_model)?.map(LogLh::new);
+    progress_info!(log, "## Propagating distributions forward");
+    let (posterior, messages) =
+      propagate_distributions_forward_on_graph(graph, forward_inputs, backward, &summarize, log)?;
+    if !has_parents {
+      return Ok((log_lh_time, posterior));
+    }
+    let times: NodeMap<Option<f64>> = posterior.iter().map(|(key, node)| (key, likely_time(node))).collect();
+    let change = previous.as_ref().map(|previous| largest_time_change(previous, &times));
+    debug!("Timetree sweep {sweep}: largest change of a node time {change:?}");
+    let settled = change.is_some_and(|change| change <= SWEEP_TOLERANCE);
+    if settled || sweep == MAX_SWEEPS {
+      if !settled {
+        progress_warn!(
+          log,
+          "Timetree: the node times of a graph with reassortment did not settle within {MAX_SWEEPS} sweeps of message passing; the last relative change was {}",
+          change.map_or_else(|| "unknown".to_owned(), |change| float_to_significant_digits(change, 3))
+        );
+      }
+      progress_info!(
+        log,
+        "Timetree: message passing on a graph with reassortment took {sweep} sweeps"
+      );
+      return Ok((log_lh_time, posterior));
+    }
+    previous = Some(times);
+    from_parents = messages;
+  }
+}
+
+fn largest_time_change(previous: &NodeMap<Option<f64>>, current: &NodeMap<Option<f64>>) -> f64 {
+  let span = current
+    .values()
+    .flatten()
+    .copied()
+    .fold(None, |range: Option<(f64, f64)>, time| {
+      Some(range.map_or((time, time), |(low, high)| (low.min(time), high.max(time))))
+    })
+    .map_or(1.0, |(low, high)| (high - low).max(f64::MIN_POSITIVE));
+  current
+    .iter()
+    .map(|(key, time)| match (previous.get(key).copied().flatten(), time) {
+      (Some(before), Some(after)) => (after - before).abs() / span,
+      (None, None) => 0.0,
+      _ => f64::INFINITY,
+    })
+    .fold(0.0, f64::max)
 }
 
 pub(crate) const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;

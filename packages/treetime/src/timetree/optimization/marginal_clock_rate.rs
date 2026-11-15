@@ -66,7 +66,7 @@ pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rat
     inputs.max_points,
     inputs.fft_plans,
   )?;
-  log_marginal_likelihood(&backward, inputs.graph.root_key()?, inputs.coalescent)
+  log_marginal_likelihood(&backward, &[inputs.graph.root_key()?], inputs.coalescent)
 }
 
 pub(crate) struct MarginalRateInputs<'a> {
