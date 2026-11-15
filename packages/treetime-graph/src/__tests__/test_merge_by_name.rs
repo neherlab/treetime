@@ -113,7 +113,7 @@ mod tests {
       TestTree::new(
         "seg2",
         &[
-          ("R", "X", 0.1),
+          ("R", "X", 0.3),
           ("R", "Y", 0.2),
           ("X", "A", 0.3),
           ("Y", "C", 0.0),
@@ -132,7 +132,7 @@ mod tests {
     let s = |name: &str| name.to_owned();
     assert_eq!(
       vec![
-        (s("R"), s("X"), Some(0.1), vec![0, 1]),
+        (s("R"), s("X"), Some(0.2), vec![0, 1]),
         (s("X"), s("A"), Some(0.3), vec![0, 1]),
         (s("X"), s("C"), Some(0.1), vec![0]),
         (s("C"), s("c1"), Some(0.1), vec![0, 1]),
@@ -183,25 +183,33 @@ mod tests {
   }
 
   #[test]
-  fn test_merge_trees_by_name_rejects_different_lengths_of_a_shared_edge() -> Result<(), Report> {
+  fn test_merge_trees_by_name_averages_the_lengths_of_a_shared_edge_over_the_trees_that_give_one() -> Result<(), Report>
+  {
+    let mut without_lengths = TestTree::new("seg3", &[("R", "A", 0.0), ("R", "B", 0.0)])?;
+    for length in without_lengths.lengths.values_mut() {
+      *length = None;
+    }
     let trees = vec![
-      TestTree::new("seg1", &[("R", "A", 0.1), ("R", "B", 0.1)])?,
-      TestTree::new("seg2", &[("R", "A", 0.1), ("R", "B", 0.2)])?,
+      TestTree::new("seg1", &[("R", "A", 0.1), ("R", "B", 0.3)])?,
+      TestTree::new("seg2", &[("R", "A", 0.2), ("R", "B", 0.1)])?,
+      without_lengths,
     ];
-    assert_error!(
-      merge(&trees),
-      "When merging the edge 'R' -> 'B' of tree 'seg2' into the same edge of an earlier tree: The two trees give the edge different branch lengths, 0.1 and 0.2"
-    );
+    let lengths = edges(&merge(&trees)?)
+      .into_iter()
+      .map(|(_, child, length, _)| (child, length.map(|length| (length * 1e12).round() / 1e12)))
+      .collect_vec();
+    assert_eq!(vec![("A".to_owned(), Some(0.15)), ("B".to_owned(), Some(0.2))], lengths);
     Ok(())
   }
 
   #[test]
-  fn test_merge_trees_by_name_accepts_lengths_within_rounding_of_six_decimals() -> Result<(), Report> {
-    let trees = vec![
-      TestTree::new("seg1", &[("R", "A", 0.123_456_4), ("R", "B", 0.1)])?,
-      TestTree::new("seg2", &[("R", "A", 0.123_456), ("R", "B", 0.1)])?,
-    ];
-    assert_eq!(Some(0.123_456_4), edges(&merge(&trees)?)[0].2);
+  fn test_merge_trees_by_name_keeps_no_length_when_no_tree_gives_one() -> Result<(), Report> {
+    let mut tree = TestTree::new("seg1", &[("R", "A", 0.0), ("R", "B", 0.0)])?;
+    for length in tree.lengths.values_mut() {
+      *length = None;
+    }
+    let lengths = edges(&merge(&[tree])?).into_iter().map(|edge| edge.2).collect_vec();
+    assert_eq!(vec![None, None], lengths);
     Ok(())
   }
 
