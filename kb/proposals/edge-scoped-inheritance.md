@@ -80,6 +80,7 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 ## Input
 
 - **Named trees**: one Newick tree per segment, with named internal nodes. A name that occurs in several trees is one graph node, and a parent-child pair that occurs in several trees is one graph edge whose scope holds all their segments. A node that a segment only passes through stays in that segment's tree as a node with one child, so that an edge shared by several segments stays one edge. A shared edge gets the mean of the branch lengths its trees give, since separately estimated segment trees need not agree
+- **Annotated network Newick**: an extended Newick network whose edges carry segment sets, such as `[&segments={0,1}]` of CoalRe, holds the same information in one file; the tests of the Newick dialects already read such a string (`COALRE` in [packages/app-commands/src/commands/shared/__tests__/test_tree_input.rs](../../packages/app-commands/src/commands/shared/__tests__/test_tree_input.rs))
 - **TreeKnit**: TreeKnit writes one tree per segment with names that are local to each tree, and the MCCs of every pair of segments (`data/flu/treeknit/MCCs.json`, four segments and six pairs). Turning these into named trees needs a rule for MCCs of different pairs that disagree, and the nodes that segments pass through must be inserted
 - **Toy data**: [data/toy/reassortment/](../../data/toy/reassortment/) holds a hand-made graph with three segments, two reassortant nodes (one with a different parent for each segment), two graph roots, and nodes that some segments pass through, with simulated alignments and the true ancestral sequences
 
@@ -87,7 +88,7 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 
 - **Scope storage** (implemented in `treetime-graph`, [kb/algo/graph.md](../algo/graph.md#edge-scopes)): one `SiteScope` per segment and edge, `Empty`, `Full`, or a few ranges stored inline, so reassortment and a few crossovers per segment do not allocate. Many breakpoints per segment, as in human ARGs, are out of scope
 - **Coordinates** (implemented): ranges are in the coordinates of a segment, which is one segment tree with its alignment. An alignment split into several partitions, such as genes, maps the segment ranges to the columns of each partition
-- **Command interface**: repeated `--tree`, paired with `--alignment` in order, first; the YAML configuration ([kb/proposals/config-file-multi-partition.md](config-file-multi-partition.md)) later
+- **Command interface** (first version implemented): `ancestral --segment-trees ... --segment-alignments ...`, paired in order, separate from `--tree` and `--alignment`; one interface with them and the YAML configuration ([kb/proposals/config-file-multi-partition.md](config-file-multi-partition.md)) later
 - **Outputs**: the graph with scopes as graph JSON; per segment, the tree that the segment's scopes trace, in the tree formats
 
 ## Work items
