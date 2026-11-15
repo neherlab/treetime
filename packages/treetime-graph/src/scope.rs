@@ -236,6 +236,27 @@ impl Inheritance {
       || schedule.children(key).iter().any(|&(_, edge)| self.carries(edge))
   }
 
+  pub fn roots<'s>(&'s self, schedule: &'s GraphSchedule<'_>) -> impl Iterator<Item = GraphNodeKey> + 's {
+    schedule
+      .preorder()
+      .iter()
+      .copied()
+      .filter(|&key| self.holds(schedule, key) && self.parent(schedule, key).is_none())
+  }
+
+  pub fn root(&self, schedule: &GraphSchedule<'_>) -> Result<GraphNodeKey, Report> {
+    let roots = self.roots(schedule).collect_vec();
+    match roots.as_slice() {
+      [root] => Ok(*root),
+      _ => make_error!(
+        "{} has {} roots ({}), but this step needs one root",
+        self.description(),
+        roots.len(),
+        roots.iter().map(|key| format!("node {key}")).join(", ")
+      ),
+    }
+  }
+
   pub fn require_one_parent(&self, schedule: &GraphSchedule<'_>) -> Result<(), Report> {
     for &key in schedule.preorder() {
       let carrying = schedule
@@ -247,7 +268,7 @@ impl Inheritance {
         return make_error!(
           "Node {key} has {} parents that pass on {}, but every site has one parent",
           carrying.len(),
-          self.description()
+          self.inherited()
         );
       }
       if let Some((_, edge)) = carrying
@@ -256,18 +277,26 @@ impl Inheritance {
       {
         return make_error!(
           "Edge {edge} passes on part of {}, but this reconstruction supports only edges that carry a segment entirely or not at all",
-          self.description()
+          self.inherited()
         );
       }
     }
     Ok(())
   }
 
-  fn description(&self) -> String {
+  fn inherited(&self) -> String {
     if self.is_all() {
       "all sites".to_owned()
     } else {
       format!("segment {}", self.segment + 1)
+    }
+  }
+
+  fn description(&self) -> String {
+    if self.is_all() {
+      "The graph".to_owned()
+    } else {
+      format!("Segment {}", self.segment + 1)
     }
   }
 }
