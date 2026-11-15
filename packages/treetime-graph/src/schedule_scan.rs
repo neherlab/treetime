@@ -343,6 +343,15 @@ impl<'s, T> ScanOutputs<'s, Arc<T>> {
   }
 }
 
+impl<'s, T> ScanOutputs<'s, Option<Arc<T>>> {
+  pub fn unwrap_present(self) -> SharedOutputs<'s, T> {
+    SharedOutputs {
+      schedule: self.schedule,
+      outputs: self.outputs.into_iter().map(Option::flatten).collect(),
+    }
+  }
+}
+
 pub struct SharedOutputs<'s, T> {
   schedule: &'s GraphSchedule<'s>,
   outputs: Vec<Option<Arc<T>>>,
