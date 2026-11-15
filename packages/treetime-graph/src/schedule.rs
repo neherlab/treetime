@@ -194,21 +194,50 @@ fn preorder_of(graph: &Graph, roots: &[GraphNodeKey], parents: &Adjacency, child
 }
 
 fn cycle_error(graph: &Graph, preorder: &[GraphNodeKey], parents: &Adjacency) -> Report {
+  match cycle_path(graph, preorder, parents) {
+    Ok(path) => path.first().map_or_else(
+      || make_internal_report!("The cycle of the graph has no nodes"),
+      |key| make_report!("The graph has a cycle through node {key}"),
+    ),
+    Err(report) => report,
+  }
+}
+
+pub fn find_cycle(graph: &Graph) -> Result<Option<Vec<GraphNodeKey>>, Report> {
+  let parents = Adjacency::build(graph, |node| graph.parents_keys_of(node));
+  let children = Adjacency::build(graph, |node| graph.children_keys_of(node));
+  let roots = roots_of(graph, &parents);
+  let preorder = preorder_of(graph, &roots, &parents, &children);
+  if preorder.len() == graph.get_nodes().count() {
+    return Ok(None);
+  }
+  cycle_path(graph, &preorder, &parents).map(Some)
+}
+
+fn cycle_path(graph: &Graph, preorder: &[GraphNodeKey], parents: &Adjacency) -> Result<Vec<GraphNodeKey>, Report> {
   let mut visited = vec![false; graph.num_nodes()];
   for key in preorder {
     visited[key.as_usize()] = true;
   }
   let Some(mut key) = graph.node_keys().find(|key| !visited[key.as_usize()]) else {
-    return make_internal_report!("The graph preorder lists a node twice");
+    return Err(make_internal_report!("The graph preorder lists a node twice"));
   };
   let mut seen = vec![false; graph.num_nodes()];
+  let mut walk = vec![];
   while !mem::replace(&mut seen[key.as_usize()], true) {
+    walk.push(key);
     let Some(&(parent, _)) = parents.of(key).iter().find(|(parent, _)| !visited[parent.as_usize()]) else {
-      return make_internal_report!("Node {key} is not in the preorder, but every parent of it is");
+      return Err(make_internal_report!(
+        "Node {key} is not in the preorder, but every parent of it is"
+      ));
     };
     key = parent;
   }
-  make_report!("The graph has a cycle through node {key}")
+  let start = walk
+    .iter()
+    .position(|&node| node == key)
+    .ok_or_else(|| make_internal_report!("The walk to the cycle through node {key} does not contain it"))?;
+  Ok(walk.split_off(start))
 }
 
 fn postorder_of(graph: &Graph, roots: &[GraphNodeKey], children: &Adjacency) -> Vec<GraphNodeKey> {
