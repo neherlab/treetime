@@ -9,4 +9,4 @@ On a graph with reassortment a node has one time but may have several parents, s
 
 ## Depends on
 
-- [M-partition-passes-require-tree-topology.md](M-partition-passes-require-tree-topology.md): branch-length likelihoods per edge come from the scope-aware sequence passes
+- [M-optimize-segment-graphs-unsupported.md](M-optimize-segment-graphs-unsupported.md): the branch-length likelihood of an edge shared by several segments, which timetree also needs
