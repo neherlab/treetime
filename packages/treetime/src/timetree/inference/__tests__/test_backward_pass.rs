@@ -96,7 +96,7 @@ mod tests {
 
     let d: f64 = (2015.0 - 3.0) - (2014.0 - 2.5);
     let expected = 0.5 * (std::f64::consts::PI / BRANCH_PRECISION).ln() - BRANCH_PRECISION * d * d / 4.0 - 0.3 - 0.7;
-    let actual = log_marginal_likelihood(&backward, graph.root_key()?, None)?.expect("root has a distribution");
+    let actual = log_marginal_likelihood(&backward, &[graph.root_key()?], None)?.expect("root has a distribution");
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())
   }
@@ -316,7 +316,7 @@ mod tests {
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
     let msg = backward[&leaf_key]
-      .to_parent
+      .to_parent()
       .as_ref()
       .expect("edge should have msg_to_parent after backward pass");
     let msg_time = msg.likely_time()?.expect("message should have likely_time");
@@ -476,8 +476,8 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
-    assert_eq!(None, backward[&leaf_b_key].to_parent);
-    assert!(backward[&leaf_a_key].to_parent.is_some());
+    assert_eq!(&None, backward[&leaf_b_key].to_parent());
+    assert!(backward[&leaf_a_key].to_parent().is_some());
     Ok(())
   }
 
@@ -498,10 +498,10 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
-    assert!(backward[&leaf_a_key].to_parent.is_some());
-    assert_eq!(None, backward[&leaf_b_key].to_parent);
+    assert!(backward[&leaf_a_key].to_parent().is_some());
+    assert_eq!(&None, backward[&leaf_b_key].to_parent());
     assert_eq!(None, node_time_distribution(&backward, leaf_c_key));
-    assert_eq!(None, backward[&leaf_c_key].to_parent);
+    assert_eq!(&None, backward[&leaf_c_key].to_parent());
     Ok(())
   }
 
@@ -544,7 +544,7 @@ mod tests {
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
     assert_eq!(None, node_time_distribution(&backward, internal_key));
-    assert_eq!(None, backward[&internal_key].to_parent);
+    assert_eq!(&None, backward[&internal_key].to_parent());
     Ok(())
   }
 
@@ -576,7 +576,7 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, Some(&model))?;
 
-    assert!(backward[&leaf_a_key].to_parent.is_some());
+    assert!(backward[&leaf_a_key].to_parent().is_some());
     Ok(())
   }
 
