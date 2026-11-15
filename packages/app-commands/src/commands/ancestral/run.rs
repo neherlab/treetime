@@ -4,17 +4,17 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::pair_alignment;
 use crate::commands::shared::ancestral_trees::{
-  AncestralAlignmentTrees, AncestralOutputMaps, AncestralTrees, write_ancestral_trees, write_segment_graph_outputs,
+  AncestralAlignmentTrees, AncestralOutputMaps, AncestralTrees, write_ancestral_trees,
 };
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::partition::log_partitions;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::shared::run_paths::RunPaths;
 use crate::commands::shared::seed::SeedArgs;
+use crate::commands::shared::segment_outputs::segment_graphs;
 use crate::commands::shared::sequence_inputs::{
-  AlignmentSource, TreeAndSources, ancestral_input, read_segment_trees_and_sources, read_tree_and_sources,
+  AlignmentSource, TreeAndSources, ancestral_input, read_tree_input_and_sources,
 };
-use crate::commands::shared::tree_input::TreeInput;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::augur_node_data_ancestral::AncestralNodeSequences;
 use app_output::command_outputs::CommandKind;
@@ -65,32 +65,15 @@ pub fn run_ancestral_reconstruction(
       partitions,
     },
     scopes,
-  ) = match &args.tree_input {
-    TreeInput::Tree(path) => (
-      read_tree_and_sources(
-        path,
-        args.newick_dialect,
-        &args.sequences,
-        &args.model,
-        cancel,
-        stages,
-        log,
-      )?,
-      None,
-    ),
-    TreeInput::Segments(paths) => {
-      let (tree_and_sources, scopes) = read_segment_trees_and_sources(
-        paths,
-        args.newick_dialect,
-        &args.sequences,
-        &args.model,
-        cancel,
-        stages,
-        log,
-      )?;
-      (tree_and_sources, Some(scopes))
-    },
-  };
+  ) = read_tree_input_and_sources(
+    &args.tree_input,
+    args.newick_dialect,
+    &args.sequences,
+    &args.model,
+    cancel,
+    stages,
+    log,
+  )?;
   log_partitions(&partitions, log);
   let NwkParse {
     graph,
@@ -108,7 +91,7 @@ pub fn run_ancestral_reconstruction(
     partitions,
     models: args.sequences.models,
   };
-  let input = ancestral_input(graph, branch_lengths, sequences, scopes);
+  let input = ancestral_input(graph, branch_lengths, sequences, scopes.clone());
   let branch_lengths = input.branch_lengths();
 
   let topology_order = args
@@ -158,14 +141,8 @@ pub fn run_ancestral_reconstruction(
     .map(|plan| run_aa_reconstructions(args, plan, &aa_inputs, aa_ambiguity, cancel, stages, log))
     .transpose()?;
 
-  if args.tree_input.is_segments() {
-    topology_order.apply(&mut graph, &names, &branch_lengths)?;
-    stages.report("Writing output", 0.9, "");
-    write_gtr_output(&resolved, &models, "no GTR model was fitted (use --model=infer)", log)?;
-    write_segment_graph_outputs(&graph, &names, &branch_lengths, &resolved, log)?;
-    stages.report("Done", 1.0, "");
-    return Ok(());
-  }
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
+  let segment_graphs = segment_graphs(&graph, scopes.as_ref())?;
 
   let maps = results
     .iter_mut()
@@ -173,21 +150,25 @@ pub fn run_ancestral_reconstruction(
       let Some(sequences) = result.sequences.take() else {
         return make_internal_error!("Ancestral reconstruction returned no reconstructed sequences");
       };
+      let result_graph = segment_graphs
+        .as_ref()
+        .and_then(|graphs| graphs.get(&result.number))
+        .unwrap_or(&graph);
       Ok(AncestralOutputMaps {
         root_sequence: sequences.root_sequence,
         edge_mutations: UnknownMutationFilter::new(result.alphabet.unknown(), args.report_ambiguous)
-          .reported_edge_mutations(&graph, sequences.edge_mutations)?,
+          .reported_edge_mutations(result_graph, sequences.edge_mutations)?,
       })
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
   write_gtr_output(&resolved, &models, "no GTR model was fitted (use --model=infer)", log)?;
 
   let trees = AncestralTrees {
     graph: &graph,
+    segment_graphs: segment_graphs.as_ref(),
     names: &names,
     branch_lengths: &branch_lengths,
     amino_acids: aa_result.as_ref(),

@@ -28,6 +28,7 @@ pub mod required;
 pub mod reroot;
 pub mod run_paths;
 pub mod seed;
+pub(crate) mod segment_outputs;
 pub mod sequence_inputs;
 pub mod site_model;
 pub mod tip_sequences;

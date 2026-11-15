@@ -385,7 +385,7 @@ fn write_timetree_trees(
     write_augur_node_data_refine(tree, run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
-  write_tree_outputs_per_alignment(&annotated, trees.sequences, resolved, CommandKind::Timetree, log)
+  write_tree_outputs_per_alignment(&annotated, trees.sequences, None, resolved, CommandKind::Timetree, log)
 }
 
 struct TimetreeTrees<'a> {
