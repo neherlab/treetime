@@ -3,6 +3,7 @@ use crate::graph::Graph;
 use crate::key_map::{EdgeMap, NodeMap};
 use crate::node::GraphNodeKey;
 use crate::node_names::{InputNodeNames, NodeNames};
+use crate::pass_through::{PassThroughReport, SegmentTree, insert_pass_through_nodes};
 use crate::schedule::{GraphSchedule, find_cycle};
 use crate::scope::{EdgeScopes, SiteScope};
 use eyre::{Report, WrapErr};
@@ -27,35 +28,33 @@ pub struct MergedGraph {
   pub names: NodeNames,
   pub branch_lengths: EdgeMap<Option<f64>>,
   pub scopes: EdgeScopes,
+  pub pass_through: PassThroughReport,
 }
 
 pub fn merge_trees_by_name(trees: &[NamedTree<'_>]) -> Result<MergedGraph, Report> {
+  let mut segments = trees.iter().map(segment_tree).collect::<Result<Vec<_>, Report>>()?;
+  let pass_through = insert_pass_through_nodes(&mut segments);
+
   let mut graph = Graph::new();
   let mut by_name: IndexMap<&str, GraphNodeKey> = IndexMap::new();
   let mut edges: BTreeMap<(GraphNodeKey, GraphNodeKey), GraphEdgeKey> = BTreeMap::new();
   let mut length_sums: EdgeMap<LengthSum> = EdgeMap::new();
   let mut scopes = EdgeScopes::new(trees.len());
 
-  for (segment, tree) in trees.iter().enumerate() {
-    let schedule = GraphSchedule::new(tree.graph).wrap_err_with(|| format!("When reading tree '{}'", tree.label))?;
-    schedule
-      .require_tree()
-      .wrap_err_with(|| format!("When reading tree '{}'", tree.label))?;
-    require_unique_names(tree)?;
-
-    for &node in schedule.preorder() {
-      let merged = *by_name.entry(&tree.names[node]).or_insert_with(|| graph.add_node());
-      let Some(&(parent, edge)) = schedule.parents(node).first() else {
+  for (segment, tree) in segments.iter().enumerate() {
+    for name in tree.preorder() {
+      let merged = *by_name.entry(name).or_insert_with(|| graph.add_node());
+      let Some(&(parent, length)) = tree.parent.get(name) else {
         continue;
       };
       let merged_parent = *by_name
-        .get(&tree.names[parent])
-        .ok_or_else(|| make_internal_report!("Parent {parent} comes after its child {node} in the preorder"))?;
+        .get(parent)
+        .ok_or_else(|| make_internal_report!("Parent '{parent}' comes after its child '{name}' in the preorder"))?;
       let merged_edge = match edges.entry((merged_parent, merged)) {
         Entry::Vacant(entry) => *entry.insert(graph.add_edge(merged_parent, merged)?),
         Entry::Occupied(entry) => *entry.get(),
       };
-      if let Some(length) = tree.branch_lengths.get(edge).copied().flatten() {
+      if let Some(length) = length {
         let sum = length_sums.entry(merged_edge).or_default();
         sum.total += length;
         sum.count += 1.0;
@@ -97,7 +96,41 @@ pub fn merge_trees_by_name(trees: &[NamedTree<'_>]) -> Result<MergedGraph, Repor
     names,
     branch_lengths,
     scopes,
+    pass_through,
   })
+}
+
+fn segment_tree<'a>(tree: &NamedTree<'a>) -> Result<SegmentTree<'a>, Report> {
+  let schedule = GraphSchedule::new(tree.graph).wrap_err_with(|| format!("When reading tree '{}'", tree.label))?;
+  schedule
+    .require_tree()
+    .wrap_err_with(|| format!("When reading tree '{}'", tree.label))?;
+  require_unique_names(tree)?;
+  let names = tree.names;
+  let root = schedule
+    .roots()
+    .first()
+    .map(|&root| &names[root])
+    .ok_or_else(|| make_internal_report!("Tree '{}' has no root", tree.label))?;
+  let mut children = BTreeMap::new();
+  let mut parent = BTreeMap::new();
+  for &node in schedule.preorder() {
+    let kids = schedule
+      .children(node)
+      .iter()
+      .map(|&(child, _)| &names[child])
+      .collect_vec();
+    if !kids.is_empty() {
+      children.insert(&names[node], kids);
+    }
+    if let Some(&(up, edge)) = schedule.parents(node).first() {
+      parent.insert(
+        &names[node],
+        (&names[up], tree.branch_lengths.get(edge).copied().flatten()),
+      );
+    }
+  }
+  Ok(SegmentTree { root, children, parent })
 }
 
 fn require_unique_names(tree: &NamedTree<'_>) -> Result<(), Report> {
