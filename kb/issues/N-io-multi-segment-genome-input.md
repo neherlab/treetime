@@ -4,7 +4,14 @@ Segmented genomes such as influenza can have one tree per segment, because reass
 
 ## Current state
 
-The partition system attaches several partitions to one graph. A run with one tree per segment would need one graph per segment group and a rule for the parameters that the groups share.
+The partition system attaches several partitions to one graph. [kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md) proposes one graph for all segments: segment trees with named internal nodes merge into one graph, and each edge records which segments it carries. The reader needs:
+
+- Nodes merged by name across trees, and parent-child pairs merged into one edge whose scope holds all segments that share it
+- Nodes with one child, for nodes that a segment only passes through
+- Checks: the graph has no cycle, every node has at most one parent per segment, and the branch lengths of a shared edge agree
+- A command interface that pairs each tree with its alignment
+
+Toy input for this reader is in [data/toy/reassortment/](../../data/toy/reassortment/). Converting TreeKnit output (local internal names, pairwise MCCs) into named trees is a further step described in the proposal.
 
 > [!IMPORTANT]
 > **Decision required.** No rule defines which parameters the trees of one run share. Examples in timetree are the clock rate and the coalescent model (the merger rate `Tc` or the skyline). Options per parameter:
