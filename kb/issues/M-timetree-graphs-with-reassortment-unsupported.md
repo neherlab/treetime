@@ -9,4 +9,4 @@ On a graph with reassortment a node has one time but may have several parents, s
 
 ## Depends on
 
-- [M-optimize-segment-graphs-unsupported.md](M-optimize-segment-graphs-unsupported.md): the branch-length likelihood of an edge shared by several segments, which timetree also needs
+- [M-optimize-segment-graphs-topology-fixed.md](M-optimize-segment-graphs-topology-fixed.md): the branch-length likelihood of an edge shared by several segments, which timetree also needs

@@ -1,18 +1,7 @@
-# optimize cannot fit branch lengths on graphs of segment trees
+# optimize on graphs of segment trees keeps the topology fixed
 
-`optimize` takes one tree. On a graph of segment trees ([kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md)) it is the first command that combines the segments: an edge shared by several segments has one length, and its objective is the sum of the contributions of every partition that the edge carries. Ancestral reconstruction treats segments independently once the branch lengths are fixed; branch-length optimization does not.
+`optimize --segment-trees --segment-alignments` fits branch lengths on a graph of segment trees, with one length per shared edge fitted to all segments that carry it ([kb/algo/optimization.md](../algo/optimization.md#branch-lengths-on-graphs-of-segment-trees)). Remaining:
 
-## Work needed
-
-- **Partitions per segment**: `PartitionSet` built with the `Inheritance` of each segment, as `ancestral` does ([packages/treetime/src/ancestral/plan.rs](../../packages/treetime/src/ancestral/plan.rs))
-- **Edge objective**: the contributions of an edge summed over the partitions that carry it; an edge that no partition carries keeps its length ([packages/treetime/src/partition/optimize/contribution.rs](../../packages/treetime/src/partition/optimize/contribution.rs))
-- **Initial guess and rate normalization** over the carried edges and the partitions of all segments
-- **Topology edits and rerooting** (polytomy merging, reversion hoisting, zero-length collapse, reroot) are off on a segment graph until the edge scopes have rules for them ([kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md#topology-operations))
-- **Command interface**: `--segment-trees` and `--segment-alignments` as in `ancestral`
-- **Pass-through nodes**: the merge inserts those that topology determines ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)); where it cannot, a segment keeps its own edge beside a shared path, and the two lengths are fitted separately
-
-## Validation
-
-- Every segment carries every edge: the result equals the multi-partition `optimize` of one tree
-- No edge is shared: each segment's lengths equal a separate `optimize` of its tree
-- Toy reassortment graph: a shared edge's length maximizes the summed likelihood of its segments
+- **Topology edits and rerooting** (zero-length collapse, merging of shared mutations, reversion hoisting, reroot) are off on a segment graph until the edge scopes have rules for them ([kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md#topology-operations)); a polytomy of one segment stays unresolved
+- **Series chains with different scopes**: two edges in series through a node with one parent and one child keep their length ratio, as on a tree, also when they carry different segments, so the lengths of such edges are not fitted separately; the indel term of a chain uses the rate of its first edge
+- **Pass-through nodes that topology does not determine** keep a segment's own edge beside a shared path, so the two lengths are fitted separately ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name))
