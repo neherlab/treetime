@@ -42,6 +42,7 @@ mod test_prop_optimize_simulated;
 mod test_root_preservation;
 mod test_run_optimize_loop;
 mod test_run_optimize_loop_topology;
+mod test_segment_graph_groups;
 mod test_sim_optimize_indel_policy;
 mod test_sim_optimize_recovery;
 mod test_solver_outcome;
