@@ -14,7 +14,10 @@ use crate::timetree::confidence::{NodeConfidenceInterval, extract_confidence_int
 use crate::timetree::inference::backward_pass::ParentMessages;
 use crate::timetree::inference::bad_branches::bad_leaves;
 use crate::timetree::inference::result::{PosteriorSummaries, date_branch_lengths};
-use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree_with};
+use crate::timetree::inference::runner::{
+  CLOCK_BRANCH_LENGTH_DAMPING, TimeInferenceInputs, blended_clock_branch_lengths, run_timetree_with,
+  timetree_branch_lengths,
+};
 use crate::clock::clock_model::ClockModel;
 use eyre::WrapErr;
 use std::collections::BTreeSet;
@@ -41,6 +44,7 @@ pub struct SegmentTimetreeParams {
   pub confidence: bool,
   pub max_grid_points: MaxGridPoints,
   pub cross_parent_messages: bool,
+  pub refinement_rounds: usize,
 }
 
 pub struct SegmentTimetreeInput {
@@ -103,9 +107,6 @@ pub fn run_segment_timetree(
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Time inference", 0.6, "");
-  let (alignments, partition_results) =
-    optimize_results(&graph, alignments, &partitions, &model_names, &indel_rates)
-      .map_err(OperationError::InferenceFailed)?;
   let leaf_bad_branches = bad_leaves(&graph, &date_constraints, &BTreeSet::new());
   if leaf_bad_branches.values().all(|&bad| bad) {
     return Err(OperationError::InvalidInput(make_report!(
@@ -113,34 +114,65 @@ pub fn run_segment_timetree(
     )));
   }
   let gammas: EdgeMap<f64> = graph.get_edges().map(|edge| (edge.key(), 1.0)).collect();
-  let branch_model = BranchModel::Marginal(partitions);
   let fft_plans = FftPlans::new();
-  let time_inputs = TimeInferenceInputs {
-    graph: &graph,
-    date_constraints: &date_constraints,
-    leaf_bad_branches: &leaf_bad_branches,
-    gammas: &gammas,
-    branch_model: &branch_model,
-    branch_lengths: &branch_lengths,
-    names: &names,
-    clock_model: &clock_model,
-    clock_rate_fixed: true,
-    indel_policy: params.indel_policy,
-    max_grid_points: params.max_grid_points,
-    fft_plans: &fft_plans,
-    posterior_summaries: PosteriorSummaries {
-      regions: params.confidence,
-      lineage_survival: false,
-    },
-  };
   let parent_messages = if params.cross_parent_messages {
     ParentMessages::AllEdges
   } else {
     ParentMessages::ChildrenOnly
   };
-  let inference = run_timetree_with(&time_inputs, None, parent_messages, log)
-    .wrap_err("Timetree inference on the segment graph failed")
-    .map_err(OperationError::classify)?;
+  let mut branch_model = BranchModel::Marginal(partitions);
+  let mut clock_lengths = EdgeMap::new();
+  let mut round = 0;
+  let inference = loop {
+    let last = round == params.refinement_rounds;
+    let time_inputs = TimeInferenceInputs {
+      graph: &graph,
+      date_constraints: &date_constraints,
+      leaf_bad_branches: &leaf_bad_branches,
+      gammas: &gammas,
+      branch_model: &branch_model,
+      branch_lengths: &branch_lengths,
+      names: &names,
+      clock_model: &clock_model,
+      clock_rate_fixed: true,
+      indel_policy: params.indel_policy,
+      max_grid_points: params.max_grid_points,
+      fft_plans: &fft_plans,
+      posterior_summaries: PosteriorSummaries {
+        regions: last && params.confidence,
+        lineage_survival: false,
+      },
+    };
+    let inference = run_timetree_with(&time_inputs, None, parent_messages, log)
+      .wrap_err("Timetree inference on the segment graph failed")
+      .map_err(OperationError::classify)?;
+    if last {
+      break inference;
+    }
+    round += 1;
+    cancel.check().map_err(OperationError::classify)?;
+    progress_info!(log, "## Refinement round {round}: marginal reconstruction at the clock branch lengths");
+    clock_lengths = blended_clock_branch_lengths(
+      &graph,
+      params.clock_rate,
+      CLOCK_BRANCH_LENGTH_DAMPING,
+      &clock_lengths,
+      &inference.node_times(),
+      &gammas,
+      log,
+    );
+    branch_model = branch_model
+      .marginal_update(&graph, &timetree_branch_lengths(&graph, &branch_lengths, &clock_lengths))
+      .map_err(OperationError::classify)?;
+  };
+  let BranchModel::Marginal(partitions) = branch_model else {
+    return Err(OperationError::classify(make_report!(
+      "The timetree of segment trees lost its marginal reconstruction"
+    )));
+  };
+  let (alignments, partition_results) =
+    optimize_results(&graph, alignments, &partitions, &model_names, &indel_rates)
+      .map_err(OperationError::InferenceFailed)?;
 
   let node_dates = inference.node_times();
   let confidence_intervals = params

@@ -86,6 +86,7 @@ pub(crate) fn run_segment_timetree_command(
     confidence: args.dating.confidence,
     max_grid_points: args.dating.max_grid_points,
     cross_parent_messages: args.cross_parent_messages,
+    refinement_rounds: args.dating.max_iter,
   };
   let input = SegmentTimetreeInput {
     graph,
