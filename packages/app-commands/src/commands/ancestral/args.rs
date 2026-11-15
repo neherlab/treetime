@@ -4,6 +4,7 @@ use crate::commands::ancestral::aa_node_data::{cds_output_paths, validate_aa_arg
 use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::{AncestralAmbiguityArgs, resolve_ambiguity_outputs};
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
@@ -25,7 +26,7 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
-use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+use crate::commands::shared::tree_input::{SegmentArgs, TreeArgs, TreeDialectArgs, TreeInput, resolve_tree_input};
 #[cfg(feature = "clap")]
 use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
@@ -66,7 +67,7 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralPar
 
 #[derive(Debug, Clone)]
 pub struct TreetimeAncestralArgs {
-  pub(crate) tree: PathBuf,
+  pub(crate) tree_input: TreeInput,
   pub(crate) newick_dialect: NewickDialect,
   pub(crate) sequences: SequenceInputs,
   pub(crate) allow_missing_sequences: bool,
@@ -91,8 +92,8 @@ pub struct TreetimeAncestralArgs {
 }
 
 impl TreetimeAncestralArgs {
-  pub fn tree(&self) -> &Path {
-    &self.tree
+  pub fn tree(&self) -> Option<&Path> {
+    self.tree_input.tree()
   }
 
   pub fn alignments(&self) -> &[PathBuf] {
@@ -127,6 +128,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       alignment: AlignmentArgs { alignment },
       partition: PartitionArgs { partition },
       tree: TreeArgs { tree },
+      segments,
       newick_dialect: TreeDialectArgs { newick_dialect },
       alphabet_args,
       model_args: ModelArgs { model, model_params },
@@ -164,7 +166,15 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       seed_args: SeedArgs { seed },
       jobs_args: _,
     } = raw;
-    let tree = tree.ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
+    let (tree_input, alignment) = resolve_tree_input(tree, alignment, segments, || {
+      missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"])
+    })?;
+    if tree_input.is_segments() && translations.is_some() {
+      return Err(argument_error(
+        &["segment_trees", "translations"],
+        "--translations needs one tree, so it does not combine with --segment-trees yet",
+      ));
+    }
     check_dependent_settings(&DependentSettings {
       method_anc,
       partition: &partition,
@@ -183,7 +193,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       output_translations.as_deref(),
     )?;
     Ok(Self {
-      tree,
+      tree_input,
       newick_dialect: newick_dialect.dialect(),
       outputs: ancestral_outputs(
         output,
@@ -363,6 +373,11 @@ pub struct TreetimeAncestralArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree: TreeArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub segments: SegmentArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

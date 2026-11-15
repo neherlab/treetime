@@ -1,16 +1,18 @@
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, TreeSequences};
 use app_output::augur_node_data_ancestral::{AncestralNodeSequences, write_augur_node_data_ancestral};
 use app_output::command_outputs::CommandKind;
+use app_output::output_plan::TreeWriteKind;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs};
-use app_output::tree_output::{write_alignment_tree_outputs, write_run_tree_outputs};
+use app_output::tree_output::{write_alignment_tree_outputs, write_graph_outputs, write_run_tree_outputs};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
+use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::progress::LogSink;
-use treetime::progress_info;
 use treetime::seq::mutation::{Mutation, PositionBase};
+use treetime::{progress_info, progress_warn};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
@@ -66,6 +68,57 @@ pub(crate) fn write_ancestral_trees(
       write_augur_node_data_ancestral(tree, node_sequences, path)?;
       progress_info!(log, "Wrote augur node data JSON to {}", path.display());
     }
+  }
+  Ok(())
+}
+
+pub(crate) fn write_segment_graph_outputs(
+  graph: &Graph,
+  names: &NodeNames,
+  branch_lengths: &EdgeMap<Option<f64>>,
+  resolved: &ResolvedOutputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let annotated = AnnotatedGraph {
+    graph,
+    names,
+    divergence_branch_lengths: branch_lengths,
+    time_branch_lengths: None,
+    divergence: Divergence::CumulativeBranchLength,
+    sequences: None,
+    dates: None,
+    traits: None,
+  };
+  let per_alignment = resolved
+    .alignments()
+    .flat_map(|alignment| resolved.alignment_tree_outputs(alignment))
+    .collect_vec();
+  let (written, skipped): (Vec<_>, Vec<_>) = resolved
+    .tree_outputs
+    .iter()
+    .map(|(&kind, path)| (kind, path.clone()))
+    .chain(per_alignment)
+    .partition(|(kind, _)| matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot));
+  for (kind, path) in written {
+    write_graph_outputs(&annotated, &BTreeMap::from([(kind, path.clone())]))?;
+    progress_info!(log, "Wrote graph to {}", path.display());
+  }
+  let skipped = skipped
+    .into_iter()
+    .map(|(_, path)| path)
+    .chain(
+      resolved
+        .alignments()
+        .filter_map(|alignment| resolved.alignment_path(OutputSelection::NodeData, alignment))
+        .map(Path::to_path_buf),
+    )
+    .collect_vec();
+  if !skipped.is_empty() {
+    progress_warn!(
+      log,
+      "Not writing {}: these formats hold one tree, but --segment-trees gives a graph of several segment trees",
+      skipped.iter().map(|path| format!("'{}'", path.display())).join(", ")
+    );
   }
   Ok(())
 }

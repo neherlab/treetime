@@ -74,7 +74,7 @@ pub fn run_homoplasy(
     alignments: vec![source],
     partitions,
   };
-  let mut input = ancestral_input(graph, branch_lengths, sequences);
+  let mut input = ancestral_input(graph, branch_lengths, sequences, None);
   for edge in input.edges.values_mut() {
     edge.branch_length = edge.branch_length.map(|branch_length| branch_length * args.rescale);
   }
