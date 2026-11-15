@@ -55,7 +55,7 @@ pub(crate) mod tests {
                       "--filter-uninformative-root"]),
     (HO,            &["--const", "--rescale", "--detailed", "--drms", "--num-mut"]),
     (OP,            &["--tolerance", "--damping", "--initial-branch-lengths", "--optimizer", "--no-merge-shared-mutations",
-                      "--no-hoist-reversions"]),
+                      "--no-hoist-reversions", "--segment-trees", "--segment-alignments"]),
     (PR,            &["--collapse-short", "--collapse-empty", "--merge-shared-mutations", "--remove", "--remove-file"]),
     (PI,            &["--steps"]),
     (SCHEMA_WRITE,  &["--for", "--output"]),

@@ -73,6 +73,7 @@ mod tests {
       &EdgeIndels::Included {
         counts: EdgeMap::new(),
         alignment_rates: btreemap! {1 => 1.0},
+        uncarried: std::collections::BTreeMap::new(),
       },
       BranchOptMethod::Newton,
       &mut branch_lengths,

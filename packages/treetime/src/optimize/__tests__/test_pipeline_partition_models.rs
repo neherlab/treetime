@@ -160,6 +160,7 @@ mod tests {
           models: ModelSettings::default(),
         },
         branch_lengths: parse.branch_lengths,
+        scopes: None,
       };
       Ok(run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?)
     }

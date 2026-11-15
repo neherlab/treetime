@@ -348,6 +348,7 @@ mod tests {
         &EdgeIndels::Included {
           counts: indel_counts.clone(),
           alignment_rates: btreemap! {1 => indel_rate},
+          uncarried: BTreeMap::new(),
         },
         BranchOptMethod::Brent,
         &mut setup.branch_lengths,

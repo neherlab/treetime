@@ -172,6 +172,7 @@ mod tests {
         graph: tree.graph,
         names: tree.names,
         branch_lengths: tree.branch_lengths,
+        scopes: None,
       };
       let output = optimize::pipeline::run(&params, input, &NoopCancel, &NoopProgress, &log)?;
       rooted(&output.graph, &output.names, &log)
