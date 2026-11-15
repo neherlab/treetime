@@ -76,6 +76,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-io-maple-alignment-input-unsupported.md](issues/N-io-maple-alignment-input-unsupported.md)**: expand MAPLE input to a full alignment in dense mode or require sparse mode, and read nucleotide data only or also amino acids
 - **[kb/issues/N-io-missing-name-policy-differs-across-subsystems.md](issues/N-io-missing-name-policy-differs-across-subsystems.md)**: approve one policy for leaves without a sequence, a date, or a trait value
 - **[kb/issues/N-io-multi-segment-genome-input.md](issues/N-io-multi-segment-genome-input.md)**: share each parameter of a run with several trees (clock rate, coalescent model) across the trees, or fit it per tree
+- **[kb/issues/M-timetree-graphs-with-reassortment-unsupported.md](issues/M-timetree-graphs-with-reassortment-unsupported.md)**: date a graph with reassortment by loopy message passing, by conditioning on one parent per reassortant node in turn as v0 does, or by exact treatment of the cycles
 - **[kb/issues/N-io-nextclade-ndjson-input-unsupported.md](issues/N-io-nextclade-ndjson-input-unsupported.md)**: support Nextclade NDJSON as a sparse alignment input, or support only MAPLE or VCF for this use
 - **[kb/issues/N-io-phyloxml-crate-unused.md](issues/N-io-phyloxml-crate-unused.md)**: use the PhyloXML crate in the tree input and output paths, or remove it
 - **[kb/issues/N-io-taxonium-jsonl-output-unsupported.md](issues/N-io-taxonium-jsonl-output-unsupported.md)**: choose the reference revision of the format, the node layout, and the commands that write it
@@ -179,6 +180,7 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-io-stdin-config-and-input-read-twice.md](issues/M-io-stdin-config-and-input-read-twice.md)**: reject `--config -` together with an input `-`
 - **[kb/issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)**: choose a slope estimate for the soft-end line of a convolution that the FFT round-off at the trust floor does not move
 - **[kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)**: implement the class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](proposals/sparse-shared-profiles-for-sites-without-data.md), so that sparse posteriors below the root match dense without the copies of the exact single-site rule
+- **[kb/issues/M-partition-passes-require-tree-topology.md](issues/M-partition-passes-require-tree-topology.md)**: make the Fitch and marginal passes read edge scopes ([kb/proposals/edge-scoped-inheritance.md](proposals/edge-scoped-inheritance.md)), so that a graph of segment trees with reassortment can be reconstructed
 
 ## Planned
 
