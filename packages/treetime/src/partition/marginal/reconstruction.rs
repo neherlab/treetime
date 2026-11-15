@@ -32,6 +32,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::{LogLh, Seq};
 
 #[derive(Clone, Debug)]
@@ -234,6 +235,7 @@ impl<'a> ReconstructionRef<'a> {
     let Self::Sparse(reconstruction) = self else {
       return stream_sequence_mutations(
         graph,
+        &Inheritance::ALL,
         self.alphabet(),
         track,
         include_leaves,

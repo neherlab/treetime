@@ -11,7 +11,7 @@ use crate::seq::composition::Composition;
 use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::{make_internal_report, make_report};
 use eyre::Report;
-use itertools::{Itertools, izip};
+use itertools::Itertools;
 use maplit::btreemap;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
@@ -21,12 +21,22 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::keymap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
+use treetime_graph::schedule_scan::PerEdge;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::seq;
 use treetime_utils::interval::range_union::range_union;
 
 pub fn create_fitch_partition(
   graph: &Graph,
+  alphabet: Alphabet,
+  node_inputs: NodeMap<NodeSeqInput>,
+) -> Result<PartitionFitch, Report> {
+  create_inherited_fitch_partition(graph, Inheritance::ALL, alphabet, node_inputs)
+}
+
+pub fn create_inherited_fitch_partition(
+  graph: &Graph,
+  inheritance: Inheritance,
   alphabet: Alphabet,
   node_inputs: NodeMap<NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
@@ -36,6 +46,7 @@ pub fn create_fitch_partition(
     length,
     nodes: keymap! {},
     edges: keymap! {},
+    inheritance,
   };
   compress_sequences(graph, partition, node_inputs)
 }
@@ -56,10 +67,13 @@ pub(crate) fn attach_seqs_to_graph(
   mut partition: PartitionFitch,
   mut node_inputs: NodeMap<NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
-  let leaf_records = graph
-    .get_leaves()
-    .map(|leaf| -> Result<_, Report> {
-      let leaf_key = leaf.key();
+  let schedule = GraphSchedule::new(graph)?;
+  let inheritance = &partition.inheritance;
+  let leaf_records = schedule
+    .leaves()
+    .iter()
+    .filter(|&&leaf_key| inheritance.holds(&schedule, leaf_key))
+    .map(|&leaf_key| -> Result<_, Report> {
       let node = node_inputs
         .get_mut(leaf_key)
         .ok_or_else(|| make_internal_report!("Leaf {leaf_key} has no sequence input"))?;
@@ -78,8 +92,12 @@ pub(crate) fn attach_seqs_to_graph(
     .collect::<BTreeMap<_, _>>();
   partition.nodes.extend(nodes);
 
-  for edge in graph.get_edges() {
-    let edge_key = edge.key();
+  let edges = graph
+    .get_edges()
+    .map(|edge| edge.key())
+    .filter(|&edge_key| partition.inheritance.carries(edge_key))
+    .collect_vec();
+  for edge_key in edges {
     partition.edges.insert(edge_key, SparseEdgeObs::default());
   }
 
@@ -92,9 +110,10 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: PartitionFitch) -> Result
     length,
     mut nodes,
     edges,
+    inheritance,
   } = partition;
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
+  inheritance.require_one_parent(&schedule)?;
   if let Some(key) = nodes.keys().find(|&key| !schedule.contains(key)) {
     return Err(make_internal_report!(
       "Partition node {key} is not in the tree before the Fitch backward pass"
@@ -106,16 +125,18 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: PartitionFitch) -> Result
     alphabet: &alphabet,
     length,
     edges: &edges,
+    inheritance: &inheritance,
   };
   let nodes = schedule
     .scan_up(inputs, |key, leaf, children| pass.node(key, leaf, &children))?
-    .unwrap_shared()
+    .unwrap_present()
     .into_map()?;
   Ok(PartitionFitch {
     alphabet,
     length,
     nodes,
     edges,
+    inheritance,
   })
 }
 
@@ -124,25 +145,39 @@ struct FitchBackwardPass<'a> {
   alphabet: &'a Alphabet,
   length: usize,
   edges: &'a EdgeMap<SparseEdgeObs>,
+  inheritance: &'a Inheritance,
 }
+
+type FitchBackwardOutput = Option<Arc<FitchNodeData>>;
 
 impl FitchBackwardPass<'_> {
   fn node(
     &self,
     key: GraphNodeKey,
     leaf: Option<FitchNodeData>,
-    children: &[Arc<FitchNodeData>],
-  ) -> Result<(Arc<FitchNodeData>, Arc<FitchNodeData>), Report> {
-    let node = if self.schedule.children(key).is_empty() {
+    children: &[FitchBackwardOutput],
+  ) -> Result<(FitchBackwardOutput, FitchBackwardOutput), Report> {
+    if !self.inheritance.holds(self.schedule, key) {
+      return Ok((None, None));
+    }
+    let children = self
+      .inheritance
+      .children(self.schedule, key)
+      .map(|(slot, child_key, edge_key)| {
+        let child = children
+          .get(slot)
+          .and_then(Option::as_ref)
+          .ok_or_else(|| make_internal_report!("Child {child_key} of node {key} sent no Fitch message"))?;
+        Ok((&child.seq, &self.edges[&edge_key]))
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+    let node = if children.is_empty() {
       leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no sequence before the Fitch backward pass"))?
     } else {
-      let children = izip!(self.schedule.children(key), children)
-        .map(|(&(_, edge_key), child)| (&child.seq, &self.edges[&edge_key]))
-        .collect_vec();
       fitch_backward_internal_node(self.alphabet, self.length, &children)
     };
     let node = Arc::new(node);
-    Ok((Arc::clone(&node), node))
+    Ok((Some(Arc::clone(&node)), Some(node)))
   }
 }
 
@@ -192,30 +227,54 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: PartitionFitch) -> Result<
   let PartitionFitch {
     alphabet,
     length,
-    nodes,
-    edges,
+    mut nodes,
+    mut edges,
+    inheritance,
   } = partition;
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
-  let inputs = schedule.join_parent_edges(nodes, edges)?;
+  inheritance.require_one_parent(&schedule)?;
+  let inputs = schedule
+    .preorder()
+    .iter()
+    .map(|&key| {
+      let edge = inheritance
+        .parent(&schedule, key)
+        .and_then(|(_, _, edge_key)| edges.remove(edge_key));
+      (key, (nodes.remove(key), edge))
+    })
+    .collect_vec();
   let outputs = schedule.scan_down(
     inputs,
-    |key, (node, mut edges), parents: PerEdge<FitchForwardOutput>| {
-      fitch_forward_node(
-        &alphabet,
-        key,
-        node,
-        edges.pop(),
-        parents.first().map(|parent| &parent.0),
-      )
+    |key, (node, edge), parents: PerEdge<Option<FitchForwardOutput>>| {
+      let Some(node) = node else {
+        return Ok((None, None));
+      };
+      let parent = inheritance
+        .parent(&schedule, key)
+        .map(|(slot, parent_key, _)| {
+          parents
+            .get(slot)
+            .and_then(Option::as_ref)
+            .ok_or_else(|| make_internal_report!("Parent {parent_key} of node {key} sent no Fitch message"))
+        })
+        .transpose()?;
+      let (output, message) = fitch_forward_node(&alphabet, key, node, edge, parent.map(|parent| &parent.0))?;
+      Ok((Some(output), Some(message)))
     },
   )?;
-  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  let mut nodes = NodeMap::new();
+  for (key, (node, parent_edge)) in outputs.unwrap_present().into_map()? {
+    if let (Some(edge), Some((_, _, edge_key))) = (parent_edge.into_iter().next(), inheritance.parent(&schedule, key)) {
+      edges.insert(edge_key, edge);
+    }
+    nodes.insert(key, node);
+  }
   Ok(PartitionFitch {
     alphabet,
     length,
     nodes,
     edges,
+    inheritance,
   })
 }
 

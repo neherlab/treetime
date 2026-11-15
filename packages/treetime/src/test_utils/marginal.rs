@@ -312,6 +312,7 @@ pub(crate) fn ancestral_input_for_tree(
       .collect(),
     graph: parse.graph,
     sequences: SequenceInput::whole_alignments(sources, model)?,
+    scopes: None,
   })
 }
 

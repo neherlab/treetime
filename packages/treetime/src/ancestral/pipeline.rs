@@ -31,11 +31,17 @@ pub fn run(
   let options = ReconstructionOptions::new(params.impute_missing_data, params.sample_from_profile);
   let mut rng = get_random_number_generator(params.seed);
   let branch_lengths = branch_lengths_or_zero(&input.branch_lengths());
-  let AncestralInput { graph, sequences, .. } = input;
+  let AncestralInput {
+    graph,
+    sequences,
+    scopes,
+    ..
+  } = input;
   let split = sequences.split().map_err(OperationError::classify)?;
   let alignments = split.alignments.clone();
   let reconstructed = reconstruct_partitions(
     &graph,
+    scopes.as_ref(),
     method,
     split,
     &branch_lengths,

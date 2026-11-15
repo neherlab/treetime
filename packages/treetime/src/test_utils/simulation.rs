@@ -232,6 +232,7 @@ pub(crate) fn ancestral_input(
       .map(|(edge, branch_length)| (edge, EdgeSeqInput { branch_length }))
       .collect(),
     sequences: simulated_sequence_input(tree, sequences, model)?,
+    scopes: None,
   })
 }
 

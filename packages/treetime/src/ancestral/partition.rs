@@ -13,6 +13,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::{LogLh, Seq};
 
 #[expect(
@@ -33,6 +34,13 @@ impl AncestralPartition {
     match self {
       Self::Fitch(_) => None,
       Self::Marginal { reconstruction, .. } => Some(reconstruction.model()),
+    }
+  }
+
+  pub(crate) fn inheritance(&self) -> &Inheritance {
+    match self {
+      Self::Fitch(partition) => &partition.inheritance,
+      Self::Marginal { .. } => &Inheritance::ALL,
     }
   }
 
@@ -71,6 +79,7 @@ impl PartitionSequences for AncestralPartition {
     }
     stream_sequence_mutations(
       graph,
+      self.inheritance(),
       self.alphabet(),
       track,
       include_leaves,

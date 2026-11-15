@@ -16,6 +16,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::{report_to_string, to_eyre_error};
@@ -26,6 +27,7 @@ use treetime_utils::error::{report_to_string, to_eyre_error};
 )]
 pub(crate) fn stream_sequence_mutations(
   graph: &Graph,
+  inheritance: &Inheritance,
   alphabet: &Alphabet,
   seq_track: SeqTrack<'_>,
   include_leaves: bool,
@@ -36,14 +38,19 @@ pub(crate) fn stream_sequence_mutations(
   mut sink: Option<SeqStream<'_>>,
 ) -> Result<SequenceMutations, OperationError> {
   let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
-  schedule.require_tree().map_err(OperationError::classify)?;
+  inheritance
+    .require_one_parent(&schedule)
+    .map_err(OperationError::classify)?;
   let track = seq_track.mutation_track();
   let mut pending_parents: NodeMap<(Seq, usize)> = NodeMap::new();
   let mut root_sequence = None;
   let mut edge_mutations = EdgeMap::new();
   for &key in schedule.preorder() {
+    if !inheritance.holds(&schedule, key) {
+      continue;
+    }
     let seq = node_sequence(key).map_err(OperationError::classify)?;
-    let child_count = schedule.children(key).len();
+    let child_count = inheritance.children(&schedule, key).count();
     if let Some(sink) = sink.as_mut() {
       emit_node(
         sink,
@@ -54,9 +61,13 @@ pub(crate) fn stream_sequence_mutations(
         &mut node_ambiguity,
       )?;
     }
-    match schedule.parents(key).first() {
-      None => root_sequence = Some(seq.clone()),
-      Some(&(parent_key, edge_key)) => {
+    match inheritance.parent(&schedule, key) {
+      None => {
+        if root_sequence.is_none() {
+          root_sequence = Some(seq.clone());
+        }
+      },
+      Some((_, parent_key, edge_key)) => {
         let (parent_seq, pending_children) = pending_parents.get_mut(parent_key).ok_or_else(|| {
           OperationError::InferenceFailed(make_internal_report!(
             "Parent {parent_key} of node {key} was not visited first"

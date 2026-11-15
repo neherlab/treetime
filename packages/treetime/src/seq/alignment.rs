@@ -5,10 +5,12 @@ use crate::partition::split::SequenceInput;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::path::PathBuf;
+use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
+use treetime_graph::scope::EdgeScopes;
 use treetime_primitives::{AlignmentRecord, Seq};
 
 #[derive(Debug)]
@@ -16,6 +18,7 @@ pub struct AncestralInput {
   pub graph: Graph,
   pub edges: EdgeMap<EdgeSeqInput>,
   pub sequences: SequenceInput,
+  pub scopes: Option<Arc<EdgeScopes>>,
 }
 
 impl AncestralInput {
