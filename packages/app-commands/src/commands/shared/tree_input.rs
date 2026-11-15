@@ -1,3 +1,4 @@
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -56,6 +57,51 @@ pub struct TreeArgs {
   )]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
+}
+
+/// Segment trees and their alignments, for genomes whose segments have different trees.
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct SegmentArgs {
+  /// Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name
+  ///
+  /// Every node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node
+  /// of the graph. A node that a segment only passes through stays in that segment's tree as a node with one child.
+  /// An edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with
+  /// `--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long,
+      num_args = 1..,
+      value_delimiter = ',',
+      value_hint = ValueHint::FilePath,
+      hide_short_help = true,
+      help_heading = "Input data"
+    )
+  )]
+  #[schemars(extend("x-path" = "input"))]
+  pub segment_trees: Vec<PathBuf>,
+
+  /// Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order
+  ///
+  /// Use instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long,
+      num_args = 1..,
+      value_delimiter = ',',
+      value_hint = ValueHint::FilePath,
+      hide_short_help = true,
+      help_heading = "Input data"
+    )
+  )]
+  #[schemars(extend("x-path" = "input"))]
+  pub segment_alignments: Vec<PathBuf>,
 }
 
 /// Newick dialect of the tree inputs, shared by every command that reads a tree.
@@ -126,4 +172,68 @@ impl clap::ValueEnum for TreeDialectArg {
       .get(idx)
       .map(|name| PossibleValue::new(name.as_str()))
   }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeInput {
+  Tree(PathBuf),
+  Segments(Vec<PathBuf>),
+}
+
+impl TreeInput {
+  pub fn tree(&self) -> Option<&Path> {
+    match self {
+      Self::Tree(tree) => Some(tree),
+      Self::Segments(_) => None,
+    }
+  }
+
+  pub fn is_segments(&self) -> bool {
+    matches!(self, Self::Segments(_))
+  }
+}
+
+pub(crate) fn resolve_tree_input(
+  tree: Option<PathBuf>,
+  alignment: Vec<PathBuf>,
+  segments: SegmentArgs,
+  missing_tree: impl FnOnce() -> Report,
+) -> Result<(TreeInput, Vec<PathBuf>), Report> {
+  let SegmentArgs {
+    segment_trees,
+    segment_alignments,
+  } = segments;
+  if segment_trees.is_empty() {
+    if !segment_alignments.is_empty() {
+      return Err(argument_error(
+        &["segment_alignments", "segment_trees"],
+        "--segment-alignments requires --segment-trees, one tree per alignment",
+      ));
+    }
+    let tree = tree.ok_or_else(missing_tree)?;
+    return Ok((TreeInput::Tree(tree), alignment));
+  }
+  if tree.is_some() {
+    return Err(argument_error(
+      &["tree", "segment_trees"],
+      "--segment-trees replaces --tree: give one of them",
+    ));
+  }
+  if !alignment.is_empty() {
+    return Err(argument_error(
+      &["alignment", "segment_alignments"],
+      "--segment-trees takes its alignments from --segment-alignments, which replaces --alignment: give one of them",
+    ));
+  }
+  if segment_alignments.len() != segment_trees.len() {
+    return Err(argument_error(
+      &["segment_trees", "segment_alignments"],
+      format!(
+        "--segment-trees and --segment-alignments pair one tree with one alignment, but they list {} trees and {} alignments",
+        segment_trees.len(),
+        segment_alignments.len()
+      ),
+    ));
+  }
+  Ok((TreeInput::Segments(segment_trees), segment_alignments))
 }

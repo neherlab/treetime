@@ -9,7 +9,9 @@ use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use treetime::cancel::Cancel;
@@ -22,10 +24,13 @@ use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::merge_by_name::MergedGraph;
 use treetime_graph::node_names::NodeNames;
+use treetime_graph::scope::EdgeScopes;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::gff::{GffCdsAnnotation, gff3_cds_read_file};
 use treetime_io::nwk::{NewickDialect, NwkParse};
+use treetime_io::tree::segment_trees_read_files;
 use treetime_schema::schema_defaults;
 use treetime_utils::error::report_to_string;
 
@@ -49,10 +54,46 @@ pub(crate) fn read_tree_and_sources(
   })
 }
 
+pub(crate) fn read_segment_trees_and_sources(
+  trees: &[PathBuf],
+  newick_dialect: NewickDialect,
+  sequences: &SequenceInputs,
+  model: &GtrModel,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<(TreeAndSources, Arc<EdgeScopes>), Report> {
+  cancel.check()?;
+  stages.report("Reading input", 0.0, "");
+  let MergedGraph {
+    graph,
+    names,
+    branch_lengths,
+    scopes,
+  } = segment_trees_read_files(trees, newick_dialect)?;
+  let SequenceSources { alignments, partitions } = sequences.read_partitions(model, &graph, &names, log)?;
+  let tree = NwkParse {
+    graph,
+    names,
+    unnamed_nodes: BTreeSet::new(),
+    branch_lengths,
+    duplicate_names: vec![],
+  };
+  Ok((
+    TreeAndSources {
+      tree,
+      sources: alignments,
+      partitions,
+    },
+    Arc::new(scopes),
+  ))
+}
+
 pub(crate) fn ancestral_input(
   graph: Graph,
   branch_lengths: EdgeMap<Option<f64>>,
   sequences: SequenceInput,
+  scopes: Option<Arc<EdgeScopes>>,
 ) -> AncestralInput {
   let edges = branch_lengths
     .into_iter()
@@ -62,7 +103,7 @@ pub(crate) fn ancestral_input(
     graph,
     edges,
     sequences,
-    scopes: None,
+    scopes,
   }
 }
 
