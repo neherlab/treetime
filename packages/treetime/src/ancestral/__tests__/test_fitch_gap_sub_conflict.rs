@@ -9,6 +9,7 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read;
@@ -32,6 +33,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 

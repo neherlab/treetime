@@ -21,6 +21,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::key_map::NodeMap;
+  use treetime_graph::scope::Inheritance;
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
@@ -87,6 +88,7 @@ mod tests {
 
     stream_sequence_mutations(
       &graph,
+      &Inheritance::ALL,
       reconstruction.alphabet(),
       SeqTrack::Nuc(1),
       include_leaves,

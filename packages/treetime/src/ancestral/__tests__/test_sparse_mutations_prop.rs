@@ -7,6 +7,7 @@ mod tests {
   use crate::seq::mutation::{MutationTrack, stream_sequence_mutations};
   use crate::seq::sink::SeqTrack;
   use proptest::prelude::*;
+  use treetime_graph::scope::Inheritance;
   use treetime_io::nwk::nwk_read;
 
   proptest! {
@@ -41,6 +42,7 @@ mod tests {
       let reconstruction = MarginalReconstruction::Sparse(sparse);
       let expected = stream_sequence_mutations(
         &graph,
+        &Inheritance::ALL,
         reconstruction.alphabet(),
         SeqTrack::Nuc(1),
         false,

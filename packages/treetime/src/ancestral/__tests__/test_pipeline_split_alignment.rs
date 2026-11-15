@@ -231,6 +231,7 @@ mod tests {
           partitions,
           models: ModelSettings::default(),
         },
+        scopes: None,
       };
       let params = AncestralParams {
         method: MethodAncestral::Marginal,

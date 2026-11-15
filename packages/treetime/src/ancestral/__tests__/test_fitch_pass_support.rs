@@ -9,6 +9,7 @@ pub(super) mod tests {
     use indoc::indoc;
     use treetime_graph::key_map::NodeMap;
     use treetime_graph::keymap;
+    use treetime_graph::scope::Inheritance;
 
     use rayon::ThreadPoolBuilder;
 
@@ -53,6 +54,7 @@ pub(super) mod tests {
         length: get_common_length(&aln)?,
         nodes: keymap! {},
         edges: keymap! {},
+        inheritance: Inheritance::ALL,
       };
       let node_inputs = leaf_seq_inputs(&graph, &names, aln);
       Ok(FitchInput {

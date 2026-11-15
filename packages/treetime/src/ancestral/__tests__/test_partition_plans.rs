@@ -226,6 +226,7 @@ mod tests {
             partitions,
             models: ModelSettings::default(),
           },
+          scopes: None,
         })
       }
     }
@@ -299,6 +300,7 @@ mod tests {
       let AncestralInput { graph, sequences, .. } = input;
       let partitions = reconstruct_partitions(
         &graph,
+        None,
         method,
         sequences.split()?,
         &branch_lengths,
