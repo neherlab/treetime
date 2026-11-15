@@ -4,11 +4,13 @@ Segmented genomes such as influenza can have one tree per segment, because reass
 
 ## Current state
 
-The partition system attaches several partitions to one graph. [kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md) proposes one graph for all segments: segment trees with named internal nodes merge into one graph, and each edge records which segments it carries. The reader exists as a library function: `segment_trees_read_files()` merges named segment trees by node name into one graph with edge scopes ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)). Remaining:
+The partition system attaches several partitions to one graph. [kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md) proposes one graph for all segments: segment trees with named internal nodes merge into one graph, and each edge records which segments it carries. `treetime ancestral --segment-trees <tree>... --segment-alignments <fasta>...` reads one tree and one alignment per segment, merges the trees by node name into one graph with edge scopes ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)), and reconstructs each segment by Fitch parsimony on that graph ([kb/algo/ancestral.md](../algo/ancestral.md#v1-extensions)). The flags replace `--tree` and `--alignment` and pair trees with alignments in order; they are separate from `--tree` so that the configuration of the other commands is unchanged. Such a run writes the reconstructed sequences per segment, the GTR model, graph JSON, and DOT; it skips the outputs that hold one tree (Newick, Nexus, Auspice JSON, UShER MAT, augur node data) with a warning. Remaining:
 
-- The command interface: repeated `--tree`, paired with `--alignment` in order, and later the YAML configuration
-- Attaching each alignment to the leaves of its segment, and mapping the segment scopes to the partitions of that alignment
-- The scope-aware passes ([M-partition-passes-require-tree-topology.md](M-partition-passes-require-tree-topology.md)), without which a merged graph cannot be reconstructed
+- Marginal reconstruction on the graph ([M-partition-passes-require-tree-topology.md](M-partition-passes-require-tree-topology.md)); `--method-anc=marginal` is an error with `--segment-trees`
+- `--translations` with `--segment-trees` (an error now)
+- Tree outputs per segment: the tree that each segment's scopes trace, written in the tree formats
+- Graph JSON holds topology only: node names and edge scopes are not in it
+- The other commands, and one interface with `--tree`, `--alignment`, and the YAML configuration
 
 Toy input for this reader is in [data/toy/reassortment/](../../data/toy/reassortment/). Converting TreeKnit output (local internal names, pairwise MCCs) into named trees is a further step described in the proposal.
 
