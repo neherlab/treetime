@@ -13,6 +13,7 @@ use crate::timetree::inference::result::{
 use crate::timetree::inference::runner::{EPS, GRID_POINTS, TRIM_EPS};
 use crate::timetree::max_posterior_region::posterior_median;
 use eyre::{Report, WrapErr};
+use itertools::{Itertools, izip};
 use log::{Level, debug, log_enabled};
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -22,6 +23,8 @@ use treetime_distribution::NegLog;
 use treetime_distribution::convolve_forward_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::distribution_product;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
@@ -31,6 +34,7 @@ use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::MaxGridPoints;
 use treetime_ops::FftPlans;
 
+#[cfg(test)]
 pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   graph: &Graph,
   inputs: &ForwardPassInputs<'_>,
@@ -38,8 +42,17 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
   log: &dyn LogSink,
 ) -> Result<NodeMap<S>, Report> {
+  Ok(propagate_distributions_forward_on_graph(graph, inputs, backward, summarize, log)?.0)
+}
+
+pub(crate) fn propagate_distributions_forward_on_graph<S: Send + Sync>(
+  graph: &Graph,
+  inputs: &ForwardPassInputs<'_>,
+  backward: NodeMap<NodeBackward>,
+  summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
+  log: &dyn LogSink,
+) -> Result<(NodeMap<S>, EdgeMap<Arc<Distribution<NegLog>>>), Report> {
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
   let pass = ForwardPass {
     schedule: &schedule,
     inputs,
@@ -47,7 +60,7 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   };
   let outputs = schedule
     .scan_down(backward, |key, backward, parents: PerEdge<Posterior>| {
-      pass.node(key, backward, parents.first())
+      pass.node(key, backward, &parents)
     })?
     .into_map();
 
@@ -72,7 +85,13 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
     );
   }
 
-  Ok(outputs.into_iter().map(|(key, output)| (key, output.summary)).collect())
+  let mut summaries = NodeMap::new();
+  let mut from_parents = EdgeMap::new();
+  for (key, output) in outputs {
+    from_parents.extend(output.from_parents);
+    summaries.insert(key, output.summary);
+  }
+  Ok((summaries, from_parents))
 }
 
 struct ForwardPass<'a, F> {
@@ -86,6 +105,18 @@ where
   F: Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report>,
 {
   fn node(
+    &self,
+    key: GraphNodeKey,
+    backward: NodeBackward,
+    parents: &[Posterior],
+  ) -> Result<(ForwardOutput<S>, Posterior), Report> {
+    if self.schedule.parents(key).len() > 1 {
+      return self.node_with_parents(key, backward, parents);
+    }
+    self.node_with_parent(key, backward, parents.first())
+  }
+
+  fn node_with_parent(
     &self,
     key: GraphNodeKey,
     backward: NodeBackward,
@@ -103,10 +134,12 @@ where
     let date_constraint = applied_date_constraint(constraints, key, bad_branches[&key]);
     let NodeBackward {
       subtree,
-      to_parent,
+      to_parents,
       subtree_origin,
-      to_parent_origin,
+      to_parent_origins,
     } = backward;
+    let to_parent = to_parents.into_iter().next().flatten();
+    let to_parent_origin = to_parent_origins.into_iter().next().unwrap_or_default();
     let parent_edge = self
       .schedule
       .parents(key)
@@ -168,6 +201,7 @@ where
       summary: (self.summarize)(key, view)?,
       undated,
       contradicted,
+      from_parents: PerEdge::new(),
     };
     let posterior = Posterior {
       distribution,
@@ -176,6 +210,132 @@ where
     };
     Ok((output, posterior))
   }
+
+  fn node_with_parents(
+    &self,
+    key: GraphNodeKey,
+    backward: NodeBackward,
+    parents: &[Posterior],
+  ) -> Result<(ForwardOutput<S>, Posterior), Report> {
+    let ForwardPassInputs {
+      constraints,
+      bad_branches,
+      branches,
+      max_points,
+      fft_plans,
+      ..
+    } = *self.inputs;
+    let date_constraint = applied_date_constraint(constraints, key, bad_branches[&key]);
+    let NodeBackward {
+      subtree,
+      to_parents,
+      subtree_origin,
+      to_parent_origins,
+    } = backward;
+    let mut from_parents = PerEdge::new();
+    for (&(parent_key, edge_key), parent, to_parent, &origin) in
+      izip!(self.schedule.parents(key), parents, &to_parents, &to_parent_origins)
+    {
+      let edge = ParentEdge {
+        parent_key,
+        branch: &branches[&edge_key],
+        msg_to_parent: to_parent.as_deref(),
+        msg_origin: origin,
+      };
+      if let Some(message) = message_from_parent(key, parent, edge, max_points, fft_plans)? {
+        from_parents.push((edge_key, Arc::new(message)));
+      }
+    }
+    let exact = has_exact_date(date_constraint.as_ref());
+    let factors = subtree
+      .as_deref()
+      .into_iter()
+      .chain(
+        from_parents
+          .iter()
+          .filter(|_| !exact)
+          .map(|(_, message)| message.as_ref()),
+      )
+      .collect_vec();
+    let product = if factors.is_empty() {
+      Distribution::Empty
+    } else {
+      distribution_product(&factors, max_points)
+        .wrap_err_with(|| format!("When combining the messages at node {key}"))?
+        .normalize()
+        .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?
+    };
+    let contradicted = matches!(product, Distribution::Empty) && date_constraint.is_some();
+    let distribution = if contradicted || matches!(product, Distribution::Empty) {
+      subtree
+        .as_deref()
+        .map(Distribution::normalize)
+        .transpose()?
+        .map(Arc::new)
+    } else {
+      Some(Arc::new(product))
+    };
+    let likely_time = likely_time_of_node(key, distribution.as_deref())?;
+    let parent_time = if exact {
+      None
+    } else {
+      parents.iter().filter_map(|parent| parent.time).reduce(f64::max)
+    };
+    let time = likely_time.map(|likely_time| committed_time(likely_time, parent_time));
+    let is_leaf = self.schedule.children(key).is_empty();
+    let undated = time.is_none() && (!is_leaf || date_constraint.is_some());
+    let view = PosteriorView {
+      distribution: distribution.as_ref(),
+      likely_time,
+      time,
+      contradicted,
+      subtree_support: subtree.as_deref().and_then(Distribution::support_bounds),
+    };
+    let output = ForwardOutput {
+      summary: (self.summarize)(key, view)?,
+      undated,
+      contradicted,
+      from_parents,
+    };
+    let posterior = Posterior {
+      distribution,
+      time,
+      origin: subtree_origin,
+    };
+    Ok((output, posterior))
+  }
+}
+
+fn message_from_parent(
+  key: GraphNodeKey,
+  parent: &Posterior,
+  edge: ParentEdge<'_>,
+  max_points: MaxGridPoints,
+  fft_plans: &FftPlans,
+) -> Result<Option<Distribution<NegLog>>, Report> {
+  let (Some(parent_time_dist), Some(branch_dist)) = (&parent.distribution, &edge.branch.distribution) else {
+    return Ok(None);
+  };
+  let parent_operand = GridOperand::of(OperandRole::Posterior(edge.parent_key), parent_time_dist, parent.origin);
+  let (parent_except_child, parent_operand) =
+    parent_without_child(key, parent_time_dist, parent_operand, edge, max_points)?;
+  let branch_operand = GridOperand::of(OperandRole::Branch(key), branch_dist, GridOrigin::branch(key));
+  let operands = [parent_operand, branch_operand];
+  let ForwardPosterior { message, .. } = convolve_forward_across_edge(
+    &parent_except_child,
+    branch_dist,
+    EPS,
+    GRID_POINTS,
+    max_points,
+    fft_plans,
+  )
+  .and_then(|forward| forward.resolve_posterior(TRIM_EPS, Distribution::normalize))
+  .wrap_grid_request(|| GridRequest::new(GridOperation::ForwardMessage(key), operands))?
+  .into_untrimmed();
+  let message = message
+    .normalize()
+    .wrap_err_with(|| format!("When normalizing the message from parent to node {key}"))?;
+  Ok((!matches!(message, Distribution::Empty)).then_some(message))
 }
 
 pub(crate) struct ForwardPassInputs<'a> {
@@ -192,6 +352,7 @@ struct ForwardOutput<S> {
   summary: S,
   undated: bool,
   contradicted: bool,
+  from_parents: PerEdge<(GraphEdgeKey, Arc<Distribution<NegLog>>)>,
 }
 
 fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefinement, Report> {
