@@ -23,10 +23,12 @@ TreeTime merges segment trees by node name ([kb/proposals/edge-scoped-inheritanc
 
 `treetime ancestral --segment-trees --segment-alignments --method-anc parsimony` runs on the four named trees in 0.3 s and 60 MB, and gives each segment the same reconstructed sequences as a run on its own tree.
 
+With pass-through insertion ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)) the merge inserts 178 nodes into segments that pass through them, and leaves 10 edges whose other segments disagree on the path and 40 edges whose path holds a node of the segment elsewhere. The graph keeps 2839 nodes and has 4277 edges instead of 4374; 744 nodes keep 2 to 4 parents.
+
 ## What the TreeKnit output does not determine
 
-- **Identities across more than two segments**: MCCs are pairwise, and matches joined across pairs are not always consistent. Here 61 identities (13 conflicts) had to be split by a heuristic. One set of node identities over all segments, from TreeKnit, would remove the heuristic
-- **Where a reassortant lineage attaches**: an MCC root has a different parent in each segment tree, but TreeKnit does not say where on the branches of the other segments the lineage joins. Without that, a node of one segment on the path of another segment is not inserted as a node with one child, so the merged graph has a separate edge `X -> Y` beside `X -> W -> Y`, and time inference loses the constraint that their lengths agree
+- **Identities across more than two segments**: MCCs are pairwise, and matches joined across pairs are not always consistent. Here 13 identities (10 that held two nodes of one tree, 3 that closed a cycle) had to be split by a heuristic. One set of node identities over all segments, from TreeKnit, would remove the heuristic
+- **Where a reassortant lineage attaches, and which nodes are not reassortant**: an MCC root has a different parent in each segment tree, but TreeKnit does not say where on the branches of the other segments the lineage joins. Pass-through insertion recovers the nodes on a path that one segment shows and another skips; it cannot merge two lineages that both have intermediate nodes, because topology alone does not tell whether their child is a reassortant. An MCC member below its MCC root is not a reassortant, which TreeKnit knows
 - **Backbone and roots**: nodes outside every MCC, including the four segment roots, stay per segment. Whether they mark reassortment or uncertain topology is not in the output
 - **Leaves in singleton MCCs**: about half of the MCCs of each pair are single leaves, so many leaves have a different parent in each segment, which the graph represents as reassortment
 
