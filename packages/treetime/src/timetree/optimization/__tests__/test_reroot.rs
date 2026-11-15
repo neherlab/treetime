@@ -33,6 +33,7 @@ mod tests {
   use treetime_graph::key_map::NodeMap;
   use treetime_graph::keymap;
   use treetime_graph::node_names::NodeNames;
+  use treetime_graph::scope::Inheritance;
 
   use treetime_graph::reroot::RerootResult;
   use treetime_io::fasta::fasta_read;
@@ -213,6 +214,7 @@ mod tests {
       },
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
@@ -286,6 +288,7 @@ mod tests {
       },
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
@@ -364,6 +367,7 @@ mod tests {
       },
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
@@ -436,6 +440,7 @@ mod tests {
       },
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),

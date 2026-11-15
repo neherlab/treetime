@@ -11,6 +11,7 @@ mod tests {
 
   use std::collections::BTreeSet;
   use treetime_graph::graph::Graph;
+  use treetime_graph::scope::Inheritance;
 
   use treetime_graph::node_names::NodeNames;
 
@@ -265,6 +266,7 @@ mod tests {
         obs_edges,
         impute_missing_data: false,
         track_site_scales: false,
+        inheritance: Inheritance::ALL,
       };
 
       (partition, node_states)

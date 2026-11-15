@@ -14,6 +14,8 @@ mod tests {
 
   use treetime_graph::graph::Graph;
 
+  use treetime_graph::scope::Inheritance;
+
   use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
 
@@ -338,6 +340,7 @@ mod tests {
         obs_edges,
         impute_missing_data: false,
         track_site_scales: false,
+        inheritance: Inheritance::ALL,
       };
 
       (partition, node_states)

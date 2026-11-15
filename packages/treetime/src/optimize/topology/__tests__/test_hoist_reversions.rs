@@ -16,9 +16,11 @@ mod tests {
   use rstest::rstest;
 
   use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
+  use treetime_graph::scope::Inheritance;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -653,6 +655,7 @@ mod tests {
         obs_edges,
         impute_missing_data: false,
         track_site_scales: false,
+        inheritance: Inheritance::ALL,
       };
 
       (partition, node_states)

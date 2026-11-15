@@ -16,6 +16,7 @@ mod tests {
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
   use eyre::Report;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use pretty_assertions::assert_eq;
 
@@ -186,6 +187,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
 
     partition.obs_edges.insert(
@@ -266,6 +268,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
 
     partition.obs_edges.insert(
@@ -329,6 +332,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
 
     partition.obs_edges.insert(
@@ -390,6 +394,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     partition1.obs_edges.insert(
       root_internal_edge_key,
@@ -412,6 +417,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     partition2.obs_edges.insert(
       root_internal_edge_key,
@@ -691,6 +697,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
 
     populate_test_nodes(&mut partition, &graph);
@@ -770,6 +777,7 @@ mod tests {
       obs_edges: keymap! {},
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
 
     let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());

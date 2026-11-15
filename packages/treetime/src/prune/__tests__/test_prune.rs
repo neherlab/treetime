@@ -16,6 +16,7 @@ pub(super) mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::key_map::EdgeMap;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use std::collections::BTreeSet;
 
@@ -627,6 +628,7 @@ pub(super) mod tests {
           obs_edges: keymap! {},
           impute_missing_data: false,
           track_site_scales: false,
+          inheritance: Inheritance::ALL,
         };
 
         populate_test_nodes(&mut partition, &graph);
@@ -675,6 +677,7 @@ pub(super) mod tests {
           obs_edges: keymap! {},
           impute_missing_data: false,
           track_site_scales: false,
+          inheritance: Inheritance::ALL,
         };
 
         populate_test_nodes(&mut partition, &graph);

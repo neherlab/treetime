@@ -13,6 +13,7 @@ mod tests {
   use crate::test_utils::{NUC_ALPHABET, complete_sequence_source};
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use std::path::PathBuf;
   use std::sync::Arc;
@@ -23,14 +24,61 @@ mod tests {
   use treetime_io::fasta::fasta_read_file;
   use treetime_io::nwk::TREE_DIALECT_DEFAULT;
   use treetime_io::tree::{segment_trees_read_files, tree_read_file};
-  use treetime_primitives::{AlignmentRecord, Seq};
-  use treetime_utils::make_report;
+  use treetime_primitives::{AlignmentRecord, LogLh, Seq};
+  use treetime_utils::{make_report, pretty_assert_abs_diff_eq};
 
   const SEGMENTS: [&str; 3] = ["seg1", "seg2", "seg3"];
 
+  #[derive(Clone, Copy, Debug)]
+  enum Case {
+    Parsimony,
+    MarginalDenseJc69,
+    MarginalDenseInfer,
+  }
+
+  impl Case {
+    fn method(self) -> (MethodAncestral, Option<bool>) {
+      match self {
+        Self::Parsimony => (MethodAncestral::Parsimony, None),
+        Self::MarginalDenseJc69 | Self::MarginalDenseInfer => (MethodAncestral::Marginal, Some(true)),
+      }
+    }
+
+    fn model(self) -> GtrModel {
+      match self {
+        Self::Parsimony | Self::MarginalDenseJc69 => GtrModel::JC69(JC69Params::default()),
+        Self::MarginalDenseInfer => GtrModel::Infer,
+      }
+    }
+  }
+
+  #[rstest]
+  #[case::dense_jc69(Case::MarginalDenseJc69)]
+  #[case::dense_infer(Case::MarginalDenseInfer)]
+  #[trace]
+  fn test_ancestral_marginal_on_segment_graph_gives_each_segment_the_result_of_its_own_tree(
+    #[case] case: Case,
+  ) -> Result<(), Report> {
+    let merged = run_segment_graph(case)?;
+    for (index, segment) in SEGMENTS.iter().enumerate() {
+      let separate = run_segment_tree(segment, case)?;
+      assert_eq!(
+        (&separate.sequences, &separate.mutations, &separate.root_sequence),
+        (
+          &merged[index].sequences,
+          &merged[index].mutations,
+          &merged[index].root_sequence
+        ),
+        "segment {segment}"
+      );
+      pretty_assert_abs_diff_eq!(separate.log_lh, merged[index].log_lh, epsilon = 1e-9);
+    }
+    Ok(())
+  }
+
   #[test]
   fn test_ancestral_parsimony_on_segment_graph_gives_each_segment_the_result_of_its_own_tree() -> Result<(), Report> {
-    let merged = run_segment_graph()?;
+    let merged = run_segment_graph(Case::Parsimony)?;
     assert_eq!(
       vec![(20, true), (20, true), (21, true)],
       merged
@@ -39,7 +87,7 @@ mod tests {
         .collect::<Vec<_>>()
     );
     for (index, segment) in SEGMENTS.iter().enumerate() {
-      let separate = run_segment_tree(segment)?;
+      let separate = run_segment_tree(segment, Case::Parsimony)?;
       assert_eq!(
         (&separate.sequences, &separate.mutations, &separate.root_sequence),
         (
@@ -55,7 +103,7 @@ mod tests {
 
   #[test]
   fn test_ancestral_parsimony_on_segment_graph_reconstructs_only_the_nodes_of_each_segment() -> Result<(), Report> {
-    let merged = run_segment_graph()?;
+    let merged = run_segment_graph(Case::Parsimony)?;
     let internal = |index: usize| -> BTreeSet<&str> {
       merged[index]
         .sequences
@@ -83,7 +131,14 @@ mod tests {
       .iter()
       .map(|segment| alignment(segment))
       .collect::<Result<_, _>>()?;
-    let result = run(merged.graph, &merged.names, merged.branch_lengths, None, alignments);
+    let result = run(
+      merged.graph,
+      &merged.names,
+      merged.branch_lengths,
+      None,
+      alignments,
+      Case::Parsimony,
+    );
     let message = result.err().map(|error| error.to_string()).unwrap_or_default();
     assert!(
       message.contains("parents that pass on all sites, but every site has one parent"),
@@ -96,6 +151,7 @@ mod tests {
     sequences: BTreeMap<String, Seq>,
     mutations: BTreeMap<(String, String), Vec<Mutation>>,
     root_sequence: Seq,
+    log_lh: f64,
   }
 
   fn toy_path(file: &str) -> PathBuf {
@@ -109,7 +165,7 @@ mod tests {
     Ok(records.into_iter().map(AlignmentRecord::from).collect())
   }
 
-  fn run_segment_graph() -> Result<Vec<SegmentResult>, Report> {
+  fn run_segment_graph(case: Case) -> Result<Vec<SegmentResult>, Report> {
     let paths = SEGMENTS.map(|segment| toy_path(&format!("tree_{segment}.nwk")));
     let merged = segment_trees_read_files(&paths, TREE_DIALECT_DEFAULT)?;
     let alignments = SEGMENTS
@@ -122,10 +178,11 @@ mod tests {
       merged.branch_lengths,
       Some(Arc::new(merged.scopes)),
       alignments,
+      case,
     )
   }
 
-  fn run_segment_tree(segment: &str) -> Result<SegmentResult, Report> {
+  fn run_segment_tree(segment: &str, case: Case) -> Result<SegmentResult, Report> {
     let tree = tree_read_file(toy_path(&format!("tree_{segment}.nwk")), TREE_DIALECT_DEFAULT)?;
     let mut results = run(
       tree.graph,
@@ -133,6 +190,7 @@ mod tests {
       tree.branch_lengths,
       None,
       vec![alignment(segment)?],
+      case,
     )?;
     results
       .pop()
@@ -145,6 +203,7 @@ mod tests {
     branch_lengths: EdgeMap<Option<f64>>,
     scopes: Option<Arc<EdgeScopes>>,
     alignments: Vec<Vec<AlignmentRecord>>,
+    case: Case,
   ) -> Result<Vec<SegmentResult>, Report> {
     let sources = alignments
       .into_iter()
@@ -159,12 +218,13 @@ mod tests {
         .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
         .collect(),
       graph,
-      sequences: SequenceInput::whole_alignments(sources, &GtrModel::JC69(JC69Params::default()))?,
+      sequences: SequenceInput::whole_alignments(sources, &case.model())?,
       scopes,
     };
+    let (method, dense) = case.method();
     let params = AncestralParams {
-      method: MethodAncestral::Parsimony,
-      dense: None,
+      method,
+      dense,
       include_leaves: true,
       report_ambiguous: false,
       impute_missing_data: false,
@@ -181,10 +241,16 @@ mod tests {
       &NoopProgress,
     )
     .map_err(|error| error.into_report())?;
+    let log_lh = output
+      .partitions
+      .iter()
+      .map(|partition| partition.log_lh.map_or(0.0, LogLh::value))
+      .collect::<Vec<_>>();
     output
       .alignments
       .into_iter()
-      .map(|result| {
+      .zip(log_lh)
+      .map(|(result, log_lh)| {
         let sequences = result
           .sequences
           .ok_or_else(|| make_report!("Alignment {} has no sequences", result.number))?;
@@ -200,6 +266,7 @@ mod tests {
           sequences: sink.by_track.remove(&result.number).unwrap_or_default(),
           mutations,
           root_sequence: sequences.root_sequence,
+          log_lh,
         })
       })
       .collect()

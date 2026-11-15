@@ -12,6 +12,7 @@ mod tests {
   use helpers::c;
   use itertools::Itertools;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{RerootResult, remove_stem_root};
@@ -51,6 +52,7 @@ mod tests {
       },
       impute_missing_data: false,
       track_site_scales: false,
+      inheritance: Inheritance::ALL,
     };
     let node_states = keymap! {
       stem_key => SparseNodeState::leaf(&stem_seq),
