@@ -13,8 +13,6 @@ use std::collections::BTreeSet;
 use std::collections::btree_map::Entry;
 use treetime_utils::{make_error, make_internal_report};
 
-pub const SHARED_BRANCH_LENGTH_TOLERANCE: f64 = 1e-6;
-
 pub struct NamedTree<'a> {
   pub label: &'a str,
   pub graph: &'a Graph,
@@ -35,7 +33,7 @@ pub fn merge_trees_by_name(trees: &[NamedTree<'_>]) -> Result<MergedGraph, Repor
   let mut graph = Graph::new();
   let mut by_name: IndexMap<&str, GraphNodeKey> = IndexMap::new();
   let mut edges: BTreeMap<(GraphNodeKey, GraphNodeKey), GraphEdgeKey> = BTreeMap::new();
-  let mut branch_lengths = EdgeMap::new();
+  let mut length_sums: EdgeMap<LengthSum> = EdgeMap::new();
   let mut scopes = EdgeScopes::new(trees.len());
 
   for (segment, tree) in trees.iter().enumerate() {
@@ -53,32 +51,27 @@ pub fn merge_trees_by_name(trees: &[NamedTree<'_>]) -> Result<MergedGraph, Repor
       let merged_parent = *by_name
         .get(&tree.names[parent])
         .ok_or_else(|| make_internal_report!("Parent {parent} comes after its child {node} in the preorder"))?;
-      let length = tree.branch_lengths.get(edge).copied().flatten();
       let merged_edge = match edges.entry((merged_parent, merged)) {
-        Entry::Vacant(entry) => {
-          let key = graph.add_edge(merged_parent, merged)?;
-          branch_lengths.insert(key, length);
-          *entry.insert(key)
-        },
-        Entry::Occupied(entry) => {
-          let key = *entry.get();
-          let shared = branch_lengths
-            .get_mut(key)
-            .ok_or_else(|| make_internal_report!("Merged edge {key} has no branch length entry"))?;
-          *shared = shared_branch_length(*shared, length).wrap_err_with(|| {
-            format!(
-              "When merging the edge '{}' -> '{}' of tree '{}' into the same edge of an earlier tree",
-              &tree.names[parent], &tree.names[node], tree.label
-            )
-          })?;
-          key
-        },
+        Entry::Vacant(entry) => *entry.insert(graph.add_edge(merged_parent, merged)?),
+        Entry::Occupied(entry) => *entry.get(),
       };
+      if let Some(length) = tree.branch_lengths.get(edge).copied().flatten() {
+        let sum = length_sums.entry(merged_edge).or_default();
+        sum.total += length;
+        sum.count += 1.0;
+      }
       scopes.set(merged_edge, segment, SiteScope::Full)?;
     }
   }
 
   graph.build()?;
+  let branch_lengths = graph
+    .get_edges()
+    .map(|edge| {
+      let mean = length_sums.get(edge.key()).map(|sum| sum.total / sum.count);
+      (edge.key(), mean)
+    })
+    .collect();
   let input_names: NodeMap<Option<String>> = by_name
     .iter()
     .map(|(name, &key)| (key, Some((*name).to_owned())))
@@ -132,15 +125,8 @@ fn require_unique_names(tree: &NamedTree<'_>) -> Result<(), Report> {
   Ok(())
 }
 
-fn shared_branch_length(earlier: Option<f64>, later: Option<f64>) -> Result<Option<f64>, Report> {
-  match (earlier, later) {
-    (Some(a), Some(b)) => {
-      let tolerance = SHARED_BRANCH_LENGTH_TOLERANCE * a.abs().max(b.abs()).max(1.0);
-      if (a - b).abs() > tolerance {
-        return make_error!("The two trees give the edge different branch lengths, {a} and {b}");
-      }
-      Ok(Some(a))
-    },
-    (earlier, later) => Ok(earlier.or(later)),
-  }
+#[derive(Default)]
+struct LengthSum {
+  total: f64,
+  count: f64,
 }
