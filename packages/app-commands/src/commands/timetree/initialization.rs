@@ -12,9 +12,13 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::dates_csv::DateConstraint;
+use treetime_utils::make_internal_error;
 
 pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
-  let nwk_parsed = read_input_tree(&args.tree, args.newick_dialect, log).wrap_err("Failed to load tree from file")?;
+  let Some(tree) = args.tree_input.tree() else {
+    return make_internal_error!("The timetree of a single tree was given segment trees");
+  };
+  let nwk_parsed = read_input_tree(tree, args.newick_dialect, log).wrap_err("Failed to load tree from file")?;
   let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;

@@ -33,7 +33,7 @@ use crate::commands::shared::sequence_inputs::{
 use crate::commands::shared::site_model::{SiteModelArgs, model_settings, site_model_marginal_only_settings};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
-use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+use crate::commands::shared::tree_input::{SegmentArgs, TreeArgs, TreeDialectArgs, TreeInput, resolve_tree_input};
 #[cfg(feature = "clap")]
 use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
@@ -79,7 +79,8 @@ pub const GEN_PER_YEAR_DEFAULT: f64 = 50.0;
 
 #[derive(Debug, Clone)]
 pub struct TreetimeTimetreeArgs {
-  pub(crate) tree: PathBuf,
+  pub(crate) tree_input: TreeInput,
+  pub(crate) cross_parent_messages: bool,
   pub(crate) newick_dialect: NewickDialect,
   pub(crate) dates: DatesInput,
   pub(crate) sequences: SequenceInputs,
@@ -122,6 +123,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       },
       annotation_args: AnnotationArgs { annotation },
       tree: TreeArgs { tree },
+      segments,
       newick_dialect: TreeDialectArgs { newick_dialect },
       missing_sequences,
       metadata,
@@ -134,6 +136,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       confidence,
       max_grid_points,
       keep_polytomies,
+      no_cross_parent_messages,
       no_collapse_short_branches,
       relax,
       max_iter,
@@ -173,7 +176,26 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       jobs_args: _,
       gen_per_year,
     } = raw;
-    let (tree, dates) = timetree_inputs(tree, metadata, metadata_id, date_column)?;
+    let (tree_input, alignment, dates) = timetree_inputs(tree, alignment, segments, metadata, metadata_id, date_column)?;
+    if tree_input.is_segments() {
+      check_segment_settings(&SegmentSettings {
+        clock_rate,
+        clock_std_dev,
+        coalescent: coalescent.is_some(),
+        relax: !relax.is_empty(),
+        reroot: reroot.is_some() || !outgroup.is_empty(),
+        prune_tips: clock_filter.prune_filtered_tips || clock_filter.prune_undated_tips,
+        input_branch_lengths: matches!(branch_length_mode, BranchLengthModeCli::Input),
+      })?;
+    } else {
+      check_applies(
+        "no_cross_parent_messages",
+        no_cross_parent_messages,
+        "segment_trees",
+        false,
+        || o!("applies only with --segment-trees"),
+      )?;
+    }
     let alignment_count = alignment.len();
     let marginal_only_settings =
       timetree_marginal_only_settings(&representation, &partition_rates_args, &site_model_args, &ambiguity);
@@ -218,7 +240,8 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       (OutputSelection::CoalescentJson, output_coalescent_json),
     ];
     Ok(Self {
-      tree,
+      tree_input,
+      cross_parent_messages: !no_cross_parent_messages,
       newick_dialect: newick_dialect.dialect(),
       dates,
       branch_lengths: timetree_branch_lengths(branch_length_mode, alignment_count, sequence_length, branch_lengths)?,
@@ -248,6 +271,8 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
 #[deny(unused_variables)]
 fn timetree_inputs(
   tree: Option<PathBuf>,
+  alignment: Vec<PathBuf>,
+  segments: SegmentArgs,
   MetadataArgs { metadata }: MetadataArgs,
   MetadataIdArgs {
     metadata_id_columns,
@@ -257,16 +282,18 @@ fn timetree_inputs(
     date_column,
     date_format,
   }: DateColumnArgs,
-) -> Result<(PathBuf, DatesInput), Report> {
-  let (tree, metadata) = match (tree, metadata) {
-    (Some(tree), Some(metadata)) => (tree, metadata),
-    (tree, metadata) => {
-      let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
-        .into_iter()
-        .filter_map(|(key, missing)| missing.then_some(key))
-        .collect_vec();
-      return Err(missing_required_args::<TreetimeTimetreeArgsRaw>(&missing));
-    },
+) -> Result<(TreeInput, Vec<PathBuf>, DatesInput), Report> {
+  let missing_metadata = metadata.is_none();
+  let missing = |tree: bool| {
+    let missing = [("tree", tree), ("metadata", missing_metadata)]
+      .into_iter()
+      .filter_map(|(key, missing)| missing.then_some(key))
+      .collect_vec();
+    missing_required_args::<TreetimeTimetreeArgsRaw>(&missing)
+  };
+  let (tree_input, alignment) = resolve_tree_input(tree, alignment, segments, || missing(true))?;
+  let Some(metadata) = metadata else {
+    return Err(missing(false));
   };
   let dates = DatesInput {
     metadata: MetadataInput {
@@ -277,7 +304,41 @@ fn timetree_inputs(
     date_column,
     date_format,
   };
-  Ok((tree, dates))
+  Ok((tree_input, alignment, dates))
+}
+
+struct SegmentSettings {
+  clock_rate: Option<f64>,
+  clock_std_dev: Option<f64>,
+  coalescent: bool,
+  relax: bool,
+  reroot: bool,
+  prune_tips: bool,
+  input_branch_lengths: bool,
+}
+
+fn check_segment_settings(settings: &SegmentSettings) -> Result<(), Report> {
+  if settings.clock_rate.is_none() {
+    return Err(argument_error(
+      &["clock_rate", "segment_trees"],
+      "--segment-trees requires --clock-rate: the clock rate of a graph of segment trees is not estimated yet",
+    ));
+  }
+  let unsupported = [
+    ("clock_std_dev", settings.clock_std_dev.is_some(), "--clock-std-dev"),
+    ("coalescent", settings.coalescent, "--coalescent"),
+    ("relax", settings.relax, "--relax"),
+    ("reroot", settings.reroot, "--reroot and --outgroup"),
+    ("prune_filtered_tips", settings.prune_tips, "tip pruning"),
+    ("branch_length_mode", settings.input_branch_lengths, "--branch-length-mode input"),
+  ];
+  if let Some((key, _, flag)) = unsupported.iter().find(|(_, set, _)| *set) {
+    return Err(argument_error(
+      &[*key, "segment_trees"],
+      format!("{flag} is not supported with --segment-trees yet: a graph of segment trees keeps its roots, runs without a coalescent prior or a relaxed clock, and dates nodes from the joint reconstruction of all segments"),
+    ));
+  }
+  Ok(())
 }
 
 fn timetree_marginal_only_settings(
@@ -716,6 +777,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
+  pub segments: SegmentArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
   pub newick_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -834,6 +900,14 @@ pub struct TreetimeTimetreeArgsRaw {
   /// stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
   pub keep_polytomies: bool,
+
+  /// On a graph of segment trees, leave the messages from the other parents out of the message to a parent
+  ///
+  /// A node with several parents sends each parent its subtree, combined by default with the messages that its other
+  /// parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree
+  /// alone. Applies only with `--segment-trees`.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, help_heading = "Dating"))]
+  pub no_cross_parent_messages: bool,
 
   /// Disable collapsing of short internal branches.
   ///

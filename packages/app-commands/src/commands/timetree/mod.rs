@@ -4,6 +4,7 @@ pub mod coalescent;
 pub mod initialization;
 pub mod output;
 pub mod run;
+mod segments;
 mod trace;
 
 #[cfg(test)]
