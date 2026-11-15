@@ -4,16 +4,16 @@ use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::params::InitialGuessMode;
-use crate::optimize::params::OptimizeLoopSettings;
+use crate::optimize::params::{OptimizeLoopSettings, TopologyOps};
 use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates};
 use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
 use crate::partition::alignment_sequences::assemble_sequence_mutations;
-use crate::partition::create::Representation;
+use crate::partition::create::{Representation, segment_inheritances};
 use crate::partition::marginal::reconstruction::ReconstructionRef;
 use crate::partition::result::{
   AlignmentOutcome, AlignmentResult, AlignmentSequences, PartitionResult, alignment_results,
 };
-use crate::partition::set::{PartitionSet, build_partition_set};
+use crate::partition::set::{PartitionSet, build_inherited_partition_set};
 use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
@@ -23,9 +23,11 @@ use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
+use treetime_graph::scope::EdgeScopes;
 use treetime_utils::make_report;
 
 pub fn run(
@@ -41,12 +43,15 @@ pub fn run(
     mut names,
     sequences,
     mut branch_lengths,
+    scopes,
   } = input;
+  let loop_settings = segment_loop_settings(params, scopes.as_ref(), log)?;
   let PreparedPartitions {
     alignments,
     model_names,
     partitions,
-  } = prepare_partitions(params, &graph, sequences, &mut branch_lengths, log).map_err(OperationError::classify)?;
+  } = prepare_partitions(params, &graph, sequences, scopes.as_ref(), &mut branch_lengths, log)
+    .map_err(OperationError::classify)?;
   apply_initial_guess(params, &graph, &partitions, &mut branch_lengths, &names, log)
     .map_err(OperationError::classify)?;
 
@@ -62,16 +67,9 @@ pub fn run(
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Optimizing branch lengths", 0.3, "");
-  let loop_result = run_optimize_loop(
-    &mut graph,
-    partitions,
-    &params.loop_settings,
-    branch_lengths,
-    names,
-    log,
-  )
-  .map_err(OperationError::classify)?;
-  loop_result.convergence.report(params.loop_settings.opt_method, log);
+  let loop_result = run_optimize_loop(&mut graph, partitions, &loop_settings, branch_lengths, names, log)
+    .map_err(OperationError::classify)?;
+  loop_result.convergence.report(loop_settings.opt_method, log);
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
@@ -98,6 +96,31 @@ pub struct OptimizeInput {
   pub names: NodeNames,
   pub sequences: SequenceInput,
   pub branch_lengths: EdgeMap<Option<f64>>,
+  pub scopes: Option<Arc<EdgeScopes>>,
+}
+
+fn segment_loop_settings(
+  params: &OptimizeParams,
+  scopes: Option<&Arc<EdgeScopes>>,
+  log: &dyn LogSink,
+) -> Result<OptimizeLoopSettings, OperationError> {
+  let mut settings = params.loop_settings;
+  if scopes.is_none() {
+    return Ok(settings);
+  }
+  if params.reroot_spec.is_some() {
+    return Err(OperationError::InvalidParams(make_report!(
+      "optimize cannot reroot a graph of several segment trees"
+    )));
+  }
+  if settings.topology_ops != TopologyOps::NONE {
+    progress_warn!(
+      log,
+      "Topology edits (zero-length collapse, merging of shared mutations, reversion hoisting) are off on a graph of several segment trees"
+    );
+    settings.topology_ops = TopologyOps::NONE;
+  }
+  Ok(settings)
 }
 
 #[derive(Debug)]
@@ -137,6 +160,7 @@ fn prepare_partitions(
   params: &OptimizeParams,
   graph: &Graph,
   sequences: SequenceInput,
+  scopes: Option<&Arc<EdgeScopes>>,
   branch_lengths: &mut EdgeMap<Option<f64>>,
   log: &dyn LogSink,
 ) -> Result<PreparedPartitions, Report> {
@@ -148,10 +172,16 @@ fn prepare_partitions(
     partitions,
     models,
   } = split;
-  let partitions = build_partition_set(
+  let inheritances = segment_inheritances(
+    scopes,
+    alignments.len(),
+    partitions.iter().map(|partition| &partition.data.layout),
+  )?;
+  let partitions = build_inherited_partition_set(
     Representation::resolve(params.dense),
     graph,
     partitions,
+    inheritances,
     models,
     &branch_lengths_or_zero(branch_lengths),
     log,
@@ -277,6 +307,7 @@ fn partition_mutations(
 ) -> Result<SequenceMutations, Report> {
   let edge_mutations = graph
     .get_edges()
+    .filter(|edge| reconstruction.carries(edge.key()))
     .map(|edge| {
       let edge_key = edge.key();
       Ok((edge_key, reconstruction.edge_mutations(graph, edge_key, track)?))

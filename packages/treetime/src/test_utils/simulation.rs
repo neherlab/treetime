@@ -216,6 +216,7 @@ pub(crate) fn optimize_input(
     names: tree.names.clone(),
     sequences: simulated_sequence_input(tree, sequences, model)?,
     branch_lengths: edge_lengths(&tree.graph, branch_lengths)?,
+    scopes: None,
   })
 }
 

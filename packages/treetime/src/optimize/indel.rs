@@ -3,9 +3,10 @@ use crate::optimize::gather::{gather_alignment_edge_indel_counts, gather_edge_in
 use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::set::PartitionSet;
 use eyre::Report;
+use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use statrs::function::factorial::ln_factorial;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
@@ -30,13 +31,21 @@ impl IndelPolicy {
     match self {
       Self::Include => {
         let alignment_counts = gather_alignment_edge_indel_counts(graph, partitions)?;
+        let uncarried = alignment_uncarried_edges(graph, partitions)?;
         let alignment_rates = alignment_counts
           .iter()
-          .map(|(&alignment, counts)| (alignment, estimate_indel_rate(graph, counts, branch_lengths)))
+          .map(|(&alignment, counts)| {
+            let skip = uncarried.get(&alignment);
+            let rate = estimate_indel_rate(graph, counts, branch_lengths, |edge_key| {
+              skip.is_none_or(|skip| !skip.contains(&edge_key))
+            });
+            (alignment, rate)
+          })
           .collect();
         Ok(EdgeIndels::Included {
           counts: sum_alignment_counts(graph, &alignment_counts),
           alignment_rates,
+          uncarried,
         })
       },
       Self::Exclude => Ok(EdgeIndels::Excluded),
@@ -49,6 +58,7 @@ pub(crate) enum EdgeIndels {
   Included {
     counts: EdgeMap<usize>,
     alignment_rates: BTreeMap<usize, f64>,
+    uncarried: BTreeMap<usize, BTreeSet<GraphEdgeKey>>,
   },
   Excluded,
 }
@@ -56,9 +66,14 @@ pub(crate) enum EdgeIndels {
 impl EdgeIndels {
   pub(crate) fn recount(&self, graph: &Graph, partitions: &PartitionSet) -> Result<Self, Report> {
     Ok(match self {
-      Self::Included { alignment_rates, .. } => Self::Included {
+      Self::Included {
+        alignment_rates,
+        uncarried,
+        ..
+      } => Self::Included {
         counts: gather_edge_indel_counts(graph, partitions)?,
         alignment_rates: alignment_rates.clone(),
+        uncarried: uncarried.clone(),
       },
       Self::Excluded => Self::Excluded,
     })
@@ -86,9 +101,24 @@ impl EdgeIndels {
     }
   }
 
+  pub(crate) fn edge_rate(&self, edge_key: GraphEdgeKey) -> f64 {
+    match self {
+      Self::Included {
+        alignment_rates,
+        uncarried,
+        ..
+      } => alignment_rates
+        .iter()
+        .filter(|(alignment, _)| uncarried.get(alignment).is_none_or(|skip| !skip.contains(&edge_key)))
+        .map(|(_, rate)| rate)
+        .sum(),
+      Self::Excluded => 0.0,
+    }
+  }
+
   pub(crate) fn term(&self, edge_key: GraphEdgeKey) -> IndelTerm {
     match self {
-      Self::Included { counts, .. } => IndelTerm::new(counts[&edge_key], self.rate()),
+      Self::Included { counts, .. } => IndelTerm::new(counts[&edge_key], self.edge_rate(edge_key)),
       Self::Excluded => IndelTerm::new(0, 0.0),
     }
   }
@@ -96,14 +126,16 @@ impl EdgeIndels {
   pub(crate) fn chain_term(&self, edges: &[GraphEdgeKey], held_length: f64) -> IndelTerm {
     IndelTerm {
       count: edges.iter().map(|&edge_key| self.term(edge_key).count).sum(),
-      rate: self.rate(),
+      rate: edges.first().map_or(0.0, |&edge_key| self.edge_rate(edge_key)),
       held_length,
     }
   }
 
   pub(crate) fn total_log_lh(&self, graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Result<LogLh, Report> {
     match self {
-      Self::Included { counts, .. } => total_indel_log_lh(graph, counts, branch_lengths, self.rate()),
+      Self::Included { counts, .. } => {
+        total_indel_log_lh(graph, counts, branch_lengths, |edge_key| self.edge_rate(edge_key))
+      },
       Self::Excluded => Ok(LogLh::ZERO),
     }
   }
@@ -145,9 +177,37 @@ impl IndelTerm {
   }
 }
 
-fn estimate_indel_rate(graph: &Graph, indel_counts: &EdgeMap<usize>, branch_lengths: &EdgeMap<Option<f64>>) -> f64 {
+fn alignment_uncarried_edges(
+  graph: &Graph,
+  partitions: &PartitionSet,
+) -> Result<BTreeMap<usize, BTreeSet<GraphEdgeKey>>, Report> {
+  let reconstructions = partitions.iter().collect_vec();
+  Ok(
+    partitions
+      .alignment_groups()?
+      .iter()
+      .filter_map(|group| {
+        let members = group.members(&reconstructions);
+        let uncarried: BTreeSet<GraphEdgeKey> = graph
+          .get_edges()
+          .map(|edge| edge.key())
+          .filter(|&edge_key| !members.iter().any(|member| member.carries(edge_key)))
+          .collect();
+        (!uncarried.is_empty()).then(|| (group.alignment(), uncarried))
+      })
+      .collect(),
+  )
+}
+
+fn estimate_indel_rate(
+  graph: &Graph,
+  indel_counts: &EdgeMap<usize>,
+  branch_lengths: &EdgeMap<Option<f64>>,
+  carried: impl Fn(GraphEdgeKey) -> bool + Sync,
+) -> f64 {
   let per_edge = graph
     .get_edges()
+    .filter(|edge_ref| carried(edge_ref.key()))
     .collect::<Vec<_>>()
     .into_par_iter()
     .map(|edge_ref| {
@@ -171,7 +231,7 @@ fn total_indel_log_lh(
   graph: &Graph,
   indel_counts: &EdgeMap<usize>,
   branch_lengths: &EdgeMap<Option<f64>>,
-  indel_rate: f64,
+  indel_rate: impl Fn(GraphEdgeKey) -> f64 + Sync,
 ) -> Result<LogLh, Report> {
   graph
     .get_edges()
@@ -187,7 +247,7 @@ fn total_indel_log_lh(
       if indel_count > 0 && branch_length <= 0.0 {
         Ok(LogLh::IMPOSSIBLE)
       } else {
-        Ok(poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh)
+        Ok(poisson_indel_log_lh(indel_count, indel_rate(edge_key), branch_length)?.log_lh)
       }
     })
     .collect::<Vec<_>>()

@@ -22,6 +22,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::LogLh;
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -33,22 +34,35 @@ pub(crate) fn build_partition_set(
   branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
+  let inheritances = vec![Inheritance::ALL; partitions.len()];
+  build_inherited_partition_set(representation, graph, partitions, inheritances, models, branch_lengths, log)
+}
+
+pub(crate) fn build_inherited_partition_set(
+  representation: Representation,
+  graph: &Graph,
+  partitions: Vec<SplitPartition>,
+  inheritances: Vec<Inheritance>,
+  models: ModelSettings,
+  branch_lengths: &EdgeMap<f64>,
+  log: &dyn LogSink,
+) -> Result<PartitionSet, Report> {
   let rate = InferredRate::for_partition_count(partitions.len());
-  let (heads, inputs): (Vec<_>, Vec<_>) = partitions
-    .into_iter()
-    .map(|SplitPartition { data, model }| {
+  let (heads, inputs): (Vec<_>, Vec<_>) = izip!(partitions, inheritances)
+    .map(|(SplitPartition { data, model }, inheritance)| {
       let PartitionData {
         layout,
         alphabet,
         nodes,
       } = data;
-      ((layout, model), (alphabet, nodes))
+      ((layout, model), (inheritance, alphabet, nodes))
     })
     .unzip();
   let inputs = izip!(&heads, inputs)
-    .map(|((_, model), (alphabet, nodes))| PartitionInput {
+    .map(|((_, model), (inheritance, alphabet, nodes))| PartitionInput {
       model,
       rate,
+      inheritance,
       alphabet,
       nodes,
     })

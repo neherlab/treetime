@@ -229,6 +229,13 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
     method,
   } = *edge;
 
+  if contributions.is_empty() && indels.count == 0 {
+    return Ok(EdgeSolution {
+      branch_length,
+      convergence: Convergence::Converged,
+    });
+  }
+
   let zero_length = ZeroLength::of_edge(contributions, indels);
 
   if indels.count == 0 && is_zero_branch_optimal(contributions, zero_length) {
