@@ -2,6 +2,7 @@ use crate::nwk::{NwkParse, graph_from_newick, log_read_warnings, tree_read_optio
 use eyre::{Report, WrapErr};
 use std::io::Read;
 use std::path::Path;
+use treetime_graph::merge_by_name::{MergedGraph, NamedTree, merge_trees_by_name};
 use treetime_utils::io::file::read_file_with;
 use treetime_utils::make_error;
 use util_newick::{NewickDialect, is_nexus, newick_from_str, nexus_from_str};
@@ -34,4 +35,29 @@ pub fn tree_read(mut reader: impl Read, dialect: NewickDialect) -> Result<NwkPar
       others + 1
     ),
   }
+}
+
+pub fn segment_trees_read_files(paths: &[impl AsRef<Path>], dialect: NewickDialect) -> Result<MergedGraph, Report> {
+  let parsed = paths
+    .iter()
+    .map(|path| {
+      tree_read_file(path, dialect).wrap_err_with(|| format!("When reading tree '{}'", path.as_ref().display()))
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+  let labels = paths
+    .iter()
+    .map(|path| path.as_ref().display().to_string())
+    .collect::<Vec<_>>();
+  let trees = parsed
+    .iter()
+    .zip(&labels)
+    .map(|(tree, label)| NamedTree {
+      label,
+      graph: &tree.graph,
+      names: &tree.names,
+      unnamed_nodes: &tree.unnamed_nodes,
+      branch_lengths: &tree.branch_lengths,
+    })
+    .collect::<Vec<_>>();
+  merge_trees_by_name(&trees).wrap_err("When merging the segment trees by node name")
 }
