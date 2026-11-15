@@ -39,10 +39,7 @@ mod tests {
 
     assert_error!(
       result,
-      format!(
-        "When reconstructing the sequence of node {c_key}: Only trees with exactly one parent per node are currently \
-         supported, but node '{c_key}' has 2 parents. This is an internal error. Please report it to developers."
-      )
+      format!("Node {c_key} has 2 parents that pass on all sites, but every site has one parent")
     );
     Ok(())
   }

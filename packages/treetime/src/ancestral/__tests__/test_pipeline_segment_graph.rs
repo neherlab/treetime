@@ -34,6 +34,8 @@ mod tests {
     Parsimony,
     MarginalDenseJc69,
     MarginalDenseInfer,
+    MarginalSparseJc69,
+    MarginalSparseInfer,
   }
 
   impl Case {
@@ -41,13 +43,14 @@ mod tests {
       match self {
         Self::Parsimony => (MethodAncestral::Parsimony, None),
         Self::MarginalDenseJc69 | Self::MarginalDenseInfer => (MethodAncestral::Marginal, Some(true)),
+        Self::MarginalSparseJc69 | Self::MarginalSparseInfer => (MethodAncestral::Marginal, Some(false)),
       }
     }
 
     fn model(self) -> GtrModel {
       match self {
-        Self::Parsimony | Self::MarginalDenseJc69 => GtrModel::JC69(JC69Params::default()),
-        Self::MarginalDenseInfer => GtrModel::Infer,
+        Self::Parsimony | Self::MarginalDenseJc69 | Self::MarginalSparseJc69 => GtrModel::JC69(JC69Params::default()),
+        Self::MarginalDenseInfer | Self::MarginalSparseInfer => GtrModel::Infer,
       }
     }
   }
@@ -55,6 +58,8 @@ mod tests {
   #[rstest]
   #[case::dense_jc69(Case::MarginalDenseJc69)]
   #[case::dense_infer(Case::MarginalDenseInfer)]
+  #[case::sparse_jc69(Case::MarginalSparseJc69)]
+  #[case::sparse_infer(Case::MarginalSparseInfer)]
   #[trace]
   fn test_ancestral_marginal_on_segment_graph_gives_each_segment_the_result_of_its_own_tree(
     #[case] case: Case,
