@@ -8,12 +8,15 @@ use crate::partition::fitch::passes::{create_fitch_partition, create_inherited_f
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+use crate::partition::resolve::PartitionLayout;
 use crate::progress::LogSink;
 use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
+use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
-use treetime_graph::scope::Inheritance;
+use treetime_graph::scope::{EdgeScopes, Inheritance};
+use treetime_utils::make_error;
 
 #[expect(
   clippy::too_many_arguments,
@@ -79,6 +82,26 @@ pub(crate) fn build_inherited_marginal_partition(
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
   })
+}
+
+pub(crate) fn segment_inheritances<'l>(
+  scopes: Option<&Arc<EdgeScopes>>,
+  alignment_count: usize,
+  layouts: impl ExactSizeIterator<Item = &'l PartitionLayout>,
+) -> Result<Vec<Inheritance>, Report> {
+  let Some(scopes) = scopes else {
+    return Ok(vec![Inheritance::ALL; layouts.len()]);
+  };
+  if scopes.segment_count() != alignment_count {
+    return make_error!(
+      "The graph has {} segment trees, but the run has {} alignments: give one alignment per segment tree, in the same order",
+      scopes.segment_count(),
+      alignment_count
+    );
+  }
+  layouts
+    .map(|layout| Inheritance::segment(Arc::clone(scopes), layout.alignment - 1))
+    .collect()
 }
 
 #[derive(Clone, Copy, Debug)]

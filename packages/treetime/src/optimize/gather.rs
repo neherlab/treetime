@@ -27,6 +27,7 @@ impl EdgeContributions for PartitionSet {
   ) -> Result<R, Report> {
     let contributions: SmallVec<[OptimizationContribution; 1]> = self
       .iter()
+      .filter(|partition| partition.carries(edge_key))
       .map(|partition| partition.create_edge_contribution(edge_key))
       .try_collect()?;
     f(&contributions)
@@ -58,6 +59,7 @@ pub(crate) fn gather_edge_contributions(
         let edge_key = edge_ref.key();
         let contributions = partitions
           .iter()
+          .filter(|partition| partition.carries(edge_key))
           .map(|partition| partition.create_edge_contribution(edge_key))
           .try_collect()?;
         Ok((edge_key, contributions))
@@ -140,6 +142,7 @@ fn gather_edge_sums(
       let edge_key = edge_ref.key();
       let sum = partitions
         .iter()
+        .filter(|partition| partition.carries(edge_key))
         .map(|partition| value(partition, edge_key))
         .sum::<Result<usize, Report>>()?;
       Ok((edge_key, sum))
@@ -152,6 +155,9 @@ fn alignment_edge_indel_count(
   members: &[&ReconstructionRef<'_>],
   edge_key: GraphEdgeKey,
 ) -> Result<usize, Report> {
+  if !members.iter().any(|member| member.carries(edge_key)) {
+    return Ok(0);
+  }
   if let [member] = members
     && group.layout.is_whole()
   {

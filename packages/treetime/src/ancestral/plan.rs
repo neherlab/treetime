@@ -9,7 +9,7 @@ use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::gtr::gtr::GTR;
 use crate::optimize::partition_rates::scale_rates_to_unit_mean;
 use crate::partition::create::{
-  PartitionSource, Representation, build_inherited_marginal_partition, build_marginal_partition,
+  PartitionSource, Representation, build_inherited_marginal_partition, build_marginal_partition, segment_inheritances,
 };
 use crate::partition::fitch::passes::create_inherited_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
@@ -28,7 +28,7 @@ use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::scope::{EdgeScopes, Inheritance};
-use treetime_utils::{make_error, make_internal_report, make_report};
+use treetime_utils::{make_internal_report, make_report};
 
 pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionMethod, OperationError> {
   if params.sample_from_profile != SampleMode::Argmax && params.method != MethodAncestral::Marginal {
@@ -74,7 +74,7 @@ pub(crate) fn reconstruct_partitions(
       ((layout, model), (alphabet, nodes))
     })
     .unzip();
-  let inheritances = segment_inheritances(scopes, alignments.len(), &heads)?;
+  let inheritances = segment_inheritances(scopes, alignments.len(), heads.iter().map(|(layout, _)| layout))?;
   let partitions = match method {
     ReconstructionMethod::Fitch => {
       let inputs = izip!(inheritances, inputs)
@@ -112,27 +112,6 @@ pub(crate) fn reconstruct_partitions(
       })
       .collect(),
   )
-}
-
-fn segment_inheritances(
-  scopes: Option<&Arc<EdgeScopes>>,
-  alignment_count: usize,
-  heads: &[(PartitionLayout, GtrModel)],
-) -> Result<Vec<Inheritance>, Report> {
-  let Some(scopes) = scopes else {
-    return Ok(vec![Inheritance::ALL; heads.len()]);
-  };
-  if scopes.segment_count() != alignment_count {
-    return make_error!(
-      "The graph has {} segment trees, but the run has {} alignments: give one alignment per segment tree, in the same order",
-      scopes.segment_count(),
-      alignment_count
-    );
-  }
-  heads
-    .iter()
-    .map(|(layout, _)| Inheritance::segment(Arc::clone(scopes), layout.alignment - 1))
-    .collect()
 }
 
 pub(crate) struct ReconstructedPartition {

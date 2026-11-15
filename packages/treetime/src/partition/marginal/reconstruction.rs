@@ -156,6 +156,10 @@ impl<'a> ReconstructionRef<'a> {
     each_kind!(self, |reconstruction| reconstruction.partition.inheritance())
   }
 
+  pub(crate) fn carries(self, edge_key: GraphEdgeKey) -> bool {
+    self.inheritance().carries(edge_key)
+  }
+
   pub(crate) fn graph_log_lh(self, graph: &Graph) -> Result<LogLh, Report> {
     each_kind!(self, |reconstruction| reconstruction
       .partition

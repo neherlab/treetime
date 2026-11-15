@@ -1,6 +1,6 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::assembly::{AlignmentGroup, alignment_groups};
-use crate::partition::create::{Representation, build_marginal_partition};
+use crate::partition::create::{PartitionSource, Representation, build_inherited_marginal_partition};
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
@@ -17,6 +17,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::LogLh;
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -27,25 +28,34 @@ pub(crate) fn build_partition_set(
   branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
+  let inheritances = vec![Inheritance::ALL; partitions.len()];
+  build_inherited_partition_set(representation, graph, partitions, inheritances, branch_lengths, log)
+}
+
+pub(crate) fn build_inherited_partition_set(
+  representation: Representation,
+  graph: &Graph,
+  partitions: Vec<SplitPartition>,
+  inheritances: Vec<Inheritance>,
+  branch_lengths: &EdgeMap<f64>,
+  log: &dyn LogSink,
+) -> Result<PartitionSet, Report> {
   let rate = InferredRate::for_partition_count(partitions.len());
-  let reconstructions = partitions
-    .into_iter()
-    .map(|SplitPartition { data, model }| {
+  let reconstructions = izip!(partitions, inheritances)
+    .map(|(SplitPartition { data, model }, inheritance)| {
       let PartitionData {
         layout,
         alphabet,
         nodes,
       } = data;
-      let reconstruction = build_marginal_partition(
-        representation,
-        &model,
-        rate,
+      let source = PartitionSource {
         graph,
+        inheritance,
         alphabet,
-        nodes,
+        node_inputs: nodes,
         branch_lengths,
-        log,
-      )?;
+      };
+      let reconstruction = build_inherited_marginal_partition(representation, &model, rate, source, log)?;
       Ok(reconstruction.with_layout(layout))
     })
     .collect::<Result<Vec<_>, Report>>()?;
