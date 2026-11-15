@@ -4,6 +4,7 @@ pub mod edge;
 pub mod graph;
 pub mod graph_ops;
 pub mod key_map;
+pub mod merge_by_name;
 pub mod node;
 pub mod node_names;
 pub mod pair_by_name;
@@ -12,6 +13,7 @@ pub mod remove_leaves;
 pub mod reroot;
 pub mod schedule;
 pub mod schedule_scan;
+pub mod scope;
 pub mod split_fraction;
 pub mod topology_order;
 
