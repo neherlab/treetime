@@ -5,6 +5,7 @@ mod tests {
   use crate::merge_by_name::{MergedGraph, NamedTree, merge_trees_by_name};
   use crate::node::GraphNodeKey;
   use crate::node_names::NodeNames;
+  use crate::pass_through::PassThroughReport;
   use crate::schedule::GraphSchedule;
   use crate::scope::SiteScope;
   use eyre::Report;
@@ -267,5 +268,146 @@ mod tests {
       "The tree 'seg1' gives the same name to more than one node: 'A'. Trees merge by node name, so names must be unique within a tree"
     );
     Ok(())
+  }
+
+  #[test]
+  fn test_merge_trees_by_name_routes_each_segment_through_the_nodes_of_the_other_and_splits_its_length()
+  -> Result<(), Report> {
+    let trees = vec![
+      TestTree::new(
+        "seg1",
+        &[("R", "X", 0.1), ("X", "A", 0.3), ("X", "B", 0.3), ("R", "C", 0.4)],
+      )?,
+      TestTree::new(
+        "seg2",
+        &[("R", "A", 0.8), ("R", "BC", 0.1), ("BC", "B", 0.3), ("BC", "C", 0.3)],
+      )?,
+    ];
+    let merged = merge(&trees)?;
+    let s = |name: &str| name.to_owned();
+    let rounded = edges(&merged)
+      .into_iter()
+      .map(|(parent, child, length, segments)| {
+        (
+          parent,
+          child,
+          length.map(|length| (length * 1e9).round() / 1e9),
+          segments,
+        )
+      })
+      .collect_vec();
+    assert_eq!(
+      (
+        PassThroughReport {
+          inserted_nodes: 2,
+          ambiguous_edges: 0,
+          conflicting_edges: 0,
+        },
+        vec![
+          (s("R"), s("X"), Some(0.15), vec![0, 1]),
+          (s("X"), s("A"), Some(0.45), vec![0, 1]),
+          (s("X"), s("B"), Some(0.3), vec![0]),
+          (s("R"), s("BC"), Some(0.1), vec![0, 1]),
+          (s("BC"), s("C"), Some(0.3), vec![0, 1]),
+          (s("BC"), s("B"), Some(0.3), vec![1]),
+        ],
+      ),
+      (merged.pass_through, rounded)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_trees_by_name_leaves_an_edge_whose_other_segments_disagree_on_the_path() -> Result<(), Report> {
+    let trees = vec![
+      TestTree::new("seg1", &[("R", "W", 0.1), ("W", "A", 0.1), ("W", "B", 0.1)])?,
+      TestTree::new("seg2", &[("R", "V", 0.1), ("V", "A", 0.1), ("V", "B", 0.1)])?,
+      TestTree::new("seg3", &[("R", "A", 0.2), ("R", "B", 0.2)])?,
+    ];
+    let merged = merge(&trees)?;
+    assert_eq!(
+      (
+        PassThroughReport {
+          inserted_nodes: 0,
+          ambiguous_edges: 2,
+          conflicting_edges: 0,
+        },
+        vec![2],
+      ),
+      (merged.pass_through, segments_of(&merged, "R", "A"))
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_trees_by_name_leaves_an_edge_whose_path_has_a_node_the_segment_holds_elsewhere() -> Result<(), Report> {
+    let trees = vec![
+      TestTree::new(
+        "seg1",
+        &[("R", "W", 0.1), ("W", "A", 0.1), ("W", "C", 0.1), ("R", "B", 0.2)],
+      )?,
+      TestTree::new(
+        "seg2",
+        &[("R", "A", 0.2), ("R", "W", 0.1), ("W", "B", 0.1), ("W", "C", 0.1)],
+      )?,
+    ];
+    let merged = merge(&trees)?;
+    assert_eq!(
+      (
+        PassThroughReport {
+          inserted_nodes: 0,
+          ambiguous_edges: 0,
+          conflicting_edges: 2,
+        },
+        vec![1],
+        vec![0],
+      ),
+      (
+        merged.pass_through,
+        segments_of(&merged, "R", "A"),
+        segments_of(&merged, "R", "B")
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_trees_by_name_refines_paths_until_every_segment_shares_the_longest() -> Result<(), Report> {
+    let trees = vec![
+      TestTree::new(
+        "seg1",
+        &[
+          ("X", "W", 0.1),
+          ("W", "U", 0.1),
+          ("U", "Y", 0.1),
+          ("W", "a", 0.1),
+          ("U", "b", 0.1),
+        ],
+      )?,
+      TestTree::new(
+        "seg2",
+        &[("X", "W", 0.1), ("W", "Y", 0.2), ("W", "a", 0.1), ("X", "b", 0.3)],
+      )?,
+      TestTree::new("seg3", &[("X", "Y", 0.3), ("X", "a", 0.2), ("X", "b", 0.3)])?,
+    ];
+    let merged = merge(&trees)?;
+    assert_eq!(
+      (vec![0, 1, 2], vec![0, 1, 2], vec![0, 1, 2], 3),
+      (
+        segments_of(&merged, "X", "W"),
+        segments_of(&merged, "W", "U"),
+        segments_of(&merged, "U", "Y"),
+        merged.pass_through.inserted_nodes,
+      )
+    );
+    Ok(())
+  }
+
+  fn segments_of(merged: &MergedGraph, parent: &str, child: &str) -> Vec<usize> {
+    edges(merged)
+      .into_iter()
+      .find(|(p, c, _, _)| p == parent && c == child)
+      .map(|(_, _, _, segments)| segments)
+      .unwrap_or_default()
   }
 }
