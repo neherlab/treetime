@@ -85,18 +85,13 @@ pub(crate) fn reconstruct_partitions(
         .collect();
       reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?
     },
-    ReconstructionMethod::Marginal(_) if scopes.is_some() => {
-      return make_error!(
-        "Marginal reconstruction on a graph of several segment trees is not implemented yet; use --method-anc=parsimony"
-      );
-    },
     ReconstructionMethod::Marginal(representation) => {
       let reconstructions = build_alignment_partitions(
         graph,
         representation,
         &alignments,
         &heads,
-        inputs,
+        izip!(inheritances, inputs).collect(),
         models,
         branch_lengths,
         cancel,
@@ -179,7 +174,7 @@ fn build_alignment_partitions(
   representation: Representation,
   alignments: &[AlignmentInfo],
   heads: &[(PartitionLayout, GtrModel)],
-  inputs: Vec<(Alphabet, NodeMap<NodeSeqInput>)>,
+  inputs: Vec<(Inheritance, (Alphabet, NodeMap<NodeSeqInput>))>,
   models: ModelSettings,
   branch_lengths: &EdgeMap<f64>,
   cancel: &dyn Cancel,
@@ -199,9 +194,10 @@ fn build_alignment_partitions(
     }
   }
   let inputs = izip!(heads, inputs)
-    .map(|((layout, model), (alphabet, nodes))| PartitionInput {
+    .map(|((layout, model), (inheritance, (alphabet, nodes)))| PartitionInput {
       model,
       rate: InferredRate::for_partition_count(counts[&layout.alignment]),
+      inheritance,
       alphabet,
       nodes,
     })

@@ -14,7 +14,7 @@ use crate::partition::storage::dense::{
 };
 use crate::seq::indel::{InDel, compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use eyre::Report;
-use itertools::{Itertools, izip};
+use itertools::Itertools;
 use ndarray::{Array1, Array2};
 use parking_lot::Mutex;
 use smallvec::smallvec;
@@ -23,7 +23,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
+use treetime_graph::schedule_scan::PerEdge;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
 use treetime_utils::{make_internal_error, make_internal_report};
@@ -34,6 +35,10 @@ impl<P: IndexedPartition> MarginalPasses for P {
   type Backward = DenseEdgeBackward;
   type Forward = DenseEdgeForward;
   type Estimate = DenseEdgeEstimate;
+
+  fn inheritance(&self) -> &Inheritance {
+    &self.inputs().inheritance
+  }
 
   fn backward_input(_node_states: &NodeMap<DenseNodeState>) -> &Self::BackwardInput {
     &()
@@ -129,13 +134,15 @@ fn run_indexed_backward(
   site_log_norms: Option<&Mutex<NodeMap<Array1<f64>>>>,
 ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
+  let inheritance = &inputs.inheritance;
+  inheritance.require_one_parent(&schedule)?;
   let pass = IndexedBackwardPass {
     schedule: &schedule,
     gtr,
     min_branch_length: inputs.min_branch_length,
     branch_lengths,
     site_log_norms,
+    inheritance,
   };
   let outputs = match kind {
     IndexedKind::Dense {
@@ -161,11 +168,15 @@ fn run_indexed_backward(
       )
     })?,
   };
-  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
-  Ok(MarginalBackward {
-    node_states: nodes,
-    backward: edges,
-  })
+  let mut node_states = NodeMap::new();
+  let mut backward = EdgeMap::new();
+  for (key, (node, parent_edge)) in outputs.unwrap_present().into_map()? {
+    if let (Some(edge), Some((_, _, edge_key))) = (parent_edge.into_iter().next(), inheritance.parent(&schedule, key)) {
+      backward.insert(edge_key, edge);
+    }
+    node_states.insert(key, node);
+  }
+  Ok(MarginalBackward { node_states, backward })
 }
 
 fn leaf_inputs<'a, L>(
@@ -181,6 +192,7 @@ struct IndexedBackwardPass<'a> {
   min_branch_length: f64,
   branch_lengths: &'a EdgeMap<f64>,
   site_log_norms: Option<&'a Mutex<NodeMap<Array1<f64>>>>,
+  inheritance: &'a Inheritance,
 }
 
 impl IndexedBackwardPass<'_> {
@@ -192,20 +204,34 @@ impl IndexedBackwardPass<'_> {
     leaf_backward: impl Fn(&L) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
     internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
   ) -> Result<(IndexedBackwardOutput, IndexedBackwardOutput), Report> {
+    if !self.inheritance.holds(self.schedule, key) {
+      return Ok((None, None));
+    }
     let mut own_site_log_norms = None;
-    let (mut node, msg_to_parent) = if self.schedule.children(key).is_empty() {
+    let carried = self
+      .inheritance
+      .children(self.schedule, key)
+      .map(|(slot, child_key, _)| {
+        children
+          .get(slot)
+          .and_then(Option::as_ref)
+          .map(Arc::as_ref)
+          .ok_or_else(|| make_internal_report!("Backward child {child_key} of node {key} sent no message"))
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+    let (mut node, msg_to_parent) = if carried.is_empty() {
       let leaf =
         leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no observation before the marginal backward pass"))?;
       leaf_backward(leaf)?
     } else {
-      let child_nodes = children.iter().map(|child| &child.0).collect_vec();
+      let child_nodes = carried.iter().map(|child| &child.0).collect_vec();
       let seq = internal_seq(&child_nodes);
-      let child_edges = izip!(self.schedule.children(key), children)
-        .map(|(&(child_key, edge_key), child)| {
-          child
-            .1
-            .get(self.schedule.parent_slot(edge_key))
-            .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))
+      let child_edges = carried
+        .iter()
+        .map(|child| {
+          child.1.first().ok_or_else(|| {
+            make_internal_report!("A backward child of node {key} published no message for its parent edge")
+          })
         })
         .collect::<Result<Vec<_>, Report>>()?;
       let Some((first_edge, other_edges)) = child_edges.split_first() else {
@@ -229,7 +255,7 @@ impl IndexedBackwardPass<'_> {
       )
     };
 
-    let parent_message = if let Some(&(_, edge_key)) = self.schedule.parents(key).first() {
+    let parent_message = if let Some((_, _, edge_key)) = self.inheritance.parent(self.schedule, key) {
       let branch_length = self.branch_lengths[&edge_key].max(self.min_branch_length);
       smallvec![DenseEdgeBackward {
         msg_from_child: DenseSeqDistribution {
@@ -257,11 +283,11 @@ impl IndexedBackwardPass<'_> {
       site_log_norms.lock().insert(key, own);
     }
     let output = Arc::new((node, parent_message));
-    Ok((Arc::clone(&output), output))
+    Ok((Some(Arc::clone(&output)), Some(output)))
   }
 }
 
-type IndexedBackwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeBackward>)>;
+type IndexedBackwardOutput = Option<Arc<(DenseNodeState, PerEdge<DenseEdgeBackward>)>>;
 
 fn dense_leaf_backward(
   alphabet: &Alphabet,
@@ -314,7 +340,7 @@ pub(crate) fn indexed_forward(
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
   let IndexedForwardMessages { node_states, forward } =
     indexed_forward_messages(inputs, gtr, graph, branch_lengths, node_states, backward)?;
-  let (node_states, estimates) = indexed_forward_sequences(kind, graph, node_states)?;
+  let (node_states, estimates) = indexed_forward_sequences(inputs, kind, graph, node_states)?;
   Ok(MarginalForward {
     node_states,
     forward,
@@ -331,21 +357,27 @@ pub(crate) fn indexed_forward_messages(
   backward: &EdgeMap<DenseEdgeBackward>,
 ) -> Result<IndexedForwardMessages, Report> {
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
+  let inheritance = &inputs.inheritance;
+  inheritance.require_one_parent(&schedule)?;
   let pass = IndexedForwardPass {
     schedule: &schedule,
     gtr,
     min_branch_length: inputs.min_branch_length,
     branch_lengths,
+    inheritance,
   };
-  let backward = backward.iter().collect();
   let outputs = schedule.scan_down(
-    schedule.join_parent_edges(node_states, backward)?,
-    |key, (node, mut backward), parents: PerEdge<IndexedForwardOutput>| {
-      pass.node(key, node, backward.pop(), parents.first().map(|parent| &parent.0))
+    inheritance.join_parent_edge(&schedule, node_states, backward.iter().collect()),
+    |key, (node, backward), parents: PerEdge<Option<IndexedForwardOutput>>| {
+      let Some(node) = node else {
+        return Ok((None, None));
+      };
+      let parent = inheritance.parent_message(&schedule, key, &parents)?;
+      let (output, message) = pass.node(key, node, backward, parent.map(|(_, _, parent)| &parent.0))?;
+      Ok((Some(output), Some(message)))
     },
   )?;
-  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
   Ok(IndexedForwardMessages {
     node_states: nodes,
     forward: edges,
@@ -358,25 +390,42 @@ pub(crate) struct IndexedForwardMessages {
 }
 
 pub(crate) fn indexed_forward_sequences(
+  inputs: &DenseInputs,
   kind: IndexedKind<'_>,
   graph: &Graph,
   node_states: NodeMap<DenseNodeState>,
 ) -> Result<(NodeMap<DenseNodeState>, EdgeMap<DenseEdgeEstimate>), Report> {
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
-  let outputs = schedule.scan_down(node_states, |key, mut node, parents: PerEdge<IndexedSequenceOutput>| {
-    let parent = parents.first().map(|parent| &parent.0);
-    let indels = match kind {
-      IndexedKind::Dense { alphabet, .. } => {
-        forward_post_dense(schedule.children(key).is_empty(), parent, &mut node, alphabet)?
-      },
-      IndexedKind::Discrete { .. } => vec![],
-    };
-    let edges = parent.map(|_| DenseEdgeEstimate { indels }).into_iter().collect();
-    let output = Arc::new((node, edges));
-    Ok((Arc::clone(&output), output))
-  })?;
-  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  let inheritance = &inputs.inheritance;
+  inheritance.require_one_parent(&schedule)?;
+  let mut node_states = node_states;
+  let node_inputs = schedule
+    .preorder()
+    .iter()
+    .map(|&key| (key, node_states.remove(key)))
+    .collect_vec();
+  let outputs = schedule.scan_down(
+    node_inputs,
+    |key, node: Option<DenseNodeState>, parents: PerEdge<Option<IndexedSequenceOutput>>| {
+      let Some(mut node) = node else {
+        return Ok((None, None));
+      };
+      let parent = inheritance
+        .parent_message(&schedule, key, &parents)?
+        .map(|(_, _, parent)| &parent.0);
+      let indels = match kind {
+        IndexedKind::Dense { alphabet, .. } => {
+          let is_leaf = inheritance.children(&schedule, key).next().is_none();
+          forward_post_dense(is_leaf, parent, &mut node, alphabet)?
+        },
+        IndexedKind::Discrete { .. } => vec![],
+      };
+      let edges = parent.map(|_| DenseEdgeEstimate { indels }).into_iter().collect();
+      let output = Arc::new((node, edges));
+      Ok((Some(Arc::clone(&output)), Some(output)))
+    },
+  )?;
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
   Ok((nodes, edges))
 }
 
@@ -387,6 +436,7 @@ struct IndexedForwardPass<'a> {
   gtr: &'a GTR,
   min_branch_length: f64,
   branch_lengths: &'a EdgeMap<f64>,
+  inheritance: &'a Inheritance,
 }
 
 impl IndexedForwardPass<'_> {
@@ -397,8 +447,8 @@ impl IndexedForwardPass<'_> {
     backward: Option<&DenseEdgeBackward>,
     parent: Option<&DenseNodeState>,
   ) -> Result<(IndexedForwardOutput, IndexedForwardOutput), Report> {
-    let msg_to_child = match (self.schedule.parents(key).first(), backward, parent) {
-      (Some(&(_, edge_key)), Some(backward), Some(parent)) => {
+    let msg_to_child = match (self.inheritance.parent(self.schedule, key), backward, parent) {
+      (Some((_, _, edge_key)), Some(backward), Some(parent)) => {
         let mut dis = divide_out(&parent.profile.dis, &backward.msg_from_child.dis);
         let delta_ll = normalize_inplace(&mut dis);
         let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh);

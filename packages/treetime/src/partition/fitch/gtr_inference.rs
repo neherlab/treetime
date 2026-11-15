@@ -7,6 +7,7 @@ use eyre::Report;
 use ndarray::{Array1, Array2};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn infer_gtr_fitch(
@@ -35,25 +36,25 @@ pub(crate) fn get_mutation_counts_fitch(
 ) -> Result<MutationCounts, Report> {
   let alphabet = &partition.alphabet;
 
-  let root_state = {
-    let root = graph.get_exactly_one_root()?;
-    let root_key = root.key();
+  let schedule = GraphSchedule::new(graph)?;
+  let mut root_state = Array1::<f64>::zeros(alphabet.n_canonical());
+  for root_key in partition.inheritance.roots(&schedule) {
     let root_composition = &partition.nodes[&root_key].seq.composition;
-    Array1::<f64>::from_iter(
-      alphabet
-        .canonical()
-        .map(|nuc| root_composition.get(nuc).unwrap_or(0).to_f64_exact()),
-    )
-  };
+    for (count, nuc) in root_state.iter_mut().zip(alphabet.canonical()) {
+      *count += root_composition.get(nuc).unwrap_or(0).to_f64_exact();
+    }
+  }
 
   let N = alphabet.n_canonical();
   let mut nij = Array2::zeros((N, N));
   let mut Ti = Array1::zeros(N);
 
   for edge in graph.get_edges() {
-    let edge_arc = edge;
-    let target_key = edge_arc.target();
-    let edge_key = edge_arc.key();
+    let target_key = edge.target();
+    let edge_key = edge.key();
+    if !partition.inheritance.carries(edge_key) {
+      continue;
+    }
     let branch_length = branch_lengths[&edge_key];
 
     let node_composition = &partition.nodes[&target_key].seq.composition;

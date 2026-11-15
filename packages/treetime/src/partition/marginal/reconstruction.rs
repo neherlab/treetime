@@ -173,11 +173,14 @@ impl<'a> ReconstructionRef<'a> {
     each_kind!(self, |reconstruction| &reconstruction.partition.alphabet)
   }
 
+  pub(crate) fn inheritance(self) -> &'a Inheritance {
+    each_kind!(self, |reconstruction| reconstruction.partition.inheritance())
+  }
+
   pub(crate) fn graph_log_lh(self, graph: &Graph) -> Result<LogLh, Report> {
-    let root_key = graph.root_key()?;
-    Ok(each_kind!(self, |reconstruction| reconstruction
+    each_kind!(self, |reconstruction| reconstruction
       .partition
-      .get_log_lh(&reconstruction.node_states, root_key)))
+      .root_log_lh(graph, &reconstruction.node_states))
   }
 
   pub(crate) fn node_sequence(self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
@@ -235,7 +238,7 @@ impl<'a> ReconstructionRef<'a> {
     let Self::Sparse(reconstruction) = self else {
       return stream_sequence_mutations(
         graph,
-        &Inheritance::ALL,
+        self.inheritance(),
         self.alphabet(),
         track,
         include_leaves,

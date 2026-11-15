@@ -4,6 +4,8 @@ use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::LogLh;
 
 pub trait MarginalPasses {
@@ -12,6 +14,8 @@ pub trait MarginalPasses {
   type Backward;
   type Forward;
   type Estimate;
+
+  fn inheritance(&self) -> &Inheritance;
 
   fn backward_input(node_states: &NodeMap<Self::Node>) -> &Self::BackwardInput;
 
@@ -64,8 +68,14 @@ pub trait MarginalPasses {
   }
 
   fn root_log_lh(&self, graph: &Graph, node_states: &NodeMap<Self::Node>) -> Result<LogLh, Report> {
-    let root_key = graph.get_exactly_one_root()?.key();
-    Ok(self.get_log_lh(node_states, root_key))
+    let schedule = GraphSchedule::new(graph)?;
+    Ok(
+      self
+        .inheritance()
+        .roots(&schedule)
+        .map(|root_key| self.get_log_lh(node_states, root_key))
+        .sum(),
+    )
   }
 }
 
