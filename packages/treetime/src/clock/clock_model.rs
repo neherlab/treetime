@@ -83,6 +83,13 @@ impl ClockModel {
   }
 
   pub(crate) fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> Result<Self, Report> {
+    Ok(Self {
+      intercept: clock_set.intercept(clock_rate),
+      ..Self::at_fixed_rate(clock_rate)?
+    })
+  }
+
+  pub(crate) fn at_fixed_rate(clock_rate: f64) -> Result<Self, Report> {
     if clock_rate <= 0.0 {
       return Err(input_error(format!(
         "Specified clock rate must be positive, got {clock_rate:.6e}.\n\n\
@@ -94,7 +101,7 @@ impl ClockModel {
     }
     Ok(Self {
       clock_rate,
-      intercept: clock_set.intercept(clock_rate),
+      intercept: 0.0,
       stats: ClockModelStats::Fixed,
     })
   }

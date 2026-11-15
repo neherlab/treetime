@@ -37,6 +37,44 @@ pub fn run(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<OptimizeOutput, OperationError> {
+  let OptimizedGraph {
+    graph,
+    names,
+    branch_lengths,
+    partitions,
+    alignments,
+    model_names,
+    indel_rates,
+  } = optimize_graph(params, input, cancel, stages, log)?;
+  let (alignments, partitions) = optimize_results(&graph, alignments, &partitions, &model_names, &indel_rates)
+    .map_err(OperationError::InferenceFailed)?;
+
+  Ok(OptimizeOutput {
+    graph,
+    alignments,
+    partitions,
+    branch_lengths,
+    names,
+  })
+}
+
+pub(crate) struct OptimizedGraph {
+  pub graph: Graph,
+  pub names: NodeNames,
+  pub branch_lengths: EdgeMap<Option<f64>>,
+  pub partitions: PartitionSet,
+  pub alignments: Vec<AlignmentInfo>,
+  pub model_names: Vec<GtrModelName>,
+  pub indel_rates: BTreeMap<usize, f64>,
+}
+
+pub(crate) fn optimize_graph(
+  params: &OptimizeParams,
+  input: OptimizeInput,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<OptimizedGraph, OperationError> {
   check_params(params, &input.sequences)?;
   let OptimizeInput {
     mut graph,
@@ -77,17 +115,14 @@ pub fn run(
     .partitions
     .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
-
-  let (alignments, partitions) =
-    optimize_results(&graph, alignments, &partitions, &model_names, &loop_result.indel_rates)
-      .map_err(OperationError::InferenceFailed)?;
-
-  Ok(OptimizeOutput {
+  Ok(OptimizedGraph {
     graph,
-    alignments,
-    partitions,
-    branch_lengths,
     names: loop_result.names,
+    branch_lengths,
+    partitions,
+    alignments,
+    model_names,
+    indel_rates: loop_result.indel_rates,
   })
 }
 
@@ -251,7 +286,7 @@ pub struct OptimizeParams {
   pub loop_settings: OptimizeLoopSettings,
 }
 
-fn optimize_results(
+pub(crate) fn optimize_results(
   graph: &Graph,
   alignments: Vec<AlignmentInfo>,
   partitions: &PartitionSet,
