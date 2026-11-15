@@ -333,6 +333,70 @@
       "size": 39599
     },
     {
+      "path": "flu/treeknit/MCCs.json",
+      "size": 472887
+    },
+    {
+      "path": "flu/treeknit/alignment_ha.fasta.zst",
+      "size": 39641
+    },
+    {
+      "path": "flu/treeknit/alignment_na.fasta.zst",
+      "size": 32336
+    },
+    {
+      "path": "flu/treeknit/alignment_pb1.fasta.zst",
+      "size": 42852
+    },
+    {
+      "path": "flu/treeknit/alignment_pb2.fasta.zst",
+      "size": 43437
+    },
+    {
+      "path": "flu/treeknit/log.txt.gz",
+      "size": 2845
+    },
+    {
+      "path": "flu/treeknit/metadata.tsv.gz",
+      "size": 93869
+    },
+    {
+      "path": "flu/treeknit/parameters.json",
+      "size": 362
+    },
+    {
+      "path": "flu/treeknit/tree_ha.nwk",
+      "size": 71582
+    },
+    {
+      "path": "flu/treeknit/tree_ha_resolved.nwk",
+      "size": 77111
+    },
+    {
+      "path": "flu/treeknit/tree_na.nwk",
+      "size": 68837
+    },
+    {
+      "path": "flu/treeknit/tree_na_resolved.nwk",
+      "size": 75445
+    },
+    {
+      "path": "flu/treeknit/tree_pb1.nwk",
+      "size": 71961
+    },
+    {
+      "path": "flu/treeknit/tree_pb1_resolved.nwk",
+      "size": 77173
+    },
+    {
+      "path": "flu/treeknit/tree_pb2.nwk",
+      "size": 71544
+    },
+    {
+      "path": "flu/treeknit/tree_pb2_resolved.nwk",
+      "size": 77516
+    },
+    {
       "path": "lassa/L/20/README.md",
       "size": 815
     },
@@ -1719,6 +1783,58 @@
     {
       "path": "tb/20/tree.nwk",
       "size": 588
+    },
+    {
+      "path": "toy/reassortment/README.md",
+      "size": 2982
+    },
+    {
+      "path": "toy/reassortment/aln_seg1.fasta",
+      "size": 6040
+    },
+    {
+      "path": "toy/reassortment/aln_seg2.fasta",
+      "size": 5040
+    },
+    {
+      "path": "toy/reassortment/aln_seg3.fasta",
+      "size": 4040
+    },
+    {
+      "path": "toy/reassortment/graph.tsv",
+      "size": 646
+    },
+    {
+      "path": "toy/reassortment/metadata.tsv",
+      "size": 110
+    },
+    {
+      "path": "toy/reassortment/nodes.tsv",
+      "size": 434
+    },
+    {
+      "path": "toy/reassortment/tree_seg1.nwk",
+      "size": 222
+    },
+    {
+      "path": "toy/reassortment/tree_seg2.nwk",
+      "size": 222
+    },
+    {
+      "path": "toy/reassortment/tree_seg3.nwk",
+      "size": 235
+    },
+    {
+      "path": "toy/reassortment/truth_seg1.fasta",
+      "size": 12080
+    },
+    {
+      "path": "toy/reassortment/truth_seg2.fasta",
+      "size": 10080
+    },
+    {
+      "path": "toy/reassortment/truth_seg3.fasta",
+      "size": 8485
     },
     {
       "path": "translate",
