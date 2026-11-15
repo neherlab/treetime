@@ -542,6 +542,12 @@ treetime ancestral -t tree.nwk -a aln.fasta.xz --annotation genome.gff3 --transl
 * `-t`, `--tree <FILE>` — Tree in Newick format
 
    A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+* `--segment-trees <FILE>` — Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name
+
+   Every node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node of the graph. A node that a segment only passes through stays in that segment's tree as a node with one child. An edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with `--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+* `--segment-alignments <FILE>` — Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order
+
+   Use instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
