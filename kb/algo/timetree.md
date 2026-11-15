@@ -23,6 +23,18 @@ What separates a leaf from an internal node here is not that it is a leaf but wh
 - The clock regression and the clock filter read the input date of each dated leaf, not its inferred time, so the fit does not use the dates that it helped to infer. Inside the refinement loop, undated tips still enter the fit with their inferred dates ([kb/issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](../issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md))
 - When the message from the parent and the date range of a node do not overlap on the grid, the product is empty; the forward pass then keeps the input date of the node, flags it as contradicted, and reports the count once per pass (`--verbosity=debug` names the nodes). In exact arithmetic the two always overlap, so an empty product comes from grid truncation or a collapse to a point
 
+### Graphs with several parents
+
+On a graph of segment trees ([kb/algo/graph.md](graph.md#edge-scopes)) a node can have several parents, one per group of segments, and the undirected graph has loops. The passes stay node-local, as loopy belief propagation (<a id="cite-14"></a>[Koller and Friedman 2009](https://mitpress.mit.edu/9780262013192/probabilistic-graphical-models/) [[14](#ref-14)]):
+
+- `fn propagate_distributions_backward_on_graph` [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): a node sends one message per parent edge (`NodeBackward::to_parents`). The message to parent `i` is the subtree distribution convolved across the edge, multiplied with `ParentMessages::AllEdges` (default) by the downward messages that the other parents sent in the previous sweep. With `ParentMessages::ChildrenOnly` it is the subtree alone. The log marginal likelihood sums over the roots of the graph; on a graph with loops it is not exact
+- `fn propagate_distributions_forward_on_graph` [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): a node with one parent runs the tree step. A node with several parents multiplies its subtree distribution with the normalized downward message of each parent (the parent posterior divided by this node's message to it, convolved across the edge); its committed time is at most the earliest committed time of its parents. The pass also returns the downward message of every edge, which the next backward sweep reads
+- `fn sweep_time_passes` [packages/treetime/src/timetree/inference/runner.rs](../../packages/treetime/src/timetree/inference/runner.rs): runs backward and forward passes until the largest change of a likely node time is at most 10^-4 of the date span, at most 20 sweeps, with a warning when the limit is reached. A graph without nodes of several parents, and `ChildrenOnly`, take one sweep, because the backward pass then does not read the previous sweep
+
+On a polytree the backward and forward passes with `AllEdges` give the exact marginals after two sweeps; on graphs with loops they are approximate. The tests against exact posteriors on a grid ([packages/treetime/src/timetree/inference/__tests__/test_reassortment_passes.rs](../../packages/treetime/src/timetree/inference/__tests__/test_reassortment_passes.rs)) give a CDF error of about 10^-4 on a polytree and 0.003 to 0.005 on a loop with `AllEdges`, and 0.05 to 0.08 with `ChildrenOnly`.
+
+`fn run_segment_timetree` [packages/treetime/src/timetree/segments.rs](../../packages/treetime/src/timetree/segments.rs) is the pipeline of `timetree --segment-trees`: joint branch-length optimization over the segments with topology fixed ([kb/algo/optimization.md](optimization.md)), then `--max-iter` refinement rounds at the fixed clock rate, each a time inference followed by a marginal reconstruction at the damped clock branch lengths, then the final time inference with the confidence regions. The rounds matter on segment graphs: optimize fixes only the sum of the two edges below a segment root, and the clock lengths settle the split. Limitations: [kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md); validation: [kb/reports/2026-11-15-segment-validation-timetree.md](../reports/2026-11-15-segment-validation-timetree.md).
+
 ---
 
 ## ML Branch-Length Pre-Step
@@ -336,6 +348,7 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 - <a id="ref-11"></a>Drummond, Alexei J., Simon Y. W. Ho, Matthew J. Phillips, and Andrew Rambaut. 2006. "Relaxed Phylogenetics and Dating with Confidence." _PLoS Biology_ 4(5):e88. https://doi.org/10.1371/journal.pbio.0040088 [↩](#cite-11)
 - <a id="ref-12"></a>Lepage, Thomas, David Bryant, Herve Philippe, and Nicolas Lartillot. 2007. "A General Comparison of Relaxed Molecular Clock Models." _Molecular Biology and Evolution_ 24(12):2669-2680. https://doi.org/10.1093/molbev/msm193 [↩](#cite-12)
 - <a id="ref-13"></a>Felsenstein, Joseph. 1985. "Confidence Limits on Phylogenies: An Approach Using the Bootstrap." _Evolution_ 39(4):783-791. https://doi.org/10.2307/2408678
+- <a id="ref-14"></a>Koller, Daphne, and Nir Friedman. 2009. _Probabilistic Graphical Models: Principles and Techniques._ MIT Press. ISBN 978-0-262-01319-2. https://mitpress.mit.edu/9780262013192/probabilistic-graphical-models/ [↩](#cite-14)
 
 ---
 
@@ -350,3 +363,4 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 | [`packages/app-output/src/`](../../packages/app-output/src/)                                         | Output writers: tree outputs, confidence intervals, coalescent, RTT   |
 | [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs)           | EM-like iterative refinement                                          |
 | [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs)     | End-to-end estimation pipeline                                        |
+| [`packages/treetime/src/timetree/segments.rs`](../../packages/treetime/src/timetree/segments.rs)     | Pipeline on graphs of segment trees                                   |

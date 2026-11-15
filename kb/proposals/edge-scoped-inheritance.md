@@ -67,6 +67,8 @@ A node has one time, shared by all its sites. A reassortant node with two older 
 >
 > The choice also settles which timetree parameters the segments share (clock rate, coalescent model), the open question of [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md).
 
+Decided: loopy message passing, node-local. The backward and forward passes run unchanged at nodes with one parent; a node with several parents sends each parent its subtree, combined from the second sweep on with the messages of its other parents, and multiplies the messages of all parents into its posterior. Sweeps repeat until the node times settle ([kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)). The segments share one clock rate, given with `--clock-rate`.
+
 ### Topology operations
 
 Rerooting, polytomy resolution, and edge contraction change edges, and the scopes must follow. Contracting an edge `X -> Y` gives each child edge `Y -> c` the new source `X`, which is valid for the sites of `Y -> c` that `Y` inherits from `X`, but not for sites that `Y` inherits from another parent. Rerooting inverts edges, which has no meaning at a reassortant node. A first version runs these operations only when all scopes are full (a tree) and reports an error otherwise.
@@ -96,7 +98,7 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 - Read named segment trees into one graph with edge scopes: [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
 - Scope-aware Fitch and marginal passes: [kb/issues/M-partition-passes-crossover-scopes-and-discrete-traits.md](../issues/M-partition-passes-crossover-scopes-and-discrete-traits.md)
 - Branch-length optimization on graphs of segment trees: [kb/issues/M-optimize-segment-graphs-topology-fixed.md](../issues/M-optimize-segment-graphs-topology-fixed.md)
-- Time inference on graphs with reassortment: [kb/issues/M-timetree-graphs-with-reassortment-unsupported.md](../issues/M-timetree-graphs-with-reassortment-unsupported.md)
+- Time inference on graphs with reassortment: [kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md)
 
 ## Glossary
 
