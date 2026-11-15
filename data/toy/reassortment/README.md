@@ -49,6 +49,7 @@ The full edge list with lengths and scopes is in `graph.tsv`.
 | File | Content |
 | --- | --- |
 | `tree_seg{1,2,3}.nwk` | Segment trees with named internal nodes and nodes with one child; branch lengths in substitutions per site |
+| `tree_seg{1,2,3}_collapsed.nwk` | The same trees without the nodes a segment only passes through (branch lengths summed), as tree inference writes them; merging inserts these nodes again |
 | `aln_seg{1,2,3}.fasta` | Leaf sequences, simulated along each segment tree under Jukes-Cantor at rate 1 |
 | `truth_seg{1,2,3}.fasta` | True sequences of every node of each segment tree, internal nodes first |
 | `graph.tsv` | Edges: parent, child, branch length, segments carried |
