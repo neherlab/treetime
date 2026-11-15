@@ -85,9 +85,9 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 
 ## Open design axes
 
-- **Scope storage**: a range set per partition and edge (general), or a set of carried partitions per edge plus optional ranges for the recombinant edges (compact for reassortment)
-- **Coordinates**: ranges per partition, or per alignment and mapped to the columns of each partition, when one alignment is split into several partitions such as genes
-- **Command interface**: repeated `--tree` paired with `--alignment` in order, or a configuration file that maps each segment to its tree and alignment ([kb/proposals/config-file-multi-partition.md](config-file-multi-partition.md))
+- **Scope storage** (implemented in `treetime-graph`, [kb/algo/graph.md](../algo/graph.md#edge-scopes)): one `SiteScope` per segment and edge, `Empty`, `Full`, or a few ranges stored inline, so reassortment and a few crossovers per segment do not allocate. Many breakpoints per segment, as in human ARGs, are out of scope
+- **Coordinates** (implemented): ranges are in the coordinates of a segment, which is one segment tree with its alignment. An alignment split into several partitions, such as genes, maps the segment ranges to the columns of each partition
+- **Command interface**: repeated `--tree`, paired with `--alignment` in order, first; the YAML configuration ([kb/proposals/config-file-multi-partition.md](config-file-multi-partition.md)) later
 - **Outputs**: the graph with scopes as graph JSON; per segment, the tree that the segment's scopes trace, in the tree formats
 
 ## Work items
