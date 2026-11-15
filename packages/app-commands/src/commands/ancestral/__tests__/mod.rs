@@ -10,3 +10,4 @@ mod test_reconstructed_aa_fasta;
 mod test_reconstructed_fasta_descriptions;
 mod test_report_ambiguous;
 mod test_seed_reproducibility;
+mod test_segment_trees;
