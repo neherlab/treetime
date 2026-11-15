@@ -1694,6 +1694,8 @@ export const zOptimizeConfig = z.strictObject({
   rate_category_rule: zRateCategoryRule.optional(),
   annotation: z.array(z.string()).optional(),
   tree: z.string().optional(),
+  segment_trees: z.array(z.string()).optional(),
+  segment_alignments: z.array(z.string()).optional(),
   newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
