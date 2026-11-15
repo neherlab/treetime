@@ -8,6 +8,7 @@ pub mod merge_by_name;
 pub mod node;
 pub mod node_names;
 pub mod pair_by_name;
+pub mod pass_through;
 pub mod reachability;
 pub mod remove_leaves;
 pub mod reroot;

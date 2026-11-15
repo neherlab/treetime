@@ -20,6 +20,7 @@ use treetime::partition::fitch::site_changes::fitch_site_change_counts;
 use treetime::partition::resolve::{PartitionEntry, PartitionPlan};
 use treetime::partition::split::{ModelSettings, SequenceInput};
 use treetime::progress::{LogSink, StageSink};
+use treetime::progress_info;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
 use treetime_graph::graph::Graph;
@@ -70,7 +71,17 @@ pub(crate) fn read_segment_trees_and_sources(
     names,
     branch_lengths,
     scopes,
+    pass_through,
   } = segment_trees_read_files(trees, newick_dialect)?;
+  progress_info!(
+    log,
+    "Merged {} segment trees into a graph of {} nodes; inserted {} nodes that a segment passes through, and left {} edges whose other segments disagree on the path and {} edges whose path holds a node the segment has elsewhere",
+    trees.len(),
+    graph.num_nodes(),
+    pass_through.inserted_nodes,
+    pass_through.ambiguous_edges,
+    pass_through.conflicting_edges
+  );
   let SequenceSources { alignments, partitions } = sequences.read_partitions(model, &graph, &names, log)?;
   let tree = NwkParse {
     graph,
