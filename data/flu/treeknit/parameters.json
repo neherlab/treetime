@@ -1,0 +1,24 @@
+{
+  "gamma": 2.0,
+  "itmax": 15,
+  "likelihood_sort": true,
+  "resolve": true,
+  "strict": true,
+  "seq_lengths": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "pre_resolve": true,
+  "rounds": 2,
+  "final_no_resolve": true,
+  "nMCMC": 50,
+  "sa_rep": 1,
+  "Tmin": 0.05,
+  "Tmax": 1.0,
+  "nT": 100,
+  "cooling_schedule": "geometric",
+  "naive": false,
+  "seed": 1
+}
