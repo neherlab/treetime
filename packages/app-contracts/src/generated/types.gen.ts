@@ -3386,6 +3386,21 @@ export type AncestralConfig = {
    */
   tree?: string;
   /**
+   * Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name
+   *
+   * Every node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node
+   * of the graph. A node that a segment only passes through stays in that segment's tree as a node with one child.
+   * An edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with
+   * `--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+   */
+  segment_trees?: Array<string>;
+  /**
+   * Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order
+   *
+   * Use instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+   */
+  segment_alignments?: Array<string>;
+  /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
    * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The

@@ -1518,6 +1518,8 @@ export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   partition: z.array(zPartitionSpec).optional(),
   tree: z.string().optional(),
+  segment_trees: z.array(z.string()).optional(),
+  segment_alignments: z.array(z.string()).optional(),
   newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
