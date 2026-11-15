@@ -229,6 +229,7 @@ pub(super) mod tests {
       &EdgeIndels::Included {
         counts: indel_counts_low,
         alignment_rates: btreemap! {1 => 1.0},
+        uncarried: std::collections::BTreeMap::new(),
       },
       BranchOptMethod::Newton,
       &mut branch_lengths_low,
@@ -243,6 +244,7 @@ pub(super) mod tests {
       &EdgeIndels::Included {
         counts: indel_counts_high,
         alignment_rates: btreemap! {1 => 8.0},
+        uncarried: std::collections::BTreeMap::new(),
       },
       BranchOptMethod::Newton,
       &mut branch_lengths_high,

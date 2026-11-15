@@ -111,6 +111,7 @@ mod tests {
         names: parse.names,
         sequences: SequenceInput::whole_alignments(sources, &GtrModel::JC69(JC69Params::default()))?,
         branch_lengths: parse.branch_lengths,
+        scopes: None,
       };
       let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
       output

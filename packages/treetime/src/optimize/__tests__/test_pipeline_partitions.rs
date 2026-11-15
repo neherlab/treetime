@@ -407,6 +407,7 @@ mod tests {
         names,
         sequences,
         branch_lengths: parse.branch_lengths,
+        scopes: None,
       };
       let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let edges = output

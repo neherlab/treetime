@@ -171,6 +171,7 @@ mod tests {
       )
       .unwrap(),
       branch_lengths,
+      scopes: None,
     };
 
     let output = pipeline::run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();

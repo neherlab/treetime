@@ -104,6 +104,7 @@ pub(super) mod tests {
         .map(|edge| (edge.key(), usize::from(edge.key() == indel_edge)))
         .collect(),
       alignment_rates: [(0, 1.0)].into(),
+      uncarried: std::collections::BTreeMap::new(),
     };
 
     let with_indels = find_zero_optimal_internal_edges(&graph, &included, &branch_lengths);

@@ -37,6 +37,7 @@ mod test_pipeline_partition_models;
 mod test_pipeline_partition_rate_recovery;
 mod test_pipeline_partitions;
 mod test_pipeline_reroot;
+mod test_pipeline_segment_graph;
 mod test_prop_optimize_simulated;
 mod test_root_preservation;
 mod test_run_optimize_loop;

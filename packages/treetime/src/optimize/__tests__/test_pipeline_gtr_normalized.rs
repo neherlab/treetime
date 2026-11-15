@@ -44,6 +44,7 @@ mod tests {
       names,
       sequences: SequenceInput::whole_alignments(vec![sequence_source(alphabet, sequences)?], &GtrModel::Infer)?,
       branch_lengths,
+      scopes: None,
     };
 
     let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
