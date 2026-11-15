@@ -21,6 +21,7 @@ Two-pass dynamic programming on a rooted tree:
 - Indel handling: insertions and deletions are tracked alongside substitutions, with majority rule for gap vs non-gap resolution at internal nodes.
 - `BitSet128` state sets: character state sets are represented as 128-bit bitmasks, enabling O(1) intersection and union via hardware AND/OR instructions.
 - Parallel BFS traversal: nodes at the same tree depth are processed in parallel using Rayon.
+- Graphs of segment trees: each partition carries an `Inheritance` (`PartitionFitch::inheritance`), either all edges (a tree, the default) or one segment of the graph's edge scopes ([kb/algo/graph.md](graph.md#edge-scopes)). The passes still scan the whole graph. A node that does not hold the segment returns no output; an internal node combines only the children whose edges carry the segment, takes its message from the one parent edge that carries it, and is a root of the segment when no parent edge does, so a segment may have several roots. `require_one_parent()` replaces the tree check: at most one carrying parent per node, any number of roots. Edges that carry only part of a segment (crossover ranges) are rejected until the passes select parents per site. On the toy reassortment graph each segment gives the same sequences, mutations, and root sequence as a run on its own tree (`test_pipeline_segment_graph.rs`)
 
 ### v0 differences
 
