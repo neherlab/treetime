@@ -139,7 +139,7 @@ fn write_prune_trees(
     traits: None,
   };
   write_run_tree_outputs(&annotated, resolved, CommandKind::Prune, log)?;
-  write_tree_outputs_per_alignment(&annotated, sequences, resolved, CommandKind::Prune, log)
+  write_tree_outputs_per_alignment(&annotated, sequences, None, resolved, CommandKind::Prune, log)
 }
 
 fn prune_output_maps(

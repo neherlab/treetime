@@ -1,6 +1,6 @@
 use crate::commands::shared::alignment::{PairedAlignment, pair_alignment};
 use crate::commands::shared::partition::resolve_run_partitions;
-use crate::commands::shared::tree_input::read_input_tree;
+use crate::commands::shared::tree_input::{TreeInput, read_input_tree};
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -48,7 +48,29 @@ pub(crate) fn read_tree_and_sources(
   })
 }
 
-pub(crate) fn read_segment_trees_and_sources(
+pub(crate) fn read_tree_input_and_sources(
+  tree_input: &TreeInput,
+  newick_dialect: NewickDialect,
+  sequences: &SequenceInputs,
+  model: &GtrModel,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<(TreeAndSources, Option<Arc<EdgeScopes>>), Report> {
+  match tree_input {
+    TreeInput::Tree(path) => Ok((
+      read_tree_and_sources(path, newick_dialect, sequences, model, cancel, stages, log)?,
+      None,
+    )),
+    TreeInput::Segments(paths) => {
+      let (tree_and_sources, scopes) =
+        read_segment_trees_and_sources(paths, newick_dialect, sequences, model, cancel, stages, log)?;
+      Ok((tree_and_sources, Some(scopes)))
+    },
+  }
+}
+
+fn read_segment_trees_and_sources(
   trees: &[PathBuf],
   newick_dialect: NewickDialect,
   sequences: &SequenceInputs,

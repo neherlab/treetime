@@ -19,7 +19,7 @@ use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
 use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
-use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+use crate::commands::shared::tree_input::{SegmentArgs, TreeArgs, TreeDialectArgs, TreeInput, resolve_tree_input};
 #[cfg(feature = "clap")]
 use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
@@ -45,7 +45,7 @@ pub const OPTIMIZE_ABOUT: &str = "Optimize the branch lengths of a tree for the 
 
 #[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
-  pub(crate) tree: PathBuf,
+  pub(crate) tree_input: TreeInput,
   pub(crate) newick_dialect: NewickDialect,
   pub(crate) sequences: SequenceInputs,
   pub(crate) positions: PositionBase,
@@ -79,6 +79,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       alignment: AlignmentArgs { alignment },
       partition: PartitionArgs { partition },
       tree: TreeArgs { tree },
+      segments,
       newick_dialect: TreeDialectArgs { newick_dialect },
       missing_sequences: MissingSequenceArgs {
         allow_missing_sequences,
@@ -110,13 +111,15 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       gap_fill_args: GapFillArgs { gap_fill },
       jobs_args: _,
     } = raw;
-    let tree = tree.ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
+    let (tree_input, alignment) = resolve_tree_input(tree, alignment, segments, || {
+      missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"])
+    })?;
     check_required_alignment_paths(&alignment)?;
     check_partition_rates(partition_rates, alignment.len(), partition.len())?;
     let dense = representation_dense(representation);
     check_sparse_only_settings(dense, no_merge_shared_mutations, no_hoist_reversions)?;
     Ok(Self {
-      tree,
+      tree_input,
       newick_dialect: newick_dialect.dialect(),
       outputs: optimize_outputs(output, output_selection, alignment.len(), output_node_data, gtr_output),
       sequences: SequenceInputs {
@@ -268,6 +271,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree: TreeArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub segments: SegmentArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

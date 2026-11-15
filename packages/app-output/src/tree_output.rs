@@ -11,11 +11,13 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::progress::LogSink;
 use treetime::progress_warn;
+use treetime_graph::graph::Graph;
 use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::nex::nex_write_file;
 use treetime_io::nwk::{NwkNodeComments, NwkStyle, NwkWriteOptions, nwk_write_file};
 use treetime_io::usher_mat::usher_mat_pb_write_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_internal_report;
 
 pub fn write_run_tree_outputs<'a>(
   graph: &'a AnnotatedGraph<'a>,
@@ -29,12 +31,20 @@ pub fn write_run_tree_outputs<'a>(
 pub fn write_tree_outputs_per_alignment<'a>(
   run_graph: &AnnotatedGraph<'a>,
   sequences: &BTreeMap<usize, TreeSequences<'a>>,
+  segment_graphs: Option<&BTreeMap<usize, Graph>>,
   resolved: &ResolvedOutputs,
   command: CommandKind,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   for alignment in resolved.alignments() {
+    let topology = match segment_graphs {
+      None => run_graph.graph,
+      Some(graphs) => graphs
+        .get(&alignment)
+        .ok_or_else(|| make_internal_report!("Alignment {alignment} has no segment graph"))?,
+    };
     let graph = AnnotatedGraph {
+      graph: topology,
       sequences: sequences.get(&alignment).copied(),
       ..*run_graph
     };
