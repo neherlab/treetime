@@ -55,6 +55,7 @@ pub(crate) fn ancestral_input(
     graph,
     edges,
     sequences,
+    scopes: None,
   }
 }
 

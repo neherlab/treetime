@@ -9,7 +9,7 @@ use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::gtr::gtr::GTR;
 use crate::optimize::partition_rates::scale_rates_to_unit_mean;
 use crate::partition::create::{Representation, build_marginal_partition};
-use crate::partition::fitch::passes::create_fitch_partition;
+use crate::partition::fitch::passes::create_inherited_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sample::SampleMode;
@@ -22,9 +22,11 @@ use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use rand::Rng;
+use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
-use treetime_utils::{make_internal_report, make_report};
+use treetime_graph::scope::{EdgeScopes, Inheritance};
+use treetime_utils::{make_error, make_internal_report, make_report};
 
 pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionMethod, OperationError> {
   if params.sample_from_profile != SampleMode::Argmax && params.method != MethodAncestral::Marginal {
@@ -48,6 +50,7 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionMet
 )]
 pub(crate) fn reconstruct_partitions(
   graph: &Graph,
+  scopes: Option<&Arc<EdgeScopes>>,
   method: ReconstructionMethod,
   input: SplitInput,
   branch_lengths: &EdgeMap<f64>,
@@ -69,8 +72,19 @@ pub(crate) fn reconstruct_partitions(
       ((layout, model), (alphabet, nodes))
     })
     .unzip();
+  let inheritances = segment_inheritances(scopes, alignments.len(), &heads)?;
   let partitions = match method {
-    ReconstructionMethod::Fitch => reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?,
+    ReconstructionMethod::Fitch => {
+      let inputs = izip!(inheritances, inputs)
+        .map(|(inheritance, (alphabet, nodes))| (inheritance, alphabet, nodes))
+        .collect();
+      reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?
+    },
+    ReconstructionMethod::Marginal(_) if scopes.is_some() => {
+      return make_error!(
+        "Marginal reconstruction on a graph of several segment trees is not implemented yet; use --method-anc=parsimony"
+      );
+    },
     ReconstructionMethod::Marginal(representation) => {
       let reconstructions = build_alignment_partitions(
         graph,
@@ -101,6 +115,27 @@ pub(crate) fn reconstruct_partitions(
       })
       .collect(),
   )
+}
+
+fn segment_inheritances(
+  scopes: Option<&Arc<EdgeScopes>>,
+  alignment_count: usize,
+  heads: &[(PartitionLayout, GtrModel)],
+) -> Result<Vec<Inheritance>, Report> {
+  let Some(scopes) = scopes else {
+    return Ok(vec![Inheritance::ALL; heads.len()]);
+  };
+  if scopes.segment_count() != alignment_count {
+    return make_error!(
+      "The graph has {} segment trees, but the run has {} alignments: give one alignment per segment tree, in the same order",
+      scopes.segment_count(),
+      alignment_count
+    );
+  }
+  heads
+    .iter()
+    .map(|(layout, _)| Inheritance::segment(Arc::clone(scopes), layout.alignment - 1))
+    .collect()
 }
 
 pub(crate) struct ReconstructedPartition {
@@ -194,7 +229,7 @@ pub(crate) fn reconstruct_partition(
   match method {
     ReconstructionMethod::Fitch => reconstruct_fitch(
       graph,
-      vec![(alphabet, node_inputs)],
+      vec![(Inheritance::ALL, alphabet, node_inputs)],
       options.impute,
       cancel,
       stages,
@@ -228,7 +263,7 @@ pub(crate) enum ReconstructionMethod {
 
 fn reconstruct_fitch(
   graph: &Graph,
-  inputs: Vec<(Alphabet, NodeMap<NodeSeqInput>)>,
+  inputs: Vec<(Inheritance, Alphabet, NodeMap<NodeSeqInput>)>,
   impute: bool,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
@@ -237,7 +272,9 @@ fn reconstruct_fitch(
   checkpoint(cancel, stages, "Fitch parsimony", 0.3)?;
   let mut partitions = inputs
     .into_iter()
-    .map(|(alphabet, node_inputs)| create_fitch_partition(graph, alphabet, node_inputs))
+    .map(|(inheritance, alphabet, node_inputs)| {
+      create_inherited_fitch_partition(graph, inheritance, alphabet, node_inputs)
+    })
     .collect::<Result<Vec<_>, Report>>()?;
 
   if impute {

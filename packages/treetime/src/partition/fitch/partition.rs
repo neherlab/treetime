@@ -9,6 +9,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::{Seq, seq};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -17,6 +18,7 @@ pub struct PartitionFitch {
   pub length: usize,
   pub nodes: NodeMap<FitchNodeData>,
   pub edges: EdgeMap<SparseEdgeObs>,
+  pub inheritance: Inheritance,
 }
 
 impl PartitionFitch {

@@ -114,6 +114,7 @@ fn setup() -> (AncestralInput, NodeNames) {
       &GtrModel::JC69(JC69Params::default()),
     )
     .unwrap(),
+    scopes: None,
   };
   (input, names)
 }
