@@ -8,6 +8,8 @@ mod tests {
   use std::collections::BTreeSet;
   use std::fs;
   use std::path::PathBuf;
+  use treetime_graph::merge_by_name::MergedGraph;
+  use treetime_graph::pass_through::PassThroughReport;
   use treetime_graph::schedule::GraphSchedule;
   use treetime_utils::make_report;
 
@@ -41,8 +43,60 @@ mod tests {
   fn test_segment_trees_read_toy_reassortment_gives_the_edges_and_scopes_of_its_edge_table() -> Result<(), Report> {
     let paths = SEGMENTS.map(|segment| toy_dir().join(format!("tree_{segment}.nwk")));
     let merged = segment_trees_read_files(&paths, TREE_DIALECT_DEFAULT)?;
+    assert_eq!(PassThroughReport::default(), merged.pass_through);
+    assert_eq!(expected_edges()?, edge_table(&merged));
 
-    let actual: BTreeSet<_> = merged
+    let schedule = GraphSchedule::new(&merged.graph)?;
+    let roots = schedule.roots().iter().map(|&key| &merged.names[key]).collect_vec();
+    assert_eq!(vec!["R", "R3"], roots);
+    Ok(())
+  }
+
+  #[test]
+  fn test_segment_trees_read_collapsed_toy_inserts_the_pass_through_nodes_that_topology_determines()
+  -> Result<(), Report> {
+    let paths = SEGMENTS.map(|segment| toy_dir().join(format!("tree_{segment}_collapsed.nwk")));
+    let merged = segment_trees_read_files(&paths, TREE_DIALECT_DEFAULT)?;
+    let actual = edge_table(&merged);
+    let expected = expected_edges()?;
+    let row = |parent: &str, child: &str, length: &str, segments: &str| {
+      (
+        parent.to_owned(),
+        child.to_owned(),
+        length.to_owned(),
+        segments.to_owned(),
+      )
+    };
+    assert_eq!(
+      (
+        PassThroughReport {
+          inserted_nodes: 2,
+          ambiguous_edges: 0,
+          conflicting_edges: 0,
+        },
+        touching(&expected, "K"),
+        true,
+        true,
+      ),
+      (
+        merged.pass_through,
+        touching(&actual, "K"),
+        actual.contains(&row("R", "M", "0.045000", "seg2")),
+        actual.contains(&row("X", "Q", "0.040000", "seg1,seg3")),
+      )
+    );
+    Ok(())
+  }
+
+  fn touching<'r>(
+    rows: &'r BTreeSet<(String, String, String, String)>,
+    name: &str,
+  ) -> BTreeSet<&'r (String, String, String, String)> {
+    rows.iter().filter(|row| row.0 == name || row.1 == name).collect()
+  }
+
+  fn edge_table(merged: &MergedGraph) -> BTreeSet<(String, String, String, String)> {
+    merged
       .graph
       .get_edges()
       .map(|edge| {
@@ -60,12 +114,6 @@ mod tests {
           segments,
         )
       })
-      .collect();
-    assert_eq!(expected_edges()?, actual);
-
-    let schedule = GraphSchedule::new(&merged.graph)?;
-    let roots = schedule.roots().iter().map(|&key| &merged.names[key]).collect_vec();
-    assert_eq!(vec!["R", "R3"], roots);
-    Ok(())
+      .collect()
   }
 }
