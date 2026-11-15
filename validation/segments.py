@@ -12,11 +12,14 @@ TreeKnit), in two forms: `full` keeps the nodes that the segment only passes thr
 inference would.
 
 Variants: `joint-full` and `joint-collapsed` run `optimize --segment-trees` on all segments, `separate` runs
-`optimize --tree` once per segment (collapsed tree, topology kept).
+`optimize --tree` once per segment (collapsed tree, topology kept). `timetree-full` and `timetree-collapsed` run
+`timetree --segment-trees` at the true mean clock rate with the default message passing, the `-children` variants
+with `--no-cross-parent-messages`, where the message to a parent is the subtree alone.
 
 Expected: the relative segment rates are recovered; on branches shared by several segments the joint fit is closer
 to the true substitutions than the separate fits, the more so the more segments share the branch; branches of one
-segment are fitted about as well as by the separate fit; high reassortment leaves fewer shared branches.
+segment are fitted about as well as by the separate fit; high reassortment leaves fewer shared branches. The dates of internal nodes are unbiased, and their 90% regions
+cover about 90% of the true dates; cross-parent messages matter at nodes with several parents.
 """
 
 import argparse
@@ -33,6 +36,7 @@ import pandas as pd
 from Bio import Phylo
 
 from coalescent import Constant
+from coalescent import PRESENT
 from reassortment import collapsed, local_tree, simulate_arg
 
 HERE = Path(__file__).resolve().parent
@@ -41,6 +45,13 @@ CASES = {'low': 0.02, 'high': 0.2}  # reassortment rate per lineage and year
 PERTURB_SIGMA = 0.3
 KEEP_TOPOLOGY = ['--no-collapse-short-branches', '--no-merge-shared-mutations', '--no-hoist-reversions']
 ALPHABET = np.array(list('ACGT'))
+SAMPLES_PER_BATCH, SAMPLE_INTERVAL = 2, 0.1  # the sampling schedule of simulate_arg
+TIMETREE_VARIANTS = {
+    'timetree-full': ('full', []),
+    'timetree-full-children': ('full', ['--no-cross-parent-messages']),
+    'timetree-collapsed': ('collapsed', []),
+    'timetree-collapsed-children': ('collapsed', ['--no-cross-parent-messages']),
+}
 
 
 def random_gtr(rng):
@@ -119,33 +130,71 @@ def simulate(args):
             print(f'{out}: {arg.n_reassortments} reassortments', flush=True)
 
 
+def mean_clock_rate():
+    lengths = np.array([L for L, _ in SEGMENTS.values()], dtype=float)
+    return float(np.average([mu for _, mu in SEGMENTS.values()], weights=lengths))
+
+
+def tip_date(tip):
+    index = int(tip.split('_')[1]) - 1
+    return PRESENT - (index // SAMPLES_PER_BATCH) * SAMPLE_INTERVAL
+
+
+def node_dates(rep_dir):
+    dates = {}
+    for s in SEGMENTS:
+        tree = Phylo.read(rep_dir / f'{s}.time.nwk', 'newick')
+        depths = tree.depths()
+        tip = next(t for t in tree.get_terminals())
+        anchor = tip_date(tip.name) - depths[tip]
+        dates.update({clade.name: anchor + depth for clade, depth in depths.items()})
+    return dates
+
+
+def write_metadata(rep_dir):
+    path = rep_dir / 'metadata.tsv'
+    if not path.exists():
+        tips = sorted(name for name in node_dates(rep_dir) if name.startswith('tip_'))
+        path.write_text('name\tdate\n' + ''.join(f'{tip}\t{tip_date(tip):.4f}\n' for tip in tips))
+    return path
+
+
 def jobs(args):
     for rep_dir in sorted(args.data.glob('*/rep*')):
         if not (rep_dir / 'truth.json').exists():
             continue
         out = args.results / rep_dir.relative_to(args.data)
         alignments = [str(rep_dir / f'{s}.tips.fasta.xz') for s in SEGMENTS]
+        metadata = write_metadata(rep_dir)
+        for variant, (form, extra) in TIMETREE_VARIANTS.items():
+            trees = [str(rep_dir / f'{s}.{form}.nwk') for s in SEGMENTS]
+            target = out / variant
+            yield target, 'timetree', [
+                '--segment-trees', *trees, '--segment-alignments', *alignments, '--metadata', str(metadata),
+                '--clock-rate', f'{mean_clock_rate():.6g}', '--confidence', *extra,
+                '--output-dates', str(target / 'dates.tsv'),
+            ]  # fmt: skip
         for form in ('full', 'collapsed'):
             trees = [str(rep_dir / f'{s}.{form}.nwk') for s in SEGMENTS]
             target = out / f'joint-{form}'
-            yield target, [
+            yield target, 'optimize', [
                 '--segment-trees', *trees, '--segment-alignments', *alignments,
                 '--output-tree-nwk', str(target / 'tree.{alignment}.nwk'), '--output-model', str(target / 'model.json'),
             ]  # fmt: skip
         for index, segment in enumerate(SEGMENTS, 1):
             target = out / 'separate' / segment
-            yield target, [
+            yield target, 'optimize', [
                 '--tree', str(rep_dir / f'{segment}.collapsed.nwk'), '--alignment', alignments[index - 1], *KEEP_TOPOLOGY,
                 '--output-tree-nwk', str(target / 'tree.nwk'), '--output-model', str(target / 'model.json'),
             ]  # fmt: skip
 
 
-def run_one(binary, target, flags):
+def run_one(binary, target, command, flags):
     if (target / 'done').exists():
         return 0
     target.mkdir(parents=True, exist_ok=True)
     with open(target / 'log.txt', 'w') as log:
-        rc = subprocess.call([binary, 'optimize', '-v', *flags], stdout=log, stderr=subprocess.STDOUT)
+        rc = subprocess.call([binary, command, '-v', *flags], stdout=log, stderr=subprocess.STDOUT)
     if rc == 0:
         (target / 'done').touch()
     print(f'{"ok " if rc == 0 else "FAIL"} {target}', flush=True)
@@ -236,10 +285,57 @@ def evaluate(args):
     args.results.mkdir(parents=True, exist_ok=True)
     branches.to_csv(args.results / 'branches.tsv', sep='\t', index=False, float_format='%.6g')
     rates.to_csv(args.results / 'rates.tsv', sep='\t', index=False, float_format='%.6g')
-    summary(branches, rates, args.data, args.results / 'summary.md')
+    dates = evaluate_dates(args)
+    dates.to_csv(args.results / 'dates.tsv', sep='\t', index=False, float_format='%.6g')
+    summary(branches, rates, dates, args.data, args.results / 'summary.md')
 
 
-def summary(branches, rates, data, path):
+def read_dates(path):
+    table = pd.read_csv(path, sep='\t', comment=None, skiprows=1)
+    table.columns = ['node', 'date', 'numeric', 'lower', 'upper']
+    return table.set_index('node')
+
+
+def node_kinds(rep_dir, form):
+    """'hidden' for nodes with one child in every segment, else 'several parents' or 'one parent' in the graph."""
+    parents, branching = {}, set()
+    for s in SEGMENTS:
+        edges = parents_with_lengths(rep_dir / f'{s}.{form}.nwk')
+        for child, (parent, _) in edges.items():
+            parents.setdefault(child, set()).add(parent)
+        counts = pd.Series([parent for parent, _ in edges.values()]).value_counts()
+        branching |= set(counts[counts > 1].index)
+    return {
+        node: 'hidden' if node not in branching else 'several parents' if len(p) > 1 else 'one parent'
+        for node, p in parents.items()
+    } | {node: 'one parent' for node in branching if node not in parents}
+
+
+def evaluate_dates(args):
+    rows = []
+    for rep_dir in sorted(args.data.glob('*/rep*')):
+        truth = node_dates(rep_dir)
+        kinds = {form: node_kinds(rep_dir, form) for form in ('full', 'collapsed')}
+        out = args.results / rep_dir.relative_to(args.data)
+        for variant in TIMETREE_VARIANTS:
+            path = out / variant / 'dates.tsv'
+            if not path.exists():
+                continue
+            log = (out / variant / 'log.txt').read_text()
+            form = TIMETREE_VARIANTS[variant][0]
+            sweeps = next((int(line.split(' took ')[1].split()[0]) for line in log.splitlines() if ' took ' in line and 'sweeps' in line), 1)
+            inferred = read_dates(path)
+            for node, date in truth.items():
+                if node.startswith('tip_') or node not in inferred.index:
+                    continue
+                row = inferred.loc[node]
+                rows.append({'case': rep_dir.parent.name, 'rep': rep_dir.name, 'variant': variant, 'node': node,
+                             'kind': kinds[form].get(node, 'hidden'), 'true': date, 'inferred': float(row['numeric']),
+                             'lower': float(row['lower']), 'upper': float(row['upper']), 'sweeps': sweeps})  # fmt: skip
+    return pd.DataFrame(rows)
+
+
+def summary(branches, rates, dates, data, path):
     lines = ['# Segment validation', '']
     meta = [json.loads(p.read_text()) | {'case': p.parent.parent.name} for p in sorted(data.glob('*/rep*/truth.json'))]
     lines += ['Reassortments per replicate: ' + ', '.join(f'{m["case"]} {m["n_reassortments"]}' for m in meta), '']
@@ -270,8 +366,36 @@ def summary(branches, rates, data, path):
     )
     lines += ['## Sum of the two branches at each segment root against expected substitutions (RMSE)', '',
               roots.round(2).to_markdown(), '']  # fmt: skip
+    if not dates.empty:
+        lines += dates_summary(dates)
     path.write_text('\n'.join(lines))
     print('\n'.join(lines))
+
+
+def dates_summary(dates):
+    dates = dates.assign(
+        error=dates['inferred'] - dates['true'],
+        covered=(dates['lower'] <= dates['true']) & (dates['true'] <= dates['upper']),
+        width=dates['upper'] - dates['lower'],
+    )
+    lines = ['## Dates of internal nodes', '',
+             f'Fixed clock rate {mean_clock_rate():.4g} per site and year (the true length-weighted mean). Error is '
+             'inferred minus true date in years; coverage is the fraction of true dates inside the 90% region. '
+             '`sweeps` is the mean number of message-passing sweeps of the first round. `hidden` nodes have one child in '
+             'every segment (reassortment nodes, and mergers of lineages that carry disjoint sets of segments): '
+             'sequences do not date them, and the collapsed trees leave them out. Nodes with several parents are '
+             'counted in the graph of the variant: the reassortment nodes in the full trees are hidden, the nodes '
+             'below them have several parents in the collapsed trees.', '']  # fmt: skip
+    grouped = dates.groupby(['case', 'variant', 'kind'])
+    table = pd.DataFrame({
+        'nodes': grouped.size(),
+        'bias': grouped['error'].mean(),
+        'rmse': grouped['error'].apply(lambda e: np.sqrt(np.mean(e ** 2))),
+        'coverage': grouped['covered'].mean(),
+        'width': grouped['width'].median(),
+        'sweeps': grouped['sweeps'].mean(),
+    })  # fmt: skip
+    return lines + [table.round(3).to_markdown(), '']
 
 
 def main():
