@@ -79,7 +79,7 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 
 ## Input
 
-- **Named trees**: one Newick tree per segment, with named internal nodes. A name that occurs in several trees is one graph node, and a parent-child pair that occurs in several trees is one graph edge whose scope holds all their segments. A node that a segment only passes through stays in that segment's tree as a node with one child, so that an edge shared by several segments stays one edge. Branch lengths of a shared edge must agree across trees
+- **Named trees**: one Newick tree per segment, with named internal nodes. A name that occurs in several trees is one graph node, and a parent-child pair that occurs in several trees is one graph edge whose scope holds all their segments. A node that a segment only passes through stays in that segment's tree as a node with one child, so that an edge shared by several segments stays one edge. A shared edge gets the mean of the branch lengths its trees give, since separately estimated segment trees need not agree
 - **TreeKnit**: TreeKnit writes one tree per segment with names that are local to each tree, and the MCCs of every pair of segments (`data/flu/treeknit/MCCs.json`, four segments and six pairs). Turning these into named trees needs a rule for MCCs of different pairs that disagree, and the nodes that segments pass through must be inserted
 - **Toy data**: [data/toy/reassortment/](../../data/toy/reassortment/) holds a hand-made graph with three segments, two reassortant nodes (one with a different parent for each segment), two graph roots, and nodes that some segments pass through, with simulated alignments and the true ancestral sequences
 
