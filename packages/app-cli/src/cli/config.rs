@@ -259,7 +259,7 @@ mod tests {
       )
       .unwrap();
       let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();
-      assert_eq!(dir.path().join("from-config.nwk"), args.tree());
+      assert_eq!(Some(dir.path().join("from-config.nwk").as_path()), args.tree());
     }
 
     #[test]
@@ -365,7 +365,7 @@ mod tests {
       )
       .unwrap();
       let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();
-      assert_eq!(dir.path().join("from-config.nwk"), args.tree());
+      assert_eq!(Some(dir.path().join("from-config.nwk").as_path()), args.tree());
     }
 
     #[test]
@@ -601,7 +601,7 @@ mod tests {
         ..Default::default()
       };
       let args = TreetimeAncestralArgs::try_from(raw).unwrap();
-      assert_eq!(std::path::Path::new("tree.nwk"), args.tree());
+      assert_eq!(Some(std::path::Path::new("tree.nwk")), args.tree());
     }
 
     #[test]
