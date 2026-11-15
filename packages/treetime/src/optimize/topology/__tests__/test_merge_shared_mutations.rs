@@ -21,6 +21,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -77,6 +78,7 @@ mod tests {
       obs_nodes,
       obs_edges,
       impute_missing_data: false,
+      inheritance: Inheritance::ALL,
     };
 
     Ok(partition)
@@ -482,6 +484,7 @@ mod tests {
       obs_nodes: p2_obs_nodes,
       obs_edges: p2_obs_edges,
       impute_missing_data: false,
+      inheritance: Inheritance::ALL,
     };
 
     let mut partitions = sparse_topology_partitions(vec![p1, p2]);
@@ -1024,6 +1027,7 @@ mod tests {
         obs_nodes,
         obs_edges,
         impute_missing_data: false,
+        inheritance: Inheritance::ALL,
       };
 
       Ok(partition)

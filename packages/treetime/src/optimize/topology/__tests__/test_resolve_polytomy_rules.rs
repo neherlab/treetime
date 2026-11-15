@@ -105,6 +105,7 @@ mod tests {
     use treetime_graph::keymap;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
+    use treetime_graph::scope::Inheritance;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
     use treetime_primitives::{AsciiChar, Seq};
 
@@ -183,6 +184,7 @@ mod tests {
           obs_nodes,
           obs_edges,
           impute_missing_data: false,
+          inheritance: Inheritance::ALL,
         };
 
         Ok(Self {

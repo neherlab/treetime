@@ -11,6 +11,7 @@ mod tests {
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
   use eyre::Report;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
@@ -51,6 +52,7 @@ mod tests {
       obs_edges: keymap! {},
       root_sequence: seq![],
       impute_missing_data: false,
+      inheritance: Inheritance::ALL,
     };
     Ok(partition)
   }

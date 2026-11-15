@@ -29,6 +29,7 @@ pub(super) mod tests {
   use helpers::{empty_sparse_recon, populate_test_nodes};
   use indoc::indoc;
   use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::scope::Inheritance;
 
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -695,6 +696,7 @@ pub(super) mod tests {
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
           impute_missing_data: false,
+          inheritance: Inheritance::ALL,
         },
         gtr: jc69(JC69Params::default())?,
         node_states: keymap! {},
