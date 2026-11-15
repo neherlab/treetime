@@ -59,7 +59,7 @@ v1: [`packages/treetime-graph/src/scope.rs`](../../packages/treetime-graph/src/s
 `merge_trees_by_name()` builds one graph from one tree per segment. A name that occurs in several trees is one node, and a parent-child pair that occurs in several trees is one edge, whose scope is `Full` for every segment whose tree contains it. Nodes are created in the preorder of the first tree that contains them, edges likewise, so child order follows the input trees.
 
 - **Names**: every node of every tree needs a name, unique within its tree. Generated names of unnamed nodes would merge unrelated nodes, so unnamed nodes are an error
-- **Branch lengths**: the lengths of a shared edge must agree within `SHARED_BRANCH_LENGTH_TOLERANCE` (1e-6, absolute and relative to the longer length), which covers Newick files written with six decimals. A length that only one tree gives is kept
+- **Branch lengths**: a shared edge gets the mean of the lengths that the trees containing it give; trees without a length for the edge do not count, and an edge that no tree gives a length has none. Segment trees estimated separately give a shared edge different lengths, so the lengths are not checked against each other
 - **Pass-through nodes**: a node that a segment only passes through stays in that segment's tree as a node with one child, so that an edge shared by several segments is one edge
 - **Checks**: each input is a tree; the merged graph is acyclic, else the error lists the cycle by name (two trees order the same nodes in opposite ways); the scopes pass the validation above
 
