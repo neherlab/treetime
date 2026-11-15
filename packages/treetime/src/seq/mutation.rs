@@ -104,6 +104,7 @@ pub(crate) struct SequenceMutations {
 
 pub(crate) fn emit_sequences(
   graph: &Graph,
+  inheritance: &Inheritance,
   seq_track: SeqTrack<'_>,
   include_leaves: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
@@ -112,8 +113,11 @@ pub(crate) fn emit_sequences(
 ) -> Result<(), OperationError> {
   let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
   for &key in schedule.preorder() {
+    if !inheritance.holds(&schedule, key) {
+      continue;
+    }
     let seq = node_sequence(key).map_err(OperationError::classify)?;
-    let emitted = include_leaves || !schedule.children(key).is_empty();
+    let emitted = include_leaves || inheritance.children(&schedule, key).next().is_some();
     emit_node(&mut sink, key, seq_track, &seq, emitted, &mut node_ambiguity)?;
   }
   Ok(())

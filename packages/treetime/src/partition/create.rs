@@ -20,7 +20,7 @@ use itertools::{Itertools, izip};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::scope::Inheritance;
-use treetime_utils::{make_error, make_internal_report};
+use treetime_utils::make_internal_report;
 
 #[expect(
   clippy::too_many_arguments,
@@ -110,6 +110,17 @@ pub(crate) fn build_sparse_reconstruction(
   log: &dyn LogSink,
 ) -> Result<SparseReconstruction, Report> {
   let fitch = create_fitch_partition(graph, alphabet, node_inputs)?;
+  sparse_from_fitch(model, rate, fitch, graph, branch_lengths, log)
+}
+
+fn sparse_from_fitch(
+  model: &GtrModel,
+  rate: InferredRate,
+  fitch: PartitionFitch,
+  graph: &Graph,
+  branch_lengths: &EdgeMap<f64>,
+  log: &dyn LogSink,
+) -> Result<SparseReconstruction, Report> {
   let gtr = fitch_gtr(model, rate, &fitch, graph, branch_lengths, log)?;
   let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
   Ok(SparseReconstruction::seeded(partition, gtr, node_states))
@@ -203,13 +214,10 @@ impl<'a> PreparedPartition<'a> {
       alphabet,
       nodes,
     } = input;
-    if !inheritance.is_all() && matches!(representation, Representation::Sparse) {
-      return make_error!(
-        "Sparse marginal reconstruction on a graph of several segment trees is not implemented yet; use --dense"
-      );
-    }
     let data = match representation {
-      Representation::Sparse => PreparedData::Sparse(create_fitch_partition(graph, alphabet, nodes)?),
+      Representation::Sparse => {
+        PreparedData::Sparse(create_inherited_fitch_partition(graph, inheritance, alphabet, nodes)?)
+      },
       Representation::Dense if model.is_infer() => PreparedData::DenseFitch(
         create_inherited_fitch_partition(graph, inheritance, alphabet, nodes.clone())?,
         nodes,

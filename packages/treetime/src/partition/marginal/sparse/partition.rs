@@ -23,6 +23,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::scope::Inheritance;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::interval::range_union::range_union;
@@ -83,7 +84,8 @@ impl PartitionMarginalSparse {
   }
 
   pub(crate) fn root_sequence(&self, node_states: &NodeMap<SparseNodeState>, graph: &Graph) -> Result<Seq, Report> {
-    Ok(map_seq(&node_states[&graph.root_key()?], &self.alphabet))
+    let root_key = self.inheritance.root(&GraphSchedule::new(graph)?)?;
+    Ok(map_seq(&node_states[&root_key], &self.alphabet))
   }
 
   pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
@@ -192,8 +194,9 @@ impl PartitionMarginalSparse {
     if !is_leaf {
       return Ok(map_seq(node_data, &self.alphabet));
     }
-    let parent = graph
-      .node_parent(node_key)
+    let parent = self
+      .inheritance
+      .sole_parent(&GraphSchedule::new(graph)?, node_key)
       .wrap_err_with(|| format!("When reconstructing the sequence of node {node_key}"))?;
     let down = parent.map(|(parent_key, edge_key)| downs.down(edge_key, parent_key));
     Ok(reconstruct_leaf_sequence(
@@ -222,8 +225,9 @@ impl PartitionMarginalSparse {
     if !is_leaf {
       return Ok(internal_ambiguity(node_data, &self.alphabet, threshold));
     }
-    let parent = graph
-      .node_parent(node_key)
+    let parent = self
+      .inheritance
+      .sole_parent(&GraphSchedule::new(graph)?, node_key)
       .wrap_err_with(|| format!("When reporting the ambiguous sites of node {node_key}"))?;
     let (true, Some((parent_key, edge_key))) = (impute, parent) else {
       return Ok(AmbiguousSites::new());

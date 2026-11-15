@@ -12,6 +12,7 @@ use itertools::Itertools;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::Seq;
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -50,6 +51,7 @@ pub(crate) fn stream_alignment_sequences<P: PartitionSequences>(
   if let Some(sink) = sink {
     emit_sequences(
       graph,
+      partitions[0].inheritance(),
       track,
       include_leaves,
       |node_key| {
@@ -120,6 +122,10 @@ pub(crate) struct StreamOptions {
 }
 
 impl<P: PartitionSequences + ?Sized> PartitionSequences for &P {
+  fn inheritance(&self) -> &Inheritance {
+    (**self).inheritance()
+  }
+
   fn alphabet(&self) -> &Alphabet {
     (**self).alphabet()
   }
@@ -154,6 +160,8 @@ impl<P: PartitionSequences + ?Sized> PartitionSequences for &P {
 }
 
 pub(crate) trait PartitionSequences {
+  fn inheritance(&self) -> &Inheritance;
+
   fn alphabet(&self) -> &Alphabet;
 
   fn node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report>;
@@ -184,6 +192,10 @@ pub(crate) struct ImputedReconstruction<'a> {
 }
 
 impl PartitionSequences for ImputedReconstruction<'_> {
+  fn inheritance(&self) -> &Inheritance {
+    self.reconstruction.inheritance()
+  }
+
   fn alphabet(&self) -> &Alphabet {
     self.reconstruction.alphabet()
   }

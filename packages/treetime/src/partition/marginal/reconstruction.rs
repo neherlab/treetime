@@ -32,6 +32,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::scope::Inheritance;
 use treetime_primitives::{LogLh, Seq};
 
@@ -249,10 +250,21 @@ impl<'a> ReconstructionRef<'a> {
         sink,
       );
     };
+    let inheritance = &reconstruction.partition.inheritance;
     if let Some(sink) = sink {
-      emit_sequences(graph, track, include_leaves, node_sequence, node_ambiguity, sink)?;
+      emit_sequences(
+        graph,
+        inheritance,
+        track,
+        include_leaves,
+        node_sequence,
+        node_ambiguity,
+        sink,
+      )?;
     }
-    let root_key = graph.root_key().map_err(OperationError::classify)?;
+    let root_key = GraphSchedule::new(graph)
+      .and_then(|schedule| inheritance.root(&schedule))
+      .map_err(OperationError::classify)?;
     let root_sequence = node_sequence(root_key).map_err(OperationError::classify)?;
     let edge_mutations = sparse_edge_mutations(
       &reconstruction.partition,

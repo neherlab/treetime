@@ -42,21 +42,31 @@ pub(crate) fn process_forward_indexed(
   backward: &EdgeMap<SparseEdgeBackward>,
 ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
+  let inheritance = &partition.inheritance;
+  inheritance.require_one_parent(&schedule)?;
   let pass = SparseForwardPass {
     schedule: &schedule,
     partition,
     gtr,
     branch_lengths,
   };
-  let backward = backward.iter().collect();
   let outputs = schedule.scan_down(
-    schedule.join_parent_edges(node_states, backward)?,
-    |key, (node, mut backward), parents: PerEdge<SparseForwardOutput>| {
-      pass.node(key, node, backward.pop(), parents.first().map(|parent| &parent.0))
+    inheritance.join_parent_edge(&schedule, node_states, backward.iter().collect()),
+    |key, (node, backward), parents: PerEdge<Option<SparseForwardOutput>>| {
+      let Some(node) = node else {
+        return Ok((None, None));
+      };
+      let parent = inheritance.parent_message(&schedule, key, &parents)?;
+      let (output, message) = pass.node(
+        key,
+        node,
+        backward,
+        parent.map(|(parent_key, edge_key, parent)| (parent_key, edge_key, &parent.0)),
+      )?;
+      Ok((Some(output), Some(message)))
     },
   )?;
-  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
 
   let mut forward = EdgeMap::new();
   let mut estimates = EdgeMap::new();
@@ -90,14 +100,14 @@ impl SparseForwardPass<'_> {
     key: GraphNodeKey,
     mut node: SparseNodeState,
     backward: Option<&SparseEdgeBackward>,
-    parent: Option<&SparseNodeState>,
+    parent: Option<(GraphNodeKey, GraphEdgeKey, &SparseNodeState)>,
   ) -> Result<(SparseForwardOutput, SparseForwardOutput), Report> {
     let partition = self.partition;
-    let edge = match (self.schedule.parents(key).first(), backward, parent) {
-      (Some(&(parent_key, edge_key)), Some(backward), Some(parent)) => {
+    let edge = match (backward, parent) {
+      (Some(backward), Some((parent_key, edge_key, parent))) => {
         Some(self.edge(key, parent_key, edge_key, &mut node, backward, parent)?)
       },
-      (None, None, None) => None,
+      (None, None) => None,
       _ => {
         return Err(make_internal_report!(
           "Sparse marginal forward pass received an inconsistent parent edge and parent message at node {key}"
@@ -121,7 +131,7 @@ impl SparseForwardPass<'_> {
     let gtr = self.gtr;
     let alphabet = &partition.alphabet;
     let obs = &partition.obs_nodes[&key];
-    let is_leaf = self.schedule.children(key).is_empty();
+    let is_leaf = partition.inheritance.children(self.schedule, key).next().is_none();
     let edge_obs = &partition.obs_edges[&edge_key];
     let parent_obs = &partition.obs_nodes[&parent_key];
 

@@ -9,6 +9,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::scope::Inheritance;
 use treetime_primitives::{Seq, seq};
 
@@ -26,7 +27,7 @@ impl PartitionFitch {
     self,
     graph: &Graph,
   ) -> Result<(PartitionMarginalSparse, NodeMap<SparseNodeState>), Report> {
-    let root_key = graph.get_exactly_one_root()?.key();
+    let root_key = self.inheritance.root(&GraphSchedule::new(graph)?)?;
     let root_sequence = self.nodes[&root_key].seq.sequence.clone();
 
     let mut obs_nodes = NodeMap::new();

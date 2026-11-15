@@ -37,13 +37,6 @@ impl AncestralPartition {
     }
   }
 
-  pub(crate) fn inheritance(&self) -> &Inheritance {
-    match self {
-      Self::Fitch(partition) => &partition.inheritance,
-      Self::Marginal { .. } => &Inheritance::ALL,
-    }
-  }
-
   pub(crate) fn log_lh(&self, graph: &Graph) -> Result<Option<LogLh>, Report> {
     match self {
       Self::Fitch(_) => Ok(None),
@@ -53,6 +46,13 @@ impl AncestralPartition {
 }
 
 impl PartitionSequences for AncestralPartition {
+  fn inheritance(&self) -> &Inheritance {
+    match self {
+      Self::Fitch(partition) => &partition.inheritance,
+      Self::Marginal { reconstruction, .. } => reconstruction.view().inheritance(),
+    }
+  }
+
   fn alphabet(&self) -> &Alphabet {
     match self {
       Self::Fitch(partition) => &partition.alphabet,

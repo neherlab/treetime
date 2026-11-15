@@ -23,7 +23,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::PerEdge;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_graph::scope::Inheritance;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
@@ -168,15 +168,11 @@ fn run_indexed_backward(
       )
     })?,
   };
-  let mut node_states = NodeMap::new();
-  let mut backward = EdgeMap::new();
-  for (key, (node, parent_edge)) in outputs.unwrap_present().into_map()? {
-    if let (Some(edge), Some((_, _, edge_key))) = (parent_edge.into_iter().next(), inheritance.parent(&schedule, key)) {
-      backward.insert(edge_key, edge);
-    }
-    node_states.insert(key, node);
-  }
-  Ok(MarginalBackward { node_states, backward })
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
+  Ok(MarginalBackward {
+    node_states: nodes,
+    backward: edges,
+  })
 }
 
 fn leaf_inputs<'a, L>(
@@ -210,15 +206,10 @@ impl IndexedBackwardPass<'_> {
     let mut own_site_log_norms = None;
     let carried = self
       .inheritance
-      .children(self.schedule, key)
-      .map(|(slot, child_key, _)| {
-        children
-          .get(slot)
-          .and_then(Option::as_ref)
-          .map(Arc::as_ref)
-          .ok_or_else(|| make_internal_report!("Backward child {child_key} of node {key} sent no message"))
-      })
-      .collect::<Result<Vec<_>, Report>>()?;
+      .child_messages(self.schedule, key, children)?
+      .into_iter()
+      .map(|(_, _, child)| child.as_ref())
+      .collect_vec();
     let (mut node, msg_to_parent) = if carried.is_empty() {
       let leaf =
         leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no observation before the marginal backward pass"))?;
