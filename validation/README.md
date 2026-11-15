@@ -124,3 +124,7 @@ Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the 
   `--filter '^(?!.*fixed-topo-dense/.*(rep0[3-9]|L10000))'` limits it to rep00-02 at L=1000.
 
 Nodes and branches are matched to the truth by their set of descendant tips.
+
+## Segmented genomes with reassortment (`segments.py`)
+
+`python segments.py simulate|run|evaluate` simulates ancestral reassortment graphs (`reassortment.py`, CoalRe model) with four segments of their own length, rate, and GTR, runs `optimize --segment-trees` on the true segment topologies (`full` with pass-through nodes, `collapsed` without) and `optimize --tree` per segment, and writes `results_segments/summary.md`: relative segment rates and branch errors by the number of segments sharing a branch. Data go to `data_segments/`. Sequences are evolved with numpy, not legacy SeqGen. Findings: [kb/reports/2026-11-15-segment-validation-optimize.md](../kb/reports/2026-11-15-segment-validation-optimize.md).
