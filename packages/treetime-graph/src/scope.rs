@@ -5,6 +5,7 @@ use crate::schedule::GraphSchedule;
 use eyre::Report;
 use itertools::Itertools;
 use smallvec::SmallVec;
+use std::sync::Arc;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::range_intersection;
@@ -161,5 +162,112 @@ impl EdgeScopes {
       }
     }
     Ok(())
+  }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Inheritance {
+  scopes: Option<Arc<EdgeScopes>>,
+  segment: usize,
+}
+
+static FULL: SiteScope = SiteScope::Full;
+
+impl Inheritance {
+  pub const ALL: Self = Self {
+    scopes: None,
+    segment: 0,
+  };
+
+  pub fn segment(scopes: Arc<EdgeScopes>, segment: usize) -> Result<Self, Report> {
+    if segment >= scopes.segment_count() {
+      return make_error!(
+        "Segment {} has no edge scopes: the graph has scopes for {} segments",
+        segment + 1,
+        scopes.segment_count()
+      );
+    }
+    Ok(Self {
+      scopes: Some(scopes),
+      segment,
+    })
+  }
+
+  pub fn is_all(&self) -> bool {
+    self.scopes.is_none()
+  }
+
+  pub fn scope(&self, edge: GraphEdgeKey) -> &SiteScope {
+    match &self.scopes {
+      None => &FULL,
+      Some(scopes) => scopes.get(edge, self.segment),
+    }
+  }
+
+  pub fn carries(&self, edge: GraphEdgeKey) -> bool {
+    !self.scope(edge).is_empty()
+  }
+
+  pub fn parent(&self, schedule: &GraphSchedule<'_>, key: GraphNodeKey) -> Option<(usize, GraphNodeKey, GraphEdgeKey)> {
+    schedule
+      .parents(key)
+      .iter()
+      .enumerate()
+      .find(|(_, (_, edge))| self.carries(*edge))
+      .map(|(slot, &(parent, edge))| (slot, parent, edge))
+  }
+
+  pub fn children<'s>(
+    &'s self,
+    schedule: &GraphSchedule<'s>,
+    key: GraphNodeKey,
+  ) -> impl Iterator<Item = (usize, GraphNodeKey, GraphEdgeKey)> + 's {
+    schedule
+      .children(key)
+      .iter()
+      .enumerate()
+      .filter(|(_, (_, edge))| self.carries(*edge))
+      .map(|(slot, &(child, edge))| (slot, child, edge))
+  }
+
+  pub fn holds(&self, schedule: &GraphSchedule<'_>, key: GraphNodeKey) -> bool {
+    self.is_all()
+      || self.parent(schedule, key).is_some()
+      || schedule.children(key).iter().any(|&(_, edge)| self.carries(edge))
+  }
+
+  pub fn require_one_parent(&self, schedule: &GraphSchedule<'_>) -> Result<(), Report> {
+    for &key in schedule.preorder() {
+      let carrying = schedule
+        .parents(key)
+        .iter()
+        .filter(|(_, edge)| self.carries(*edge))
+        .collect_vec();
+      if carrying.len() > 1 {
+        return make_error!(
+          "Node {key} has {} parents that pass on {}, but every site has one parent",
+          carrying.len(),
+          self.description()
+        );
+      }
+      if let Some((_, edge)) = carrying
+        .iter()
+        .find(|(_, edge)| matches!(self.scope(*edge), SiteScope::Ranges(_)))
+      {
+        return make_error!(
+          "Edge {edge} passes on part of {}, but this reconstruction supports only edges that carry a segment entirely or not at all",
+          self.description()
+        );
+      }
+    }
+    Ok(())
+  }
+
+  fn description(&self) -> String {
+    if self.is_all() {
+      "all sites".to_owned()
+    } else {
+      format!("segment {}", self.segment + 1)
+    }
   }
 }
