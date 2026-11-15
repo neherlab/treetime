@@ -8,6 +8,7 @@ mod test_input_branch_length;
 mod test_marginal_exact;
 mod test_marginal_likelihood;
 mod test_prop_runner;
+mod test_reassortment_passes;
 mod test_runner;
 mod test_runner_grid_point_limit;
 mod test_time_passes;

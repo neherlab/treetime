@@ -133,7 +133,7 @@ mod tests {
       "a node with its own date is never bad"
     );
     assert!(
-      backward[&fixture.key("N")].to_parent.is_some(),
+      backward[&fixture.key("N")].to_parent().is_some(),
       "the date of N must reach its parent as evidence"
     );
     let expected = FullPosterior {

@@ -59,7 +59,7 @@ mod tests {
       .map(|&points| -> Result<f64, Report> {
         let ladder = helpers::Ladder::new(n_tips, points)?;
         let backward = ladder.backward(MaxGridPoints::default())?;
-        let actual = log_marginal_likelihood(&backward, ladder.graph.root_key()?, None)?.expect("the root has a subtree");
+        let actual = log_marginal_likelihood(&backward, &[ladder.graph.root_key()?], None)?.expect("the root has a subtree");
         Ok((actual - expected).abs())
       })
       .try_collect()?;

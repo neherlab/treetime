@@ -8,6 +8,7 @@ mod tests {
   };
   use crate::timetree::confidence::extract_confidence_intervals;
   use crate::timetree::inference::forward_pass::{ForwardPassInputs, committed_time, propagate_distributions_forward};
+  use crate::timetree::inference::grid_request::GridOrigin;
   use crate::timetree::inference::result::{
     BranchLikelihood, NodeBackward, NodePosterior, PosteriorSummaries, PosteriorView, TimeInference,
   };
@@ -933,7 +934,9 @@ mod tests {
       set_time_distribution(&mut inputs, root_key, parent_posterior);
       set_date(&mut inputs, child_key, Distribution::range((2003.0, 2010.0), 0.0));
       set_branch_length_distribution(&graph, &mut inputs, child_key, 1.0);
-      inputs.backward.entry(child_key).or_default().to_parent = message_from_child.map(Arc::new);
+      let backward = inputs.backward.entry(child_key).or_default();
+      backward.to_parents = smallvec::smallvec![message_from_child.map(Arc::new)];
+      backward.to_parent_origins = smallvec::smallvec![GridOrigin::default()];
       let posterior = run_forward_pass(&graph, &inputs, &names)?;
       Ok(node_time(&posterior, child_key))
     }
