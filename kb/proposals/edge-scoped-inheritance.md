@@ -95,7 +95,7 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 
 - Read named segment trees into one graph with edge scopes: [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
 - Scope-aware Fitch and marginal passes: [kb/issues/M-partition-passes-crossover-scopes-and-discrete-traits.md](../issues/M-partition-passes-crossover-scopes-and-discrete-traits.md)
-- Branch-length optimization on graphs of segment trees: [kb/issues/M-optimize-segment-graphs-unsupported.md](../issues/M-optimize-segment-graphs-unsupported.md)
+- Branch-length optimization on graphs of segment trees: [kb/issues/M-optimize-segment-graphs-topology-fixed.md](../issues/M-optimize-segment-graphs-topology-fixed.md)
 - Time inference on graphs with reassortment: [kb/issues/M-timetree-graphs-with-reassortment-unsupported.md](../issues/M-timetree-graphs-with-reassortment-unsupported.md)
 
 ## Glossary

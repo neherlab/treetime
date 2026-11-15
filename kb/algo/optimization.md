@@ -16,6 +16,18 @@ The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://
 
 ---
 
+## Branch Lengths on Graphs of Segment Trees
+
+On a graph of segment trees ([kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md)) each partition follows its segment's `Inheritance`, and the objective of an edge sums the contributions of the partitions that carry it (`EdgeContributions::with_edge()`). An edge shared by several segments therefore gets one length fitted to all of them, while an edge of one segment is fitted to that segment alone. Per-partition rates, when estimated, express the speed of each segment relative to the others. The initial guess counts substitutions and effective lengths only over the carrying partitions. Indel rates are estimated per alignment over the edges of its segment, and the Poisson term of an edge uses the summed rates of the segments it carries.
+
+Tests: when every segment carries every edge, the result is bit-identical to the multi-partition optimization of the same tree; when no edge is shared, each segment's lengths equal a separate optimization of its tree (within the solver thresholds, which depend on the total sequence length). On the toy reassortment graph (one simulation, JC69), the mean absolute error against the true lengths falls from 0.0077 to 0.0039 on edges of two segments and from 0.0064 to 0.0047 on edges of three segments, and stays at 0.0037 on edges of one segment.
+
+Topology edits and rerooting are off on such a graph. Series chains of edges through a node with one parent and one child keep their length ratios as on a tree, also when the two edges carry different segments; the indel term of a chain uses the rate of its first edge.
+
+v1: [`packages/treetime/src/optimize/gather.rs`](../../packages/treetime/src/optimize/gather.rs), [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs), [`packages/treetime/src/optimize/pipeline.rs`](../../packages/treetime/src/optimize/pipeline.rs).
+
+---
+
 ## Brent's Method for Branch Length Optimization
 
 Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) via `argmin::BrentOpt`, in sqrt(t) space (`solve_brent`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. This is the default and uses v0's parameterization. Tolerance $\epsilon_s$ in $s$-space maps locally to $t$-space precision $\approx 2s^* \epsilon_s$.
