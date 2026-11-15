@@ -229,6 +229,7 @@ mod tests {
           alignments: vec![source],
           partitions,
         },
+        scopes: None,
       };
       let params = AncestralParams {
         method: MethodAncestral::Marginal,

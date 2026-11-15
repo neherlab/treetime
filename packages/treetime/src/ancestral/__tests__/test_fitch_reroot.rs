@@ -15,6 +15,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::keymap;
+  use treetime_graph::scope::Inheritance;
 
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
@@ -59,6 +60,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -253,6 +255,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -387,6 +390,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 

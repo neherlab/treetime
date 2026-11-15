@@ -20,6 +20,7 @@ pub(super) mod tests {
   use treetime_graph::keymap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
+  use treetime_graph::scope::Inheritance;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -74,6 +75,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
@@ -149,6 +151,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
@@ -199,6 +202,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let actual = get_internal_sequences(&graph, &names, &partition);
@@ -245,6 +249,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -308,6 +313,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -375,6 +381,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -438,6 +445,7 @@ pub(super) mod tests {
       length: get_common_length(&aln)?,
       nodes: keymap! {},
       edges: keymap! {},
+      inheritance: Inheritance::ALL,
     };
 
     let partition = attach_seqs_to_graph(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;

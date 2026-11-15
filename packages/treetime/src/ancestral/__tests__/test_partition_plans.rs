@@ -218,6 +218,7 @@ mod tests {
             .collect(),
           graph: parse.graph,
           sequences: SequenceInput { alignments, partitions },
+          scopes: None,
         })
       }
     }
@@ -291,6 +292,7 @@ mod tests {
       let AncestralInput { graph, sequences, .. } = input;
       let partitions = reconstruct_partitions(
         &graph,
+        None,
         method,
         sequences.split()?,
         &branch_lengths,

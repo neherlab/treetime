@@ -11,6 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_graph::scope::Inheritance;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
   use treetime_utils::error::report_to_string;
@@ -73,6 +74,7 @@ mod tests {
     let (include_leaves, report_unknown) = (true, true);
     let result = stream_sequence_mutations(
       &graph,
+      &Inheritance::ALL,
       &alphabet,
       SeqTrack::Nuc(1),
       include_leaves,
@@ -150,6 +152,7 @@ mod tests {
         edge_mutations,
       } = stream_sequence_mutations(
         &graph,
+        &Inheritance::ALL,
         &alphabet,
         SeqTrack::Nuc(1),
         include_leaves,
