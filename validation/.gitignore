@@ -6,3 +6,5 @@ __pycache__/
 slurm_logs/
 data_messy/
 results_messy/
+data_segments/
+results_segments/
