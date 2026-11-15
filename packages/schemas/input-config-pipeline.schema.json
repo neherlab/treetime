@@ -235,6 +235,40 @@
             }
           ]
         },
+        "segment_trees": {
+          "description": "Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name\n\nEvery node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node\nof the graph. A node that a segment only passes through stays in that segment's tree as a node with one child.\nAn edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with\n`--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "pattern": "\\{\\{.*\\}\\}"
+              }
+            ]
+          },
+          "default": [],
+          "x-path": "input"
+        },
+        "segment_alignments": {
+          "description": "Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order\n\nUse instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "pattern": "\\{\\{.*\\}\\}"
+              }
+            ]
+          },
+          "default": [],
+          "x-path": "input"
+        },
         "newick_dialect": {
           "anyOf": [
             {
@@ -622,6 +656,19 @@
           "anyOf": [
             {
               "description": "Keep the polytomies of the input tree\n\nWithout this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is\nstochastic: the run logs the seed it draws, and `--seed` reproduces the run.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "no_cross_parent_messages": {
+          "anyOf": [
+            {
+              "description": "On a graph of segment trees, leave the messages from the other parents out of the message to a parent\n\nA node with several parents sends each parent its subtree, combined by default with the messages that its other\nparents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree\nalone. Applies only with `--segment-trees`.",
               "type": "boolean",
               "default": false
             },

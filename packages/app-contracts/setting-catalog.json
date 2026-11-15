@@ -453,6 +453,46 @@
           "more": "A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file."
         },
         {
+          "key": "segment_trees",
+          "label": "Segment trees",
+          "flag": "--segment-trees",
+          "group": "Input data",
+          "role": "input",
+          "kind": "list",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [],
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [],
+          "help": "Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name",
+          "more": "Every node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node of the graph. A node that a segment only passes through stays in that segment's tree as a node with one child. An edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with `--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file."
+        },
+        {
+          "key": "segment_alignments",
+          "label": "Segment alignments",
+          "flag": "--segment-alignments",
+          "group": "Input data",
+          "role": "input",
+          "kind": "list",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [],
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [],
+          "help": "Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order",
+          "more": "Use instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file."
+        },
+        {
           "key": "newick_dialect",
           "label": "Newick dialect",
           "flag": "--newick-dialect",
@@ -1128,6 +1168,26 @@
           "conflicts": [],
           "help": "Largest number of points of one probability grid during time inference",
           "more": "A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000."
+        },
+        {
+          "key": "no_cross_parent_messages",
+          "label": "No cross parent messages",
+          "flag": "--no-cross-parent-messages",
+          "group": "Dating",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [],
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "NO_CROSS_PARENT_MESSAGES"
+          ],
+          "conflicts": [],
+          "help": "On a graph of segment trees, leave the messages from the other parents out of the message to a parent",
+          "more": "A node with several parents sends each parent its subtree, combined by default with the messages that its other parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree alone. Applies only with `--segment-trees`."
         },
         {
           "key": "keep_polytomies",

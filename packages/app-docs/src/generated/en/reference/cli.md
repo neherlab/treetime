@@ -146,6 +146,12 @@ treetime timetree --config timetree.yaml -O results
 * `-t`, `--tree <FILE>` — Tree in Newick format
 
    A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+* `--segment-trees <FILE>` — Trees of the genome segments, one Newick or Nexus file per segment, merged into one graph by node name
+
+   Every node of every tree needs a name, unique within its tree; a name that occurs in several trees is one node of the graph. A node that a segment only passes through stays in that segment's tree as a node with one child. An edge shared by several trees gets the mean of their branch lengths. Use instead of `--tree`, together with `--segment-alignments`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
+* `--segment-alignments <FILE>` — Aligned FASTA input of the genome segments, one file per `--segment-trees` file, in the same order
+
+   Use instead of `--alignment`. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
 * `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
@@ -265,6 +271,9 @@ treetime timetree --config timetree.yaml -O results
 * `--keep-polytomies` — Keep the polytomies of the input tree
 
    Without this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
+* `--no-cross-parent-messages` — On a graph of segment trees, leave the messages from the other parents out of the message to a parent
+
+   A node with several parents sends each parent its subtree, combined by default with the messages that its other parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree alone. Applies only with `--segment-trees`.
 * `--no-collapse-short-branches` — Disable collapsing of short internal branches.
 
    By default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all alignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x. The substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy. Edges above internal nodes with a date are kept. When set, such edges are kept.
