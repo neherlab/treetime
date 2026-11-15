@@ -15,6 +15,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::{AsciiChar, Seq};
 
 const COMPARED_BLOCK_LEN: usize = 64;
@@ -28,11 +29,18 @@ pub(crate) fn sparse_edge_mutations(
   report_unknown: bool,
   track: &MutationTrack,
 ) -> Result<EdgeMap<Vec<Mutation>>, Report> {
-  let edges = graph
-    .get_nodes()
-    .map(|node| Ok(graph.node_parent(node.key())?.map(|parent| (node.key(), parent))))
-    .filter_map_ok(|edge| edge)
-    .collect::<Result<Vec<_>, Report>>()?;
+  let schedule = GraphSchedule::new(graph)?;
+  let inheritance = &partition.inheritance;
+  inheritance.require_one_parent(&schedule)?;
+  let edges = schedule
+    .preorder()
+    .iter()
+    .filter_map(|&key| {
+      inheritance
+        .parent(&schedule, key)
+        .map(|(_, parent_key, edge_key)| (key, (parent_key, edge_key)))
+    })
+    .collect_vec();
   edges
     .into_par_iter()
     .map(|(child_key, (parent_key, edge_key))| {

@@ -16,6 +16,7 @@ use itertools::{Itertools, izip};
 use ndarray::aview_mut1;
 use smallvec::smallvec;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
@@ -36,7 +37,8 @@ pub(crate) fn process_backward_indexed(
   node_states: &NodeMap<SparseNodeState>,
 ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
-  schedule.require_tree()?;
+  let inheritance = &partition.inheritance;
+  inheritance.require_one_parent(&schedule)?;
   let sequences = fitch_node_sequences(partition, &schedule, node_states)?;
   let pass = SparseBackwardPass {
     schedule: &schedule,
@@ -46,10 +48,13 @@ pub(crate) fn process_backward_indexed(
   };
   let edges = partition.obs_edges.iter().collect();
   let outputs = schedule.scan_up(
-    schedule.join_parent_edges(sequences, edges)?,
-    |key, (sequence, mut edge_obs), children| pass.node(key, sequence, edge_obs.pop(), &children),
+    inheritance.join_parent_edge(&schedule, sequences, edges),
+    |key, (sequence, edge_obs), children| match sequence {
+      Some(sequence) => pass.node(key, sequence, edge_obs, &children),
+      None => Ok((None, None)),
+    },
   )?;
-  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
   Ok(MarginalBackward {
     node_states: nodes,
     backward: edges,
@@ -75,20 +80,22 @@ impl SparseBackwardPass<'_> {
     let gtr = self.gtr;
     let obs = &partition.obs_nodes[&key];
 
-    let (msg_to_parent, no_data) = if self.schedule.children(key).is_empty() {
+    let inheritance = &partition.inheritance;
+    let children = inheritance.child_messages(self.schedule, key, children)?;
+    let (msg_to_parent, no_data) = if children.is_empty() {
       (
         leaf_message(obs, &partition.alphabet)?,
         range_union(&[obs.gaps.clone(), obs.unknown.clone()]),
       )
     } else {
-      let child_edges = self.child_edges(key, children)?;
+      let child_edges = child_edges(key, &children)?;
       let no_data = range_intersection_iter(child_edges.iter().map(|edge| &edge.child_no_data)).collect_vec();
-      let msg = self.combine_child_messages(key, children, &child_edges, obs, &sequence, &no_data)?;
+      let msg = self.combine_child_messages(key, &children, &child_edges, obs, &sequence, &no_data)?;
       (msg, no_data)
     };
 
-    let (profile, globally_missing, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
-      (Some(&(_, edge_key)), Some(_)) => {
+    let (profile, globally_missing, parent_message) = match (inheritance.parent(self.schedule, key), edge_obs) {
+      (Some((_, _, edge_key)), Some(_)) => {
         let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
         let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
           propagate_raw_per_site(gtr, site_rates, branch_length, true, &msg_to_parent)
@@ -125,28 +132,13 @@ impl SparseBackwardPass<'_> {
       },
       parent_message,
     ));
-    Ok((Arc::clone(&output), output))
-  }
-
-  fn child_edges<'c>(
-    &self,
-    key: GraphNodeKey,
-    children: &'c [SparseBackwardOutput],
-  ) -> Result<Vec<&'c SparseEdgeBackward>, Report> {
-    izip!(self.schedule.children(key), children)
-      .map(|(&(child_key, edge_key), child)| {
-        child
-          .1
-          .get(self.schedule.parent_slot(edge_key))
-          .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))
-      })
-      .collect()
+    Ok((Some(Arc::clone(&output)), Some(output)))
   }
 
   fn combine_child_messages(
     &self,
     key: GraphNodeKey,
-    children: &[SparseBackwardOutput],
+    children: &[CarriedChild<'_>],
     child_edges: &[&SparseEdgeBackward],
     obs: &SparseNodeObs,
     sequence: &Seq,
@@ -154,13 +146,16 @@ impl SparseBackwardPass<'_> {
   ) -> Result<SparseSeqDistribution, Report> {
     let partition = self.partition;
     let alphabet = &partition.alphabet;
-    let child_keys = self.schedule.children(key);
+    let child_keys = children
+      .iter()
+      .map(|&(child_key, edge_key, _)| (child_key, edge_key))
+      .collect_vec();
     let child_messages = child_edges.iter().map(|edge| &edge.msg_from_child).collect_vec();
     let child_missing = child_edges
       .iter()
       .map(|edge| range_difference(&edge.child_no_data, &obs.non_char))
       .collect_vec();
-    let n_events: usize = izip!(child_keys, &child_messages, &child_missing)
+    let n_events: usize = izip!(&child_keys, &child_messages, &child_missing)
       .map(|(&(_, edge_key), message, missing)| {
         2 * partition.obs_edges[&edge_key].fitch_subs().len()
           + message.variable.len()
@@ -174,7 +169,8 @@ impl SparseBackwardPass<'_> {
     for pos in gapped.iter().flat_map(|&(start, end)| start..end) {
       events.or_insert(pos, SiteSlot::State, alphabet.gap());
     }
-    for (ci, (&(_, edge_key), child_message, missing)) in izip!(child_keys, &child_messages, &child_missing).enumerate()
+    for (ci, (&(_, edge_key), child_message, missing)) in
+      izip!(&child_keys, &child_messages, &child_missing).enumerate()
     {
       for mutation in partition.obs_edges[&edge_key].fitch_subs() {
         events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
@@ -200,7 +196,7 @@ impl SparseBackwardPass<'_> {
           alphabet.unknown()
         }
       } else {
-        let child_state = children[ci].0.sequence[pos];
+        let child_state = children[ci].2.0.sequence[pos];
         if alphabet.is_canonical(child_state) {
           child_state
         } else {
@@ -214,12 +210,33 @@ impl SparseBackwardPass<'_> {
       &child_messages,
       &sites,
       alphabet,
-      self.schedule.parents(key).is_empty().then_some(self.gtr.pi()),
+      partition
+        .inheritance
+        .parent(self.schedule, key)
+        .is_none()
+        .then_some(self.gtr.pi()),
     )
   }
 }
 
-type SparseBackwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>;
+type SparseBackwardOutput = Option<Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>>;
+
+type CarriedChild<'c> = (
+  GraphNodeKey,
+  GraphEdgeKey,
+  &'c Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>,
+);
+
+fn child_edges<'c>(key: GraphNodeKey, children: &[CarriedChild<'c>]) -> Result<Vec<&'c SparseEdgeBackward>, Report> {
+  children
+    .iter()
+    .map(|&(child_key, _, child)| {
+      child.1.first().ok_or_else(|| {
+        make_internal_report!("Backward child {child_key} of node {key} published no message for its parent edge")
+      })
+    })
+    .collect()
+}
 
 pub(crate) fn own_state(
   alphabet: &Alphabet,

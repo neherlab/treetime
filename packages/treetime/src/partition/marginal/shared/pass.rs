@@ -21,7 +21,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::PerEdge;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_graph::scope::Inheritance;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
@@ -133,15 +133,11 @@ pub(crate) fn indexed_backward(
       )
     })?,
   };
-  let mut node_states = NodeMap::new();
-  let mut backward = EdgeMap::new();
-  for (key, (node, parent_edge)) in outputs.unwrap_present().into_map()? {
-    if let (Some(edge), Some((_, _, edge_key))) = (parent_edge.into_iter().next(), inheritance.parent(&schedule, key)) {
-      backward.insert(edge_key, edge);
-    }
-    node_states.insert(key, node);
-  }
-  Ok(MarginalBackward { node_states, backward })
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
+  Ok(MarginalBackward {
+    node_states: nodes,
+    backward: edges,
+  })
 }
 
 fn leaf_inputs<'a, L>(
@@ -173,15 +169,10 @@ impl IndexedBackwardPass<'_> {
     }
     let carried = self
       .inheritance
-      .children(self.schedule, key)
-      .map(|(slot, child_key, _)| {
-        children
-          .get(slot)
-          .and_then(Option::as_ref)
-          .map(Arc::as_ref)
-          .ok_or_else(|| make_internal_report!("Backward child {child_key} of node {key} sent no message"))
-      })
-      .collect::<Result<Vec<_>, Report>>()?;
+      .child_messages(self.schedule, key, children)?
+      .into_iter()
+      .map(|(_, _, child)| child.as_ref())
+      .collect_vec();
     let (mut node, msg_to_parent) = if carried.is_empty() {
       let leaf =
         leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no observation before the marginal backward pass"))?;
@@ -302,44 +293,18 @@ pub(crate) fn indexed_forward(
     branch_lengths,
     inheritance,
   };
-  let mut node_states = node_states;
-  let inputs = schedule
-    .preorder()
-    .iter()
-    .map(|&key| {
-      let edge = inheritance
-        .parent(&schedule, key)
-        .and_then(|(_, _, edge_key)| backward.get(edge_key));
-      (key, (node_states.remove(key), edge))
-    })
-    .collect_vec();
   let outputs = schedule.scan_down(
-    inputs,
+    inheritance.join_parent_edge(&schedule, node_states, backward.iter().collect()),
     |key, (node, backward), parents: PerEdge<Option<IndexedForwardOutput>>| {
       let Some(node) = node else {
         return Ok((None, None));
       };
-      let parent = inheritance
-        .parent(&schedule, key)
-        .map(|(slot, parent_key, _)| {
-          parents
-            .get(slot)
-            .and_then(Option::as_ref)
-            .ok_or_else(|| make_internal_report!("Forward parent {parent_key} of node {key} sent no message"))
-        })
-        .transpose()?;
-      let (output, message) = pass.node(key, node, backward, parent.map(|parent| &parent.0))?;
+      let parent = inheritance.parent_message(&schedule, key, &parents)?;
+      let (output, message) = pass.node(key, node, backward, parent.map(|(_, _, parent)| &parent.0))?;
       Ok((Some(output), Some(message)))
     },
   )?;
-  let mut nodes = NodeMap::new();
-  let mut edges = EdgeMap::new();
-  for (key, (node, parent_edge)) in outputs.unwrap_present().into_map()? {
-    if let (Some(edge), Some((_, _, edge_key))) = (parent_edge.into_iter().next(), inheritance.parent(&schedule, key)) {
-      edges.insert(edge_key, edge);
-    }
-    nodes.insert(key, node);
-  }
+  let NodeEdgeMaps { nodes, edges } = inheritance.split_parent_edge(&schedule, outputs.unwrap_present().into_map()?)?;
 
   let mut forward = EdgeMap::new();
   let mut estimates = EdgeMap::new();
