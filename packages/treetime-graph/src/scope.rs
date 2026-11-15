@@ -1,7 +1,8 @@
 use crate::edge::GraphEdgeKey;
-use crate::key_map::EdgeMap;
+use crate::key_map::{EdgeMap, NodeMap};
 use crate::node::GraphNodeKey;
 use crate::schedule::GraphSchedule;
+use crate::schedule_scan::{NodeEdgeMaps, PerEdge};
 use eyre::Report;
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -10,7 +11,7 @@ use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::range_intersection;
 use treetime_utils::interval::range_union::range_union;
-use treetime_utils::{make_error, make_internal_error};
+use treetime_utils::{make_error, make_internal_error, make_internal_report};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum SiteScope {
@@ -217,6 +218,27 @@ impl Inheritance {
       .map(|(slot, &(parent, edge))| (slot, parent, edge))
   }
 
+  pub fn sole_parent(
+    &self,
+    schedule: &GraphSchedule<'_>,
+    key: GraphNodeKey,
+  ) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+    let mut carrying = schedule.parents(key).iter().filter(|(_, edge)| self.carries(*edge));
+    match (carrying.next(), carrying.next()) {
+      (first, None) => Ok(first.copied()),
+      (Some(_), Some(_)) => make_error!(
+        "Node {key} has {} parents that pass on {}, but every site has one parent",
+        schedule
+          .parents(key)
+          .iter()
+          .filter(|(_, edge)| self.carries(*edge))
+          .count(),
+        self.inherited()
+      ),
+      (None, Some(_)) => make_internal_error!("Node {key} has a second carrying parent but no first"),
+    }
+  }
+
   pub fn children<'s>(
     &'s self,
     schedule: &GraphSchedule<'s>,
@@ -255,6 +277,84 @@ impl Inheritance {
         roots.iter().map(|key| format!("node {key}")).join(", ")
       ),
     }
+  }
+
+  pub fn join_parent_edge<N, E>(
+    &self,
+    schedule: &GraphSchedule<'_>,
+    mut nodes: NodeMap<N>,
+    mut edges: EdgeMap<E>,
+  ) -> Vec<(GraphNodeKey, (Option<N>, Option<E>))> {
+    schedule
+      .preorder()
+      .iter()
+      .map(|&key| {
+        let edge = self
+          .parent(schedule, key)
+          .and_then(|(_, _, edge_key)| edges.remove(edge_key));
+        (key, (nodes.remove(key), edge))
+      })
+      .collect()
+  }
+
+  pub fn parent_message<'m, M>(
+    &self,
+    schedule: &GraphSchedule<'_>,
+    key: GraphNodeKey,
+    messages: &'m [Option<M>],
+  ) -> Result<Option<(GraphNodeKey, GraphEdgeKey, &'m M)>, Report> {
+    self
+      .parent(schedule, key)
+      .map(|(slot, parent, edge)| {
+        let message = messages
+          .get(slot)
+          .and_then(Option::as_ref)
+          .ok_or_else(|| make_internal_report!("Parent {parent} of node {key} sent no message"))?;
+        Ok((parent, edge, message))
+      })
+      .transpose()
+  }
+
+  pub fn child_messages<'m, M>(
+    &self,
+    schedule: &GraphSchedule<'_>,
+    key: GraphNodeKey,
+    messages: &'m [Option<M>],
+  ) -> Result<Vec<(GraphNodeKey, GraphEdgeKey, &'m M)>, Report> {
+    self
+      .children(schedule, key)
+      .map(|(slot, child, edge)| {
+        let message = messages
+          .get(slot)
+          .and_then(Option::as_ref)
+          .ok_or_else(|| make_internal_report!("Child {child} of node {key} sent no message"))?;
+        Ok((child, edge, message))
+      })
+      .collect()
+  }
+
+  pub fn split_parent_edge<N, E>(
+    &self,
+    schedule: &GraphSchedule<'_>,
+    outputs: NodeMap<(N, PerEdge<E>)>,
+  ) -> Result<NodeEdgeMaps<N, E>, Report> {
+    let mut nodes = NodeMap::new();
+    let mut edges = EdgeMap::new();
+    for (key, (node, mut values)) in outputs {
+      match (values.pop(), values.is_empty(), self.parent(schedule, key)) {
+        (Some(value), true, Some((_, _, edge_key))) => {
+          edges.insert(edge_key, value);
+        },
+        (None, _, None) => {},
+        _ => {
+          return make_internal_error!(
+            "Scan output of node {key} does not hold one value for its carrying parent edge"
+          );
+        },
+      }
+      nodes.insert(key, node);
+    }
+    Ok(NodeEdgeMaps { nodes, edges })
   }
 
   pub fn require_one_parent(&self, schedule: &GraphSchedule<'_>) -> Result<(), Report> {
