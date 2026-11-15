@@ -180,7 +180,8 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-io-stdin-config-and-input-read-twice.md](issues/M-io-stdin-config-and-input-read-twice.md)**: reject `--config -` together with an input `-`
 - **[kb/issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md](issues/M-distribution-convolution-soft-end-line-slope-carries-fft-round-off.md)**: choose a slope estimate for the soft-end line of a convolution that the FFT round-off at the trust floor does not move
 - **[kb/issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md](issues/M-sparse-non-root-posterior-folds-sites-where-a-child-disagrees.md)**: implement the class-keyed shared profiles of [kb/proposals/sparse-shared-profiles-for-sites-without-data.md](proposals/sparse-shared-profiles-for-sites-without-data.md), so that sparse posteriors below the root match dense without the copies of the exact single-site rule
-- **[kb/issues/M-partition-passes-require-tree-topology.md](issues/M-partition-passes-require-tree-topology.md)**: make the marginal passes read edge scopes as Fitch does ([kb/proposals/edge-scoped-inheritance.md](proposals/edge-scoped-inheritance.md)), so that a graph of segment trees with reassortment can be reconstructed by marginal likelihood
+- **[kb/issues/M-optimize-segment-graphs-unsupported.md](issues/M-optimize-segment-graphs-unsupported.md)**: build the optimize partitions per segment and sum the contributions of each shared edge over the partitions that carry it
+- **[kb/issues/M-partition-passes-crossover-scopes-and-discrete-traits.md](issues/M-partition-passes-crossover-scopes-and-discrete-traits.md)**: support crossover scopes (site ranges per edge) in the Fitch and marginal passes, and discrete traits on graphs of segment trees ([kb/proposals/edge-scoped-inheritance.md](proposals/edge-scoped-inheritance.md))
 
 ## Planned
 

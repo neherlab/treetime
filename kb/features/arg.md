@@ -1,6 +1,6 @@
 # ARG Inference
 
-- [/] **Partial in v1**: `ancestral --segment-trees --segment-alignments` reconstructs segments by parsimony on one graph of named segment trees
+- [/] **Partial in v1**: `ancestral --segment-trees --segment-alignments` reconstructs segments by parsimony or marginal likelihood on one graph of named segment trees
 
 ## v0 Features (All Missing)
 
