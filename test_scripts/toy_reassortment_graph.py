@@ -6,6 +6,8 @@ local tree of that segment). The script writes, per segment:
 
 - the segment tree as Newick, with every node of the segment's local tree,
   including nodes that the segment only passes through (one child)
+- the same tree with those one-child nodes removed (`_collapsed`), as a tree
+  inference program would write it
 - an alignment of the leaves, simulated along the local tree under
   Jukes-Cantor at rate 1 (branch lengths are substitutions per site)
 - the true sequences of all nodes of the local tree
@@ -127,6 +129,16 @@ def newick(node, children, parent_time=None):
     return f"{inner}{node}{length}"
 
 
+def newick_collapsed(node, children, parent_time=None):
+    kids = children.get(node, [])
+    while len(kids) == 1:
+        node = kids[0]
+        kids = children.get(node, [])
+    inner = "(" + ",".join(newick_collapsed(c, children, TIMES[node]) for c in kids) + ")" if kids else ""
+    length = "" if parent_time is None else f":{TIMES[node] - parent_time:.6f}"
+    return f"{inner}{node}{length}"
+
+
 def evolve(rng, seq, t):
     p_change = 0.75 * (1.0 - np.exp(-4.0 / 3.0 * t))
     change = rng.random(seq.size) < p_change
@@ -163,6 +175,7 @@ def main():
     for segment, length in SEGMENTS.items():
         roots, children, seqs = simulate(rng, segment, length)
         (out / f"tree_{segment}.nwk").write_text(newick(roots[0], children) + ";\n")
+        (out / f"tree_{segment}_collapsed.nwk").write_text(newick_collapsed(roots[0], children) + ";\n")
         write_fasta(out / f"aln_{segment}.fasta", seqs, leaves)
         internal = sorted((n for n in seqs if n not in leaves), key=lambda n: (TIMES[n], n))
         write_fasta(out / f"truth_{segment}.fasta", seqs, internal + leaves)
