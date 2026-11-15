@@ -13,6 +13,7 @@ pub mod pipeline;
 pub(crate) mod pre_loop;
 pub(crate) mod refinement_loop;
 pub(crate) mod round;
+pub mod segments;
 
 #[cfg(test)]
 mod __tests__;

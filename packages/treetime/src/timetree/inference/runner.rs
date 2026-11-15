@@ -279,7 +279,8 @@ pub(crate) fn sweep_time_passes<S: Send + Sync>(
 ) -> Result<(Option<LogLh>, NodeMap<S>), Report> {
   let schedule = GraphSchedule::new(graph)?;
   let roots = schedule.roots().to_vec();
-  let has_parents = schedule.preorder().iter().any(|&key| schedule.parents(key).len() > 1);
+  let iterate = parent_messages == ParentMessages::AllEdges
+    && schedule.preorder().iter().any(|&key| schedule.parents(key).len() > 1);
   let mut from_parents = EdgeMap::new();
   let mut previous: Option<NodeMap<Option<f64>>> = None;
   let mut sweep = 0;
@@ -291,7 +292,7 @@ pub(crate) fn sweep_time_passes<S: Send + Sync>(
     progress_info!(log, "## Propagating distributions forward");
     let (posterior, messages) =
       propagate_distributions_forward_on_graph(graph, forward_inputs, backward, &summarize, log)?;
-    if !has_parents {
+    if !iterate {
       return Ok((log_lh_time, posterior));
     }
     let times: NodeMap<Option<f64>> = posterior.iter().map(|(key, node)| (key, likely_time(node))).collect();
