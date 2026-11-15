@@ -9,7 +9,7 @@
 - **Initial guess and rate normalization** over the carried edges and the partitions of all segments
 - **Topology edits and rerooting** (polytomy merging, reversion hoisting, zero-length collapse, reroot) are off on a segment graph until the edge scopes have rules for them ([kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md#topology-operations))
 - **Command interface**: `--segment-trees` and `--segment-alignments` as in `ancestral`
-- **Pass-through nodes**: without them, a segment that passes through a node of another segment has its own edge beside the shared path, so the lengths of the two are fitted separately ([kb/reports/2026-11-15-treeknit-output-to-named-segment-trees.md](../reports/2026-11-15-treeknit-output-to-named-segment-trees.md))
+- **Pass-through nodes**: the merge inserts those that topology determines ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)); where it cannot, a segment keeps its own edge beside a shared path, and the two lengths are fitted separately
 
 ## Validation
 
