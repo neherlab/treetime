@@ -1,14 +1,14 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::branch_lengths::invalid_branch_length_descriptions;
-use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
-use crate::optimize::gather::InitialGuessEvidence;
+use crate::optimize::dispatch::{guess_initial_branch_lengths, move_timeless_lengths, optimize_edge_lengths};
+use crate::optimize::gather::{EdgeGroup, InitialGuessEvidence, series_groups};
 use crate::optimize::indel::EdgeIndels;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::loop_history::{ConvergenceReason, TopologyHistory};
 use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOps};
 use crate::optimize::partition_rates::update_partition_rates;
-use crate::optimize::solver_outcome::ConvergenceSummary;
+use crate::optimize::solver_outcome::{ConvergenceSummary, UnconvergedEdges};
 use crate::optimize::topology::collapse::{collapse_edge, collapse_short_internal_edges};
 use crate::optimize::topology::merge_shared_mutations::MergeLedger;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -19,7 +19,7 @@ use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
@@ -43,8 +43,11 @@ pub(crate) fn run_optimize_loop(
     topology_ops,
     ..
   } = *settings;
+  let indels = indel_policy.edge_indels(graph, &partitions, &branch_lengths)?;
+  let mut branch_lengths = branch_lengths;
+  move_timeless_lengths(graph, &partitions, &indels, &mut branch_lengths)?;
   let mut state = LoopState {
-    indels: indel_policy.edge_indels(graph, &partitions, &branch_lengths)?,
+    indels,
     branch_lengths,
     names,
     convergence: ConvergenceSummary::default(),
@@ -176,14 +179,39 @@ fn optimize_iteration(
 ) -> Result<(PartitionSet, bool), Report> {
   let old_branch_lengths = state.branch_lengths.clone();
   let indels = state.indels.recount(graph, &partitions)?;
-  let unconverged = optimize_edge_lengths(
-    graph,
-    partitions.total_length(),
-    &partitions,
-    &indels,
-    settings.opt_method,
-    &mut state.branch_lengths,
-  )?;
+  let groups = series_groups(graph, &partitions)?;
+  let mut partitions = partitions;
+  let unconverged = if let [_] = groups.as_slice() {
+    optimize_edge_lengths(
+      graph,
+      partitions.total_length(),
+      &partitions,
+      &indels,
+      settings.opt_method,
+      &mut state.branch_lengths,
+    )?
+  } else {
+    let mut unconverged = UnconvergedEdges::default();
+    let all: BTreeSet<GraphEdgeKey> = graph.get_edges().map(|edge| edge.key()).collect();
+    for (index, group) in groups.iter().enumerate() {
+      if index > 0 {
+        (partitions, _) = partitions.marginal_update(graph, &branch_lengths_or_zero(&state.branch_lengths))?;
+      }
+      let view = EdgeGroup {
+        partitions: &partitions,
+        frozen: all.difference(group).copied().collect(),
+      };
+      unconverged.extend(optimize_edge_lengths(
+        graph,
+        partitions.total_length(),
+        &view,
+        &indels,
+        settings.opt_method,
+        &mut state.branch_lengths,
+      )?);
+    }
+    unconverged
+  };
   state.convergence.record(&unconverged, graph, &state.names);
   let zero_optimal_edges = if topology_ops.collapse_short_branches {
     find_zero_optimal_internal_edges(graph, &indels, &state.branch_lengths)

@@ -77,6 +77,11 @@ impl UnconvergedEdges {
     }
   }
 
+  pub(crate) fn extend(&mut self, other: Self) {
+    self.iteration_limit.extend(other.iteration_limit);
+    self.search_bound.extend(other.search_bound);
+  }
+
   fn is_empty(&self) -> bool {
     self.iteration_limit.is_empty() && self.search_bound.is_empty()
   }

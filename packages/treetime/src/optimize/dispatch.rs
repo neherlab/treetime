@@ -21,6 +21,26 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_utils::cast::ToF64Exact;
 
+pub(crate) fn move_timeless_lengths(
+  graph: &Graph,
+  contributions: &impl EdgeContributions,
+  indels: &EdgeIndels,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
+) -> Result<(), Report> {
+  for node in contributions.timeless_nodes(graph)? {
+    if indels.term(node.held).count > 0 {
+      continue;
+    }
+    let moved = branch_lengths.insert(node.held, Some(0.0)).flatten().unwrap_or(0.0);
+    for edge_key in node.others {
+      if let Some(Some(length)) = branch_lengths.get_mut(edge_key) {
+        *length += moved;
+      }
+    }
+  }
+  Ok(())
+}
+
 pub(crate) fn optimize_edge_lengths(
   graph: &Graph,
   total_length: usize,
@@ -36,8 +56,19 @@ pub(crate) fn optimize_edge_lengths(
   let one_mutation = one_mutation(total_length);
   let mut lengths = parse_optimizable_lengths(graph, branch_lengths)?;
 
+  let at_zero: BTreeSet<GraphEdgeKey> = contributions
+    .timeless_nodes(graph)?
+    .into_iter()
+    .map(|node| node.held)
+    .filter(|&edge_key| indels.term(edge_key).count == 0 && lengths[&edge_key] == 0.0)
+    .collect();
   let chains = SeriesChain::capture_all(graph, &lengths);
-  let held: BTreeSet<GraphEdgeKey> = chains.iter().flat_map(SeriesChain::held).collect();
+  let held: BTreeSet<GraphEdgeKey> = chains
+    .iter()
+    .flat_map(SeriesChain::held)
+    .chain(at_zero.iter().copied())
+    .chain(contributions.frozen_edges().into_iter().flatten().copied())
+    .collect();
   let chain_indels: EdgeMap<IndelTerm> = chains
     .iter()
     .map(|chain| (chain.optimized, chain.indel_term(indels, &lengths)))
