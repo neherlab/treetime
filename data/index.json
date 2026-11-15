@@ -1817,12 +1817,24 @@
       "size": 222
     },
     {
+      "path": "toy/reassortment/tree_seg1_collapsed.nwk",
+      "size": 198
+    },
+    {
       "path": "toy/reassortment/tree_seg2.nwk",
       "size": 222
     },
     {
+      "path": "toy/reassortment/tree_seg2_collapsed.nwk",
+      "size": 210
+    },
+    {
       "path": "toy/reassortment/tree_seg3.nwk",
       "size": 235
+    },
+    {
+      "path": "toy/reassortment/tree_seg3_collapsed.nwk",
+      "size": 211
     },
     {
       "path": "toy/reassortment/truth_seg1.fasta",
