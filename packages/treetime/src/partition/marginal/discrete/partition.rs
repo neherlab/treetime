@@ -8,6 +8,7 @@ use eyre::Report;
 use ndarray::Array2;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::NodeMap;
+use treetime_graph::scope::Inheritance;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDiscrete {
@@ -38,6 +39,7 @@ impl PartitionMarginalDiscrete {
       inputs: DenseInputs {
         min_branch_length,
         filter_uninformative_root,
+        inheritance: Inheritance::ALL,
       },
       states,
       obs_leaves,

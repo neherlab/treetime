@@ -9,6 +9,8 @@ use eyre::Report;
 use ndarray::prelude::*;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::scope::Inheritance;
 
 pub(crate) fn count_transitions_dense(
   inputs: &DenseInputs,
@@ -23,9 +25,11 @@ pub(crate) fn count_transitions_dense(
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 
-  for edge in graph.get_edges() {
-    let edge_arc = edge;
-    let edge_key = edge_arc.key();
+  let schedule = GraphSchedule::new(graph)?;
+  for edge_key in graph.get_edges().map(|edge| edge.key()) {
+    if !inputs.inheritance.carries(edge_key) {
+      continue;
+    }
     let branch_length = inputs.effective_branch_length(branch_lengths[&edge_key]);
 
     let msg_to_child = &forward[&edge_key].msg_to_child;
@@ -36,14 +40,13 @@ pub(crate) fn count_transitions_dense(
     accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
   }
 
-  let root = graph.get_exactly_one_root()?;
-  let root_key = root.key();
-  let root_profile = &node_states[&root_key].profile.dis;
   let mut root_state = Array1::zeros(n_states);
-  for row in root_profile.rows() {
-    if !inputs.filter_uninformative_root || is_profile_informative(row, n_states) {
-      if let Some(root_idx) = most_likely_state(&row) {
-        root_state[root_idx] += 1.0;
+  for root_key in inputs.inheritance.roots(&schedule) {
+    for row in node_states[&root_key].profile.dis.rows() {
+      if !inputs.filter_uninformative_root || is_profile_informative(row, n_states) {
+        if let Some(root_idx) = most_likely_state(&row) {
+          root_state[root_idx] += 1.0;
+        }
       }
     }
   }
@@ -57,6 +60,7 @@ pub(crate) fn count_transitions_dense(
 pub struct DenseInputs {
   pub(crate) min_branch_length: f64,
   pub(crate) filter_uninformative_root: bool,
+  pub(crate) inheritance: Inheritance,
 }
 
 impl DenseInputs {

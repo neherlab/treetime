@@ -23,6 +23,8 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
@@ -56,11 +58,23 @@ impl PartitionMarginalDense {
       inputs: DenseInputs {
         min_branch_length,
         filter_uninformative_root: true,
+        inheritance: Inheritance::ALL,
       },
       alphabet,
       length,
       obs_leaves,
     })
+  }
+
+  #[must_use]
+  pub(crate) fn with_inheritance(self, inheritance: Inheritance) -> Self {
+    Self {
+      inputs: DenseInputs {
+        inheritance,
+        ..self.inputs
+      },
+      ..self
+    }
   }
 
   #[must_use]
@@ -112,7 +126,9 @@ impl PartitionMarginalDense {
   }
 
   pub(crate) fn root_sequence(&self, node_states: &NodeMap<DenseNodeState>, graph: &Graph) -> Result<Seq, Report> {
-    Ok(assign_sequence(&node_states[&graph.root_key()?], &self.alphabet))
+    let schedule = GraphSchedule::new(graph)?;
+    let root_key = self.inputs.inheritance.root(&schedule)?;
+    Ok(assign_sequence(&node_states[&root_key], &self.alphabet))
   }
 
   pub(crate) fn edge_effective_length(
@@ -185,7 +201,7 @@ impl PartitionMarginalDense {
     sample_mode: SampleMode,
     rng: &mut dyn rand::Rng,
   ) -> Result<NodeMap<Seq>, Report> {
-    sample_internal_sequences(graph, sample_mode, |key| {
+    sample_internal_sequences(graph, &self.inputs.inheritance, sample_mode, |key| {
       assign_sequence_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))
     })
   }

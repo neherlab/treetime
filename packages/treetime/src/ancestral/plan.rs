@@ -8,7 +8,9 @@ use crate::error::OperationError;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::gtr::gtr::GTR;
 use crate::optimize::partition_rates::scale_rates_to_unit_mean;
-use crate::partition::create::{Representation, build_marginal_partition};
+use crate::partition::create::{
+  PartitionSource, Representation, build_inherited_marginal_partition, build_marginal_partition,
+};
 use crate::partition::fitch::passes::create_inherited_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
@@ -80,18 +82,13 @@ pub(crate) fn reconstruct_partitions(
         .collect();
       reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?
     },
-    ReconstructionMethod::Marginal(_) if scopes.is_some() => {
-      return make_error!(
-        "Marginal reconstruction on a graph of several segment trees is not implemented yet; use --method-anc=parsimony"
-      );
-    },
     ReconstructionMethod::Marginal(representation) => {
       let reconstructions = build_alignment_partitions(
         graph,
         representation,
         &alignments,
         &heads,
-        inputs,
+        izip!(inheritances, inputs).collect(),
         branch_lengths,
         cancel,
         stages,
@@ -153,7 +150,7 @@ fn build_alignment_partitions(
   representation: Representation,
   alignments: &[AlignmentInfo],
   heads: &[(PartitionLayout, GtrModel)],
-  inputs: Vec<(Alphabet, NodeMap<NodeSeqInput>)>,
+  inputs: Vec<(Inheritance, (Alphabet, NodeMap<NodeSeqInput>))>,
   branch_lengths: &EdgeMap<f64>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
@@ -161,7 +158,7 @@ fn build_alignment_partitions(
 ) -> Result<Vec<MarginalReconstruction>, Report> {
   let counts = heads.iter().counts_by(|(layout, _)| layout.alignment);
   let mut reconstructions = izip!(heads, inputs)
-    .map(|((layout, model), (alphabet, nodes))| {
+    .map(|((layout, model), (inheritance, (alphabet, node_inputs)))| {
       checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
       let alignment = &alignments[layout.alignment - 1];
       if heads.len() > 1 {
@@ -173,8 +170,14 @@ fn build_alignment_partitions(
         );
       }
       let rate = InferredRate::for_partition_count(counts[&layout.alignment]);
-      let reconstruction =
-        build_marginal_partition(representation, model, rate, graph, alphabet, nodes, branch_lengths, log)?;
+      let source = PartitionSource {
+        graph,
+        inheritance,
+        alphabet,
+        node_inputs,
+        branch_lengths,
+      };
+      let reconstruction = build_inherited_marginal_partition(representation, model, rate, source, log)?;
       Ok(
         reconstruction
           .with_layout(layout.clone())

@@ -4,7 +4,7 @@ use crate::gtr::gtr::GTR;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::fitch::passes::create_fitch_partition;
+use crate::partition::fitch::passes::{create_fitch_partition, create_inherited_fitch_partition};
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
@@ -13,6 +13,8 @@ use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::scope::Inheritance;
+use treetime_utils::make_error;
 
 #[expect(
   clippy::too_many_arguments,
@@ -28,6 +30,43 @@ pub(crate) fn build_marginal_partition(
   branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
+  let data = PartitionSource {
+    graph,
+    inheritance: Inheritance::ALL,
+    alphabet,
+    node_inputs,
+    branch_lengths,
+  };
+  build_inherited_marginal_partition(representation, model, rate, data, log)
+}
+
+pub(crate) struct PartitionSource<'a> {
+  pub(crate) graph: &'a Graph,
+  pub(crate) inheritance: Inheritance,
+  pub(crate) alphabet: Alphabet,
+  pub(crate) node_inputs: NodeMap<NodeSeqInput>,
+  pub(crate) branch_lengths: &'a EdgeMap<f64>,
+}
+
+pub(crate) fn build_inherited_marginal_partition(
+  representation: Representation,
+  model: &GtrModel,
+  rate: InferredRate,
+  data: PartitionSource<'_>,
+  log: &dyn LogSink,
+) -> Result<MarginalReconstruction, Report> {
+  let PartitionSource {
+    graph,
+    inheritance,
+    alphabet,
+    node_inputs,
+    branch_lengths,
+  } = data;
+  if !inheritance.is_all() && matches!(representation, Representation::Sparse) {
+    return make_error!(
+      "Sparse marginal reconstruction on a graph of several segment trees is not implemented yet; use --dense"
+    );
+  }
   Ok(match representation {
     Representation::Sparse => MarginalReconstruction::Sparse(build_sparse_reconstruction(
       model,
@@ -39,14 +78,14 @@ pub(crate) fn build_marginal_partition(
       log,
     )?),
     Representation::Dense if model.is_infer() => {
-      let fitch = create_fitch_partition(graph, alphabet, node_inputs.clone())?;
+      let fitch = create_inherited_fitch_partition(graph, inheritance, alphabet, node_inputs.clone())?;
       let gtr = fitch_gtr(model, rate, &fitch, graph, branch_lengths, log)?;
       let partition = fitch.into_marginal_dense(graph, &node_inputs)?;
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
     Representation::Dense => {
       let alphabet_name = alphabet.name();
-      let partition = PartitionMarginalDense::new(alphabet, graph, &node_inputs)?;
+      let partition = PartitionMarginalDense::new(alphabet, graph, &node_inputs)?.with_inheritance(inheritance);
       let gtr = named_gtr(model, alphabet_name, log)?;
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },

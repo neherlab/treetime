@@ -55,6 +55,7 @@ impl PartitionFitch {
       obs_nodes,
       obs_edges: self.edges,
       impute_missing_data: false,
+      inheritance: self.inheritance,
     };
     Ok((partition, node_states))
   }
@@ -64,7 +65,7 @@ impl PartitionFitch {
     graph: &Graph,
     node_inputs: &NodeMap<NodeSeqInput>,
   ) -> Result<PartitionMarginalDense, Report> {
-    PartitionMarginalDense::new(self.alphabet, graph, node_inputs)
+    Ok(PartitionMarginalDense::new(self.alphabet, graph, node_inputs)?.with_inheritance(self.inheritance))
   }
 
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {

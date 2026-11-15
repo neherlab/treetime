@@ -23,6 +23,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
+use treetime_graph::scope::Inheritance;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::interval::range_union::range_union;
 
@@ -35,6 +36,7 @@ pub struct PartitionMarginalSparse {
   pub obs_nodes: NodeMap<SparseNodeObs>,
   pub obs_edges: EdgeMap<SparseEdgeObs>,
   pub impute_missing_data: bool,
+  pub inheritance: Inheritance,
 }
 
 impl PartitionMarginalSparse {
@@ -241,13 +243,17 @@ impl PartitionMarginalSparse {
     sample_mode: SampleMode,
     rng: &mut dyn rand::Rng,
   ) -> Result<NodeMap<Seq>, Report> {
-    sample_internal_sequences(graph, sample_mode, |key| {
+    sample_internal_sequences(graph, &self.inheritance, sample_mode, |key| {
       map_seq_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))
     })
   }
 }
 
 impl MarginalPasses for PartitionMarginalSparse {
+  fn inheritance(&self) -> &Inheritance {
+    &self.inheritance
+  }
+
   type Node = SparseNodeState;
   type BackwardInput = NodeMap<SparseNodeState>;
   type Backward = SparseEdgeBackward;
