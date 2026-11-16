@@ -10,7 +10,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 - `kb/decisions/optimize-dense-initial-guess-hard-count.md`
 - `kb/proposals/optimize-convergence-and-robustness.md`
 - `kb/reports/auto-partitioning.md`
-- `kb/reports/codon-substitution-models.md`
 - `kb/reports/iterative-tree-refinement/3-tree-likelihood.md`
 - `kb/reports/iterative-tree-refinement/4-ancestral-reconstruction.md`
 - `kb/reports/sparse-subs-accessors.md`
