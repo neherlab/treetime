@@ -67,7 +67,7 @@ A node has one time, shared by all its sites. A reassortant node with two older 
 >
 > The choice also settles which timetree parameters the segments share (clock rate, coalescent model), the open question of [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md).
 
-Decided: loopy message passing, node-local. The backward and forward passes run unchanged at nodes with one parent; a node with several parents sends each parent its subtree, combined from the second sweep on with the messages of its other parents, and multiplies the messages of all parents into its posterior. Sweeps repeat until the node times settle ([kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)). The segments share one clock rate, given with `--clock-rate`.
+Decided: loopy message passing, node-local. The backward and forward passes run unchanged at nodes with one parent; a node with several parents sends each parent its subtree (optionally combined, from the second sweep on, with the messages of its other parents), and multiplies the messages of all parents into its posterior. Sweeps repeat until the node times settle ([kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)). The segments share one clock rate, given with `--clock-rate`.
 
 ### Topology operations
 
