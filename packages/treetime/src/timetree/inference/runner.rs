@@ -54,7 +54,7 @@ pub(crate) fn run_timetree(
   coalescent: Option<&CoalescentPrior>,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
-  run_timetree_with(inputs, coalescent, ParentMessages::AllEdges, log)
+  run_timetree_with(inputs, coalescent, ParentMessages::default(), log)
 }
 
 pub(crate) fn run_timetree_with(

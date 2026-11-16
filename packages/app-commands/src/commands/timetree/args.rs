@@ -125,7 +125,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       confidence,
       max_grid_points,
       keep_polytomies,
-      no_cross_parent_messages,
+      cross_parent_messages,
       no_collapse_short_branches,
       relax,
       max_iter,
@@ -177,8 +177,8 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       })?;
     } else {
       check_applies(
-        "no_cross_parent_messages",
-        no_cross_parent_messages,
+        "cross_parent_messages",
+        cross_parent_messages,
         "segment_trees",
         false,
         || o!("applies only with --segment-trees"),
@@ -209,7 +209,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     ];
     Ok(Self {
       tree_input,
-      cross_parent_messages: !no_cross_parent_messages,
+      cross_parent_messages,
       newick_dialect: newick_dialect.dialect(),
       dates,
       branch_lengths: timetree_branch_lengths(branch_length_mode, alignment_count, sequence_length, branch_lengths)?,
@@ -859,13 +859,13 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
   pub keep_polytomies: bool,
 
-  /// On a graph of segment trees, leave the messages from the other parents out of the message to a parent
+  /// On a graph of segment trees, include the messages from the other parents in the message to a parent
   ///
-  /// A node with several parents sends each parent its subtree, combined by default with the messages that its other
-  /// parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree
-  /// alone. Applies only with `--segment-trees`.
+  /// A node with several parents sends each parent its subtree by default, and one sweep of message passing suffices.
+  /// With this flag, the message to a parent also carries the messages that the other parents sent in the previous
+  /// sweep, and the sweeps repeat until the node times settle. Applies only with `--segment-trees`.
   #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, help_heading = "Dating"))]
-  pub no_cross_parent_messages: bool,
+  pub cross_parent_messages: bool,
 
   /// Disable collapsing of short internal branches.
   ///
