@@ -13,3 +13,7 @@ Augur, the target for the AA path, states that amino-acid sequences "are inferre
 
 > [!IMPORTANT]
 > **Decision required.** The AA path silently diverges from the nucleotide path for two flags. For each flag the options are: honor it on the AA path, reject the combination with an error, or document it as nucleotide-only. Augur infers amino acids with the nucleotide method (see above), which supports honoring `--method-anc`.
+
+## Related
+
+- [kb/proposals/codon-aware-ancestral-reconstruction.md](../proposals/codon-aware-ancestral-reconstruction.md): axis 1 recommends that TreeTime translates its own reconstruction, which limits this path to protein-only input

@@ -30,3 +30,4 @@ The `annotation` row of `dev/smoke.toml` runs the reproduction above and declare
 ## Related
 
 - [M-io-gff3-cds-phase-ignored.md](M-io-gff3-cds-phase-ignored.md): another column of the same reader
+- [kb/proposals/codon-aware-ancestral-reconstruction.md](../proposals/codon-aware-ancestral-reconstruction.md): axis 6 describes the whole annotation reader, with the semantics of Nextclade and a coordinate contract

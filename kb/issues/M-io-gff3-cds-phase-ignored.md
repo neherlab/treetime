@@ -16,3 +16,7 @@ Malformed phase values are accepted as valid GFF3, and valid nonzero phases are 
 >
 > - Validate phase now and leave preservation until the output contract is established
 > - Validate and store phase in `GffCdsSegment` now, and emit it once the output contract is established
+
+## Related
+
+- [kb/proposals/codon-aware-ancestral-reconstruction.md](../proposals/codon-aware-ancestral-reconstruction.md): axis 6 describes the whole annotation reader, with the semantics of Nextclade and a coordinate contract

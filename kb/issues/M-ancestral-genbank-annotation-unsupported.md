@@ -15,3 +15,7 @@ Convert GenBank to GFF3 before invoking treetime. Tools: `bp_genbank2gff3` (BioP
 ## Resolution path
 
 Add a GenBank parser to `read_gff3_annotations()` (or a parallel `read_genbank_annotations()`) that extracts CDS features with coordinates, strand, and gene name. Detect format by file extension or content sniffing.
+
+## Related
+
+- [kb/proposals/codon-aware-ancestral-reconstruction.md](../proposals/codon-aware-ancestral-reconstruction.md): axis 6 compares GFF3-only reading with GenBank support
