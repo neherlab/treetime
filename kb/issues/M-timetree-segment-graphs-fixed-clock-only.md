@@ -14,8 +14,8 @@ Known limitations of the passes:
 
 - **Hidden nodes**: a node with one child in every segment (a reassortment node given as a pass-through node of every segment, or a merger of lineages with disjoint segments) is placed at its child with a narrow region, because optimize holds the edge below it at length 0. Contracting such nodes for the time inference, or reporting them without a date, would be honest
 - **Zero-length edges**: edges of length 0 from different polytomy resolutions in the segment trees close spurious loops (the flu graph has 391 nodes with a zero-length parent edge among 801 with several parents). Contracting them needs the scopes to follow the contraction
-- **Sweeps**: the sweep limit of 20 is reached on the flu graph at a relative change of 2 x 10^-4; the log marginal likelihood that a sweep reports is not exact on a graph with loops
-- **Default of the cross-parent messages**: exact on small loops, no measurable effect on the simulated graphs and the flu graph, twice the run time; `--no-cross-parent-messages` switches them off
+- **Cross-parent messages**: off by default (decided: little information in practice, slower convergence); `--cross-parent-messages` switches them on. With them, the sweep limit of 20 is reached on the flu graph at a relative change of 2 x 10^-4
+- **Log marginal likelihood**: the value that a pass reports is not exact on a graph with loops
 
 ## Depends on
 
