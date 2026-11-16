@@ -13,8 +13,8 @@ inference would.
 
 Variants: `joint-full` and `joint-collapsed` run `optimize --segment-trees` on all segments, `separate` runs
 `optimize --tree` once per segment (collapsed tree, topology kept). `timetree-full` and `timetree-collapsed` run
-`timetree --segment-trees` at the true mean clock rate with the default message passing, the `-children` variants
-with `--no-cross-parent-messages`, where the message to a parent is the subtree alone.
+`timetree --segment-trees` at the true mean clock rate with the default message passing, where the message to a
+parent is the subtree alone, the `-cross` variants with `--cross-parent-messages`.
 
 Expected: the relative segment rates are recovered; on branches shared by several segments the joint fit is closer
 to the true substitutions than the separate fits, the more so the more segments share the branch; branches of one
@@ -48,9 +48,9 @@ ALPHABET = np.array(list('ACGT'))
 SAMPLES_PER_BATCH, SAMPLE_INTERVAL = 2, 0.1  # the sampling schedule of simulate_arg
 TIMETREE_VARIANTS = {
     'timetree-full': ('full', []),
-    'timetree-full-children': ('full', ['--no-cross-parent-messages']),
+    'timetree-full-cross': ('full', ['--cross-parent-messages']),
     'timetree-collapsed': ('collapsed', []),
-    'timetree-collapsed-children': ('collapsed', ['--no-cross-parent-messages']),
+    'timetree-collapsed-cross': ('collapsed', ['--cross-parent-messages']),
 }
 
 
