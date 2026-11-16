@@ -242,9 +242,9 @@ treetime timetree --config timetree.yaml -O results
 * `--keep-polytomies` — Keep the polytomies of the input tree
 
    Without this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
-* `--no-cross-parent-messages` — On a graph of segment trees, leave the messages from the other parents out of the message to a parent
+* `--cross-parent-messages` — On a graph of segment trees, include the messages from the other parents in the message to a parent
 
-   A node with several parents sends each parent its subtree, combined by default with the messages that its other parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree alone. Applies only with `--segment-trees`.
+   A node with several parents sends each parent its subtree by default, and one sweep of message passing suffices. With this flag, the message to a parent also carries the messages that the other parents sent in the previous sweep, and the sweeps repeat until the node times settle. Applies only with `--segment-trees`.
 * `--no-collapse-short-branches` — Disable collapsing of short internal branches.
 
    By default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all alignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x. The substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy. Edges above internal nodes with a date are kept. When set, such edges are kept.

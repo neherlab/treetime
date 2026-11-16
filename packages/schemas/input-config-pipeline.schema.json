@@ -637,10 +637,10 @@
             }
           ]
         },
-        "no_cross_parent_messages": {
+        "cross_parent_messages": {
           "anyOf": [
             {
-              "description": "On a graph of segment trees, leave the messages from the other parents out of the message to a parent\n\nA node with several parents sends each parent its subtree, combined by default with the messages that its other\nparents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree\nalone. Applies only with `--segment-trees`.",
+              "description": "On a graph of segment trees, include the messages from the other parents in the message to a parent\n\nA node with several parents sends each parent its subtree by default, and one sweep of message passing suffices.\nWith this flag, the message to a parent also carries the messages that the other parents sent in the previous\nsweep, and the sweeps repeat until the node times settle. Applies only with `--segment-trees`.",
               "type": "boolean",
               "default": false
             },
