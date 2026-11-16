@@ -106,6 +106,15 @@ def plot_rtt(tt, fname):
     print('--- root-to-tip plot saved to  \n\t' + fname)
 
 
+def mcc_comment(n):
+    """MCC annotation of a node for Nexus comments: `,mcc="i"` with one other segment,
+    `,mcc_<label>="i"` for each other segment otherwise."""
+    mccs = getattr(n, 'mccs', {})
+    if len(mccs) <= 1:
+        return f',mcc="{n.mcc}"'
+    return ''.join(f',mcc_{label}="{m}"' for label, m in mccs.items())
+
+
 def export_sequences_and_tree(
     tt,
     basename,
@@ -141,7 +150,7 @@ def export_sequences_and_tree(
         else:
             fh_dates.write('#node\tdate\tnumeric date\n')
 
-    mutations_out = open(basename + 'branch_mutations.txt', 'w')
+    mutations_out = open(basename + f'branch_mutations{tree_suffix}.txt', 'w')
     mutations_out.write('node\tstate1\tpos\tstate2\n')
     for n in tt.tree.find_clades():
         if timetree:
@@ -183,7 +192,8 @@ def export_sequences_and_tree(
                     n.comment = (
                         '&mutations="'
                         + ','.join([a + str(pos + offset) + d for (a, pos, d) in n.mutations if n.mask[pos] > 0])
-                        + f'",mcc="{n.mcc}"'
+                        + '"'
+                        + mcc_comment(n)
                     )
                 else:
                     n.comment = (
@@ -195,7 +205,8 @@ def export_sequences_and_tree(
                                 if tt.gtr.ambiguous not in [a, d] and n.mask[pos] > 0
                             ]
                         )
-                        + f'",mcc="{n.mcc}"'
+                        + '"'
+                        + mcc_comment(n)
                     )
 
             for a, pos, d in n.mutations:
