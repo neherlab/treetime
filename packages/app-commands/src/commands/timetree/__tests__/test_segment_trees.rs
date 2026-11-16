@@ -130,7 +130,7 @@ mod tests {
   #[test]
   fn test_tree_timetree_rejects_the_cross_parent_switch() {
     let raw = TreetimeTimetreeArgsRaw {
-      no_cross_parent_messages: true,
+      cross_parent_messages: true,
       segments: SegmentArgs::default(),
       tree: TreeArgs {
         tree: Some(toy("tree_seg1.nwk")),

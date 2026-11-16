@@ -46,7 +46,7 @@ pub(crate) mod tests {
     (TT,            &["--sequence-length", "--clock-rate", "--clock-std-dev", "--relax", "--branch-length-mode",
                       "--keep-polytomies", "--max-grid-points", "--coalescent", "--n-skyline", "--skyline-stiffness",
                       "--coalescent-confidence", "--gen-per-year", "--segment-trees", "--segment-alignments",
-                      "--no-cross-parent-messages"]),
+                      "--cross-parent-messages"]),
     (AN,            &["--translations", "--cds-selection", "--annotation", "--aa-root-sequence", "--aa-model",
                       "--segment-trees", "--segment-alignments"]),
     (CL,            &[]),
