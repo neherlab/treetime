@@ -1170,9 +1170,9 @@
           "more": "A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000."
         },
         {
-          "key": "no_cross_parent_messages",
-          "label": "No cross parent messages",
-          "flag": "--no-cross-parent-messages",
+          "key": "cross_parent_messages",
+          "label": "Cross parent messages",
+          "flag": "--cross-parent-messages",
           "group": "Dating",
           "role": "setting",
           "kind": "switch",
@@ -1183,11 +1183,11 @@
           "default_value": false,
           "examples": [],
           "value_names": [
-            "NO_CROSS_PARENT_MESSAGES"
+            "CROSS_PARENT_MESSAGES"
           ],
           "conflicts": [],
-          "help": "On a graph of segment trees, leave the messages from the other parents out of the message to a parent",
-          "more": "A node with several parents sends each parent its subtree, combined by default with the messages that its other parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree alone. Applies only with `--segment-trees`."
+          "help": "On a graph of segment trees, include the messages from the other parents in the message to a parent",
+          "more": "A node with several parents sends each parent its subtree by default, and one sweep of message passing suffices. With this flag, the message to a parent also carries the messages that the other parents sent in the previous sweep, and the sweeps repeat until the node times settle. Applies only with `--segment-trees`."
         },
         {
           "key": "keep_polytomies",

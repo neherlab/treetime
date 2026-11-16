@@ -5989,10 +5989,10 @@
             "type": "boolean",
             "x-cli-flag": "--keep-polytomies"
           },
-          "no_cross_parent_messages": {
-            "description": "On a graph of segment trees, leave the messages from the other parents out of the message to a parent\n\nA node with several parents sends each parent its subtree, combined by default with the messages that its other\nparents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree\nalone. Applies only with `--segment-trees`.",
+          "cross_parent_messages": {
+            "description": "On a graph of segment trees, include the messages from the other parents in the message to a parent\n\nA node with several parents sends each parent its subtree by default, and one sweep of message passing suffices.\nWith this flag, the message to a parent also carries the messages that the other parents sent in the previous\nsweep, and the sweeps repeat until the node times settle. Applies only with `--segment-trees`.",
             "type": "boolean",
-            "x-cli-flag": "--no-cross-parent-messages"
+            "x-cli-flag": "--cross-parent-messages"
           },
           "no_collapse_short_branches": {
             "description": "Disable collapsing of short internal branches.\n\nBy default, before the time inference, internal edges shorter than 0.1/L (L is the number of sites of all\nalignments) with no substitution in the marginal reconstruction are contracted, as in optimize and TreeTime 0.x.\nThe substitutions of a contracted edge move to its child edges, and the nodes it joined become one polytomy.\nEdges above internal nodes with a date are kept. When set, such edges are kept.",

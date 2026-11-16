@@ -2850,13 +2850,13 @@ export type TimetreeConfig = {
    */
   keep_polytomies?: boolean;
   /**
-   * On a graph of segment trees, leave the messages from the other parents out of the message to a parent
+   * On a graph of segment trees, include the messages from the other parents in the message to a parent
    *
-   * A node with several parents sends each parent its subtree, combined by default with the messages that its other
-   * parents sent in the previous sweep of message passing. With this flag, the message to a parent is the subtree
-   * alone. Applies only with `--segment-trees`.
+   * A node with several parents sends each parent its subtree by default, and one sweep of message passing suffices.
+   * With this flag, the message to a parent also carries the messages that the other parents sent in the previous
+   * sweep, and the sweeps repeat until the node times settle. Applies only with `--segment-trees`.
    */
-  no_cross_parent_messages?: boolean;
+  cross_parent_messages?: boolean;
   /**
    * Disable collapsing of short internal branches.
    *
