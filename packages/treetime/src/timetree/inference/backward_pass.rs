@@ -43,7 +43,7 @@ pub(crate) fn propagate_distributions_backward(
     max_points,
     fft_plans,
     from_parents: &from_parents,
-    parent_messages: ParentMessages::AllEdges,
+    parent_messages: ParentMessages::default(),
   };
   pass.run(bad_branches)
 }
@@ -79,8 +79,8 @@ pub(crate) struct BackwardInputs<'a> {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum ParentMessages {
-  #[default]
   AllEdges,
+  #[default]
   ChildrenOnly,
 }
 
