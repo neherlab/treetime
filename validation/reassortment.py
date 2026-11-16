@@ -111,12 +111,12 @@ def local_tree(arg, segment):
     return roots[0], children, parent
 
 
-def collapsed(root, children):
-    """The local tree without nodes of one child: binary and multifurcating nodes and tips only."""
+def collapsed(root, children, removed=None):
+    """The local tree without its nodes of one child (only those in `removed`, if given)."""
     kept_children, kept_parent = {}, {}
 
     def below(node):
-        while len(children.get(node, [])) == 1:
+        while len(children.get(node, [])) == 1 and (removed is None or node in removed):
             node = children[node][0]
         return node
 
@@ -130,6 +130,16 @@ def collapsed(root, children):
             kept_parent[c] = node
             stack.append(c)
     return root, kept_children, kept_parent
+
+
+def hidden_nodes(local_trees):
+    """Nodes with one child in every local tree that holds them: reassortment nodes, and mergers of lineages that
+    carry disjoint sets of segments. No segment branches there, so no tree inference recovers them."""
+    unary = {}
+    for _, children, parent in local_trees:
+        for node in parent.keys() | children.keys():
+            unary[node] = unary.get(node, True) and len(children.get(node, [])) == 1
+    return {node for node, one_child in unary.items() if one_child}
 
 
 def date(tau):
