@@ -8,8 +8,9 @@ Data: an ancestral reassortment graph (reassortment.py, Tc = 10 years, 80 tips a
 lineage and year) and four segments with their own length, substitution rate and random GTR. Sequences evolve along
 each segment's local tree. TreeTime sees, per segment, the tip alignment and a divergence tree on the true topology
 with branch lengths mu t * lognormal(0, 0.3), named internal nodes (perfect node identities, as from an ideal
-TreeKnit), in two forms: `full` keeps the nodes that the segment only passes through, `collapsed` drops them, as tree
-inference would.
+TreeKnit), in two forms: `full` keeps the nodes that the segment only passes through where another segment branches,
+`collapsed` drops them, as tree inference would. Neither keeps the hidden nodes, which have one child in every segment
+(reassortment nodes, and mergers of lineages with disjoint segments): no tree inference recovers them.
 
 Variants: `joint-full` and `joint-collapsed` run `optimize --segment-trees` on all segments, `separate` runs
 `optimize --tree` once per segment (collapsed tree, topology kept). `timetree-full` and `timetree-collapsed` run
@@ -37,7 +38,7 @@ from Bio import Phylo
 
 from coalescent import Constant
 from coalescent import PRESENT
-from reassortment import collapsed, local_tree, simulate_arg
+from reassortment import collapsed, hidden_nodes, local_tree, simulate_arg
 
 HERE = Path(__file__).resolve().parent
 SEGMENTS = {'s1': (1500, 4e-3), 's2': (1200, 3e-3), 's3': (1000, 2e-3), 's4': (800, 1e-3)}  # L, mu per site and year
@@ -95,8 +96,10 @@ def simulate(args):
             arg = simulate_arg(Constant(10.0), rng, list(SEGMENTS), rho)
             out.mkdir(parents=True, exist_ok=True)
             truth = {'rho': rho, 'n_reassortments': arg.n_reassortments, 'segments': {}}
+            local_trees = {segment: local_tree(arg, segment) for segment in SEGMENTS}
+            hidden = hidden_nodes(local_trees.values())
             for segment, (L, mu) in SEGMENTS.items():
-                root, children, parent = local_tree(arg, segment)
+                root, children, parent = local_trees[segment]
                 pi, w, q = random_gtr(rng)
                 seqs = {root: rng.choice(4, size=L, p=pi)}
                 stack = [root]
@@ -117,8 +120,10 @@ def simulate(args):
                     newick(root, children, lambda n: arg.tau[parent[n]] - arg.tau[n])
                 )
                 perturb = {n: rng.lognormal(0.0, PERTURB_SIGMA) for n in parent}
+                froot, fchildren, fparent = collapsed(root, children, hidden)
+                edges = {n: (p, mu * (arg.tau[p] - arg.tau[n]) * perturb[n]) for n, p in parent.items()}
                 (out / f'{segment}.full.nwk').write_text(
-                    newick(root, children, lambda n: mu * (arg.tau[parent[n]] - arg.tau[n]) * perturb[n])
+                    newick(froot, fchildren, lambda n: path_length(edges, n, fparent[n]))
                 )
                 croot, cchildren, cparent = collapsed(root, children)
                 factor = {n: rng.lognormal(0.0, PERTURB_SIGMA) for n in cparent}
@@ -381,11 +386,9 @@ def dates_summary(dates):
     lines = ['## Dates of internal nodes', '',
              f'Fixed clock rate {mean_clock_rate():.4g} per site and year (the true length-weighted mean). Error is '
              'inferred minus true date in years; coverage is the fraction of true dates inside the 90% region. '
-             '`sweeps` is the mean number of message-passing sweeps of the first round. `hidden` nodes have one child in '
-             'every segment (reassortment nodes, and mergers of lineages that carry disjoint sets of segments): '
-             'sequences do not date them, and the collapsed trees leave them out. Nodes with several parents are '
-             'counted in the graph of the variant: the reassortment nodes in the full trees are hidden, the nodes '
-             'below them have several parents in the collapsed trees.', '']  # fmt: skip
+             '`sweeps` is the mean number of message-passing sweeps of the first round. Nodes with several parents are '
+             'counted in the graph of the variant: the collapsed trees, which also drop the pass-through nodes, '
+             'give more of them.', '']  # fmt: skip
     grouped = dates.groupby(['case', 'variant', 'kind'])
     table = pd.DataFrame({
         'nodes': grouped.size(),
