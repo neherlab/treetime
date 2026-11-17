@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""
+Reference capture script for the discrete gamma rate mixture.
+
+Runs IQ-TREE 3.1.4 on the alignment, tree and model of
+gm_gamma_iqtree_inputs.json with fixed branch lengths and fixed model
+parameters, and writes to gm_gamma_iqtree_outputs.json:
+
+- the per-site log-likelihoods without rate variation, which check the
+  convention mapping below before any gamma comparison
+- for each gamma shape alpha: the K category rates and the per-site
+  log-likelihoods of the mixture
+
+Convention mapping from TreeTime to IQ-TREE:
+
+- States: TreeTime orders the nucleotide states A, C, G, T, and so does IQ-TREE.
+- Exchangeabilities: the symmetric TreeTime matrix W becomes
+  GTR{W_AC,W_AG,W_AT,W_CG,W_CT,W_GT}. IQ-TREE reads six values in this order
+  (the sixth, G-T, is the reference rate) and fixes every value that the model
+  string gives.
+- Frequencies: pi becomes +FU{pi_A,pi_C,pi_G,pi_T}, user frequencies that
+  IQ-TREE does not optimize.
+- Normalization: both tools scale the rate matrix Q_ij = W_ij * pi_j so that
+  the mean rate sum_i pi_i * sum_(j != i) Q_ij is 1. TreeTime divides W by
+  pi^T W pi in the GTR constructor; IQ-TREE prints the normalized Q in the
+  .iqtree report.
+- Rate and branch length: TreeTime evolves a branch of length t with the
+  scalar rate mu, so its expected number of substitutions per site is mu * t.
+  IQ-TREE has no mu: its branch length is the expected number of substitutions
+  per site. The inputs use mu = 1, so the branch lengths are the same in both
+  tools. The tree is rooted; IQ-TREE merges the two root branches into one of
+  their summed length, which leaves the likelihood of a reversible model
+  unchanged.
+- Gamma: +G4{alpha} has K = 4 categories of weight 1/4, and IQ-TREE computes
+  each category rate as the mean of the gamma distribution with shape alpha
+  and mean 1 over the category (Yang 1994, "MEAN" in the .iqtree report), the
+  rule of TreeTime's GammaRates. The shape is fixed.
+- Branch lengths: -te gives the tree and -blfix keeps its branch lengths.
+
+Precision: the .sitelh file of -wsl prints 6 significant digits, which is
+coarser than the 1e-6 of the comparison. The script therefore runs IQ-TREE once
+per site on a one-column alignment and reads the log-likelihood of the tree
+from the .iqtree report, which -prec 17 prints with 17 significant digits. The
+category rates come from the same report of a run on the whole alignment.
+
+Tree choice: every branch is at least 0.07 substitutions per site long,
+because sparse TreeTime groups fixed sites up to a profile tolerance of 1e-4,
+and on very short branches that tolerance moves per-site log-likelihoods by
+about 1e-5.
+
+Usage:
+    ./dev/docker/run python3 packages/treetime/src/gtr/__tests__/__fixtures__/gm_gamma_iqtree_capture
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+
+FIXTURES_DIR = Path(__file__).parent
+INPUTS = FIXTURES_DIR / "gm_gamma_iqtree_inputs.json"
+OUTPUTS = FIXTURES_DIR / "gm_gamma_iqtree_outputs.json"
+IQTREE = "iqtree3"
+IQTREE_VERSION = "3.1.4"
+STATES = "ACGT"
+LOG_LH_RE = re.compile(r"^Log-likelihood of the tree: (\S+)", re.MULTILINE)
+CATEGORY_RE = re.compile(r"^  (\d+) +(\S+) +(\S+)$", re.MULTILINE)
+
+
+def main() -> None:
+    check_version()
+    inputs = json.loads(INPUTS.read_text())
+    alignment = inputs["alignment"]
+    length = len(alignment[0]["seq"])
+    base = base_model(inputs["W"], inputs["pi"])
+    categories = inputs["categories"]
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
+        tree = work / "tree.nwk"
+        tree.write_text(inputs["tree"] + "\n")
+        outputs = {
+            "iqtree_version": IQTREE_VERSION,
+            "no_gamma": {
+                "model": base,
+                "site_log_lh": site_log_lh(work, tree, alignment, length, base),
+            },
+            "gamma": [
+                {
+                    "shape": shape,
+                    "model": model,
+                    "category_rates": category_rates(work, tree, alignment, model, categories),
+                    "site_log_lh": site_log_lh(work, tree, alignment, length, model),
+                }
+                for shape in inputs["shapes"]
+                for model in [f"{base}+G{categories}{{{shape!r}}}"]
+            ],
+        }
+    OUTPUTS.write_text(json.dumps(outputs, indent=2) + "\n")
+
+
+def check_version() -> None:
+    version = subprocess.run([IQTREE, "--version"], check=True, capture_output=True, text=True).stdout
+    if f"version {IQTREE_VERSION} " not in version:
+        raise SystemExit(f"expected IQ-TREE {IQTREE_VERSION}, got: {version.splitlines()[0]}")
+
+
+def base_model(w: list[list[float]], pi: list[float]) -> str:
+    pairs = [(i, j) for i in range(len(STATES)) for j in range(i + 1, len(STATES))]
+    for i, j in pairs:
+        if w[i][j] != w[j][i]:
+            raise SystemExit(f"W is not symmetric at {STATES[i]}-{STATES[j]}")
+    rates = ",".join(repr(w[i][j]) for i, j in pairs)
+    freqs = ",".join(repr(p) for p in pi)
+    return f"GTR{{{rates}}}+FU{{{freqs}}}"
+
+
+def site_log_lh(work: Path, tree: Path, alignment: list[dict], length: int, model: str) -> list[float]:
+    return [
+        float(LOG_LH_RE.search(run(work, tree, column(alignment, site), model)).group(1))
+        for site in range(length)
+    ]
+
+
+def category_rates(work: Path, tree: Path, alignment: list[dict], model: str, categories: int) -> list[float]:
+    report = run(work, tree, alignment, model)
+    rows = CATEGORY_RE.findall(report.split("Relative_rate", 1)[1])
+    if [int(k) for k, _, _ in rows] != list(range(1, categories + 1)):
+        raise SystemExit(f"unexpected category table for {model}: {rows}")
+    return [float(rate) for _, rate, _ in rows]
+
+
+def column(alignment: list[dict], site: int) -> list[dict]:
+    return [{"name": record["name"], "seq": record["seq"][site]} for record in alignment]
+
+
+def run(work: Path, tree: Path, alignment: list[dict], model: str) -> str:
+    fasta = work / "aln.fasta"
+    fasta.write_text("".join(f">{record['name']}\n{record['seq']}\n" for record in alignment))
+    prefix = work / "run"
+    subprocess.run(
+        [
+            IQTREE,
+            "-s", str(fasta),
+            "-st", "DNA",
+            "-m", model,
+            "-te", str(tree),
+            "-blfix",
+            "-keep-ident",
+            "-nt", "1",
+            "-seed", "1",
+            "-prec", "17",
+            "-redo",
+            "-quiet",
+            "-pre", str(prefix),
+        ],
+        check=True,
+    )
+    return Path(f"{prefix}.iqtree").read_text()
+
+
+if __name__ == "__main__":
+    main()

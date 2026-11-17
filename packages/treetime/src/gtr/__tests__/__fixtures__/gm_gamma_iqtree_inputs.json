@@ -1,0 +1,68 @@
+{
+  "tree": "((A:0.12,B:0.3)AB:0.08,((C:0.2,D:0.15)CD:0.1,(E:0.25,F:0.18)EF:0.07)CDEF:0.11)root;",
+  "W": [
+    [
+      0.0,
+      1.0,
+      3.2,
+      0.8
+    ],
+    [
+      1.0,
+      0.0,
+      1.3,
+      4.1
+    ],
+    [
+      3.2,
+      1.3,
+      0.0,
+      1.0
+    ],
+    [
+      0.8,
+      4.1,
+      1.0,
+      0.0
+    ]
+  ],
+  "pi": [
+    0.3,
+    0.2,
+    0.22,
+    0.28
+  ],
+  "mu": 1.0,
+  "categories": 4,
+  "shapes": [
+    0.2,
+    1.0,
+    5.0
+  ],
+  "alignment": [
+    {
+      "name": "A",
+      "seq": "GAACCACCCTATTGGAAACTTCGGTGTAGTAGTCCCATGA"
+    },
+    {
+      "name": "B",
+      "seq": "GGACCATAATACAGGAGCCTTCGGGCTACTAGTCCCAAGA"
+    },
+    {
+      "name": "C",
+      "seq": "GGAGCACAGCATTATAAACTTCCGTAAACCAGTCCCTAAA"
+    },
+    {
+      "name": "D",
+      "seq": "GAGCCATTGCCTCAGAAACTTCCGTAAATCAGTCCTTAAT"
+    },
+    {
+      "name": "E",
+      "seq": "GAACGACTGTAGCAGAAACTTCCGTAAATTAGTACCTAGT"
+    },
+    {
+      "name": "F",
+      "seq": "GAGCGACTGTCTAAGAAACTTCTGTAGATTAGTACCCAGT"
+    }
+  ]
+}
