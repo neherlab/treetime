@@ -9,7 +9,7 @@ use crate::gtr::gamma::NO_RATE_VARIATION;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::gtr::gtr::GTR;
 use crate::optimize::partition_rates::scale_rates_to_unit_mean;
-use crate::partition::create::{Representation, build_marginal_partition};
+use crate::partition::create::{PartitionInput, Representation, build_marginal_partition, build_marginal_partitions};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -152,37 +152,35 @@ fn build_alignment_partitions(
   log: &dyn LogSink,
 ) -> Result<Vec<MarginalReconstruction>, Report> {
   let counts = heads.iter().counts_by(|(layout, _)| layout.alignment);
-  let mut reconstructions = izip!(heads, inputs)
-    .map(|((layout, model), (alphabet, nodes))| {
-      checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
-      let alignment = &alignments[layout.alignment - 1];
-      if heads.len() > 1 {
-        progress_info!(
-          log,
-          "{}: alignment '{}'",
-          capitalized_label(layout),
-          alignment.path.display()
-        );
-      }
-      let rate = InferredRate::for_partition_count(counts[&layout.alignment]);
-      let reconstruction = build_marginal_partition(
-        representation,
-        model,
-        rate,
-        models.gamma_categories,
-        graph,
-        alphabet,
-        nodes,
-        branch_lengths,
+  checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
+  if heads.len() > 1 {
+    for (layout, _) in heads {
+      progress_info!(
         log,
-      )?;
-      Ok(
-        reconstruction
-          .with_layout(layout.clone())
-          .with_total_length(alignment.length),
-      )
+        "{}: alignment '{}'",
+        capitalized_label(layout),
+        alignments[layout.alignment - 1].path.display()
+      );
+    }
+  }
+  let inputs = izip!(heads, inputs)
+    .map(|((layout, model), (alphabet, nodes))| PartitionInput {
+      model,
+      rate: InferredRate::for_partition_count(counts[&layout.alignment]),
+      alphabet,
+      nodes,
     })
-    .collect::<Result<Vec<_>, Report>>()?;
+    .collect_vec();
+  let mut reconstructions = izip!(
+    heads,
+    build_marginal_partitions(representation, inputs, models, graph, branch_lengths, log)?
+  )
+  .map(|((layout, _), reconstruction)| {
+    reconstruction
+      .with_layout(layout.clone())
+      .with_total_length(alignments[layout.alignment - 1].length)
+  })
+  .collect_vec();
   for alignment in alignments {
     let mut inferred = izip!(heads, &mut reconstructions)
       .filter(|((layout, model), _)| layout.alignment == alignment.number && model.is_infer())

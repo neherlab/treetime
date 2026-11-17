@@ -5,3 +5,4 @@ mod test_dense;
 mod test_fitch;
 mod test_fitch_deterministic;
 mod test_gm_infer_gtr_dense;
+mod test_group;

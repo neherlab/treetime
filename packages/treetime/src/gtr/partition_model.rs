@@ -1,20 +1,26 @@
 use crate::gtr::gamma::GammaRates;
 use crate::gtr::gtr::GTR;
 use eyre::Report;
-use getset::{Getters, MutGetters};
+use getset::{CopyGetters, Getters, MutGetters};
 use itertools::Itertools;
 
-#[derive(Clone, Debug, Getters, MutGetters)]
+#[derive(Clone, Debug, Getters, CopyGetters, MutGetters)]
 pub struct PartitionModel {
   #[getset(get = "pub", get_mut = "pub(crate)")]
   gtr: GTR,
   #[getset(get = "pub")]
   gamma: GammaRates,
+  #[getset(get_copy = "pub")]
+  shares_gamma_shape: bool,
 }
 
 impl PartitionModel {
   pub fn new(gtr: GTR, gamma: GammaRates) -> Self {
-    Self { gtr, gamma }
+    Self {
+      gtr,
+      gamma,
+      shares_gamma_shape: false,
+    }
   }
 
   pub fn without_rate_variation(gtr: GTR) -> Self {
@@ -23,6 +29,14 @@ impl PartitionModel {
 
   pub fn categories(&self) -> usize {
     self.gamma.categories()
+  }
+
+  #[must_use]
+  pub fn with_shared_shape(self, shares_gamma_shape: bool) -> Self {
+    Self {
+      shares_gamma_shape,
+      ..self
+    }
   }
 
   #[must_use]

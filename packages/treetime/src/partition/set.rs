@@ -3,7 +3,7 @@ use crate::gtr::gamma_shape::optimize_gamma_shape;
 use crate::gtr::gtr::GTR;
 use crate::gtr::partition_model::PartitionModel;
 use crate::partition::assembly::{AlignmentGroup, alignment_groups};
-use crate::partition::create::{Representation, build_marginal_partition};
+use crate::partition::create::{PartitionInput, Representation, build_marginal_partitions};
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
@@ -33,7 +33,7 @@ pub(crate) fn build_partition_set(
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
   let rate = InferredRate::for_partition_count(partitions.len());
-  let reconstructions = partitions
+  let (heads, inputs): (Vec<_>, Vec<_>) = partitions
     .into_iter()
     .map(|SplitPartition { data, model }| {
       let PartitionData {
@@ -41,20 +41,21 @@ pub(crate) fn build_partition_set(
         alphabet,
         nodes,
       } = data;
-      let reconstruction = build_marginal_partition(
-        representation,
-        &model,
-        rate,
-        models.gamma_categories,
-        graph,
-        alphabet,
-        nodes,
-        branch_lengths,
-        log,
-      )?;
-      Ok(reconstruction.with_layout(layout))
+      ((layout, model), (alphabet, nodes))
     })
-    .collect::<Result<Vec<_>, Report>>()?;
+    .unzip();
+  let inputs = izip!(&heads, inputs)
+    .map(|((_, model), (alphabet, nodes))| PartitionInput {
+      model,
+      rate,
+      alphabet,
+      nodes,
+    })
+    .collect_vec();
+  let reconstructions = build_marginal_partitions(representation, inputs, models, graph, branch_lengths, log)?;
+  let reconstructions = izip!(heads, reconstructions)
+    .map(|((layout, _), reconstruction)| reconstruction.with_layout(layout))
+    .collect_vec();
   let set = PartitionSet::from_reconstructions(reconstructions)?;
   let total_length = set.total_length();
   Ok(set.with_total_length(total_length))
@@ -265,12 +266,14 @@ impl PartitionSet {
   }
 
   fn gamma_shape_groups(&self) -> Vec<Vec<usize>> {
-    self
+    let (shared, own): (Vec<_>, Vec<_>) = self
       .iter()
       .enumerate()
       .filter(|(_, partition)| partition.model().categories() > 1)
-      .map(|(index, _)| vec![index])
-      .collect()
+      .partition(|(_, partition)| partition.model().shares_gamma_shape());
+    let own = own.into_iter().map(|(index, _)| vec![index]);
+    let shared = (!shared.is_empty()).then(|| shared.into_iter().map(|(index, _)| index).collect_vec());
+    shared.into_iter().chain(own).sorted_by_key(|group| group[0]).collect()
   }
 
   pub(crate) fn rates(&self) -> Vec<f64> {

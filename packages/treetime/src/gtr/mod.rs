@@ -7,6 +7,7 @@ pub mod infer_gtr;
 pub(crate) mod jc_distance;
 pub mod partition_model;
 pub mod refinement;
+pub mod shared_params;
 
 #[cfg(test)]
 mod __tests__;

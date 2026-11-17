@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gamma::NO_RATE_VARIATION;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
+use crate::gtr::shared_params::SharedParams;
 use crate::partition::resolve::{PartitionLayout, PartitionPlan, ResolvedPartitions, resolve_partitions};
 use crate::seq::alignment::{NodeSeqInput, SequenceSource};
 use eyre::Report;
@@ -23,6 +24,7 @@ pub struct SequenceInput {
 pub struct ModelSettings {
   #[default(NO_RATE_VARIATION)]
   pub gamma_categories: usize,
+  pub shared: SharedParams,
 }
 
 impl SequenceInput {

@@ -1,7 +1,9 @@
 use crate::gtr::gtr::{Mu, avg_transition};
 use crate::progress::LogSink;
 use crate::progress_warn;
+use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
+use itertools::{Itertools, izip};
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::{is_max_above, outer};
@@ -16,74 +18,190 @@ pub(crate) fn infer_gtr_from_counts(
   options: &InferGtrOptions,
   log: &dyn LogSink,
 ) -> Result<InferGtrResult, Report> {
-  let MutationCounts { nij, Ti, root_state } = counts;
+  infer_gtr_group(&[counts], GtrSharing::default(), options, log)?
+    .pop()
+    .ok_or_else(|| make_internal_report!("The model fit of one partition returned no model"))
+}
+
+pub(crate) fn infer_gtr_group(
+  counts: &[&MutationCounts],
+  sharing: GtrSharing,
+  options: &InferGtrOptions,
+  log: &dyn LogSink,
+) -> Result<Vec<InferGtrResult>, Report> {
   let InferGtrOptions {
     fixed_pi,
     pc,
     dp,
     max_iter,
   } = options;
-
-  let N = Ti.len();
+  let Some(first) = counts.first() else {
+    return make_internal_error!("A model fit needs the counts of at least one partition");
+  };
+  let N = first.Ti.len();
+  if let Some(other) = counts.iter().find(|counts| counts.Ti.len() != N) {
+    return make_internal_error!(
+      "Partitions that share model parameters need one alphabet, but their state counts are {N} and {}",
+      other.Ti.len()
+    );
+  }
 
   let pc_mat = {
     let mut pc_mat = Array2::from_elem((N, N), *pc);
     pc_mat.diag_mut().fill(0.0);
     pc_mat
   };
+  let data = counts
+    .iter()
+    .map(|MutationCounts { nij, Ti, root_state }| {
+      let mut nij = nij.clone();
+      nij.diag_mut().fill(0.0);
+      PartitionCounts { nij, Ti, root_state }
+    })
+    .collect_vec();
+  let time_weights = time_weights(&data);
 
-  let nij = {
-    let mut nij = nij.clone();
-    nij.diag_mut().fill(0.0);
-    nij
+  let mut pi_old = vec![Array1::<f64>::zeros(N); data.len()];
+  let mut pi = {
+    let pi = fixed_pi.clone().unwrap_or_else(|| Array1::ones(N));
+    let pi_sum = pi.sum();
+    vec![pi / pi_sum; data.len()]
   };
-
-  let mut pi_old = Array1::zeros(N);
-  let mut pi = fixed_pi.clone().unwrap_or_else(|| Array1::ones(N));
-  pi /= pi.sum();
-  let mut W = Array2::ones((N, N));
-  let mut mu = (nij.sum() + pc) / (Ti.sum() + pc);
+  let mut W = vec![Array2::ones((N, N)); data.len()];
+  let mut mu = data
+    .iter()
+    .map(|counts| (counts.nij.sum() + pc) / (counts.Ti.sum() + pc))
+    .collect_vec();
 
   for _ in 0..*max_iter {
-    let dist = distance(&pi_old, &pi);
-
-    if dist < *dp {
+    if max_distance(&pi_old, &pi) < *dp {
       break;
     }
+    pi_old.clone_from(&pi);
 
-    pi_old.assign(&pi);
-
-    W = (&(&nij.view() + &nij.t() + 2.0 * &pc_mat) / mu)
-      / (&outer(&pi, Ti)? + &outer(Ti, &pi)? + TINY_NUMBER + 2.0 * &pc_mat);
-    W.diag_mut().fill(0.0);
-    W /= avg_transition(&W, &pi);
+    W = if sharing.exchange_rates {
+      let W = shared_exchange_rates(&data, &pi, &mu, &time_weights, &pc_mat)?;
+      vec![W; data.len()]
+    } else {
+      izip!(&data, &pi, &mu)
+        .map(|(counts, pi, &mu)| {
+          let mut W = (&(&counts.nij.view() + &counts.nij.t() + 2.0 * &pc_mat) / mu)
+            / (&outer(pi, counts.Ti)? + &outer(counts.Ti, pi)? + TINY_NUMBER + 2.0 * &pc_mat);
+          W.diag_mut().fill(0.0);
+          W /= avg_transition(&W, pi);
+          Ok(W)
+        })
+        .collect::<Result<Vec<_>, Report>>()?
+    };
 
     if fixed_pi.is_none() {
-      pi = (&nij.sum_axis(Axis(1)) + &pc_mat.sum_axis(Axis(1)) + root_state)
-        / (TINY_NUMBER + mu * W.dot(Ti) + root_state.sum() + pc_mat.sum_axis(Axis(1)));
-      pi /= pi.sum();
-      mu = (nij.sum() + pc) / (pi.dot(&W.dot(Ti)) + pc);
+      let pseudo_counts = pc_mat.sum_axis(Axis(1));
+      pi = if sharing.frequencies {
+        let changes = data.iter().fold(Array1::<f64>::zeros(N), |sum, counts| {
+          sum + counts.nij.sum_axis(Axis(1))
+        });
+        let roots = data
+          .iter()
+          .fold(Array1::<f64>::zeros(N), |sum, counts| sum + counts.root_state);
+        let times = izip!(&data, &W, &mu).fold(Array1::<f64>::zeros(N), |sum, (counts, W, &mu)| {
+          sum + mu * W.dot(counts.Ti)
+        });
+        let mut shared: Array1<f64> =
+          (&changes + &pseudo_counts + &roots) / (TINY_NUMBER + times + roots.sum() + &pseudo_counts);
+        shared /= shared.sum();
+        vec![shared; data.len()]
+      } else {
+        izip!(&data, &W, &mu)
+          .map(|(counts, W, &mu)| {
+            let mut pi = (&counts.nij.sum_axis(Axis(1)) + &pseudo_counts + counts.root_state)
+              / (TINY_NUMBER + mu * W.dot(counts.Ti) + counts.root_state.sum() + &pseudo_counts);
+            pi /= pi.sum();
+            pi
+          })
+          .collect()
+      };
+      mu = izip!(&data, &W, &pi)
+        .map(|(counts, W, pi)| (counts.nij.sum() + pc) / (pi.dot(&W.dot(counts.Ti)) + pc))
+        .collect();
     } else {
-      mu = (nij.sum() + pc) / (pi.dot(&W.dot(&pi)) * Ti.sum() + pc);
+      mu = izip!(&data, &W, &pi)
+        .map(|(counts, W, pi)| (counts.nij.sum() + pc) / (pi.dot(&W.dot(pi)) * counts.Ti.sum() + pc))
+        .collect();
     }
   }
 
-  if distance(&pi_old, &pi) > *dp {
+  if max_distance(&pi_old, &pi) > *dp {
     progress_warn!(
       log,
       "When inferring GTR parameters: The iterative scheme has not converged."
     );
-  } else if (pi.sum() - 1.0).abs() > *dp {
+  } else if pi.iter().any(|pi| (pi.sum() - 1.0).abs() > *dp) {
     progress_warn!(
       log,
       "When inferring GTR parameters: Proper normalization was not reached."
     );
   }
-  Ok(InferGtrResult {
-    W,
-    pi,
-    mu: Mu::FromMatrix(mu),
-  })
+  Ok(
+    izip!(W, pi, mu)
+      .map(|(W, pi, mu)| InferGtrResult {
+        W,
+        pi,
+        mu: Mu::FromMatrix(mu),
+      })
+      .collect(),
+  )
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct GtrSharing {
+  pub(crate) exchange_rates: bool,
+  pub(crate) frequencies: bool,
+}
+
+struct PartitionCounts<'a> {
+  nij: Array2<f64>,
+  Ti: &'a Array1<f64>,
+  root_state: &'a Array1<f64>,
+}
+
+fn time_weights(data: &[PartitionCounts<'_>]) -> Vec<f64> {
+  let times = data.iter().map(|counts| counts.Ti.sum()).collect_vec();
+  let total = times.iter().sum::<f64>();
+  if total > 0.0 {
+    times.iter().map(|time| time / total).collect()
+  } else {
+    vec![1.0 / data.len().to_f64_exact(); data.len()]
+  }
+}
+
+fn shared_exchange_rates(
+  data: &[PartitionCounts<'_>],
+  pi: &[Array1<f64>],
+  mu: &[f64],
+  time_weights: &[f64],
+  pc_mat: &Array2<f64>,
+) -> Result<Array2<f64>, Report> {
+  let shape = pc_mat.raw_dim();
+  let changes = data.iter().fold(Array2::<f64>::zeros(shape), |sum, counts| {
+    sum + &counts.nij + counts.nij.t()
+  });
+  let times = izip!(data, pi, mu).try_fold(Array2::<f64>::zeros(shape), |sum, (counts, pi, &mu)| {
+    Ok::<_, Report>(sum + mu * (&outer(pi, counts.Ti)? + &outer(counts.Ti, pi)?))
+  })?;
+  let mean_mu = izip!(time_weights, mu).map(|(weight, mu)| weight * mu).sum::<f64>();
+  let mut W = (&changes + 2.0 * pc_mat) / (&times + mean_mu * (TINY_NUMBER + 2.0 * pc_mat));
+  W.diag_mut().fill(0.0);
+  let mean_rate = izip!(time_weights, pi)
+    .map(|(weight, pi)| weight * avg_transition(&W, pi))
+    .sum::<f64>();
+  W /= mean_rate;
+  Ok(W)
+}
+
+fn max_distance(pi_old: &[Array1<f64>], pi: &[Array1<f64>]) -> f64 {
+  izip!(pi_old, pi)
+    .map(|(pi_old, pi)| distance(pi_old, pi))
+    .fold(0.0, f64::max)
 }
 
 #[derive(Clone, Debug)]

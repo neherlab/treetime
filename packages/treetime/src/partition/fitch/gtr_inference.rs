@@ -16,10 +16,16 @@ pub(crate) fn infer_gtr_fitch(
   log: &dyn LogSink,
 ) -> Result<GTR, Report> {
   let counts = get_mutation_counts_fitch(graph, partition, branch_lengths)?;
-  let InferGtrResult { W, pi, mu } = infer_gtr_from_counts(&counts, &InferGtrOptions::default(), log)?;
+  gtr_from_inference(
+    partition,
+    infer_gtr_from_counts(&counts, &InferGtrOptions::default(), log)?,
+  )
+}
+
+pub(crate) fn gtr_from_inference(partition: &PartitionFitch, result: InferGtrResult) -> Result<GTR, Report> {
+  let InferGtrResult { W, pi, mu } = result;
   let n_states = partition.alphabet.n_canonical();
-  let W = Some(W);
-  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
+  GTR::builder().n_states(n_states).mu(mu).W(W).pi(pi).build()
 }
 
 pub(crate) fn get_mutation_counts_fitch(

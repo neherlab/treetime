@@ -3,13 +3,18 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::gamma::NO_RATE_VARIATION;
   use crate::gtr::get_gtr::{GtrModel, GtrModelName, JC69Params, K80Params, k80};
-  use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::gtr::shared_params::SharedParams;
+  use crate::partition::create::{PartitionInput, Representation, build_marginal_partition, build_marginal_partitions};
   use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::partition::split::ModelSettings;
+  use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use crate::test_utils::marginal_update_reconstruction;
   use eyre::Report;
+  use ndarray::Array1;
   use pretty_assertions::assert_eq;
+  use pretty_assertions::assert_ne;
   use rstest::rstest;
   use treetime_utils::assert_error;
 
@@ -131,6 +136,57 @@ mod tests {
     );
 
     assert_error!(result, "Leaf sequence not found: 'C'");
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::dense(Representation::Dense)]
+  #[case::sparse(Representation::Sparse)]
+  #[trace]
+  fn test_build_marginal_partitions_fit_shared_frequencies_jointly(
+    #[case] representation: Representation,
+  ) -> Result<(), Report> {
+    let first = helpers::Input::star(&[("A", "ACGTAAAC"), ("B", "ACGTAAGC"), ("C", "ACGAAACC")])?;
+    let second = helpers::Input::star(&[("A", "GGCTTTGC"), ("B", "GGCTTCGC"), ("C", "GGGTTTGA")])?;
+    let model = GtrModel::from(GtrModelName::Infer);
+    let frequencies = |shared: SharedParams| -> Result<Vec<Array1<f64>>, Report> {
+      let inputs = [&first, &second]
+        .into_iter()
+        .map(|input| PartitionInput {
+          model: &model,
+          rate: InferredRate::Fitted,
+          alphabet: Alphabet::default(),
+          nodes: input.node_inputs.clone(),
+        })
+        .collect();
+      let models = ModelSettings {
+        gamma_categories: NO_RATE_VARIATION,
+        shared,
+      };
+      let reconstructions = build_marginal_partitions(
+        representation,
+        inputs,
+        models,
+        &first.graph,
+        &first.branch_lengths,
+        &NoopProgress,
+      )?;
+      Ok(
+        reconstructions
+          .iter()
+          .map(|reconstruction| reconstruction.model().gtr().pi().clone())
+          .collect(),
+      )
+    };
+
+    let shared = frequencies(SharedParams {
+      frequencies: true,
+      ..SharedParams::default()
+    })?;
+    let own = frequencies(SharedParams::default())?;
+
+    pretty_assert_ulps_eq!(&shared[0], &shared[1], epsilon = 1e-15);
+    assert_ne!(own[0], own[1]);
     Ok(())
   }
 

@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
-use crate::gtr::gamma::GammaRates;
 use crate::gtr::gtr::GTR;
 use crate::gtr::partition_model::PartitionModel;
 use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate, optimize_mixture_rate};
@@ -380,11 +379,6 @@ pub struct SparseReconstruction {
 }
 
 impl SparseReconstruction {
-  #[must_use]
-  pub(crate) fn with_gamma(self, gamma: GammaRates) -> Self {
-    Self::seeded(self.partition, self.model.with_gamma(gamma), self.node_states).keeping_layout(self.layout)
-  }
-
   pub(crate) fn seeded(
     partition: PartitionMarginalSparse,
     model: impl Into<PartitionModel>,
