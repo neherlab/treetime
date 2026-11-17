@@ -4,6 +4,7 @@ use crate::ancestral::mask::create_mask;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::get_gtr::{GtrModel, JC69Params, jc69};
 use crate::gtr::gtr::{GTR, Mu};
+use crate::gtr::partition_model::PartitionModel;
 use crate::partition::create::Representation;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -40,12 +41,12 @@ pub(crate) fn run_dense_marginal(
   branch_lengths: &EdgeMap<Option<f64>>,
   names: &NodeNames,
   aln: &[AlignmentRecord],
-  gtr: GTR,
+  model: impl Into<PartitionModel>,
 ) -> Result<(f64, DenseReconstruction), Report> {
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
   let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
   let (reconstruction, log_lh) =
-    DenseReconstruction::seeded(partition, gtr).marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    DenseReconstruction::seeded(partition, model).marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
   Ok((log_lh.value(), reconstruction))
 }
 
@@ -54,12 +55,12 @@ pub(crate) fn run_sparse_marginal(
   branch_lengths: &EdgeMap<Option<f64>>,
   names: &NodeNames,
   aln: &[AlignmentRecord],
-  gtr: GTR,
+  model: impl Into<PartitionModel>,
 ) -> Result<(f64, SparseReconstruction), Report> {
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
   let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
   let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-  let (reconstruction, log_lh) = SparseReconstruction::seeded(partition, gtr, node_states)
+  let (reconstruction, log_lh) = SparseReconstruction::seeded(partition, model, node_states)
     .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
   Ok((log_lh.value(), reconstruction))
 }
