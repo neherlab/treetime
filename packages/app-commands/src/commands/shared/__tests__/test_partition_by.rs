@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::RecordingLog;
+  use crate::__tests__::test_support::tests::{RecordingLog, argument_error};
   use crate::commands::shared::partition_by::{
     AnnotatedAlignment, RateCategoryRule, codon_position_entries, gene_entries, k_means_thresholds,
     rate_category_buckets, rate_category_entries,
   };
   use eyre::Report;
   use helpers::{
-    annotation, argument_error, bucket_sites, cds, entry_sites, exhaustive_min_squared_deviations, region,
-    squared_deviations_of_split,
+    annotation, bucket_sites, cds, entry_sites, exhaustive_min_squared_deviations, region, squared_deviations_of_split,
   };
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
@@ -330,9 +329,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::commands::shared::argument_error::ArgumentError;
     use crate::commands::shared::partition_by::RateBucket;
-    use eyre::Report;
     use itertools::Itertools;
     use treetime::partition::resolve::PartitionEntry;
     use treetime_io::gff::{GffCdsAnnotation, GffCdsFeature, GffCdsSegment, GffPhase, GffSequenceRegion, GffStrand};
@@ -429,15 +426,6 @@ mod tests {
         .iter()
         .map(|bucket| (bucket.name.as_str(), bucket.columns.iter().copied().collect()))
         .collect()
-    }
-
-    pub(super) fn argument_error<T>(result: Result<T, Report>) -> Option<(String, Vec<String>)> {
-      result.err().map(|report| {
-        let error = report
-          .downcast_ref::<ArgumentError>()
-          .unwrap_or_else(|| panic!("expected an argument error, got: {report:?}"));
-        (error.message.clone(), error.settings.clone())
-      })
     }
 
     pub(super) fn squared_deviations_of_split(counts: &[usize], thresholds: &[usize]) -> f64 {

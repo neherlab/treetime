@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::argument_error;
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use clap::Parser;
   use clap::error::ErrorKind;
   use eyre::Report;
-  use helpers::argument_error;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
@@ -86,19 +86,5 @@ mod tests {
     )
     .unwrap_err();
     assert_eq!(ErrorKind::ArgumentConflict, error.kind());
-  }
-
-  mod helpers {
-    use crate::commands::shared::argument_error::ArgumentError;
-    use eyre::Report;
-
-    pub(super) fn argument_error<T>(result: Result<T, Report>) -> Option<(String, Vec<String>)> {
-      result.err().map(|report| {
-        let error = report
-          .downcast_ref::<ArgumentError>()
-          .unwrap_or_else(|| panic!("expected an argument error, got: {report:?}"));
-        (error.message.clone(), error.settings.clone())
-      })
-    }
   }
 }

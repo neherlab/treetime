@@ -1,5 +1,6 @@
 #[cfg(test)]
 pub(crate) mod tests {
+  use crate::commands::shared::argument_error::ArgumentError;
   use deser::Deserialize;
   use eyre::Report;
   use itertools::izip;
@@ -25,6 +26,15 @@ pub(crate) mod tests {
   pub(crate) const HKY85_PARAMS: [&str; 2] = ["kappa=0.2", "pis=0.1,0.2,0.3,0.4"];
 
   pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+
+  pub(crate) fn argument_error<T>(result: Result<T, Report>) -> Option<(String, Vec<String>)> {
+    result.err().map(|report| {
+      let error = report
+        .downcast_ref::<ArgumentError>()
+        .unwrap_or_else(|| panic!("expected an argument error, got: {report:?}"));
+      (error.message.clone(), error.settings.clone())
+    })
+  }
 
   pub(crate) fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

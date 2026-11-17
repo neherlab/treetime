@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::RecordingLog;
+  use crate::__tests__::test_support::tests::{RecordingLog, argument_error};
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-  use crate::commands::shared::argument_error::ArgumentError;
   use crate::commands::shared::partition::{partition_entries, resolve_run_partitions};
   use crate::commands::shared::sequence_inputs::PartitionSource;
   use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
@@ -10,7 +9,7 @@ mod tests {
   use clap::Parser;
   use clap::error::ErrorKind;
   use eyre::Report;
-  use helpers::{argument_error, sites};
+  use helpers::sites;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -284,18 +283,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::ArgumentError;
-    use eyre::Report;
     use treetime::partition::sites::SiteRange;
-
-    pub(super) fn argument_error<T>(result: Result<T, Report>) -> Option<(String, Vec<String>)> {
-      result.err().map(|report| {
-        let error = report
-          .downcast_ref::<ArgumentError>()
-          .unwrap_or_else(|| panic!("expected an argument error, got: {report:?}"));
-        (error.message.clone(), error.settings.clone())
-      })
-    }
 
     pub(super) fn sites(texts: &[&str]) -> Vec<SiteRange> {
       texts.iter().map(|text| text.parse().unwrap()).collect()
