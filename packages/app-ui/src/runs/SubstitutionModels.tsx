@@ -40,10 +40,10 @@ const RATE_SHADES = [
   "bg-chart-series/30 text-chart-ink",
   "bg-chart-series/40 text-chart-ink",
   "bg-chart-series/50 text-chart-ink",
-  "bg-chart-series/60 text-chart-paper",
-  "bg-chart-series/70 text-chart-paper",
-  "bg-chart-series/80 text-chart-paper",
-  "bg-chart-series/90 text-chart-paper",
+  "bg-chart-series/60 text-chart-ink dark:text-chart-paper",
+  "bg-chart-series/70 text-chart-ink dark:text-chart-paper",
+  "bg-chart-series/80 text-chart-ink dark:text-chart-paper",
+  "bg-chart-series/90 text-chart-ink dark:text-chart-paper",
 ] as const;
 
 const modelColumn = dataColumns<ModelRow>();
