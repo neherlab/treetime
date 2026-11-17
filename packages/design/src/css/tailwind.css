@@ -27,6 +27,33 @@
     @apply bg-background text-foreground font-sans lining-nums tabular-nums antialiased;
   }
 
+  :where(
+    button,
+    summary,
+    select,
+    input:is([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+    label:has(input:is([type="checkbox"], [type="radio"])),
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="option"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="treeitem"],
+    [role="row"][aria-selected],
+    [role="columnheader"][aria-sort]
+  ) {
+    cursor: pointer;
+  }
+
+  :where(:disabled, [aria-disabled="true"], [data-disabled], label:has(input:disabled)) {
+    cursor: not-allowed;
+  }
+
   ::selection {
     background-color: color-mix(in oklab, var(--primary) 28%, transparent);
   }
