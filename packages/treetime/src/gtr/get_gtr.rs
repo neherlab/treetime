@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gamma::GammaRates;
 use crate::gtr::gtr::{GTR, Mu};
+use crate::gtr::shared_params::SharedParam;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::{make_error, make_internal_error};
@@ -44,6 +45,9 @@ pub struct ModelOutput {
   pub alignments: Vec<AlignmentModel>,
   /// Model entries in partition order.
   pub models: Vec<ModelEntry>,
+  /// Parameters that the partitions with an inferred model share in this run, from `--shared-params` or the default of the partition scheme; absent for trait models.
+  #[deser(skip_serializing_if = Option::is_none)]
+  pub shared_params: Option<Vec<SharedParam>>,
 }
 
 /// One alignment file of a run.

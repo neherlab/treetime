@@ -164,6 +164,13 @@ impl PartitionSource {
   pub(crate) const fn is_scheme(&self) -> bool {
     matches!(self, Self::Scheme(_))
   }
+
+  pub(crate) const fn scheme(&self) -> Option<PartitionScheme> {
+    match self {
+      Self::Scheme(source) => Some(source.scheme),
+      Self::Entries(_) => None,
+    }
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

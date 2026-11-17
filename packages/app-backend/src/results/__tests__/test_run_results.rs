@@ -309,6 +309,7 @@ mod tests {
           summary(2, "cp3", 1, "ha/aligned.fasta", 1.25),
           summary(3, "na", 2, "na/aligned.fasta", 1.0),
         ],
+        "shared_params": [],
       }),
       to_json_value(&results.models)?
     );

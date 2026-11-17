@@ -5,6 +5,7 @@ mod tests {
     AlignmentModel, GammaOutput, GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel,
     TraitModel, jc69,
   };
+  use crate::gtr::shared_params::SharedParam;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
@@ -58,6 +59,7 @@ mod tests {
           model,
         }),
       ],
+      shared_params: Some(vec![SharedParam::Frequencies, SharedParam::GammaShape]),
     };
 
     let json = json_write_str(&original, JsonPretty(true))?;

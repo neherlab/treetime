@@ -28,7 +28,7 @@ pub(crate) mod tests {
     Family { name: "Sequence input",           commands: &[TT, AN, HO, OP, PR], flags: &["--alignment", "--alphabet", "--gap-fill", "--allow-missing-sequences", "--zero-based"] },
     Family { name: "Substitution model",       commands: &[TT, AN, HO, OP],    flags: &["--model", "--model-params", "--representation"] },
     Family { name: "Partitions",               commands: &[TT, AN, OP],        flags: &["--partition", "--partition-by", "--rate-category-rule", "--annotation"] },
-    Family { name: "Rate variation",           commands: &[TT, AN, OP],        flags: &["--gamma-categories"] },
+    Family { name: "Partition models",         commands: &[TT, AN, OP],        flags: &["--gamma-categories", "--shared-params"] },
     Family { name: "Reconstruction method",    commands: &[AN, HO],            flags: &["--method-anc", "--sample-from-profile"] },
     Family { name: "Tip sequences",            commands: &[TT, AN],            flags: &["--include-leaves", "--reconstruct-tip-states", "--report-ambiguous"] },
     Family { name: "Tip imputation",           commands: &[TT, AN, HO],        flags: &["--impute-missing-data"] },

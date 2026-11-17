@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use treetime::gtr::get_gtr::{
   AlignmentModel, GammaOutput, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel,
 };
+use treetime::gtr::shared_params::SharedParam;
 use treetime_schema::skip_serializing_optionals;
 
 pub fn run_models(gtr: Option<&ModelOutput>) -> RunModels {
@@ -14,6 +15,7 @@ pub fn run_models(gtr: Option<&ModelOutput>) -> RunModels {
       .iter()
       .map(|entry| RunModel::from_entry(entry, &gtr.alignments))
       .collect(),
+    shared_params: gtr.shared_params.clone().unwrap_or_default(),
   })
 }
 
@@ -24,6 +26,8 @@ pub struct RunModels {
   pub alignments: Vec<AlignmentSummary>,
   /// Models in the order of the model document: one per partition, or one per trait.
   pub models: Vec<RunModel>,
+  /// Parameters that the partitions with an inferred model share in the run; empty when they share none.
+  pub shared_params: Vec<SharedParam>,
 }
 
 /// One alignment file of a run.

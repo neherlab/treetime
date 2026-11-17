@@ -22,7 +22,7 @@ use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
 use crate::commands::shared::sequence_inputs::{
   MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
 };
-use crate::commands::shared::site_model::{SiteModelArgs, site_model_settings};
+use crate::commands::shared::site_model::{SiteModelArgs, model_settings};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 #[cfg(feature = "clap")]
@@ -138,6 +138,9 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       partition_by.is_some(),
     )?;
     let dense = representation_dense(representation);
+    let partitions = PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?;
+    let model = resolve_model(model, &model_params)?;
+    let models = model_settings(&site_model_args, &partitions, &model, alignment.len())?;
     check_sparse_only_settings(dense, no_merge_shared_mutations, no_hoist_reversions)?;
     Ok(Self {
       tree,
@@ -148,11 +151,11 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
         alphabet: alphabet.map(Into::into),
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
-        partitions: PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?,
-        models: site_model_settings(&site_model_args)?,
+        partitions,
+        models,
       },
       positions: PositionBase::from_zero_based(zero_based),
-      model: resolve_model(model, &model_params)?,
+      model,
       dense,
       initial_branch_lengths: initial_branch_lengths.into(),
       reroot: optimize_reroot(keep_root, reroot, outgroup),

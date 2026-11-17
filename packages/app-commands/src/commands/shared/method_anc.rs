@@ -39,7 +39,7 @@ pub fn check_site_model_with_method_anc(
   site_model: &SiteModelArgs,
 ) -> Result<(), Report> {
   check_site_model_applies(site_model, "method_anc", method_anc.is_marginal(), || {
-    o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model and no site rates")
+    o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model")
   })
 }
 

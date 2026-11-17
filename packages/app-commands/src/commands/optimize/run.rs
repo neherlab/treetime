@@ -72,7 +72,7 @@ pub fn run_optimize(
     branch_lengths,
     names,
   } = output;
-  let models = partition_models(&partitions, &results, None)?;
+  let models = partition_models(&partitions, &results, None, args.sequences.models.shared)?;
   let maps = results
     .iter_mut()
     .map(|result| {

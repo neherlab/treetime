@@ -35,6 +35,7 @@ mod tests {
         "W": jc69_w(),
         "n_states": 4,
       }],
+      "shared_params": [],
     });
     assert_eq!(expected, read_document(&resolved)?);
     Ok(())
@@ -96,6 +97,7 @@ mod tests {
     let expected = json!({
       "alignments": [{ "alignment": 1, "path": "genome.fasta", "sites": 12, "indel_rate": 0.5 }],
       "models": [model(1, "cp12", 7), model(2, "cp3", 5)],
+      "shared_params": [],
     });
     assert_eq!(expected, read_document(&resolved)?);
     Ok(())
@@ -212,6 +214,7 @@ mod tests {
     use treetime::gtr::get_gtr::{GtrModelName, JC69Params, ModelOutput, jc69};
     use treetime::gtr::gtr::{GTR, Mu};
     use treetime::gtr::partition_model::PartitionModel;
+    use treetime::gtr::shared_params::SharedParams;
     use treetime::partition::result::{AlignmentResult, PartitionResult};
     use treetime_utils::io::json::json_value_read_file;
 
@@ -281,7 +284,7 @@ mod tests {
       clock_rate: Option<f64>,
     ) -> Result<ModelOutput, Report> {
       let (partitions, alignments): (Vec<_>, Vec<_>) = results.into_iter().unzip();
-      partition_models(&partitions, &alignments, clock_rate)
+      partition_models(&partitions, &alignments, clock_rate, SharedParams::default())
     }
 
     pub(super) fn split_partitions() -> Result<ModelOutput, Report> {
@@ -300,6 +303,7 @@ mod tests {
         &[partition(1, "cp12", 7)?, partition(2, "cp3", 5)?],
         &[alignment(1, "genome.fasta", Some(0.5))],
         None,
+        SharedParams::default(),
       )
     }
 
@@ -323,7 +327,7 @@ mod tests {
         alphabet: Alphabet::new(AlphabetName::Aa)?,
         ..alignment(1, "protein.fasta", None)
       };
-      partition_models(&[partition], &[alignment], None)
+      partition_models(&[partition], &[alignment], None, SharedParams::default())
     }
 
     fn alignment(number: usize, path: &str, indel_rate: Option<f64>) -> AlignmentResult {

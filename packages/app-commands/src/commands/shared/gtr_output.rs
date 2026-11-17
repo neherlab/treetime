@@ -11,6 +11,7 @@ use treetime::gtr::get_gtr::{
   model_states,
 };
 use treetime::gtr::gtr::GTR;
+use treetime::gtr::shared_params::SharedParams;
 use treetime::partition::result::{AlignmentResult, PartitionResult};
 use treetime::progress::LogSink;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
@@ -50,6 +51,7 @@ pub(crate) fn partition_models(
   partitions: &[PartitionResult],
   alignments: &[AlignmentResult],
   clock_rate: Option<f64>,
+  shared: SharedParams,
 ) -> Result<ModelOutput, Report> {
   let models = partitions
     .iter()
@@ -88,7 +90,11 @@ pub(crate) fn partition_models(
       indel_rate: alignment.indel_rate,
     })
     .collect();
-  Ok(ModelOutput { alignments, models })
+  Ok(ModelOutput {
+    alignments,
+    models,
+    shared_params: Some(shared.params()),
+  })
 }
 
 pub(crate) fn trait_model(gtr: &GTR, attribute: &str, states: Vec<String>) -> ModelOutput {
@@ -99,5 +105,6 @@ pub(crate) fn trait_model(gtr: &GTR, attribute: &str, states: Vec<String>) -> Mo
       states,
       model: GtrOutput::builder().gtr(gtr).model_name(GtrModelName::Infer).build(),
     })],
+    shared_params: None,
   }
 }

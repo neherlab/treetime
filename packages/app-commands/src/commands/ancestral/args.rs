@@ -28,7 +28,7 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
   MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
 };
-use crate::commands::shared::site_model::{SiteModelArgs, site_model_settings};
+use crate::commands::shared::site_model::{SiteModelArgs, model_settings};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -205,6 +205,9 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       alignment.len(),
       output_translations.as_deref(),
     )?;
+    let partitions = PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?;
+    let model = resolve_model(model, &model_params)?;
+    let models = model_settings(&site_model_args, &partitions, &model, alignment.len())?;
     Ok(Self {
       tree,
       newick_dialect: newick_dialect.dialect(),
@@ -219,16 +222,16 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       ),
       sequences: ancestral_sequence_inputs(
         alignment,
-        PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?,
+        partitions,
         alphabet_args,
         gap_fill_args,
         allow_missing_sequences,
-        site_model_settings(&site_model_args)?,
+        models,
       )?,
       allow_missing_sequences,
       positions: PositionBase::from_zero_based(zero_based),
       method_anc: method_anc.into(),
-      model: resolve_model(model, &model_params)?,
+      model,
       dense: representation_dense(representation),
       include_leaves: include_leaves || reconstruct_tip_states,
       report_ambiguous,

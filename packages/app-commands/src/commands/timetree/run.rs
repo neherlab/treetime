@@ -22,6 +22,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
 use treetime::clock::prune_tips::PruneTips;
+use treetime::gtr::shared_params::SharedParams;
 use treetime::make_internal_error;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::AlignmentSequences;
@@ -154,7 +155,7 @@ pub fn run_timetree_estimation(
 
   stages.report("Writing output", 0.95, "");
   progress_info!(log, "### TreeTime: writing outputs");
-  write_model_outputs(&resolved, &output, log)?;
+  write_model_outputs(&resolved, &output, args.sequences.models.shared, log)?;
   let tree_inputs = TreeOutputInputs {
     input_leaf_order,
     report_ambiguous: args.tip_sequences.report_ambiguous,
@@ -204,7 +205,12 @@ fn timetree_params(
   }
 }
 
-fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log: &dyn LogSink) -> Result<(), Report> {
+fn write_model_outputs(
+  resolved: &ResolvedOutputs,
+  output: &TimetreeOutput,
+  shared: SharedParams,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
   for selection in [OutputSelection::Coalescent, OutputSelection::CoalescentJson] {
     let Some(file) = resolved.non_tree_outputs.get(&selection) else {
       continue;
@@ -231,6 +237,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
       &output.partitions,
       &output.alignments,
       Some(output.clock_model.clock_rate()),
+      shared,
     )?,
     "no GTR model was fitted (provide an alignment with --alignment)",
     log,

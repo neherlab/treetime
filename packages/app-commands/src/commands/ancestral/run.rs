@@ -110,7 +110,12 @@ pub fn run_ancestral_reconstruction(
   )
   .map_err(|err| err.into_report())?;
   let mut graph = output.graph;
-  let models = partition_models(&output.partitions, &output.alignments, None)?;
+  let models = partition_models(
+    &output.partitions,
+    &output.alignments,
+    None,
+    args.sequences.models.shared,
+  )?;
   let mut results = output.alignments;
   let AncestralSeqSink {
     fasta,

@@ -5,6 +5,7 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use treetime::gtr::get_gtr::{GammaOutput, ModelOutput};
+  use treetime::gtr::shared_params::SharedParam;
   use treetime_utils::io::json::json_read_str;
 
   #[test]
@@ -72,6 +73,22 @@ mod tests {
       rates: vec![0.2, 1.8],
     };
     assert_eq!(Some(expected), model.gamma.clone());
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_models_carry_the_shared_parameters_of_the_run() -> Result<(), Report> {
+    let output: ModelOutput = json_read_str(indoc! {r#"{
+      "models": [],
+      "shared_params": ["exchange-rates", "frequencies"]
+    }"#})?;
+
+    let models = run_models(Some(&output));
+
+    assert_eq!(
+      vec![SharedParam::ExchangeRates, SharedParam::Frequencies],
+      models.shared_params
+    );
     Ok(())
   }
 }

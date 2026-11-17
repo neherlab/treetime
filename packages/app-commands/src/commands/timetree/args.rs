@@ -30,7 +30,7 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
   MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
 };
-use crate::commands::shared::site_model::{SiteModelArgs, site_model_settings};
+use crate::commands::shared::site_model::{SiteModelArgs, model_settings, site_model_marginal_only_settings};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -195,10 +195,13 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       translations: None,
     })?;
     let partitions = PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?;
+    let ModelArgs { model, model_params } = model_args;
+    let model = resolve_model(model, &model_params)?;
+    let models = model_settings(&site_model_args, &partitions, &model, alignment_count)?;
     let sequences = timetree_sequence_inputs(
       alignment,
       partitions,
-      site_model_settings(&site_model_args)?,
+      models,
       alphabet_args,
       gap_fill_args,
       missing_sequences,
@@ -219,7 +222,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       newick_dialect: newick_dialect.dialect(),
       dates,
       branch_lengths: timetree_branch_lengths(branch_length_mode, alignment_count, sequence_length, branch_lengths)?,
-      sequence_model: timetree_sequence_model(model_args, representation, partition_rates_args, &sequences)?,
+      sequence_model: timetree_sequence_model(model, representation, partition_rates_args, &sequences)?,
       marginal_only_settings,
       clock: timetree_clock(clock_rate, clock_std_dev, confidence, clock_filter, relax)?,
       reroot: RerootTarget::unless_keep_root(keep_root, reroot.map(Into::into), outgroup),
@@ -286,10 +289,10 @@ fn timetree_marginal_only_settings(
   [
     ("representation", representation.representation.is_some()),
     ("partition_rates", partition_rates.partition_rates.is_some()),
-    ("gamma_categories", site_model.gamma_categories.is_some()),
     ("ambiguity_threshold", ambiguity.ambiguity_threshold.is_some()),
   ]
   .into_iter()
+  .chain(site_model_marginal_only_settings(site_model))
   .filter_map(|(setting, given)| given.then_some(setting))
   .collect_vec()
 }
@@ -337,7 +340,7 @@ pub(crate) struct TimetreeBranchLengths {
 
 #[deny(unused_variables)]
 fn timetree_sequence_model(
-  ModelArgs { model, model_params }: ModelArgs,
+  model: GtrModel,
   RepresentationArgs { representation }: RepresentationArgs,
   PartitionRatesArgs { partition_rates }: PartitionRatesArgs,
   sequences: &SequenceInputs,
@@ -349,7 +352,7 @@ fn timetree_sequence_model(
     sequences.partitions.is_scheme(),
   )?;
   Ok(TimetreeSequenceModel {
-    model: resolve_model(model, &model_params)?,
+    model,
     dense: representation_dense(representation),
     partition_rates: resolve_partition_rates(partition_rates),
   })
