@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::gtr::{GTR, Mu};
   use crate::o;
   use crate::partition::marginal::posterior_states::most_likely_state;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
@@ -15,7 +14,6 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::assert_error;
 
   #[test]
   fn test_discrete_marginal_new_maps_observed_and_missing_data_profiles_without_warning() -> Result<(), Report> {
@@ -171,27 +169,6 @@ mod tests {
 
     let inner_to_b_msg = helpers::get_edge_msg_to_child(&graph, &names, &forward, "inner", "B");
     helpers::assert_profile_normalized(&inner_to_b_msg);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_discrete_marginal_passes_reject_site_rates_for_more_than_one_site() -> Result<(), Report> {
-    let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let traits = helpers::make_fixture_traits();
-    let (partition, _) = helpers::make_partition(&["usa", "germany"], &graph, &traits, &names, &NoopProgress)?;
-    let gtr = GTR::builder()
-      .n_states(2)
-      .mu(Mu::Normalized(1.0))
-      .pi(array![0.5, 0.5])
-      .site_rates(array![1.0, 1.0])
-      .build()?;
-
-    let branch_lengths = branch_lengths_or_zero(&raw_branch_lengths);
-    assert_error!(
-      partition.marginal_backward(&gtr, &graph, &branch_lengths, &()),
-      "Number of site rates (2) differs from the number of sites in the partition (1)"
-    );
 
     Ok(())
   }

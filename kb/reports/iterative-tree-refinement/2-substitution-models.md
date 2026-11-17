@@ -185,7 +185,7 @@ where `r_k` are the discrete rates. The shape parameter alpha controls rate vari
 
 This "+Gamma" extension can be combined with any substitution model (e.g., GTR+G). Branch length optimization must account for rate categories by summing over them.
 
-v1 code: per-site rate variation is tracked as a known issue (`M-gtr-per-site-rate-variation`). Not yet implemented.
+v1 code: `--gamma-categories` adds discrete gamma rate variation with an ML-estimated shape to every partition (`kb/decisions/discrete-gamma-rate-variation.md`).
 
 ## References
 

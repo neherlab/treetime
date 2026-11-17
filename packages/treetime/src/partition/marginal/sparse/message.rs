@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
 use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::normalize::divide_out_value;
@@ -129,46 +128,6 @@ pub(crate) fn propagate_raw(exp_qt: &Array2<f64>, seq_dis: &SparseSeqDistributio
     message
       .fixed
       .insert(fixed.state, fixed.count, propagate_site(exp_qt, &fixed.dis));
-  }
-
-  message
-}
-
-pub(crate) fn propagate_raw_per_site(
-  gtr: &GTR,
-  site_rates: &Array1<f64>,
-  branch_length: f64,
-  transpose: bool,
-  seq_dis: &SparseSeqDistribution,
-) -> SparseSeqDistribution {
-  let default_exp_qt = if transpose {
-    gtr.expQt(branch_length).t().to_owned()
-  } else {
-    gtr.expQt(branch_length)
-  };
-
-  let mut message = SparseSeqDistribution {
-    variable: VarPosMap::with_capacity(seq_dis.variable.len()),
-    fixed: FixedProfiles::default(),
-    log_lh: seq_dis.log_lh,
-  };
-
-  for (&pos, var) in &seq_dis.variable {
-    let rate = site_rates[pos];
-    let exp_qt_pos = if transpose {
-      gtr.expQt_with_rate(branch_length, rate).t().to_owned()
-    } else {
-      gtr.expQt_with_rate(branch_length, rate)
-    };
-    message.variable.insert_with(pos, var.state, exp_qt_pos.nrows(), |row| {
-      propagate_into(&exp_qt_pos, var.dis, row);
-    });
-  }
-
-  for fixed in seq_dis.fixed.iter() {
-    message
-      .fixed
-      .insert(fixed.state, fixed.count, propagate_site(&default_exp_qt, &fixed.dis));
   }
 
   message

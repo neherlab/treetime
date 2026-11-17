@@ -185,37 +185,6 @@ mod tests {
     assert_error!(normalized(array![0.5, 0.5], Some(W)), expected);
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::negative(array![1.0, -0.5],       "Site rates must be finite and non-negative, got -0.5 at site 1")]
-  #[case::nan(     array![f64::NAN, 1.0],   "Site rates must be finite and non-negative, got NaN at site 0")]
-  #[case::infinite(array![1.0, f64::INFINITY], "Site rates must be finite and non-negative, got inf at site 1")]
-  #[trace]
-  fn test_gtr_construction_rejects_invalid_site_rates(#[case] site_rates: Array1<f64>, #[case] expected: &str) {
-    assert_error!(
-      GTR::builder()
-        .n_states(2)
-        .mu(Mu::Normalized(1.0))
-        .pi(array![0.5, 0.5])
-        .site_rates(site_rates)
-        .build(),
-      expected
-    );
-  }
-
-  #[test]
-  fn test_gtr_construction_accepts_zero_site_rate() -> Result<(), Report> {
-    let site_rates = array![0.0, 1.0];
-    let gtr = GTR::builder()
-      .n_states(2)
-      .mu(Mu::Normalized(1.0))
-      .pi(array![0.5, 0.5])
-      .site_rates(site_rates.clone())
-      .build()?;
-    assert_eq!(Some(&site_rates), gtr.site_rates());
-    Ok(())
-  }
-
   mod helpers {
     use crate::gtr::gtr::{GTR, Mu};
     use eyre::Report;

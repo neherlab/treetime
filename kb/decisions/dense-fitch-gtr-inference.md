@@ -38,7 +38,3 @@ Equilibrium frequencies (pi) are nearly identical (cosine > 0.997). Exchangeabil
 - Dense and sparse initial GTR are now identical, removing a source of discrepancy between the two modes
 - Single marginal pass instead of double reduces computation
 - The dense marginal-posterior path (`infer_gtr_dense`) is retained for future iterative GTR refinement
-
-## Related
-
-- [Sparse fixed-position scalar rate approximation](sparse-fixed-position-scalar-rate-approximation.md) - related sparse-specific deviation

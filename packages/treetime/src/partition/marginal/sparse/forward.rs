@@ -6,7 +6,7 @@ use crate::partition::marginal::shared::update::MarginalForward;
 use crate::partition::marginal::sparse::backward::own_state;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{
-  combine_messages, divide_out_site, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
+  combine_messages, divide_out_site, normalize_1d_inplace, propagate_raw,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::reconstruct::map_state;
@@ -212,11 +212,7 @@ struct SparseEdgeForwardOut {
 }
 
 fn propagate_forward(gtr: &GTR, branch_length: f64, message: &SparseSeqDistribution) -> SparseSeqDistribution {
-  if let Some(site_rates) = gtr.site_rates() {
-    propagate_raw_per_site(gtr, site_rates, branch_length, false, message)
-  } else {
-    propagate_raw(&gtr.expQt(branch_length), message)
-  }
+  propagate_raw(&gtr.expQt(branch_length), message)
 }
 
 fn compute_msg_to_child(

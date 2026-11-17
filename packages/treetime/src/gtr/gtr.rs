@@ -21,20 +21,13 @@ pub struct GTR {
   v: Array2<f64>,
   #[getset(get = "pub(crate)")]
   v_inv: Array2<f64>,
-  site_rates: Option<Array1<f64>>,
   unit_decay_rate: Option<f64>,
 }
 
 #[bon]
 impl GTR {
   #[builder]
-  pub fn new(
-    n_states: usize,
-    mu: Mu,
-    W: Option<Array2<f64>>,
-    pi: Array1<f64>,
-    #[builder(setters(vis = "pub(crate)"))] site_rates: Option<Array1<f64>>,
-  ) -> Result<Self, Report> {
+  pub fn new(n_states: usize, mu: Mu, W: Option<Array2<f64>>, pi: Array1<f64>) -> Result<Self, Report> {
     let n = n_states;
 
     if pi.shape() != [n] {
@@ -61,10 +54,6 @@ impl GTR {
     }
 
     validate_mu(mu.value())?;
-
-    if let Some(site_rates) = &site_rates {
-      validate_site_rates(site_rates)?;
-    }
 
     let W = {
       let W = W.unwrap_or_else(|| {
@@ -111,23 +100,8 @@ impl GTR {
       eigvals,
       v,
       v_inv,
-      site_rates,
       unit_decay_rate,
     })
-  }
-
-  pub(crate) fn site_rates(&self) -> Option<&Array1<f64>> {
-    self.site_rates.as_ref()
-  }
-
-  pub(crate) fn check_site_count(&self, n_sites: usize) -> Result<(), Report> {
-    match &self.site_rates {
-      Some(site_rates) if site_rates.len() != n_sites => make_error!(
-        "Number of site rates ({}) differs from the number of sites in the partition ({n_sites})",
-        site_rates.len()
-      ),
-      _ => Ok(()),
-    }
   }
 
   pub(crate) fn certified_decay_rate(&self) -> Option<f64> {
@@ -152,41 +126,31 @@ impl GTR {
   }
 
   pub(crate) fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
-    let res = match &self.site_rates {
-      Some(rates) => {
-        let exp_lt = self.exp_site_rate_eigvals(rates, t);
-        in_eigenbasis(profile, &self.v_inv.t(), &exp_lt.view(), &self.v.t())
-      },
-      None if profile.nrows() < self.eigvals.len() => {
-        let exp_lt = self.exp_rate_eigvals(1.0, t);
-        in_eigenbasis(
-          profile,
-          &self.v_inv.t(),
-          &exp_lt.view().insert_axis(Axis(0)),
-          &self.v.t(),
-        )
-      },
-      None => profile.dot(&self.expQt(t).t()),
+    let res = if profile.nrows() < self.eigvals.len() {
+      let exp_lt = self.exp_rate_eigvals(1.0, t);
+      in_eigenbasis(
+        profile,
+        &self.v_inv.t(),
+        &exp_lt.view().insert_axis(Axis(0)),
+        &self.v.t(),
+      )
+    } else {
+      profile.dot(&self.expQt(t).t())
     };
     if return_log { res.mapv(f64::ln) } else { res }
   }
 
   pub(crate) fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
-    let res = match &self.site_rates {
-      Some(rates) => {
-        let exp_lt = self.exp_site_rate_eigvals(rates, t);
-        in_eigenbasis(profile, &self.v.view(), &exp_lt.view(), &self.v_inv.view())
-      },
-      None if profile.nrows() < self.eigvals.len() => {
-        let exp_lt = self.exp_rate_eigvals(1.0, t);
-        in_eigenbasis(
-          profile,
-          &self.v.view(),
-          &exp_lt.view().insert_axis(Axis(0)),
-          &self.v_inv.view(),
-        )
-      },
-      None => profile.dot(&self.expQt(t)),
+    let res = if profile.nrows() < self.eigvals.len() {
+      let exp_lt = self.exp_rate_eigvals(1.0, t);
+      in_eigenbasis(
+        profile,
+        &self.v.view(),
+        &exp_lt.view().insert_axis(Axis(0)),
+        &self.v_inv.view(),
+      )
+    } else {
+      profile.dot(&self.expQt(t))
     };
     if return_log { res.mapv(f64::ln) } else { res }
   }
@@ -201,11 +165,6 @@ impl GTR {
 
   fn exp_rate_eigvals(&self, rate: f64, t: f64) -> Array1<f64> {
     self.rate_eigvals_at(rate, t).mapv_into(f64::exp)
-  }
-
-  fn exp_site_rate_eigvals(&self, rates: &Array1<f64>, t: f64) -> Array2<f64> {
-    let rate_eigvals = self.rate_eigvals_at(1.0, t);
-    (&rates.view().insert_axis(Axis(1)) * &rate_eigvals.view().insert_axis(Axis(0))).mapv_into(f64::exp)
   }
 }
 
@@ -232,16 +191,6 @@ fn validate_mu(mu: f64) -> Result<(), Report> {
     Ok(())
   } else {
     make_error!("Substitution rate (mu) must be finite and non-negative, got {mu}")
-  }
-}
-
-fn validate_site_rates(site_rates: &Array1<f64>) -> Result<(), Report> {
-  match site_rates.iter().position(|&rate| !(rate.is_finite() && rate >= 0.0)) {
-    None => Ok(()),
-    Some(site) => make_error!(
-      "Site rates must be finite and non-negative, got {} at site {site}",
-      site_rates[site]
-    ),
   }
 }
 

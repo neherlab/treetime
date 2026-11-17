@@ -47,7 +47,6 @@ impl<P: IndexedPartition> MarginalPasses for P {
     (): &(),
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
     let kind = self.indexed_kind();
-    gtr.check_site_count(kind.site_count())?;
     indexed_backward(self.inputs(), gtr, kind, graph, branch_lengths)
   }
 
@@ -60,7 +59,6 @@ impl<P: IndexedPartition> MarginalPasses for P {
     backward: &EdgeMap<DenseEdgeBackward>,
   ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     let kind = self.indexed_kind();
-    gtr.check_site_count(kind.site_count())?;
     indexed_forward(self.inputs(), gtr, kind, graph, branch_lengths, node_states, backward)
   }
 }
@@ -419,13 +417,4 @@ pub(crate) enum IndexedKind<'a> {
   Discrete {
     leaves: &'a NodeMap<Array2<f64>>,
   },
-}
-
-impl IndexedKind<'_> {
-  fn site_count(&self) -> usize {
-    match self {
-      IndexedKind::Dense { length, .. } => *length,
-      IndexedKind::Discrete { .. } => 1,
-    }
-  }
 }

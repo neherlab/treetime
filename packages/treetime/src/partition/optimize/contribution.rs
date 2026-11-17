@@ -1,5 +1,4 @@
 use crate::gtr::gtr::GTR;
-use crate::make_error;
 use crate::partition::optimize;
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward};
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
@@ -18,7 +17,6 @@ impl OptimizationContribution {
     backward: &DenseEdgeBackward,
     forward: &DenseEdgeForward,
   ) -> Result<Self, Report> {
-    reject_site_rates(gtr)?;
     let contribution = optimize::dense::get_coefficients(&backward.msg_to_parent, &forward.msg_to_child, gtr);
     Ok(OptimizationContribution::Dense(contribution))
   }
@@ -29,7 +27,6 @@ impl OptimizationContribution {
     forward: &SparseEdgeForward,
     edge_obs: &SparseEdgeObs,
   ) -> Result<Self, Report> {
-    reject_site_rates(gtr)?;
     let contribution = optimize::sparse::get_coefficients(gtr, backward, forward, edge_obs)?;
     Ok(OptimizationContribution::Sparse(contribution))
   }
@@ -84,13 +81,4 @@ impl OptimizationContribution {
       .map(|(multiplicity, coefficients)| multiplicity * coefficients.dot(rate_eigvals) / coefficients.sum())
       .sum()
   }
-}
-
-fn reject_site_rates(gtr: &GTR) -> Result<(), Report> {
-  if gtr.site_rates().is_some() {
-    return make_error!(
-      "Branch length likelihood does not support per-site rates: the substitution model has site rates, but the branch length objective applies one rate to all sites"
-    );
-  }
-  Ok(())
 }

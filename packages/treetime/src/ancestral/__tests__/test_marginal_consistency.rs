@@ -8,7 +8,6 @@ mod tests {
   use crate::partition::marginal::sample::SampleMode;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::get_common_length;
   use crate::test_utils::{
     dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, internal_node_keys,
     marginal_update_reconstruction, sparse_reconstruction,
@@ -17,9 +16,8 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
-  use ndarray::{Array1, array, aview1};
+  use ndarray::{array, aview1};
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
@@ -30,8 +28,8 @@ mod tests {
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
+  use treetime_utils::make_report;
   use treetime_utils::sync::random::get_random_number_generator;
-  use treetime_utils::{assert_error, make_report};
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -440,130 +438,4 @@ mod tests {
 
     Ok(())
   }
-
-  #[test]
-  fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
-    let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let seq_len = get_common_length(&aln)?;
-
-    let gtr_scalar = jc69(JC69Params {
-      alphabet: AlphabetName::Nuc,
-      ..JC69Params::default()
-    })?;
-    let (log_lh_scalar, _) = run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
-
-    let gtr_uniform = GTR::builder()
-      .n_states(4)
-      .mu(Mu::Normalized(1.0))
-      .pi(Array1::ones(4))
-      .site_rates(Array1::ones(seq_len))
-      .build()?;
-    let (log_lh_uniform, _) = run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
-
-    pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
-    let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let seq_len = get_common_length(&aln)?;
-
-    let gtr_scalar = jc69(JC69Params {
-      alphabet: AlphabetName::Nuc,
-      ..JC69Params::default()
-    })?;
-    let (log_lh_scalar, _) = run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
-
-    let gtr_uniform = GTR::builder()
-      .n_states(4)
-      .mu(Mu::Normalized(1.0))
-      .pi(Array1::ones(4))
-      .site_rates(Array1::ones(seq_len))
-      .build()?;
-    let (log_lh_uniform, _) = run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
-
-    pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
-
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::dense( run_dense_marginal_reconstruction)]
-  #[case::sparse(run_sparse_marginal_reconstruction)]
-  #[trace]
-  fn test_marginal_site_rates_rejected_by_branch_length_contribution(#[case] #[notrace] run: MarginalRunner) -> Result<(), Report> {
-    let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let seq_len = get_common_length(&aln)?;
-
-    let gtr = GTR::builder()
-      .n_states(4)
-      .mu(Mu::Normalized(1.0))
-      .pi(Array1::ones(4))
-      .site_rates(Array1::ones(seq_len))
-      .build()?;
-    let (_, reconstruction) = run(&graph, &branch_lengths, &names, &aln, gtr)?;
-    let edge_key = graph.get_edges().next().expect("tree has an edge").key();
-
-    assert_error!(
-      reconstruction.view().create_edge_contribution(edge_key),
-      "Branch length likelihood does not support per-site rates: the substitution model has site rates, but the branch length objective applies one rate to all sites"
-    );
-
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::dense_longer( run_dense_marginal_reconstruction,  17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
-  #[case::dense_single( run_dense_marginal_reconstruction,  1,  "Number of site rates (1) differs from the number of sites in the partition (16)")]
-  #[case::sparse_longer(run_sparse_marginal_reconstruction, 17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
-  #[case::sparse_shorter(run_sparse_marginal_reconstruction, 15, "Number of site rates (15) differs from the number of sites in the partition (16)")]
-  #[trace]
-  fn test_marginal_site_rates_length_must_match_alignment(
-    #[case] #[notrace] run: MarginalRunner,
-    #[case] n_site_rates: usize,
-    #[case] expected: &str,
-  ) -> Result<(), Report> {
-    let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-
-    let gtr = GTR::builder()
-      .n_states(4)
-      .mu(Mu::Normalized(1.0))
-      .pi(Array1::ones(4))
-      .site_rates(Array1::ones(n_site_rates))
-      .build()?;
-
-    assert_error!(run(&graph, &branch_lengths, &names, &aln, gtr), expected);
-
-    Ok(())
-  }
-
-  type MarginalRunner = fn(
-    &Graph,
-    &EdgeMap<Option<f64>>,
-    &NodeNames,
-    &[AlignmentRecord],
-    GTR,
-  ) -> Result<(f64, MarginalReconstruction), Report>;
 }

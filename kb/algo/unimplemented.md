@@ -86,30 +86,11 @@ After finding optimal root position `x*`:
 
 ---
 
-## Per-Site Rate Variation
-
-The intended model is a fixed rate vector $\mu^a$, where $a$ indexes alignment sites and each rate scales a shared GTR rate matrix, so all sites share one set of eigenvalues and eigenvectors. This contract differs from two related models:
-
-- Discrete-gamma among-site rate variation integrates over latent rate categories, $L_a = \sum_k w_k L_a(r_k)$, rather than assigning one known rate to each site.
-- Full site-specific GTR allows parameters such as equilibrium frequencies $\pi^a$ to vary by site, so the rate-matrix eigendecomposition can also vary by site.
-
-v0 represents per-site rates and equilibrium frequencies in `GTR_site_specific`. Its implementation recomputes transition-matrix decompositions by site even when parameters happen to permit reuse. [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py) Exact parity therefore concerns transition probabilities and inferred outputs; v1 may share a decomposition only if it produces the same numerical result under the approved contract.
-
-v1 stores scalar `mu` and optional `site_rates`. Its core transition matrices, dense propagation, and sparse explicit-position propagation consume the vector. No production path sets the vector, so those branches run only in tests. Value validation of the vector and the length check against the partition exist. Rate construction or loading, compressed fixed-position behavior, optimizer coverage, serialization, CLI wiring, and end-to-end parity remain unresolved. [`packages/treetime/src/gtr/gtr.rs#L24`](../../packages/treetime/src/gtr/gtr.rs#L24)
-
-Known issue: [kb/issues/M-gtr-per-site-rate-variation.md](../issues/M-gtr-per-site-rate-variation.md).
-
-### Algorithm
-
-For a fixed supplied rate $\mu_a$, the matrix exponential is $\exp(Q\mu_a t)$. When $Q$ is shared, an implementation may compute $Q = V\operatorname{diag}(\lambda)V^{-1}$ once and evaluate $V\operatorname{diag}(\exp(\lambda_k\mu_a t))V^{-1}$ per site. Discrete-gamma inference instead evaluates and weights multiple category-specific likelihoods for every site.
-
-Reference: <a id="cite-2"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[2](#ref-2)]
-
----
-
 ## Site-Specific GTR (Full)
 
-Extension of GTR where equilibrium frequencies vary per alignment site, requiring per-site eigendecomposition. Standard GTR uses `Pi[n_states]`; full site-specific GTR extends to `Pi[n_states, seq_len]`. More expensive than per-site rate variation because the eigenvectors change per site.
+Extension of GTR where equilibrium frequencies vary per alignment site, requiring per-site eigendecomposition. Standard GTR uses `Pi[n_states]`; full site-specific GTR extends to `Pi[n_states, seq_len]`. More expensive than discrete gamma rate variation (`--gamma-categories`, [kb/decisions/discrete-gamma-rate-variation.md](../decisions/discrete-gamma-rate-variation.md)), which shares one eigendecomposition across sites, because the eigenvectors change per site.
+
+Known issue: [kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md).
 
 v0: `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495).
 v1: not implemented, and no command has the `--site-specific-gtr` flag.
@@ -274,6 +255,5 @@ v1: `refine_gtr()` in [`packages/treetime/src/gtr/refinement.rs#L17-L83`](../../
 ## References
 
 - <a id="ref-1"></a>Pupko, Tal, Itsik Pe'er, Ron Shamir, and Dan Graur. 2000. "A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences." _Molecular Biology and Evolution_ 17(6):890-896. https://doi.org/10.1093/oxfordjournals.molbev.a026369 [↩](#cite-1)
-- <a id="ref-2"></a>Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-2)
 - <a id="ref-3"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-3)
 - <a id="ref-4"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-4)

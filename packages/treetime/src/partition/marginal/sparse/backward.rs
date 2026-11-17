@@ -4,7 +4,7 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::globally_missing::GloballyMissing;
-use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
+use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::sequences::fitch_node_sequences;
 use crate::partition::storage::sparse::{
@@ -90,11 +90,7 @@ impl SparseBackwardPass<'_> {
     let (profile, globally_missing, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
       (Some(&(_, edge_key)), Some(_)) => {
         let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
-        let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
-          propagate_raw_per_site(gtr, site_rates, branch_length, true, &msg_to_parent)
-        } else {
-          propagate_raw(&gtr.expQt(branch_length).t().to_owned(), &msg_to_parent)
-        };
+        let msg_from_child = propagate_raw(&gtr.expQt(branch_length).t().to_owned(), &msg_to_parent);
         (
           SparseSeqDistribution::default(),
           Arc::default(),
