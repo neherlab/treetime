@@ -11,7 +11,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { cn } from "cn";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import {
   Cell,
   Column,
@@ -32,11 +32,13 @@ import ArrowUp from "~icons/lucide/arrow-up";
 import ArrowUpDown from "~icons/lucide/arrow-up-down";
 
 import { sortDescriptor } from "./sort-descriptor";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 interface DataColumnMeta {
   width: NonNullable<ColumnProps["defaultWidth"]>;
   minWidth?: NonNullable<ColumnProps["minWidth"]>;
   numeric?: boolean;
+  hint?: string;
 }
 
 const FEATURES = tableFeatures({
@@ -126,10 +128,13 @@ export function DataTable<Data extends RowData>({
                 )}
               >
                 {({ sortDirection }) => (
-                  <>
+                  <HeaderHint
+                    hint={header.column.columnDef.meta?.hint}
+                    numeric={header.column.columnDef.meta?.numeric === true}
+                  >
                     <table.FlexRender header={header} />
                     <SortIcon direction={sortDirection} />
-                  </>
+                  </HeaderHint>
                 )}
               </Column>
             ))}
@@ -198,6 +203,21 @@ function tableSelection(selection: RowSelection | undefined) {
 
 function selectedKey(keys: Selection): Key | undefined {
   return keys === "all" ? undefined : keys.values().next().value;
+}
+
+function HeaderHint({ hint, numeric, children }: { hint: string | undefined; numeric: boolean; children: ReactNode }) {
+  if (hint === undefined) {
+    return children;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className={cn("flex size-full items-center gap-1", numeric && "justify-end")} />}>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 function SortIcon({ direction }: { direction: SortDirection | undefined }) {
