@@ -3,8 +3,8 @@ use crate::alphabet::char_slots::CharSlots;
 use crate::{make_report, vec_u8};
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
-use itertools::Itertools;
-use ndarray::{Array1, Array2, Axis, stack};
+use itertools::{Itertools, izip};
+use ndarray::{Array1, Array2};
 use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
@@ -192,13 +192,15 @@ impl Alphabet {
     Ok(profile)
   }
 
-  pub(crate) fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
-    let profiles = chars
-      .into_iter()
-      .map(|&c| self.get_profile(c))
-      .collect::<Result<Vec<_>, _>>()?;
-    let views = profiles.iter().map(|p| p.view()).collect_vec();
-    let prof = stack(Axis(0), &views)?;
+  pub(crate) fn seq2prof<'a>(
+    &self,
+    chars: impl IntoIterator<Item = &'a AsciiChar, IntoIter: ExactSizeIterator>,
+  ) -> Result<Array2<f64>, Report> {
+    let chars = chars.into_iter();
+    let mut prof = Array2::<f64>::zeros((chars.len(), self.n_canonical()));
+    for (mut row, &c) in izip!(prof.rows_mut(), chars) {
+      row.assign(self.get_profile(c)?);
+    }
     Ok(prof)
   }
 
