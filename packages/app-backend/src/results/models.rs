@@ -94,8 +94,8 @@ pub struct SequenceModelSummary {
   pub path: Option<PathBuf>,
   /// Number of sites of the partition.
   pub sites: usize,
-  /// Name of the model.
-  pub model: String,
+  /// Name of the model, as `--model` writes it.
+  pub model: GtrModelName,
   /// Overall substitution rate.
   pub mu: f64,
   /// Characters of the states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
@@ -128,7 +128,7 @@ impl SequenceModelSummary {
         .find(|alignment| alignment.alignment == model.alignment)
         .map(|alignment| alignment.path.clone()),
       sites: model.sites,
-      model: model.model.model_name().to_string(),
+      model: model.model.model_name(),
       mu: model.model.mu(),
       states: model.states.clone(),
       pi: model.model.pi().to_vec(),
@@ -144,8 +144,8 @@ impl SequenceModelSummary {
 pub struct TraitModelSummary {
   /// Metadata column of the trait.
   pub attribute: String,
-  /// Name of the model.
-  pub model: String,
+  /// Name of the model, as `--model` writes it.
+  pub model: GtrModelName,
   /// Overall substitution rate.
   pub mu: f64,
   /// Trait states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
@@ -161,7 +161,7 @@ impl TraitModelSummary {
   fn from_model(model: &TraitModel) -> Self {
     Self {
       attribute: model.attribute.clone(),
-      model: model.model.model_name().to_string(),
+      model: model.model.model_name(),
       mu: model.model.mu(),
       states: model.states.clone(),
       pi: model.model.pi().to_vec(),

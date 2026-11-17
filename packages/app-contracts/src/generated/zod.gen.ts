@@ -538,6 +538,17 @@ export const zAlignmentSummary = z.object({
   indel_rate: z.number().optional()
 });
 
+export const zGtrModelName2 = z.union([
+  z.literal('jc69'),
+  z.literal('k80'),
+  z.literal('f81'),
+  z.literal('hky85'),
+  z.literal('t92'),
+  z.literal('tn93'),
+  z.literal('jtt92'),
+  z.literal('infer')
+]);
+
 /**
  * Discrete gamma rate variation across the sites of one partition, with the mean-rate categories of Yang (1994).
  */
@@ -550,7 +561,7 @@ export const zGammaOutput = z.object({
 /**
  * Model parameter that the partitions with an inferred model share.
  */
-export const zSharedParam2 = z.union([
+export const zSharedParam = z.union([
   z.literal('exchange-rates'),
   z.literal('frequencies'),
   z.literal('gamma-shape')
@@ -565,13 +576,13 @@ export const zSequenceModelSummary = z.object({
   alignment: z.int().gte(0),
   path: z.string().optional(),
   sites: z.int().gte(0),
-  model: z.string(),
+  model: zGtrModelName2,
   mu: z.number(),
   states: z.array(z.string()),
   pi: z.array(z.number()),
   rates: z.array(z.array(z.number())),
   gamma: zGammaOutput.optional(),
-  shared_params: z.array(zSharedParam2)
+  shared_params: z.array(zSharedParam)
 });
 
 /**
@@ -579,7 +590,7 @@ export const zSequenceModelSummary = z.object({
  */
 export const zTraitModelSummary = z.object({
   attribute: z.string(),
-  model: z.string(),
+  model: zGtrModelName2,
   mu: z.number(),
   states: z.array(z.string()),
   pi: z.array(z.number()),
@@ -1283,7 +1294,7 @@ export const zPartitionRates = z.union([
 /**
  * Model parameter that partitions share, or `none`.
  */
-export const zSharedParam = z.union([
+export const zSharedParamSetting = z.union([
   z.literal('exchange-rates'),
   z.literal('frequencies'),
   z.literal('gamma-shape'),
@@ -1416,7 +1427,7 @@ export const zTimetreeConfig = z.strictObject({
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
   gamma_categories: z.int().gte(2).optional(),
-  shared_params: z.array(zSharedParam).optional(),
+  shared_params: z.array(zSharedParamSetting).optional(),
   representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
   include_leaves: z.boolean().optional(),
@@ -1591,7 +1602,7 @@ export const zAncestralConfig = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   gamma_categories: z.int().gte(2).optional(),
-  shared_params: z.array(zSharedParam).optional(),
+  shared_params: z.array(zSharedParamSetting).optional(),
   aa_model: zAaModelName.optional(),
   method_anc: zMethodAncestral.optional(),
   representation: zRepresentation.optional(),
@@ -1713,7 +1724,7 @@ export const zOptimizeConfig = z.strictObject({
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
   gamma_categories: z.int().gte(2).optional(),
-  shared_params: z.array(zSharedParam).optional(),
+  shared_params: z.array(zSharedParamSetting).optional(),
   representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
   output_all: z.string().optional(),
@@ -1996,7 +2007,7 @@ export const zRunModel = z.discriminatedUnion('kind', [
 export const zRunModels = z.object({
   alignments: z.array(zAlignmentSummary),
   models: z.array(zRunModel),
-  shared_params: z.array(zSharedParam2)
+  shared_params: z.array(zSharedParam)
 });
 
 export const zCommandResultsClock = z.object({

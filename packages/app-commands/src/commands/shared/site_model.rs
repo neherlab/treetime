@@ -76,7 +76,7 @@ pub struct SiteModelArgs {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
-#[schemars(rename = "SharedParam")]
+#[schemars(rename = "SharedParamSetting")]
 pub enum SharedParamCli {
   /// Share the exchange rates W.
   ExchangeRates,

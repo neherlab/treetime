@@ -926,7 +926,7 @@ export type RunModels = {
   /**
    * Parameters that the partitions with an inferred model share in the run; empty when they share none.
    */
-  shared_params: Array<SharedParam2>;
+  shared_params: Array<SharedParam>;
 };
 
 /**
@@ -960,6 +960,8 @@ export type RunModel = ({
   kind: 'trait';
 } & RunModelTrait);
 
+export type GtrModelName2 = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
+
 /**
  * Discrete gamma rate variation across the sites of one partition, with the mean-rate categories of Yang (1994).
  */
@@ -981,7 +983,7 @@ export type GammaOutput = {
 /**
  * Model parameter that the partitions with an inferred model share.
  */
-export type SharedParam2 = 'exchange-rates' | 'frequencies' | 'gamma-shape';
+export type SharedParam = 'exchange-rates' | 'frequencies' | 'gamma-shape';
 
 /**
  * The substitution model fitted to one partition.
@@ -1008,9 +1010,9 @@ export type SequenceModelSummary = {
    */
   sites: number;
   /**
-   * Name of the model.
+   * Name of the model, as `--model` writes it.
    */
-  model: string;
+  model: GtrModelName2;
   /**
    * Overall substitution rate.
    */
@@ -1036,7 +1038,7 @@ export type SequenceModelSummary = {
    * Parameters that this partition shares with the other partitions whose model is inferred; empty for a partition
    * with a named model and for runs that share none.
    */
-  shared_params: Array<SharedParam2>;
+  shared_params: Array<SharedParam>;
 };
 
 /**
@@ -1048,9 +1050,9 @@ export type TraitModelSummary = {
    */
   attribute: string;
   /**
-   * Name of the model.
+   * Name of the model, as `--model` writes it.
    */
-  model: string;
+  model: GtrModelName2;
   /**
    * Overall substitution rate.
    */
@@ -2537,7 +2539,7 @@ export type PartitionRates = 'estimate' | 'equal';
 /**
  * Model parameter that partitions share, or `none`.
  */
-export type SharedParam = 'exchange-rates' | 'frequencies' | 'gamma-shape' | 'none';
+export type SharedParamSetting = 'exchange-rates' | 'frequencies' | 'gamma-shape' | 'none';
 
 export type Representation = 'auto' | 'dense' | 'sparse';
 
@@ -2950,7 +2952,7 @@ export type TimetreeConfig = {
    * one partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of
    * change. The setting applies only with two or more partitions whose model is `infer`.
    */
-  shared_params?: Array<SharedParam>;
+  shared_params?: Array<SharedParamSetting>;
   /**
    * Representation of the sequences on the tree
    *
@@ -3636,7 +3638,7 @@ export type AncestralConfig = {
    * one partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of
    * change. The setting applies only with two or more partitions whose model is `infer`.
    */
-  shared_params?: Array<SharedParam>;
+  shared_params?: Array<SharedParamSetting>;
   /**
    * Substitution model of the amino-acid sequences, as `--model` for the nucleotides
    *
@@ -4135,7 +4137,7 @@ export type OptimizeConfig = {
    * one partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of
    * change. The setting applies only with two or more partitions whose model is `infer`.
    */
-  shared_params?: Array<SharedParam>;
+  shared_params?: Array<SharedParamSetting>;
   /**
    * Representation of the sequences on the tree
    *

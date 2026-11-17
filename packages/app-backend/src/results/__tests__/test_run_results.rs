@@ -291,7 +291,7 @@ mod tests {
         "alignment": alignment,
         "path": path,
         "sites": 50,
-        "model": "Infer",
+        "model": "infer",
         "mu": mu,
         "states": ["A", "T"],
         "pi": [0.5, 0.5],

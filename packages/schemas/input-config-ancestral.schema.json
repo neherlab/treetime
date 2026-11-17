@@ -156,7 +156,7 @@
       "description": "Model parameters that the partitions with an inferred model share, as a comma-separated list\n\n`exchange-rates`: one set of exchange rates W for all these partitions. Each partition scales W so that its rate\nmatrix has mean rate 1 under its own frequencies, so with different frequencies the stored W of the partitions\ndiffer by a factor. `frequencies`: one set of equilibrium frequencies. `gamma-shape`: one gamma shape alpha; needs\n`--gamma-categories`. `none`: every partition fits its own model; stands alone. The fit of the shared parameters\nuses the substitutions of all sharing partitions together. A partition with a named model keeps the parameters\nof its model. Every partition keeps its own relative rate (`--partition-rates`), and all partitions share the\ntree and the branch lengths.\n\nDefault: with `--partition-by genes` or `rate-categories`, the partitions share `exchange-rates` and\n`frequencies`, and also `gamma-shape` with `--gamma-categories`, because genes of one genome share the mutation\nprocess and rate buckets differ only in speed. With `--partition-by codon-positions`, `--partition` entries, or\none partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of\nchange. The setting applies only with two or more partitions whose model is `infer`.",
       "type": "array",
       "items": {
-        "$ref": "#/$defs/SharedParam"
+        "$ref": "#/$defs/SharedParamSetting"
       },
       "default": [],
       "x-cli-flag": "--shared-params"
@@ -489,7 +489,7 @@
         "aa-no-stop"
       ]
     },
-    "SharedParam": {
+    "SharedParamSetting": {
       "description": "Model parameter that partitions share, or `none`.",
       "oneOf": [
         {
