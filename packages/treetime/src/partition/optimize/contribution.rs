@@ -45,13 +45,6 @@ impl OptimizationContribution {
     }
   }
 
-  fn gtr(&self) -> &GTR {
-    match self {
-      OptimizationContribution::Dense(contribution) => &contribution.gtr,
-      OptimizationContribution::Sparse(contribution) => &contribution.gtr,
-    }
-  }
-
   pub(crate) fn all_sites_valid_at_zero(&self) -> bool {
     self.sites().all(|(_, coefficients)| {
       let site_lh = coefficients.sum();
@@ -67,7 +60,10 @@ impl OptimizationContribution {
   }
 
   pub(crate) fn certified_decay_rate(&self) -> Option<f64> {
-    self.gtr().certified_decay_rate()
+    match self {
+      OptimizationContribution::Dense(contribution) => contribution.certified_decay_rate,
+      OptimizationContribution::Sparse(contribution) => contribution.certified_decay_rate,
+    }
   }
 
   pub(crate) fn zero_branch_length_derivative(&self) -> f64 {

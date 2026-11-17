@@ -263,13 +263,30 @@ pub(crate) fn indexed_forward(
   node_states: NodeMap<DenseNodeState>,
   backward: &EdgeMap<DenseEdgeBackward>,
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
+  let IndexedForwardMessages { node_states, forward } =
+    indexed_forward_messages(inputs, gtr, graph, branch_lengths, node_states, backward)?;
+  let (node_states, estimates) = indexed_forward_sequences(kind, graph, node_states)?;
+  Ok(MarginalForward {
+    node_states,
+    forward,
+    estimates,
+  })
+}
+
+pub(crate) fn indexed_forward_messages(
+  inputs: &DenseInputs,
+  gtr: &GTR,
+  graph: &Graph,
+  branch_lengths: &EdgeMap<f64>,
+  node_states: NodeMap<DenseNodeState>,
+  backward: &EdgeMap<DenseEdgeBackward>,
+) -> Result<IndexedForwardMessages, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let pass = IndexedForwardPass {
     schedule: &schedule,
     gtr,
     min_branch_length: inputs.min_branch_length,
-    kind,
     branch_lengths,
   };
   let backward = backward.iter().collect();
@@ -280,30 +297,46 @@ pub(crate) fn indexed_forward(
     },
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
-
-  let mut forward = EdgeMap::new();
-  let mut estimates = EdgeMap::new();
-  for (edge_key, out) in edges {
-    forward.insert(
-      edge_key,
-      DenseEdgeForward {
-        msg_to_child: out.msg_to_child,
-      },
-    );
-    estimates.insert(edge_key, DenseEdgeEstimate { indels: out.indels });
-  }
-  Ok(MarginalForward {
+  Ok(IndexedForwardMessages {
     node_states: nodes,
-    forward,
-    estimates,
+    forward: edges,
   })
 }
+
+pub(crate) struct IndexedForwardMessages {
+  pub(crate) node_states: NodeMap<DenseNodeState>,
+  pub(crate) forward: EdgeMap<DenseEdgeForward>,
+}
+
+pub(crate) fn indexed_forward_sequences(
+  kind: IndexedKind<'_>,
+  graph: &Graph,
+  node_states: NodeMap<DenseNodeState>,
+) -> Result<(NodeMap<DenseNodeState>, EdgeMap<DenseEdgeEstimate>), Report> {
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
+  let outputs = schedule.scan_down(node_states, |key, mut node, parents: PerEdge<IndexedSequenceOutput>| {
+    let parent = parents.first().map(|parent| &parent.0);
+    let indels = match kind {
+      IndexedKind::Dense { alphabet, .. } => {
+        forward_post_dense(schedule.children(key).is_empty(), parent, &mut node, alphabet)?
+      },
+      IndexedKind::Discrete { .. } => vec![],
+    };
+    let edges = parent.map(|_| DenseEdgeEstimate { indels }).into_iter().collect();
+    let output = Arc::new((node, edges));
+    Ok((Arc::clone(&output), output))
+  })?;
+  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  Ok((nodes, edges))
+}
+
+type IndexedSequenceOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeEstimate>)>;
 
 struct IndexedForwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   gtr: &'a GTR,
   min_branch_length: f64,
-  kind: IndexedKind<'a>,
   branch_lengths: &'a EdgeMap<f64>,
 }
 
@@ -340,15 +373,8 @@ impl IndexedForwardPass<'_> {
       },
     };
 
-    let indels = match self.kind {
-      IndexedKind::Dense { alphabet, .. } => {
-        forward_post_dense(self.schedule.children(key).is_empty(), parent, &mut node, alphabet)?
-      },
-      IndexedKind::Discrete { .. } => vec![],
-    };
-
     let edges = msg_to_child
-      .map(|msg_to_child| DenseEdgeForwardOut { msg_to_child, indels })
+      .map(|msg_to_child| DenseEdgeForward { msg_to_child })
       .into_iter()
       .collect();
     let output = Arc::new((node, edges));
@@ -356,12 +382,7 @@ impl IndexedForwardPass<'_> {
   }
 }
 
-type IndexedForwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeForwardOut>)>;
-
-struct DenseEdgeForwardOut {
-  msg_to_child: DenseSeqDistribution,
-  indels: Vec<InDel>,
-}
+type IndexedForwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeForward>)>;
 
 fn forward_post_dense(
   is_leaf: bool,

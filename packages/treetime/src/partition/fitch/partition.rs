@@ -53,6 +53,7 @@ impl PartitionFitch {
       obs_nodes,
       obs_edges: self.edges,
       impute_missing_data: false,
+      track_site_scales: false,
     };
     Ok((partition, node_states))
   }

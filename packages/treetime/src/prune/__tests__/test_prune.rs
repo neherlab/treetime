@@ -626,6 +626,7 @@ pub(super) mod tests {
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
           impute_missing_data: false,
+          track_site_scales: false,
         };
 
         populate_test_nodes(&mut partition, &graph);
@@ -673,6 +674,7 @@ pub(super) mod tests {
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
           impute_missing_data: false,
+          track_site_scales: false,
         };
 
         populate_test_nodes(&mut partition, &graph);

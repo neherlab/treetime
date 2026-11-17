@@ -123,6 +123,7 @@ mod tests {
         model: jc69(JC69Params::default())?.into(),
         node_states,
         edges: MarginalEdges::default(),
+        mixture: None,
         layout: None,
       }]))
     }

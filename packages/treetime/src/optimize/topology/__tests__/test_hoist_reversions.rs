@@ -652,6 +652,7 @@ mod tests {
         obs_nodes,
         obs_edges,
         impute_missing_data: false,
+        track_site_scales: false,
       };
 
       (partition, node_states)

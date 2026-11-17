@@ -41,7 +41,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
     let contribution = OptimizationContribution::Dense(
-      optimize::dense::PartitionContribution::new(coefficients, gtr),
+      optimize::dense::PartitionContribution::new(coefficients, &gtr),
     );
     let contributions = vec![contribution];
 
@@ -77,7 +77,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
     let contribution = OptimizationContribution::Dense(
-      optimize::dense::PartitionContribution::new(coefficients, gtr),
+      optimize::dense::PartitionContribution::new(coefficients, &gtr),
     );
     let contributions = vec![contribution];
 

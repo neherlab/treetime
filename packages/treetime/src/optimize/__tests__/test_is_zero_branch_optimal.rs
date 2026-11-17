@@ -14,7 +14,7 @@ mod tests {
 
   fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
-    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr))
   }
 
   fn make_sparse_contribution(sites: Vec<(f64, Vec<f64>)>) -> OptimizationContribution {
@@ -28,7 +28,7 @@ mod tests {
       })
       .collect();
 
-    OptimizationContribution::Sparse(optimize::sparse::PartitionContribution::new(site_contributions, gtr))
+    OptimizationContribution::Sparse(optimize::sparse::PartitionContribution::new(site_contributions, &gtr))
   }
 
   #[test]
@@ -164,7 +164,7 @@ mod tests {
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution {
       coefficients: array![[1.0, 0.0, 0.0, -1.0 + f64::EPSILON * 2.0]],
       rate_eigvals: array![-1e300, 0.0, 0.0, 0.0],
-      gtr: jc69(JC69Params::default()).unwrap(),
+      certified_decay_rate: jc69(JC69Params::default()).unwrap().certified_decay_rate(),
     });
 
     assert!(contribution.all_sites_valid_at_zero());
@@ -236,7 +236,7 @@ mod tests {
 
   fn make_k80_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = k80(K80Params::default()).unwrap();
-    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr))
   }
 
   #[test]
@@ -266,7 +266,7 @@ mod tests {
     assert!(gtr.certified_decay_rate().is_some());
 
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     assert!(is_zero_optimal_without_indels(&[contribution]));
   }
 
@@ -307,7 +307,7 @@ mod tests {
       coefficients: array![0.0, 1.0, 0.0, 0.0],
     }];
     let contribution =
-      OptimizationContribution::Sparse(optimize::sparse::PartitionContribution::new(site_contributions, gtr));
+      OptimizationContribution::Sparse(optimize::sparse::PartitionContribution::new(site_contributions, &gtr));
     assert!(contribution.zero_branch_length_derivative() < 0.0);
     assert!(!is_zero_optimal_without_indels(&[contribution]));
   }
@@ -322,7 +322,7 @@ mod tests {
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution {
       coefficients,
       rate_eigvals: array![-1.0, -0.5, -0.5, 0.0],
-      gtr: k80(K80Params::default()).unwrap(),
+      certified_decay_rate: k80(K80Params::default()).unwrap().certified_decay_rate(),
     });
     let contributions = [contribution];
 

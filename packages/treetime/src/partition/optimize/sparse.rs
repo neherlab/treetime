@@ -81,21 +81,29 @@ pub(crate) fn get_coefficients(
       aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
     );
   }
-  Ok(PartitionContribution::new(site_contributions.into_vec(), gtr.clone()))
+  Ok(PartitionContribution::new(site_contributions.into_vec(), gtr))
 }
 
 pub struct PartitionContribution {
   pub(crate) site_contributions: Vec<SiteContribution>,
   pub(crate) rate_eigvals: Array1<f64>,
-  pub(crate) gtr: GTR,
+  pub(crate) certified_decay_rate: Option<f64>,
 }
 
 impl PartitionContribution {
-  pub(crate) fn new(site_contributions: Vec<SiteContribution>, gtr: GTR) -> Self {
+  pub(crate) fn new(site_contributions: Vec<SiteContribution>, gtr: &GTR) -> Self {
     Self {
       site_contributions,
       rate_eigvals: gtr.rate_eigvals(),
-      gtr,
+      certified_decay_rate: gtr.certified_decay_rate(),
+    }
+  }
+
+  pub(crate) fn mixture(site_contributions: Vec<SiteContribution>, rate_eigvals: Array1<f64>) -> Self {
+    Self {
+      site_contributions,
+      rate_eigvals,
+      certified_decay_rate: None,
     }
   }
 }
@@ -105,18 +113,18 @@ pub struct SiteContribution {
   pub(crate) coefficients: Array1<f64>,
 }
 
-struct GroupedSiteContributions {
+pub(crate) struct GroupedSiteContributions {
   sites: IndexMap<SmallVec<[u64; INLINE_STATES]>, SiteContribution>,
 }
 
 impl GroupedSiteContributions {
-  fn with_capacity(capacity: usize) -> Self {
+  pub(crate) fn with_capacity(capacity: usize) -> Self {
     Self {
       sites: IndexMap::with_capacity(capacity),
     }
   }
 
-  fn add(&mut self, multiplicity: f64, coefficients: Array1<f64>) {
+  pub(crate) fn add(&mut self, multiplicity: f64, coefficients: Array1<f64>) {
     let bits = coefficients.iter().map(|value| value.to_bits()).collect();
     self
       .sites
@@ -128,7 +136,7 @@ impl GroupedSiteContributions {
       });
   }
 
-  fn into_vec(self) -> Vec<SiteContribution> {
+  pub(crate) fn into_vec(self) -> Vec<SiteContribution> {
     self.sites.into_values().collect()
   }
 }

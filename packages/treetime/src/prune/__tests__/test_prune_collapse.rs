@@ -185,6 +185,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     partition.obs_edges.insert(
@@ -264,6 +265,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     partition.obs_edges.insert(
@@ -326,6 +328,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     partition.obs_edges.insert(
@@ -386,6 +389,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
     partition1.obs_edges.insert(
       root_internal_edge_key,
@@ -407,6 +411,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
     partition2.obs_edges.insert(
       root_internal_edge_key,
@@ -685,6 +690,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     populate_test_nodes(&mut partition, &graph);
@@ -763,6 +769,7 @@ mod tests {
       obs_nodes: keymap! {},
       obs_edges: keymap! {},
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());

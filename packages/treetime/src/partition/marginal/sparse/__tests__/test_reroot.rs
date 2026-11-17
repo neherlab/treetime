@@ -50,6 +50,7 @@ mod tests {
         r_b_edge => SparseEdgeObs::default(),
       },
       impute_missing_data: false,
+      track_site_scales: false,
     };
     let node_states = keymap! {
       stem_key => SparseNodeState::leaf(&stem_seq),

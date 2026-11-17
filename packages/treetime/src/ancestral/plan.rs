@@ -12,10 +12,10 @@ use crate::optimize::partition_rates::scale_rates_to_unit_mean;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
-use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::partition::marginal::sample::SampleMode;
-use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::resolve::PartitionLayout;
+use crate::partition::set::PartitionSet;
 use crate::partition::split::{AlignmentInfo, ModelSettings, PartitionData, SplitInput, SplitPartition};
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::NodeSeqInput;
@@ -89,6 +89,7 @@ pub(crate) fn reconstruct_partitions(
         stages,
         log,
       )?;
+      let reconstructions = estimate_gamma_shapes(reconstructions, graph, branch_lengths, log)?;
       reconstructions
         .into_iter()
         .map(|reconstruction| {
@@ -106,6 +107,25 @@ pub(crate) fn reconstruct_partitions(
         partition,
       })
       .collect(),
+  )
+}
+
+fn estimate_gamma_shapes(
+  reconstructions: Vec<MarginalReconstruction>,
+  graph: &Graph,
+  branch_lengths: &EdgeMap<f64>,
+  log: &dyn LogSink,
+) -> Result<Vec<MarginalReconstruction>, Report> {
+  if reconstructions
+    .iter()
+    .all(|reconstruction| reconstruction.model().categories() == 1)
+  {
+    return Ok(reconstructions);
+  }
+  Ok(
+    PartitionSet::from_reconstructions(reconstructions)?
+      .estimate_gamma_shapes(graph, branch_lengths, log)?
+      .into_reconstructions(),
   )
 }
 
@@ -311,39 +331,11 @@ fn fit_reconstruction(
   impute: bool,
 ) -> Result<MarginalReconstruction, Report> {
   Ok(match reconstruction {
-    MarginalReconstruction::Sparse(SparseReconstruction {
-      partition,
-      model,
-      node_states,
-      layout,
-      ..
-    }) => {
-      let partition = partition.with_imputation(impute);
-      let MarginalUpdate { node_states, edges, .. } =
-        partition.marginal_update(model.gtr(), graph, branch_lengths, &node_states)?;
-      MarginalReconstruction::Sparse(SparseReconstruction {
-        partition,
-        model,
-        node_states,
-        edges,
-        layout,
-      })
+    MarginalReconstruction::Sparse(sparse) => {
+      MarginalReconstruction::Sparse(sparse.with_imputation(impute).marginal_update(graph, branch_lengths)?.0)
     },
-    MarginalReconstruction::Dense(DenseReconstruction {
-      partition,
-      model,
-      layout,
-      ..
-    }) => {
-      let MarginalUpdate { node_states, edges, .. } =
-        partition.marginal_update(model.gtr(), graph, branch_lengths, &())?;
-      MarginalReconstruction::Dense(DenseReconstruction {
-        partition,
-        model,
-        node_states,
-        edges,
-        layout,
-      })
+    MarginalReconstruction::Dense(dense) => {
+      MarginalReconstruction::Dense(dense.marginal_update(graph, branch_lengths)?.0)
     },
   })
 }

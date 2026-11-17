@@ -15,7 +15,7 @@ mod tests {
       coefficients: array![0.5, 0.2, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution::new(vec![site], gtr);
+    let contribution = PartitionContribution::new(vec![site], &gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
@@ -32,7 +32,7 @@ mod tests {
       coefficients: array![0.5, 0.2, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution::new(vec![site], gtr);
+    let contribution = PartitionContribution::new(vec![site], &gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
@@ -51,13 +51,13 @@ mod tests {
       multiplicity: 1.0,
       coefficients: coefficients.clone(),
     };
-    let contribution1 = PartitionContribution::new(vec![site1], gtr.clone());
+    let contribution1 = PartitionContribution::new(vec![site1], &gtr);
 
     let site5 = SiteContribution {
       multiplicity: 5.0,
       coefficients,
     };
-    let contribution5 = PartitionContribution::new(vec![site5], gtr);
+    let contribution5 = PartitionContribution::new(vec![site5], &gtr);
 
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1, true).expect("valid branch length");
     let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1, true).expect("valid branch length");
@@ -77,14 +77,14 @@ mod tests {
         multiplicity: 1.0,
         coefficients: coefficients_a.clone(),
       }],
-      gtr.clone(),
+      &gtr,
     );
     let contribution_b = PartitionContribution::new(
       vec![SiteContribution {
         multiplicity: 1.0,
         coefficients: coefficients_b.clone(),
       }],
-      gtr.clone(),
+      &gtr,
     );
 
     let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1, true).expect("valid branch length");
@@ -101,7 +101,7 @@ mod tests {
           coefficients: coefficients_b,
         },
       ],
-      gtr,
+      &gtr,
     );
     let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1, true).expect("valid branch length");
 

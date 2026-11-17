@@ -3,14 +3,18 @@ use crate::error::OperationError;
 use crate::gtr::gamma::GammaRates;
 use crate::gtr::gtr::GTR;
 use crate::gtr::partition_model::PartitionModel;
-use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate};
+use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate, optimize_mixture_rate};
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
+use crate::partition::marginal::mixture::contribution::{dense_mixture_contribution, sparse_mixture_contribution};
+use crate::partition::marginal::mixture::dense::{DenseMixtureState, dense_mixture_log_lh, dense_mixture_update};
+use crate::partition::marginal::mixture::sparse::{SparseMixtureState, sparse_mixture_log_lh, sparse_mixture_update};
 use crate::partition::marginal::posterior_states::AmbiguityThreshold;
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
+use crate::partition::marginal::sparse::reconstruct::LeafDowns;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::resolve::PartitionLayout;
 use crate::partition::storage::dense::DenseNodeState;
@@ -144,6 +148,19 @@ impl<'a> ReconstructionRef<'a> {
     each_kind!(self, |reconstruction| &reconstruction.model)
   }
 
+  pub(crate) fn mixture_log_lh(
+    self,
+    model: &PartitionModel,
+    graph: &Graph,
+    branch_lengths: &EdgeMap<f64>,
+  ) -> Result<LogLh, Report> {
+    each_kind!(self, |reconstruction| reconstruction.mixture_log_lh(
+      model,
+      graph,
+      branch_lengths
+    ))
+  }
+
   pub(crate) fn length(self) -> usize {
     each_kind!(self, |reconstruction| reconstruction.partition.length)
   }
@@ -173,7 +190,7 @@ impl<'a> ReconstructionRef<'a> {
       Self::Sparse(reconstruction) => reconstruction.partition.node_sequence(
         graph,
         &reconstruction.node_states,
-        &reconstruction.edges.forward,
+        reconstruction.leaf_downs(),
         impute,
         node_key,
       ),
@@ -196,7 +213,7 @@ impl<'a> ReconstructionRef<'a> {
       Self::Sparse(reconstruction) => reconstruction.partition.node_ambiguity(
         graph,
         &reconstruction.node_states,
-        &reconstruction.edges.forward,
+        reconstruction.leaf_downs(),
         impute,
         node_key,
         threshold,
@@ -237,7 +254,7 @@ impl<'a> ReconstructionRef<'a> {
       &reconstruction.partition,
       graph,
       &reconstruction.node_states,
-      &reconstruction.edges.forward,
+      reconstruction.leaf_downs(),
       impute,
       report_unknown,
       &track.mutation_track(),
@@ -310,18 +327,35 @@ impl<'a> ReconstructionRef<'a> {
 
   pub(crate) fn create_edge_contribution(self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
-      Self::Dense(reconstruction) => reconstruction.partition.create_edge_contribution(
-        reconstruction.model.gtr(),
-        &reconstruction.edges.backward,
-        &reconstruction.edges.forward,
-        edge_key,
-      ),
-      Self::Sparse(reconstruction) => reconstruction.partition.create_edge_contribution(
-        reconstruction.model.gtr(),
-        &reconstruction.edges.backward,
-        &reconstruction.edges.forward,
-        edge_key,
-      ),
+      Self::Dense(reconstruction) => match &reconstruction.mixture {
+        Some(state) => dense_mixture_contribution(
+          &reconstruction.partition,
+          state,
+          reconstruction.model.gamma().weights(),
+          edge_key,
+        ),
+        None => reconstruction.partition.create_edge_contribution(
+          reconstruction.model.gtr(),
+          &reconstruction.edges.backward,
+          &reconstruction.edges.forward,
+          edge_key,
+        ),
+      },
+      Self::Sparse(reconstruction) => match &reconstruction.mixture {
+        Some(state) => sparse_mixture_contribution(
+          &reconstruction.partition,
+          &reconstruction.node_states,
+          state,
+          reconstruction.model.gamma().weights(),
+          edge_key,
+        ),
+        None => reconstruction.partition.create_edge_contribution(
+          reconstruction.model.gtr(),
+          &reconstruction.edges.backward,
+          &reconstruction.edges.forward,
+          edge_key,
+        ),
+      },
     }
   }
 
@@ -341,16 +375,14 @@ pub struct SparseReconstruction {
   pub(crate) model: PartitionModel,
   pub(crate) node_states: NodeMap<SparseNodeState>,
   pub(crate) edges: SparseMarginalEdges,
+  pub(crate) mixture: Option<Box<SparseMixtureState>>,
   pub(crate) layout: Option<PartitionLayout>,
 }
 
 impl SparseReconstruction {
   #[must_use]
   pub(crate) fn with_gamma(self, gamma: GammaRates) -> Self {
-    Self {
-      model: self.model.with_gamma(gamma),
-      ..self
-    }
+    Self::seeded(self.partition, self.model.with_gamma(gamma), self.node_states).keeping_layout(self.layout)
   }
 
   pub(crate) fn seeded(
@@ -358,12 +390,35 @@ impl SparseReconstruction {
     model: impl Into<PartitionModel>,
     node_states: NodeMap<SparseNodeState>,
   ) -> Self {
+    let model = model.into();
     Self {
-      partition,
-      model: model.into(),
+      partition: partition.with_site_scales(model.categories() > 1),
+      model,
       node_states,
       edges: SparseMarginalEdges::default(),
+      mixture: None,
       layout: None,
+    }
+  }
+
+  #[must_use]
+  pub(crate) fn with_imputation(self, impute: bool) -> Self {
+    Self {
+      partition: self.partition.with_imputation(impute),
+      ..self
+    }
+  }
+
+  pub(crate) fn leaf_downs(&self) -> LeafDowns<'_> {
+    match &self.mixture {
+      Some(state) => LeafDowns::Mixture {
+        categories: &state.categories,
+        mixture: &state.mixture,
+      },
+      None => LeafDowns::Single {
+        forward: &self.edges.forward,
+        node_states: &self.node_states,
+      },
     }
   }
 
@@ -398,20 +453,32 @@ impl SparseReconstruction {
       model,
       node_states,
       edges,
+      mixture,
       layout,
     } = self;
     drop(edges);
+    drop(mixture);
+    let (update, mixture) = if model.categories() > 1 {
+      let (update, state) = sparse_mixture_update(&partition, &model, graph, branch_lengths, &node_states)?;
+      (update, Some(Box::new(state)))
+    } else {
+      (
+        partition.marginal_update(model.gtr(), graph, branch_lengths, &node_states)?,
+        None,
+      )
+    };
     let MarginalUpdate {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(model.gtr(), graph, branch_lengths, &node_states)?;
+    } = update;
     Ok((
       Self {
         partition,
         model,
         node_states,
         edges,
+        mixture,
         layout,
       },
       log_lh,
@@ -432,6 +499,14 @@ impl SparseReconstruction {
     branch_lengths: &EdgeMap<f64>,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {
+    if self.model.categories() > 1 {
+      let model = optimize_mixture_rate(
+        &self.model,
+        |model| sparse_mixture_log_lh(&self.partition, model, graph, branch_lengths, &self.node_states),
+        log,
+      )?;
+      return Ok(self.with_model(model));
+    }
     let (gtr, _, _) = optimize_gtr_rate(
       &self.partition,
       self.model.gtr().clone(),
@@ -442,6 +517,20 @@ impl SparseReconstruction {
       log,
     )?;
     Ok(Self::seeded(self.partition, self.model.with_gtr(gtr), self.node_states).keeping_layout(self.layout))
+  }
+
+  #[must_use]
+  pub(crate) fn with_model(self, model: PartitionModel) -> Self {
+    Self::seeded(self.partition, model, self.node_states).keeping_layout(self.layout)
+  }
+
+  pub(crate) fn mixture_log_lh(
+    &self,
+    model: &PartitionModel,
+    graph: &Graph,
+    branch_lengths: &EdgeMap<f64>,
+  ) -> Result<LogLh, Report> {
+    sparse_mixture_log_lh(&self.partition, model, graph, branch_lengths, &self.node_states)
   }
 
   pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
@@ -480,6 +569,7 @@ pub struct DenseReconstruction {
   pub(crate) model: PartitionModel,
   pub(crate) node_states: NodeMap<DenseNodeState>,
   pub(crate) edges: DenseMarginalEdges,
+  pub(crate) mixture: Option<Box<DenseMixtureState>>,
   pub(crate) layout: Option<PartitionLayout>,
 }
 
@@ -490,6 +580,7 @@ impl DenseReconstruction {
       model: model.into(),
       node_states: NodeMap::new(),
       edges: DenseMarginalEdges::default(),
+      mixture: None,
       layout: None,
     }
   }
@@ -528,6 +619,14 @@ impl DenseReconstruction {
     branch_lengths: &EdgeMap<f64>,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {
+    if self.model.categories() > 1 {
+      let model = optimize_mixture_rate(
+        &self.model,
+        |model| dense_mixture_log_lh(&self.partition, model, graph, branch_lengths),
+        log,
+      )?;
+      return Ok(self.with_model(model));
+    }
     let (gtr, _, _) = optimize_gtr_rate(
       &self.partition,
       self.model.gtr().clone(),
@@ -543,27 +642,56 @@ impl DenseReconstruction {
     })
   }
 
+  #[must_use]
+  pub(crate) fn with_model(self, model: PartitionModel) -> Self {
+    Self {
+      layout: self.layout,
+      ..Self::seeded(self.partition, model)
+    }
+  }
+
+  pub(crate) fn mixture_log_lh(
+    &self,
+    model: &PartitionModel,
+    graph: &Graph,
+    branch_lengths: &EdgeMap<f64>,
+  ) -> Result<LogLh, Report> {
+    dense_mixture_log_lh(&self.partition, model, graph, branch_lengths)
+  }
+
   pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<(Self, LogLh), Report> {
     let Self {
       partition,
       model,
       node_states,
       edges,
+      mixture,
       layout,
     } = self;
     drop(node_states);
     drop(edges);
+    drop(mixture);
+    let (update, mixture) = if model.categories() > 1 {
+      let (update, state) = dense_mixture_update(&partition, &model, graph, branch_lengths)?;
+      (update, Some(Box::new(state)))
+    } else {
+      (
+        partition.marginal_update(model.gtr(), graph, branch_lengths, &())?,
+        None,
+      )
+    };
     let MarginalUpdate {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(model.gtr(), graph, branch_lengths, &())?;
+    } = update;
     Ok((
       Self {
         partition,
         model,
         node_states,
         edges,
+        mixture,
         layout,
       },
       log_lh,

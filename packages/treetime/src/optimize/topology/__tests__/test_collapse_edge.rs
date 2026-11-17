@@ -51,6 +51,7 @@ mod tests {
       obs_edges: keymap! {},
       root_sequence: seq![],
       impute_missing_data: false,
+      track_site_scales: false,
     };
     Ok(partition)
   }

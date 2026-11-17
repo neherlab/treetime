@@ -158,6 +158,7 @@ mod tests {
         model: jc69(JC69Params::default())?.into(),
         node_states: NodeMap::new(),
         edges: MarginalEdges::default(),
+        mixture: None,
         layout: None,
       }]);
       let branch_model = BranchModel::Marginal(

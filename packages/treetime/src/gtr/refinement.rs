@@ -1,6 +1,7 @@
 use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_from_counts};
+use crate::gtr::partition_model::PartitionModel;
 use crate::make_internal_report;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalPasses, MarginalUpdate, TransitionCounts};
 use crate::progress::LogSink;
@@ -134,11 +135,6 @@ where
   P::Node: Clone,
 {
   let old_mu = gtr.mu();
-  let sqrt_old_mu = old_mu.sqrt();
-
-  let lo = 0.01 * sqrt_old_mu;
-  let hi = 100.0 * sqrt_old_mu;
-
   let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P>>) {
     let mut candidate_gtr = gtr.clone();
     if let Err(e) = candidate_gtr.set_mu(sqrt_mu * sqrt_mu) {
@@ -179,6 +175,76 @@ where
     }
   };
 
+  match search_sqrt_rate(old_mu, evaluate)? {
+    RateSearch::Optimum(GtrRateCandidate { gtr, nodes, backward }) => {
+      debug!(
+        "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
+        gtr.mu(),
+        old_mu
+      );
+      Ok((gtr, nodes, backward))
+    },
+    RateSearch::Unbracketed { at_start, lower_end } => match range_edge {
+      RateRangeEdge::KeepStart => keep_start_rate(partition, gtr, at_start, nodes, graph, branch_lengths),
+      RateRangeEdge::LowerCostEnd => {
+        let (cost_end, at_end) = lower_end;
+        let GtrRateCandidate { gtr, nodes, backward } = at_end.ok_or_else(|| {
+          make_internal_report!("GTR rate optimization: both ends of the rate range failed to evaluate")
+        })?;
+        debug!(
+          "GTR rate optimization: no bracket, taking mu = {:.6e} (from {old_mu:.6}) at the range end with cost {cost_end:.6}",
+          gtr.mu()
+        );
+        Ok((gtr, nodes, backward))
+      },
+    },
+  }
+}
+
+pub(crate) fn optimize_mixture_rate(
+  model: &PartitionModel,
+  log_lh: impl Fn(&PartitionModel) -> Result<LogLh, Report>,
+  log: &dyn LogSink,
+) -> Result<PartitionModel, Report> {
+  let old_mu = model.gtr().mu();
+  let evaluate = |sqrt_mu: f64| -> (f64, Option<PartitionModel>) {
+    let mut gtr = model.gtr().clone();
+    if let Err(e) = gtr.set_mu(sqrt_mu * sqrt_mu) {
+      progress_warn!(log, "GTR rate optimization: invalid rate at sqrt(mu)={sqrt_mu:.6}: {e}");
+      return (f64::INFINITY, None);
+    }
+    let candidate = model.clone().with_gtr(gtr);
+    match log_lh(&candidate) {
+      Ok(log_lh) => (-log_lh.value(), Some(candidate)),
+      Err(e) => {
+        progress_warn!(
+          log,
+          "GTR rate optimization: mixture likelihood failed at mu={:.6}: {e}",
+          sqrt_mu * sqrt_mu
+        );
+        (f64::INFINITY, None)
+      },
+    }
+  };
+  let optimized = match search_sqrt_rate(old_mu, evaluate)? {
+    RateSearch::Optimum(model) => model,
+    RateSearch::Unbracketed {
+      lower_end: (_, at_end), ..
+    } => at_end
+      .ok_or_else(|| make_internal_report!("GTR rate optimization: both ends of the rate range failed to evaluate"))?,
+  };
+  debug!(
+    "GTR rate optimization: optimized mixture mu = {:.6} (from {old_mu:.6})",
+    optimized.gtr().mu()
+  );
+  Ok(optimized)
+}
+
+fn search_sqrt_rate<C>(old_mu: f64, evaluate: impl Fn(f64) -> (f64, Option<C>)) -> Result<RateSearch<C>, Report> {
+  let sqrt_old_mu = old_mu.sqrt();
+  let lo = 0.01 * sqrt_old_mu;
+  let hi = 100.0 * sqrt_old_mu;
+
   let neg_log_lh = |sqrt_mu: f64| evaluate(sqrt_mu).0;
   let cost_fn = GtrRateCostFn {
     neg_log_lh: &neg_log_lh,
@@ -194,41 +260,33 @@ where
       .configure(|cfg| cfg.max_iters(500))
       .run()
       .map_err(|e| make_internal_report!("GTR rate optimization: argmin BrentBracketed failed: {e}"))?;
-
     let optimal_sqrt_mu = res
       .state()
       .best_param
       .ok_or_else(|| make_internal_report!("GTR rate optimization: solver succeeded but reported no best_param"))?;
-
     let (_, at_opt) = evaluate(optimal_sqrt_mu);
-    let GtrRateCandidate { gtr, nodes, backward } =
+    let candidate =
       at_opt.ok_or_else(|| make_internal_report!("GTR rate optimization: selected candidate failed to evaluate"))?;
-    debug!(
-      "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
-      gtr.mu(),
-      old_mu
-    );
-    Ok((gtr, nodes, backward))
+    Ok(RateSearch::Optimum(candidate))
   } else {
-    match range_edge {
-      RateRangeEdge::KeepStart => keep_start_rate(partition, gtr, at_mid, nodes, graph, branch_lengths),
-      RateRangeEdge::LowerCostEnd => {
-        let (cost_end, at_end) = if cost_lo <= cost_hi {
-          (cost_lo, at_lo)
-        } else {
-          (cost_hi, at_hi)
-        };
-        let GtrRateCandidate { gtr, nodes, backward } = at_end.ok_or_else(|| {
-          make_internal_report!("GTR rate optimization: both ends of the rate range failed to evaluate")
-        })?;
-        debug!(
-          "GTR rate optimization: no bracket, taking mu = {:.6e} (from {old_mu:.6}) at the range end with cost {cost_end:.6}",
-          gtr.mu()
-        );
-        Ok((gtr, nodes, backward))
-      },
-    }
+    let lower_end = if cost_lo <= cost_hi {
+      (cost_lo, at_lo)
+    } else {
+      (cost_hi, at_hi)
+    };
+    Ok(RateSearch::Unbracketed {
+      at_start: at_mid,
+      lower_end,
+    })
   }
+}
+
+enum RateSearch<C> {
+  Optimum(C),
+  Unbracketed {
+    at_start: Option<C>,
+    lower_end: (f64, Option<C>),
+  },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

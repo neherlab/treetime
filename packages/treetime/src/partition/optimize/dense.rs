@@ -8,21 +8,29 @@ pub(crate) fn get_coefficients(
   gtr: &GTR,
 ) -> PartitionContribution {
   let coefficients = msg_to_parent.dis.dot(gtr.v()) * msg_to_child.dis.dot(&gtr.v_inv().t());
-  PartitionContribution::new(coefficients, gtr.clone())
+  PartitionContribution::new(coefficients, gtr)
 }
 
 pub struct PartitionContribution {
   pub(crate) coefficients: Array2<f64>,
   pub(crate) rate_eigvals: Array1<f64>,
-  pub(crate) gtr: GTR,
+  pub(crate) certified_decay_rate: Option<f64>,
 }
 
 impl PartitionContribution {
-  pub(crate) fn new(coefficients: Array2<f64>, gtr: GTR) -> Self {
+  pub(crate) fn new(coefficients: Array2<f64>, gtr: &GTR) -> Self {
     Self {
       coefficients,
       rate_eigvals: gtr.rate_eigvals(),
-      gtr,
+      certified_decay_rate: gtr.certified_decay_rate(),
+    }
+  }
+
+  pub(crate) fn mixture(coefficients: Array2<f64>, rate_eigvals: Array1<f64>) -> Self {
+    Self {
+      coefficients,
+      rate_eigvals,
+      certified_decay_rate: None,
     }
   }
 }

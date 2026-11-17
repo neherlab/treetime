@@ -5,6 +5,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+  use crate::partition::marginal::sparse::reconstruct::LeafDowns;
   use crate::test_utils::find_node_key_by_name;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
@@ -35,7 +36,16 @@ mod tests {
     let c_key = find_node_key_by_name(&graph, &names, "C").expect("leaf C must exist");
     graph.add_edge(x_key, c_key)?;
 
-    let result = partition.node_sequence(&graph, &node_states, &edges.forward, false, c_key);
+    let result = partition.node_sequence(
+      &graph,
+      &node_states,
+      LeafDowns::Single {
+        forward: &edges.forward,
+        node_states: &node_states,
+      },
+      false,
+      c_key,
+    );
 
     assert_error!(
       result,

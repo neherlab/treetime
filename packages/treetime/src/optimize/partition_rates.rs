@@ -18,10 +18,17 @@ pub(crate) fn update_partition_rates(
   indels: Option<&mut EdgeIndels>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
-  if !mode.estimates(&partitions) {
+  let lengths = branch_lengths_or_zero(branch_lengths);
+  let estimates = mode.estimates(&partitions);
+  let partitions = if estimates {
+    partitions.estimate_rates(graph, &lengths, log)?
+  } else {
+    partitions
+  };
+  let mut partitions = partitions.estimate_gamma_shapes(graph, &lengths, log)?;
+  if !estimates {
     return Ok(partitions);
   }
-  let mut partitions = partitions.estimate_rates(graph, &branch_lengths_or_zero(branch_lengths), log)?;
   normalize_partition_rates(&mut partitions, branch_lengths, indels)?;
   debug!(
     "Relative rates of the alignments: {}",

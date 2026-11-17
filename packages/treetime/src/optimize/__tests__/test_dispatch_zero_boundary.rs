@@ -188,7 +188,7 @@ pub(super) mod tests {
   fn test_dispatch_zero_boundary_reconcile_degenerate_site_positive_candidate_passes_through() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 0.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     let contributions = [contribution];
 
     assert!(
@@ -208,7 +208,7 @@ pub(super) mod tests {
   fn test_dispatch_zero_boundary_reconcile_degenerate_site_zero_candidate_routes_to_grid() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 0.0, 0.0, 0.0], [0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     let contributions = [contribution];
 
     assert!(
@@ -364,7 +364,7 @@ pub(super) mod tests {
   fn test_dispatch_zero_boundary_reconcile_exact_zero_certified_passes_through() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     let contributions = [contribution];
 
     assert!(
@@ -479,7 +479,7 @@ pub(super) mod tests {
       OptimizationContribution::Dense(optimize::dense::PartitionContribution {
         coefficients,
         rate_eigvals: array![-1.0, -0.5, -0.5, 0.0],
-        gtr: k80(K80Params::default()).unwrap(),
+        certified_decay_rate: k80(K80Params::default()).unwrap().certified_decay_rate(),
       })
     }
 
@@ -496,7 +496,7 @@ pub(super) mod tests {
         .pi(array![0.5, 0.5])
         .build()
         .unwrap();
-      OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
+      OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr))
     }
 
     pub(super) fn reconcile(

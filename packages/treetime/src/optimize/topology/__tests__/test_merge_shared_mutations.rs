@@ -77,6 +77,7 @@ mod tests {
       obs_nodes,
       obs_edges,
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     Ok(partition)
@@ -482,6 +483,7 @@ mod tests {
       obs_nodes: p2_obs_nodes,
       obs_edges: p2_obs_edges,
       impute_missing_data: false,
+      track_site_scales: false,
     };
 
     let mut partitions = sparse_topology_partitions(vec![p1, p2]);
@@ -1024,6 +1026,7 @@ mod tests {
         obs_nodes,
         obs_edges,
         impute_missing_data: false,
+        track_site_scales: false,
       };
 
       Ok(partition)

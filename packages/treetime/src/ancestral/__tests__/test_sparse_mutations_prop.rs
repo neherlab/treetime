@@ -31,7 +31,7 @@ mod tests {
           &sparse.partition,
           &graph,
           &sparse.node_states,
-          &sparse.edges.forward,
+          sparse.leaf_downs(),
           impute,
           report_unknown,
           &track,

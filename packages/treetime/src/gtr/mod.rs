@@ -1,5 +1,6 @@
 pub mod brent_bracketed;
 pub mod gamma;
+pub(crate) mod gamma_shape;
 pub mod get_gtr;
 pub mod gtr;
 pub mod infer_gtr;

@@ -1,4 +1,7 @@
+use crate::gtr::gamma::GammaRates;
+use crate::gtr::gamma_shape::optimize_gamma_shape;
 use crate::gtr::gtr::GTR;
+use crate::gtr::partition_model::PartitionModel;
 use crate::partition::assembly::{AlignmentGroup, alignment_groups};
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::inferred_rate::InferredRate;
@@ -10,6 +13,7 @@ use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::resolve::PartitionLayout;
 use crate::partition::split::{ModelSettings, PartitionData, SplitPartition};
 use crate::progress::LogSink;
+use crate::progress_info;
 use eyre::Report;
 use itertools::{Either, Itertools, izip};
 use std::borrow::Cow;
@@ -77,6 +81,13 @@ impl PartitionSet {
       (false, false) => Err(make_internal_report!(
         "A partition set mixes dense and sparse partitions; every partition of a run uses one representation"
       )),
+    }
+  }
+
+  pub(crate) fn into_reconstructions(self) -> Vec<MarginalReconstruction> {
+    match self {
+      Self::Dense(partitions) => partitions.into_iter().map(MarginalReconstruction::Dense).collect(),
+      Self::Sparse(partitions) => partitions.into_iter().map(MarginalReconstruction::Sparse).collect(),
     }
   }
 
@@ -189,6 +200,79 @@ impl PartitionSet {
     })
   }
 
+  pub(crate) fn estimate_gamma_shapes(
+    self,
+    graph: &Graph,
+    branch_lengths: &EdgeMap<f64>,
+    log: &dyn LogSink,
+  ) -> Result<Self, Report> {
+    let groups = self.gamma_shape_groups();
+    if groups.is_empty() {
+      return Ok(self);
+    }
+    let partitions = self.iter().collect_vec();
+    let mut shapes = vec![None; partitions.len()];
+    for group in &groups {
+      let shape = optimize_gamma_shape(|shape| {
+        group
+          .iter()
+          .map(|&index| {
+            let partition = partitions[index];
+            let gamma = GammaRates::new(partition.model().categories(), shape)?;
+            partition.mixture_log_lh(&partition.model().clone().with_gamma(gamma), graph, branch_lengths)
+          })
+          .sum()
+      })?;
+      progress_info!(
+        log,
+        "Gamma shape of {}: {shape:.4}",
+        group
+          .iter()
+          .map(|&index| partition_label(partitions[index], index))
+          .join(", ")
+      );
+      for &index in group {
+        shapes[index] = Some(shape);
+      }
+    }
+    let with_shape = |shape: Option<f64>, model: &PartitionModel| -> Result<Option<PartitionModel>, Report> {
+      shape
+        .map(|shape| Ok(model.clone().with_gamma(GammaRates::new(model.categories(), shape)?)))
+        .transpose()
+    };
+    Ok(match self {
+      Self::Dense(partitions) => Self::Dense(
+        izip!(partitions, shapes)
+          .map(|(partition, shape)| {
+            Ok(match with_shape(shape, &partition.model)? {
+              Some(model) => partition.with_model(model),
+              None => partition,
+            })
+          })
+          .collect::<Result<_, Report>>()?,
+      ),
+      Self::Sparse(partitions) => Self::Sparse(
+        izip!(partitions, shapes)
+          .map(|(partition, shape)| {
+            Ok(match with_shape(shape, &partition.model)? {
+              Some(model) => partition.with_model(model),
+              None => partition,
+            })
+          })
+          .collect::<Result<_, Report>>()?,
+      ),
+    })
+  }
+
+  fn gamma_shape_groups(&self) -> Vec<Vec<usize>> {
+    self
+      .iter()
+      .enumerate()
+      .filter(|(_, partition)| partition.model().categories() > 1)
+      .map(|(index, _)| vec![index])
+      .collect()
+  }
+
   pub(crate) fn rates(&self) -> Vec<f64> {
     self.iter().map(|partition| partition.gtr().mu()).collect()
   }
@@ -263,4 +347,10 @@ fn update_each<R>(
   let updated: Vec<(R, LogLh)> = partitions.into_iter().map(update).try_collect()?;
   let log_lh = updated.iter().map(|(_, log_lh)| *log_lh).sum();
   Ok((updated.into_iter().map(|(partition, _)| partition).collect(), log_lh))
+}
+
+fn partition_label(partition: ReconstructionRef<'_>, index: usize) -> String {
+  partition
+    .layout()
+    .map_or_else(|| format!("partition {}", index + 1), PartitionLayout::label)
 }

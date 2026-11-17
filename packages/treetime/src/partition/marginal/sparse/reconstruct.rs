@@ -1,13 +1,22 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::partition::marginal::mixture::site_log_lh::{INLINE_CATEGORIES, SparseMixture};
+use crate::partition::marginal::mixture::sparse::SparseCategory;
 use crate::partition::marginal::posterior_states::{AmbiguityThreshold, most_likely_state};
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::marginal::sparse::globally_missing::SitePosterior;
-use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
+use crate::partition::storage::sparse::{
+  SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
+};
 use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::AmbiguousSites;
+use itertools::izip;
 use ndarray::{Array1, aview1};
+use smallvec::{SmallVec, smallvec};
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::interval::range_difference::range_difference;
 
@@ -108,8 +117,7 @@ fn explicit_states<'a>(
 pub(crate) fn reconstruct_leaf_sequence(
   node: &SparseNodeState,
   node_obs: &SparseNodeObs,
-  msg_from_parent: Option<&SparseSeqDistribution>,
-  parent: Option<&SparseNodeState>,
+  down: Option<&LeafDown<'_>>,
   impute: bool,
   alphabet: &Alphabet,
 ) -> Seq {
@@ -119,14 +127,14 @@ pub(crate) fn reconstruct_leaf_sequence(
     seq[pos] = alphabet.set_to_char(*states);
   }
 
-  let (true, Some(down), Some(parent)) = (impute, msg_from_parent, parent) else {
+  let (true, Some(down)) = (impute, down) else {
     return seq;
   };
 
   let unknown_positions = node_obs.unknown.iter().flat_map(|&(start, end)| start..end);
   let ambiguous_positions = node_obs.fitch.variable.keys().copied();
   for pos in unknown_positions.chain(ambiguous_positions) {
-    seq[pos] = impute_state(seq[pos], pos, down, parent, alphabet);
+    seq[pos] = impute_state(seq[pos], pos, down, alphabet);
   }
 
   seq
@@ -174,8 +182,7 @@ pub(crate) fn internal_ambiguity(
 pub(crate) fn leaf_ambiguity(
   node: &SparseNodeState,
   node_obs: &SparseNodeObs,
-  down: &SparseSeqDistribution,
-  parent: &SparseNodeState,
+  down: &LeafDown<'_>,
   alphabet: &Alphabet,
   threshold: AmbiguityThreshold,
 ) -> AmbiguousSites {
@@ -189,22 +196,57 @@ pub(crate) fn leaf_ambiguity(
         .variable
         .get(&pos)
         .map_or(node.sequence[pos], |&states| alphabet.set_to_char(states));
-      let posterior = leaf_posterior(observed, pos, down, parent, alphabet)?;
+      let posterior = down.posterior(observed, pos, alphabet)?;
       threshold.ambiguity_char(&posterior, alphabet).map(|code| (pos, code))
     })
     .collect()
 }
 
-pub(crate) fn impute_state(
-  observed: AsciiChar,
-  pos: usize,
-  down: &SparseSeqDistribution,
-  parent: &SparseNodeState,
-  alphabet: &Alphabet,
-) -> AsciiChar {
-  leaf_posterior(observed, pos, down, parent, alphabet)
+pub(crate) fn impute_state(observed: AsciiChar, pos: usize, down: &LeafDown<'_>, alphabet: &Alphabet) -> AsciiChar {
+  down
+    .posterior(observed, pos, alphabet)
     .and_then(|posterior| most_likely_state(&posterior))
     .map_or(observed, |idx| alphabet.char(idx))
+}
+
+pub(crate) struct LeafDown<'a> {
+  categories: SmallVec<[(&'a SparseSeqDistribution, &'a SparseNodeState); INLINE_CATEGORIES]>,
+  mixture: Option<&'a SparseMixture>,
+}
+
+impl<'a> LeafDown<'a> {
+  pub(crate) fn single(down: &'a SparseSeqDistribution, parent: &'a SparseNodeState) -> Self {
+    Self {
+      categories: smallvec![(down, parent)],
+      mixture: None,
+    }
+  }
+
+  pub(crate) fn mixture(
+    categories: SmallVec<[(&'a SparseSeqDistribution, &'a SparseNodeState); INLINE_CATEGORIES]>,
+    mixture: &'a SparseMixture,
+  ) -> Self {
+    Self {
+      categories,
+      mixture: Some(mixture),
+    }
+  }
+
+  pub(crate) fn posterior(&self, observed: AsciiChar, pos: usize, alphabet: &Alphabet) -> Option<Array1<f64>> {
+    let Some(mixture) = self.mixture else {
+      let &(down, parent) = self.categories.first()?;
+      return leaf_posterior(observed, pos, down, parent, alphabet);
+    };
+    let (_, parent) = self.categories.first()?;
+    let weights = mixture.posterior(pos, parent.sequence[pos]);
+    izip!(&self.categories, weights)
+      .map(|(&(down, parent), &weight)| leaf_posterior(observed, pos, down, parent, alphabet).map(|post| post * weight))
+      .reduce(|total, term| match (total, term) {
+        (Some(total), Some(term)) => Some(total + term),
+        (total, term) => total.or(term),
+      })
+      .flatten()
+  }
 }
 
 pub(crate) fn leaf_posterior(
@@ -248,5 +290,39 @@ pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet)
       .most_likely_state_at(pos)
       .or_else(|| node.sequence.get(pos).copied())
       .unwrap_or_else(|| alphabet.char(0)),
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum LeafDowns<'a> {
+  Single {
+    forward: &'a EdgeMap<SparseEdgeForward>,
+    node_states: &'a NodeMap<SparseNodeState>,
+  },
+  Mixture {
+    categories: &'a [SparseCategory],
+    mixture: &'a SparseMixture,
+  },
+}
+
+impl<'a> LeafDowns<'a> {
+  pub(crate) fn down(self, edge_key: GraphEdgeKey, parent_key: GraphNodeKey) -> LeafDown<'a> {
+    match self {
+      Self::Single { forward, node_states } => {
+        LeafDown::single(&forward[&edge_key].msg_from_parent, &node_states[&parent_key])
+      },
+      Self::Mixture { categories, mixture } => LeafDown::mixture(
+        categories
+          .iter()
+          .map(|category| {
+            (
+              &category.edges.forward[&edge_key].msg_from_parent,
+              &category.node_states[&parent_key],
+            )
+          })
+          .collect(),
+        mixture,
+      ),
+    }
   }
 }

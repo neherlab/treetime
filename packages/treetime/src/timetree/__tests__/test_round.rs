@@ -626,6 +626,7 @@ mod tests {
         model: jc69(JC69Params::default())?.into(),
         node_states: NodeMap::new(),
         edges: MarginalEdges::default(),
+        mixture: None,
         layout: None,
       }])
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

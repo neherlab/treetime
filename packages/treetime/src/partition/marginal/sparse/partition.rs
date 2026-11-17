@@ -5,7 +5,7 @@ use crate::partition::marginal::sample::{Resolve, SampleMode};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
 use crate::partition::marginal::sparse::reconstruct::{
-  internal_ambiguity, leaf_ambiguity, map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
+  LeafDowns, internal_ambiguity, leaf_ambiguity, map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
 };
 use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -35,12 +35,21 @@ pub struct PartitionMarginalSparse {
   pub obs_nodes: NodeMap<SparseNodeObs>,
   pub obs_edges: EdgeMap<SparseEdgeObs>,
   pub impute_missing_data: bool,
+  pub track_site_scales: bool,
 }
 
 impl PartitionMarginalSparse {
   #[must_use]
   pub(crate) fn with_total_length(self, total_length: usize) -> Self {
     Self { total_length, ..self }
+  }
+
+  #[must_use]
+  pub(crate) fn with_site_scales(self, track_site_scales: bool) -> Self {
+    Self {
+      track_site_scales,
+      ..self
+    }
   }
 
   #[must_use]
@@ -169,7 +178,7 @@ impl PartitionMarginalSparse {
     &self,
     graph: &Graph,
     node_states: &NodeMap<SparseNodeState>,
-    forward: &EdgeMap<SparseEdgeForward>,
+    downs: LeafDowns<'_>,
     impute: bool,
     node_key: GraphNodeKey,
   ) -> Result<Seq, Report> {
@@ -184,18 +193,11 @@ impl PartitionMarginalSparse {
     let parent = graph
       .node_parent(node_key)
       .wrap_err_with(|| format!("When reconstructing the sequence of node {node_key}"))?;
-    let (parent_state, msg_from_parent) = match parent {
-      None => (None, None),
-      Some((parent_key, edge_key)) => (
-        Some(&node_states[&parent_key]),
-        Some(&forward[&edge_key].msg_from_parent),
-      ),
-    };
+    let down = parent.map(|(parent_key, edge_key)| downs.down(edge_key, parent_key));
     Ok(reconstruct_leaf_sequence(
       node_data,
       &self.obs_nodes[&node_key],
-      msg_from_parent,
-      parent_state,
+      down.as_ref(),
       impute,
       &self.alphabet,
     ))
@@ -205,7 +207,7 @@ impl PartitionMarginalSparse {
     &self,
     graph: &Graph,
     node_states: &NodeMap<SparseNodeState>,
-    forward: &EdgeMap<SparseEdgeForward>,
+    downs: LeafDowns<'_>,
     impute: bool,
     node_key: GraphNodeKey,
     threshold: AmbiguityThreshold,
@@ -227,8 +229,7 @@ impl PartitionMarginalSparse {
     Ok(leaf_ambiguity(
       node_data,
       &self.obs_nodes[&node_key],
-      &forward[&edge_key].msg_from_parent,
-      &node_states[&parent_key],
+      &downs.down(edge_key, parent_key),
       &self.alphabet,
       threshold,
     ))

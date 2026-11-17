@@ -156,6 +156,39 @@ pub struct SparseSeqDistribution {
   pub(crate) fixed: FixedProfiles,
 
   pub(crate) log_lh: LogLh,
+
+  pub(crate) scales: SiteScales,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SiteScales {
+  groups: SmallVec<[(AsciiChar, f64); INLINE_STATES]>,
+  sites: Vec<(usize, f64)>,
+}
+
+impl SiteScales {
+  pub(crate) fn new(groups: SmallVec<[(AsciiChar, f64); INLINE_STATES]>, sites: Vec<(usize, f64)>) -> Self {
+    Self { groups, sites }
+  }
+
+  pub(crate) fn group(&self, state: AsciiChar) -> f64 {
+    self
+      .groups
+      .iter()
+      .find(|(group_state, _)| *group_state == state)
+      .map_or(0.0, |(_, scale)| *scale)
+  }
+
+  pub(crate) fn site(&self, pos: usize) -> f64 {
+    self
+      .sites
+      .binary_search_by_key(&pos, |(site, _)| *site)
+      .map_or(0.0, |index| self.sites[index].1)
+  }
+
+  pub(crate) fn sites(&self) -> &[(usize, f64)] {
+    &self.sites
+  }
 }
 
 #[derive(Clone, Debug, Default)]

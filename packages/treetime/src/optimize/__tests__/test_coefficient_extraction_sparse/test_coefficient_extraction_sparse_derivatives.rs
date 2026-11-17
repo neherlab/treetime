@@ -25,7 +25,7 @@ mod tests {
       coefficients: array![0.4, 0.3, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution::new(vec![site], gtr);
+    let contribution = PartitionContribution::new(vec![site], &gtr);
 
     let h = 1e-6;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -52,7 +52,7 @@ mod tests {
       coefficients: array![0.4, 0.3, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution::new(vec![site], gtr);
+    let contribution = PartitionContribution::new(vec![site], &gtr);
 
     let h = 1e-5;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -78,7 +78,7 @@ mod tests {
       coefficients: array![0.4, 0.3, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution::new(vec![site], gtr);
+    let contribution = PartitionContribution::new(vec![site], &gtr);
 
     let h = 1e-5;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -99,13 +99,13 @@ mod tests {
       multiplicity: 1.0,
       coefficients: coefficients.clone(),
     };
-    let contribution1 = PartitionContribution::new(vec![site1], gtr.clone());
+    let contribution1 = PartitionContribution::new(vec![site1], &gtr);
 
     let site3 = SiteContribution {
       multiplicity: 3.0,
       coefficients,
     };
-    let contribution3 = PartitionContribution::new(vec![site3], gtr);
+    let contribution3 = PartitionContribution::new(vec![site3], &gtr);
 
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1, true).expect("valid branch length");
     let metrics3 = evaluate_sparse_contribution(&contribution3, 0.1, true).expect("valid branch length");
@@ -141,7 +141,7 @@ mod tests {
           multiplicity: 1.0,
           coefficients: coefficients_b.clone(),
         },
-      ], gtr.clone());
+      ], &gtr);
 
     let coefficients_2d = Array2::from_shape_vec((2, 4), {
       let mut v = coefficients_a.to_vec();
@@ -150,7 +150,7 @@ mod tests {
     })
     .expect("shape mismatch");
 
-    let dense_contribution = optimize::dense::PartitionContribution::new(coefficients_2d, gtr);
+    let dense_contribution = optimize::dense::PartitionContribution::new(coefficients_2d, &gtr);
 
     let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length, true).expect("valid branch length");
     let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length, true).expect("valid branch length");

@@ -4,11 +4,11 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::globally_missing::GloballyMissing;
-use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw};
+use crate::partition::marginal::sparse::message::{ScaleInputs, combine_messages, propagate_raw};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::sequences::fitch_node_sequences;
 use crate::partition::storage::sparse::{
-  FixedProfiles, SparseEdgeBackward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
+  FixedProfiles, SiteScales, SparseEdgeBackward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
 use crate::partition::storage::var_pos_map::VarPosMap;
 use eyre::Report;
@@ -205,12 +205,17 @@ impl SparseBackwardPass<'_> {
       }
     });
 
+    let child_sequences = children.iter().map(|child| &*child.0.sequence).collect_vec();
     combine_messages(
       &obs.composition,
       &child_messages,
       &sites,
       alphabet,
       self.schedule.parents(key).is_empty().then_some(self.gtr.pi()),
+      partition.track_site_scales.then_some(ScaleInputs {
+        sequence,
+        child_sequences: &child_sequences,
+      }),
     )
   }
 }
@@ -255,5 +260,6 @@ fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDis
     variable,
     fixed,
     log_lh: LogLh::ZERO,
+    scales: SiteScales::default(),
   })
 }

@@ -525,7 +525,7 @@ pub(super) mod tests {
   fn test_optimize_indel_zero_branch_no_indels_unchanged() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
 
     let contributions = [contribution];
     let zero_length = ZeroLength::of_edge(&contributions, IndelTerm::new(0, 0.0));
@@ -537,7 +537,7 @@ pub(super) mod tests {
   fn test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[1.0, 0.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     let contributions = vec![contribution];
 
     let best_positive = 0.01;
@@ -589,7 +589,7 @@ pub(super) mod tests {
   fn test_optimize_indel_grid_zero_comparison_allows_zero_without_indels() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[1.0, 0.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     let contributions = vec![contribution];
     let indels = IndelTerm::new(0, 0.0);
 
@@ -680,7 +680,7 @@ pub(super) mod tests {
   ) {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, &gtr));
     let contributions = vec![contribution];
 
     let sub_only = evaluate_partitions_log_lh_only(&contributions, t).expect("valid branch length").value();

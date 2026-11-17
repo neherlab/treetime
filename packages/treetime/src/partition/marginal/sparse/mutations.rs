@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::marginal::sparse::reconstruct::impute_state;
-use crate::partition::storage::sparse::{SparseEdgeForward, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
+use crate::partition::marginal::sparse::reconstruct::{LeafDown, LeafDowns, impute_state};
+use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
@@ -23,7 +23,7 @@ pub(crate) fn sparse_edge_mutations(
   partition: &PartitionMarginalSparse,
   graph: &Graph,
   node_states: &NodeMap<SparseNodeState>,
-  forward: &EdgeMap<SparseEdgeForward>,
+  downs: LeafDowns<'_>,
   impute: bool,
   report_unknown: bool,
   track: &MutationTrack,
@@ -40,7 +40,7 @@ pub(crate) fn sparse_edge_mutations(
         partition,
         graph,
         node_states,
-        forward,
+        downs,
         impute,
         child_key,
         parent_key,
@@ -130,7 +130,7 @@ impl<'a> EdgeChild<'a> {
     partition: &'a PartitionMarginalSparse,
     graph: &Graph,
     node_states: &'a NodeMap<SparseNodeState>,
-    forward: &'a EdgeMap<SparseEdgeForward>,
+    downs: LeafDowns<'a>,
     impute: bool,
     child_key: GraphNodeKey,
     parent_key: GraphNodeKey,
@@ -141,7 +141,7 @@ impl<'a> EdgeChild<'a> {
       .ok_or_else(|| make_internal_report!("Node {child_key} not found while deriving its mutations"))?
       .is_leaf();
     let leaf = is_leaf.then(|| LeafImputation {
-      impute: impute.then(|| (&forward[&edge_key].msg_from_parent, &node_states[&parent_key])),
+      impute: impute.then(|| downs.down(edge_key, parent_key)),
     });
     Ok(Self {
       state: &node_states[&child_key],
@@ -170,18 +170,18 @@ fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> As
 }
 
 struct LeafImputation<'a> {
-  impute: Option<(&'a SparseSeqDistribution, &'a SparseNodeState)>,
+  impute: Option<LeafDown<'a>>,
 }
 
 impl LeafImputation<'_> {
   fn state_at(&self, node: &SparseNodeState, node_obs: &SparseNodeObs, pos: usize, alphabet: &Alphabet) -> AsciiChar {
     let ambiguous = node_obs.fitch.variable.get(&pos);
     let state = ambiguous.map_or(node.sequence[pos], |states| alphabet.set_to_char(*states));
-    let Some((down, parent)) = self.impute else {
+    let Some(down) = &self.impute else {
       return state;
     };
     let visits = usize::from(sorted_ranges_contain(&node_obs.unknown, pos)) + usize::from(ambiguous.is_some());
-    (0..visits).fold(state, |state, _| impute_state(state, pos, down, parent, alphabet))
+    (0..visits).fold(state, |state, _| impute_state(state, pos, down, alphabet))
   }
 }
 

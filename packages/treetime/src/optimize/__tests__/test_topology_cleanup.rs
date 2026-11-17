@@ -695,10 +695,12 @@ pub(super) mod tests {
           obs_nodes: keymap! {},
           obs_edges: keymap! {},
           impute_missing_data: false,
+          track_site_scales: false,
         },
         model: jc69(JC69Params::default())?.into(),
         node_states: keymap! {},
         edges: MarginalEdges::default(),
+        mixture: None,
         layout: None,
       })
     }

@@ -22,7 +22,7 @@ mod tests {
       coefficients: fixed_coeffs.clone(),
     };
 
-    let contribution = PartitionContribution::new(vec![variable_site, fixed_site], gtr.clone());
+    let contribution = PartitionContribution::new(vec![variable_site, fixed_site], &gtr);
 
     let branch_length = 0.1;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -32,14 +32,14 @@ mod tests {
         multiplicity: 1.0,
         coefficients: variable_coeffs,
       }],
-      gtr.clone(),
+      &gtr,
     );
     let fixed_contribution = PartitionContribution::new(
       vec![SiteContribution {
         multiplicity: 100.0,
         coefficients: fixed_coeffs,
       }],
-      gtr,
+      &gtr,
     );
 
     let variable_metrics =
@@ -68,7 +68,7 @@ mod tests {
       coefficients: array![0.9, 0.03, 0.03, 0.04],
     };
 
-    let contribution = PartitionContribution::new(vec![variable_site, fixed_site], gtr);
+    let contribution = PartitionContribution::new(vec![variable_site, fixed_site], &gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 

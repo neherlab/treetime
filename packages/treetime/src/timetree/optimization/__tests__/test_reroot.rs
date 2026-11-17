@@ -212,6 +212,7 @@ mod tests {
         edge_to_a_key => sparse_edge_obs(vec![sub_original], vec![indel_original]),
       },
       impute_missing_data: false,
+      track_site_scales: false,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
@@ -284,6 +285,7 @@ mod tests {
         edge_to_a_key => fitch_edge_obs(vec![sub]),
       },
       impute_missing_data: false,
+      track_site_scales: false,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
@@ -361,6 +363,7 @@ mod tests {
         edge_to_a_key => sparse_edge_obs(vec![], vec![indel]),
       },
       impute_missing_data: false,
+      track_site_scales: false,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
@@ -432,6 +435,7 @@ mod tests {
         edge_ab_a => fitch_edge_obs(vec![sub2, sub3]),
       },
       impute_missing_data: false,
+      track_site_scales: false,
     };
     let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),

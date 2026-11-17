@@ -11,7 +11,7 @@ use crate::partition::marginal::sparse::message::{
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::reconstruct::map_state;
 use crate::partition::storage::sparse::{
-  FixedProfiles, SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
+  FixedProfiles, SiteScales, SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
   SparseSeqDistribution,
 };
 use crate::partition::storage::var_pos_map::VarPosMap;
@@ -168,6 +168,7 @@ impl SparseForwardPass<'_> {
       &sites,
       alphabet,
       None,
+      None,
     )?;
     node.profile = profile;
     let mut msg_from_parent = if is_leaf {
@@ -244,6 +245,7 @@ fn compute_msg_to_child(
     variable: VarPosMap::with_capacity(sites.len()),
     fixed: FixedProfiles::default(),
     log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),
+    scales: SiteScales::default(),
   };
   let mut delta_ll = LogLh::ZERO;
   let mut removed = AsciiTable::<usize>::default();
@@ -327,7 +329,7 @@ struct OutsideMessage {
   child_missing: VarPosMap,
 }
 
-fn compute_ml_subs_for_nodes(
+pub(crate) fn compute_ml_subs_for_nodes(
   alphabet: &Alphabet,
   parent: &SparseNodeState,
   parent_obs: &SparseNodeObs,
