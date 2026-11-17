@@ -195,10 +195,10 @@ mod tests {
     let model = SubstitutionModel::jc69(1.0).unwrap();
     let category_rates = array![0.1, 0.5, 1.2, 2.2];
     let mut rng = get_random_number_generator(35);
-    let site_rates = draw_site_rates(category_rates.view(), SITE_COUNT, &mut rng).unwrap();
-    let simulated =
-      evolve_sequences_at_site_rates(&tree.graph, &durations, &model, site_rates.view(), &mut rng).unwrap();
+    let site_rates = draw_site_rates(&category_rates, SITE_COUNT, &mut rng).unwrap();
+    let simulated = evolve_sequences_at_site_rates(&tree.graph, &durations, &model, &site_rates, &mut rng).unwrap();
 
+    #[expect(clippy::float_cmp, reason = "each drawn site rate is a copy of one category rate")]
     let category_counts = site_rates
       .iter()
       .map(|rate| category_rates.iter().position(|r| r == rate).unwrap())

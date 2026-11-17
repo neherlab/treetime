@@ -98,7 +98,7 @@ mod tests {
       &tree.graph,
       &durations,
       &model,
-      Array1::from_elem(length, rate).view(),
+      &Array1::from_elem(length, rate),
       &mut get_random_number_generator(8),
     )
     .unwrap();
@@ -117,7 +117,7 @@ mod tests {
       &tree.graph,
       &durations,
       &model,
-      site_rates.view(),
+      &site_rates,
       &mut get_random_number_generator(9),
     )
     .unwrap();
@@ -143,7 +143,7 @@ mod tests {
       &tree.graph,
       &durations,
       &model,
-      site_rates.view(),
+      &site_rates,
       &mut get_random_number_generator(0),
     );
     assert_error!(result, expected);
@@ -155,7 +155,7 @@ mod tests {
   #[case::negative_rate( array![0.5, -1.0], "Rate of category 1 must be finite and non-negative, got -1")]
   #[trace]
   fn test_draw_site_rates_rejects_invalid_categories(#[case] category_rates: Array1<f64>, #[case] expected: &str) {
-    let result = draw_site_rates(category_rates.view(), 10, &mut get_random_number_generator(0));
+    let result = draw_site_rates(&category_rates, 10, &mut get_random_number_generator(0));
     assert_error!(result, expected);
   }
 

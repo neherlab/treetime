@@ -1,7 +1,7 @@
 use crate::substitution_model::{NUCLEOTIDES, SubstitutionModel};
 use eyre::Report;
 use itertools::{Itertools, izip};
-use ndarray::{Array1, ArrayView1};
+use ndarray::Array1;
 use rand::Rng;
 use rand_distr::{Distribution, Exp1, Uniform};
 use std::iter::repeat_with;
@@ -42,14 +42,14 @@ pub fn evolve_sequences(
   length: usize,
   rng: &mut impl Rng,
 ) -> Result<SimulatedSequences, Report> {
-  evolve_sequences_at_site_rates(graph, durations, model, Array1::ones(length).view(), rng)
+  evolve_sequences_at_site_rates(graph, durations, model, &Array1::ones(length), rng)
 }
 
 pub fn evolve_sequences_at_site_rates(
   graph: &Graph,
   durations: &EdgeMap<f64>,
   model: &SubstitutionModel,
-  site_rates: ArrayView1<'_, f64>,
+  site_rates: &Array1<f64>,
   rng: &mut impl Rng,
 ) -> Result<SimulatedSequences, Report> {
   let length = site_rates.len();
@@ -97,11 +97,7 @@ pub fn evolve_sequences_at_site_rates(
   })
 }
 
-pub fn draw_site_rates(
-  category_rates: ArrayView1<'_, f64>,
-  length: usize,
-  rng: &mut impl Rng,
-) -> Result<Array1<f64>, Report> {
+pub fn draw_site_rates(category_rates: &Array1<f64>, length: usize, rng: &mut impl Rng) -> Result<Array1<f64>, Report> {
   if category_rates.is_empty() {
     return make_error!("Site rates need at least one rate category, got none");
   }
@@ -149,7 +145,7 @@ fn validate_duration(duration: f64, what: &str) -> Result<(), Report> {
   Ok(())
 }
 
-fn validate_rates(rates: ArrayView1<'_, f64>, what: &str) -> Result<(), Report> {
+fn validate_rates(rates: &Array1<f64>, what: &str) -> Result<(), Report> {
   match rates.iter().position(|&rate| !(rate.is_finite() && rate >= 0.0)) {
     Some(index) => make_error!("{what} {index} must be finite and non-negative, got {}", rates[index]),
     None => Ok(()),
