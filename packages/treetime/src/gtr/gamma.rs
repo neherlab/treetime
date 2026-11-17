@@ -3,7 +3,7 @@ use eyre::Report;
 use getset::{CopyGetters, Getters};
 use ndarray::Array1;
 use statrs::distribution::{ContinuousCDF, Gamma};
-use statrs::function::gamma::checked_gamma_lr;
+use statrs::function::gamma::{checked_gamma_lr, ln_gamma};
 use treetime_utils::cast::ToF64Exact;
 
 pub const GAMMA_SHAPE_MIN: f64 = 0.02;
@@ -13,6 +13,10 @@ pub const GAMMA_SHAPE_MAX: f64 = 100.0;
 pub const INITIAL_GAMMA_SHAPE: f64 = 1.0;
 
 pub const NO_RATE_VARIATION: usize = 1;
+
+const QUANTILE_MAX_ITER: usize = 100;
+
+const QUANTILE_LOG_TOLERANCE: f64 = 1e-14;
 
 #[derive(Clone, Debug, PartialEq, Getters, CopyGetters)]
 pub struct GammaRates {
@@ -41,7 +45,10 @@ impl GammaRates {
       .map(|k| match k {
         0 => Ok(0.0),
         k if k == categories => Ok(1.0),
-        k => upper_mass(shape, distribution.inverse_cdf(k.to_f64_exact() / n)),
+        k => Ok(checked_gamma_lr(
+          shape + 1.0,
+          scaled_quantile(shape, &distribution, k.to_f64_exact() / n)?,
+        )?),
       })
       .collect::<Result<Vec<f64>, Report>>()?;
     let rates = bounds
@@ -70,9 +77,26 @@ impl Default for GammaRates {
   }
 }
 
-fn upper_mass(shape: f64, cut: f64) -> Result<f64, Report> {
-  if cut <= 0.0 {
-    return Ok(0.0);
+fn scaled_quantile(shape: f64, distribution: &Gamma, probability: f64) -> Result<f64, Report> {
+  let target = probability.ln();
+  let start = shape * distribution.inverse_cdf(probability);
+  let mut log_z = if start > 0.0 && start.is_finite() {
+    start.ln()
+  } else {
+    (target + ln_gamma(shape + 1.0)) / shape
+  };
+  for _ in 0..QUANTILE_MAX_ITER {
+    let z = log_z.exp();
+    let mass = checked_gamma_lr(shape, z)?;
+    let slope = (shape * log_z - z - ln_gamma(shape)).exp() / mass;
+    let step = (mass.ln() - target) / slope;
+    if !step.is_finite() {
+      return make_error!("Gamma quantile of probability {probability} for shape {shape} has no finite Newton step");
+    }
+    log_z -= step;
+    if step.abs() <= QUANTILE_LOG_TOLERANCE * log_z.abs().max(1.0) {
+      return Ok(log_z.exp());
+    }
   }
-  Ok(checked_gamma_lr(shape + 1.0, shape * cut)?)
+  make_error!("Gamma quantile of probability {probability} for shape {shape} did not converge")
 }

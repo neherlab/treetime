@@ -49,5 +49,15 @@ mod tests {
       pretty_assert_ulps_eq!(1.0, mean, epsilon = 1e-12);
       prop_assert!(rates.rates().iter().all(|rate| rate.is_finite() && *rate >= 0.0));
     }
+
+    #[test]
+    fn test_prop_gamma_rates_increase_with_the_category(categories in 2_usize..12, shape in 0.02_f64..0.1) {
+      let rates = GammaRates::new(categories, shape).unwrap();
+      prop_assert!(
+        rates.rates().windows(2).into_iter().all(|pair| pair[0] < pair[1]),
+        "the mean of a higher quantile interval is larger, got {}",
+        rates.rates()
+      );
+    }
   }
 }
