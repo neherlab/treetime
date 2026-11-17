@@ -317,12 +317,13 @@ fn mixed_row(
 
 fn scaled_rows(rows: &[Array1<f64>], exponents: &[f64]) -> Array1<f64> {
   let max = exponents.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-  izip!(rows, exponents)
-    .flat_map(|(row, &exponent)| {
-      let scale = if max.is_finite() { (exponent - max).exp() } else { 0.0 };
-      row.iter().map(move |&coefficient| coefficient * scale)
-    })
-    .collect()
+  let width = rows.first().map_or(0, Array1::len);
+  let mut mixed = Array2::<f64>::zeros((rows.len(), width));
+  for (mut mixed_row, row, &exponent) in izip!(mixed.rows_mut(), rows, exponents) {
+    let scale = if max.is_finite() { (exponent - max).exp() } else { 0.0 };
+    mixed_row.zip_mut_with(row, |value, &coefficient| *value = coefficient * scale);
+  }
+  mixed.into_flat()
 }
 
 #[expect(
