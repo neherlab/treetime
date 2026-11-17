@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::partition::storage::dense::DenseEdgeBackward;
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseNodeState};
 use crate::seq::composition::Composition;
 use eyre::Report;
@@ -7,45 +6,14 @@ use itertools::{Itertools, izip};
 use ndarray::{Array1, Array2, ArrayView1};
 use smallvec::{SmallVec, smallvec};
 use std::collections::BTreeMap;
-use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
-use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::{AsciiChar, LogLh};
-use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_inplace;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_internal_error;
 
 pub(crate) const INLINE_CATEGORIES: usize = 8;
 
 pub(crate) type CategoryValues = SmallVec<[f64; INLINE_CATEGORIES]>;
-
-pub(crate) fn dense_site_log_lh(
-  graph: &Graph,
-  pi: &Array1<f64>,
-  backward: &EdgeMap<DenseEdgeBackward>,
-  length: usize,
-) -> Result<Array1<f64>, Report> {
-  let schedule = GraphSchedule::new(graph)?;
-  let mut site_log_lh = Array1::<f64>::zeros(length);
-  for &key in schedule.preorder() {
-    let Some((&(_, first_edge), other_edges)) = schedule.children(key).split_first() else {
-      continue;
-    };
-    let mut log_dis = backward[&first_edge].msg_from_child.dis.mapv(f64::ln);
-    for &(_, edge_key) in other_edges {
-      log_dis.zip_mut_with(&backward[&edge_key].msg_from_child.dis, |l, &p| *l += p.ln());
-    }
-    for (row, total) in izip!(log_dis.rows_mut(), site_log_lh.iter_mut()) {
-      *total += softmax_with_log_norm_inplace(row);
-    }
-    if schedule.parents(key).is_empty() {
-      for (row, total) in izip!(log_dis.rows(), site_log_lh.iter_mut()) {
-        *total += row.dot(pi).ln();
-      }
-    }
-  }
-  Ok(site_log_lh)
-}
 
 #[derive(Clone, Debug)]
 pub(crate) struct DenseMixture {

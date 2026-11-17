@@ -4,7 +4,8 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::dense::partition::assign_sequence;
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::normalize::{
-  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
+  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_inplace, normalize_sites_from_log,
+  normalize_sites_inplace,
 };
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, TransitionCounts};
 use crate::partition::storage::dense::{
@@ -14,7 +15,8 @@ use crate::partition::storage::dense::{
 use crate::seq::indel::{InDel, compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use eyre::Report;
 use itertools::{Itertools, izip};
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
+use parking_lot::Mutex;
 use smallvec::smallvec;
 use std::sync::Arc;
 use treetime_graph::graph::Graph;
@@ -92,6 +94,40 @@ pub(crate) fn indexed_backward(
   graph: &Graph,
   branch_lengths: &EdgeMap<f64>,
 ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
+  run_indexed_backward(inputs, gtr, kind, graph, branch_lengths, None)
+}
+
+pub(crate) fn indexed_backward_with_site_log_lh(
+  partition: &impl IndexedPartition,
+  gtr: &GTR,
+  graph: &Graph,
+  branch_lengths: &EdgeMap<f64>,
+  length: usize,
+) -> Result<(MarginalBackward<DenseNodeState, DenseEdgeBackward>, Array1<f64>), Report> {
+  let site_log_norms = Mutex::new(NodeMap::new());
+  let backward = run_indexed_backward(
+    partition.inputs(),
+    gtr,
+    partition.indexed_kind(),
+    graph,
+    branch_lengths,
+    Some(&site_log_norms),
+  )?;
+  let site_log_lh = site_log_norms
+    .into_inner()
+    .into_values()
+    .fold(Array1::zeros(length), |total, node| total + node);
+  Ok((backward, site_log_lh))
+}
+
+fn run_indexed_backward(
+  inputs: &DenseInputs,
+  gtr: &GTR,
+  kind: IndexedKind<'_>,
+  graph: &Graph,
+  branch_lengths: &EdgeMap<f64>,
+  site_log_norms: Option<&Mutex<NodeMap<Array1<f64>>>>,
+) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let pass = IndexedBackwardPass {
@@ -99,6 +135,7 @@ pub(crate) fn indexed_backward(
     gtr,
     min_branch_length: inputs.min_branch_length,
     branch_lengths,
+    site_log_norms,
   };
   let outputs = match kind {
     IndexedKind::Dense {
@@ -143,6 +180,7 @@ struct IndexedBackwardPass<'a> {
   gtr: &'a GTR,
   min_branch_length: f64,
   branch_lengths: &'a EdgeMap<f64>,
+  site_log_norms: Option<&'a Mutex<NodeMap<Array1<f64>>>>,
 }
 
 impl IndexedBackwardPass<'_> {
@@ -154,6 +192,7 @@ impl IndexedBackwardPass<'_> {
     leaf_backward: impl Fn(&L) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
     internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
   ) -> Result<(IndexedBackwardOutput, IndexedBackwardOutput), Report> {
+    let mut own_site_log_norms = None;
     let (mut node, msg_to_parent) = if self.schedule.children(key).is_empty() {
       let leaf =
         leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no observation before the marginal backward pass"))?;
@@ -176,7 +215,9 @@ impl IndexedBackwardPass<'_> {
       for edge in other_edges {
         log_dis.zip_mut_with(&edge.msg_from_child.dis, |l, &p| *l += p.ln());
       }
-      let (dis, delta_ll) = normalize_from_log(log_dis);
+      let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
+      let delta_ll = site_log_norms.iter().sum();
+      own_site_log_norms = Some(site_log_norms);
       let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<LogLh>() + LogLh::new(delta_ll);
       let profile = DenseSeqDistribution { dis, log_lh };
       (
@@ -199,7 +240,12 @@ impl IndexedBackwardPass<'_> {
       }]
     } else {
       let mut dis = &msg_to_parent.dis * self.gtr.pi();
-      let delta_ll = normalize_inplace(&mut dis);
+      let root_log_norms = normalize_sites_inplace(&mut dis);
+      let delta_ll = root_log_norms.iter().sum();
+      own_site_log_norms = Some(match own_site_log_norms {
+        Some(site_log_norms) => site_log_norms + root_log_norms,
+        None => root_log_norms,
+      });
       node.profile = DenseSeqDistribution {
         dis,
         log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
@@ -207,6 +253,9 @@ impl IndexedBackwardPass<'_> {
       PerEdge::new()
     };
 
+    if let (Some(site_log_norms), Some(own)) = (self.site_log_norms, own_site_log_norms) {
+      site_log_norms.lock().insert(key, own);
+    }
     let output = Arc::new((node, parent_message));
     Ok((Arc::clone(&output), output))
   }

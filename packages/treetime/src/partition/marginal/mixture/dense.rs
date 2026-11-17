@@ -1,11 +1,12 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::partition_model::PartitionModel;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::mixture::site_log_lh::{DenseMixture, dense_mixture, dense_site_log_lh};
+use crate::partition::marginal::mixture::site_log_lh::{DenseMixture, dense_mixture};
 use crate::partition::marginal::shared::pass::{
-  IndexedForwardMessages, IndexedPartition, indexed_forward_messages, indexed_forward_sequences,
+  IndexedForwardMessages, IndexedPartition, indexed_backward_with_site_log_lh, indexed_forward_messages,
+  indexed_forward_sequences,
 };
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalUpdate};
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use eyre::Report;
 use itertools::Itertools;
@@ -25,8 +26,9 @@ pub(crate) fn dense_mixture_update(
   let mut categories = vec![];
   let mut site_log_lh = vec![];
   for gtr in model.category_gtrs()? {
-    let MarginalBackward { node_states, backward } = partition.marginal_backward(&gtr, graph, branch_lengths, &())?;
-    site_log_lh.push(dense_site_log_lh(graph, gtr.pi(), &backward, partition.length)?);
+    let (MarginalBackward { node_states, backward }, category_site_log_lh) =
+      indexed_backward_with_site_log_lh(partition, &gtr, graph, branch_lengths, partition.length)?;
+    site_log_lh.push(category_site_log_lh);
     let IndexedForwardMessages { node_states, forward } =
       indexed_forward_messages(partition.inputs(), &gtr, graph, branch_lengths, node_states, &backward)?;
     profiles.push(node_states);
@@ -64,8 +66,9 @@ pub(crate) fn dense_mixture_log_lh(
     .category_gtrs()?
     .iter()
     .map(|gtr| {
-      let MarginalBackward { backward, .. } = partition.marginal_backward(gtr, graph, branch_lengths, &())?;
-      dense_site_log_lh(graph, gtr.pi(), &backward, partition.length)
+      let (_, site_log_lh) =
+        indexed_backward_with_site_log_lh(partition, gtr, graph, branch_lengths, partition.length)?;
+      Ok(site_log_lh)
     })
     .try_collect::<_, Vec<_>, Report>()?;
   Ok(dense_mixture(&site_log_lh, model.gamma().weights())?.log_lh)

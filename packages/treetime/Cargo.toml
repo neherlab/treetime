@@ -44,6 +44,7 @@ noisy_float = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
 ordered-float = { workspace = true }
+parking_lot = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 rayon = { workspace = true }
@@ -59,7 +60,6 @@ approx = { workspace = true }
 criterion = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
-parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rstest = { workspace = true }

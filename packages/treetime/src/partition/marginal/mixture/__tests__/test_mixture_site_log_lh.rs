@@ -3,7 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::mixture::__tests__::fixtures::tests::helpers::{GAP_FREE, MISSING_DATA, fixture};
-  use crate::partition::marginal::mixture::site_log_lh::{SparseMixture, SparseSiteLogLh, dense_site_log_lh};
+  use crate::partition::marginal::mixture::site_log_lh::{SparseMixture, SparseSiteLogLh};
+  use crate::partition::marginal::shared::pass::indexed_backward_with_site_log_lh;
   use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
   use crate::pretty_assert_abs_diff_eq;
   use crate::test_utils::{arb_simulated_case, gtr_from_model, leaf_seq_inputs, make_nonuniform_gtr};
@@ -22,10 +23,17 @@ mod tests {
   fn test_dense_site_log_lh_sums_to_the_pass_log_lh(#[case] alignment: &[(&str, &str)]) -> Result<(), Report> {
     let fixture = fixture(alignment)?;
     let gtr = make_nonuniform_gtr()?;
-    let MarginalUpdate { edges, log_lh, .. } =
+    let MarginalUpdate { log_lh, .. } =
       fixture.dense.marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &())?;
 
-    let actual = dense_site_log_lh(&fixture.graph, gtr.pi(), &edges.backward, fixture.dense.length)?.sum();
+    let (_, site_log_lh) = indexed_backward_with_site_log_lh(
+      &fixture.dense,
+      &gtr,
+      &fixture.graph,
+      &fixture.branch_lengths,
+      fixture.dense.length,
+    )?;
+    let actual = site_log_lh.sum();
 
     pretty_assert_abs_diff_eq!(log_lh.value(), actual, epsilon = 1e-10);
     Ok(())
@@ -61,14 +69,17 @@ mod tests {
     let fixture = fixture(&GAP_FREE)?;
     let gtr = make_nonuniform_gtr()?;
     let root = fixture.graph.root_key()?;
-    let dense = fixture
-      .dense
-      .marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &())?;
     let sparse =
       fixture
         .sparse
         .marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &fixture.sparse_nodes)?;
-    let expected = dense_site_log_lh(&fixture.graph, gtr.pi(), &dense.edges.backward, fixture.dense.length)?;
+    let (_, expected) = indexed_backward_with_site_log_lh(
+      &fixture.dense,
+      &gtr,
+      &fixture.graph,
+      &fixture.branch_lengths,
+      fixture.dense.length,
+    )?;
 
     let sites = SparseSiteLogLh::from_pass(&sparse.node_states[&root], &sparse.edges.backward, &fixture.sparse.alphabet);
     let mixture = SparseMixture::new(

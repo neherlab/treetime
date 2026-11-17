@@ -1,29 +1,33 @@
-use ndarray::{Array, Array2, Axis, Dimension, Zip};
+use itertools::izip;
+use ndarray::{Array, Array1, Array2, Axis, Dimension, Zip};
 use treetime_primitives::LogLh;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_inplace;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
-  let norm = dis.sum_axis(Axis(1));
-  let n_cols = dis.ncols().to_f64_exact();
-  let mut log_lh = 0.0;
-  for (ri, mut row) in dis.outer_iter_mut().enumerate() {
-    let n = norm[ri];
-    if n > 0.0 && n.is_finite() {
-      row /= n;
-      log_lh += n.ln();
-    } else {
-      row.fill(1.0 / n_cols);
-      log_lh += f64::NEG_INFINITY;
-    }
-  }
-  log_lh
+  normalize_sites_inplace(dis).iter().sum()
 }
 
-pub(crate) fn normalize_from_log(log_dis: Array2<f64>) -> (Array2<f64>, f64) {
+pub(crate) fn normalize_sites_inplace(dis: &mut Array2<f64>) -> Array1<f64> {
+  let norm = dis.sum_axis(Axis(1));
+  let n_cols = dis.ncols().to_f64_exact();
+  izip!(dis.outer_iter_mut(), &norm)
+    .map(|(mut row, &n)| {
+      if n > 0.0 && n.is_finite() {
+        row /= n;
+        n.ln()
+      } else {
+        row.fill(1.0 / n_cols);
+        f64::NEG_INFINITY
+      }
+    })
+    .collect()
+}
+
+pub(crate) fn normalize_sites_from_log(log_dis: Array2<f64>) -> (Array2<f64>, Array1<f64>) {
   let mut dis = log_dis;
-  let log_lh = dis.rows_mut().into_iter().map(softmax_with_log_norm_inplace).sum();
-  (dis, log_lh)
+  let site_log_norms = dis.rows_mut().into_iter().map(softmax_with_log_norm_inplace).collect();
+  (dis, site_log_norms)
 }
 
 pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
