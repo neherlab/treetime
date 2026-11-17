@@ -1,14 +1,26 @@
 ##gff-version 3
-##sequence-region   . 266 29533
+##sequence-region . 1 29903
 .	.	gene	26245	26472	.	+	.	gene_name=E
+.	.	CDS	26245	26472	.	+	0	Name=E;gene_name=E
 .	.	gene	26523	27191	.	+	.	gene_name=M
+.	.	CDS	26523	27191	.	+	0	Name=M;gene_name=M
 .	.	gene	28274	29533	.	+	.	gene_name=N
+.	.	CDS	28274	29533	.	+	0	Name=N;gene_name=N
 .	.	gene	266	13468	.	+	.	gene_name=ORF1a
+.	.	CDS	266	13468	.	+	0	Name=ORF1a;gene_name=ORF1a
 .	.	gene	13468	21555	.	+	.	gene_name=ORF1b
+.	.	CDS	13468	21555	.	+	0	Name=ORF1b;gene_name=ORF1b
 .	.	gene	25393	26220	.	+	.	gene_name=ORF3a
+.	.	CDS	25393	26220	.	+	0	Name=ORF3a;gene_name=ORF3a
 .	.	gene	27202	27387	.	+	.	gene_name=ORF6
+.	.	CDS	27202	27387	.	+	0	Name=ORF6;gene_name=ORF6
 .	.	gene	27394	27759	.	+	.	gene_name=ORF7a
+.	.	CDS	27394	27759	.	+	0	Name=ORF7a;gene_name=ORF7a
 .	.	gene	27756	27887	.	+	.	gene_name=ORF7b
+.	.	CDS	27756	27887	.	+	0	Name=ORF7b;gene_name=ORF7b
 .	.	gene	27894	28259	.	+	.	gene_name=ORF8
+.	.	CDS	27894	28259	.	+	0	Name=ORF8;gene_name=ORF8
 .	.	gene	28284	28577	.	+	.	gene_name=ORF9b
+.	.	CDS	28284	28577	.	+	0	Name=ORF9b;gene_name=ORF9b
 .	.	gene	21563	25384	.	+	.	gene_name=S
+.	.	CDS	21563	25384	.	+	0	Name=S;gene_name=S

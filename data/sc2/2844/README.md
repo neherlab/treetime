@@ -7,7 +7,7 @@
 - `tree.nwk`: the topology of the source tree of the dataset, whose origin is not recorded, with branch lengths in substitutions per site fitted by IQ-TREE 3.1.4 under GTR+G on that fixed topology, and the root next to `Wuhan-Hu-1/2019`
 - `aln.fasta.xz`: one sequence per tip of the tree
 - `metadata.tsv.xz`: the rows of the Nextstrain open SARS-CoV-2 metadata (`s3://nextstrain-data/files/ncov/open/metadata.tsv.zst`, version of 2026-10-18, `metadata_tsv_sha256sum` `f59776a80a1de6bf6d48acfb7f8d53005608e659098eff86c1ea09e3f2485e6d`) whose `strain`, `genbank_accession`, or `genbank_accession_rev` without its version names a tip. The `strain` column holds the tip name, so a genome that the tree names by its accession keeps that name. 4 tips have no row: `Japan/SZ-NIG-4-C4732/2022`, `OX231729`, `Switzerland/BL-ETHZ-561456/2020`, `USA/WA-S90/2020`
-- `annotation.gff3`: the genes of the Wuhan-Hu-1 reference
+- `annotation.gff3`: the genes of the Wuhan-Hu-1 reference, each with a CDS row at the same coordinates
 
 ## Regenerate
 

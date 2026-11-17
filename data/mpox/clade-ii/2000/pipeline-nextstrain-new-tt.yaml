@@ -29,7 +29,8 @@ steps:
       tree: "{{ steps.optimize.outputs.nwk }}"
       alignment:
         - "aln.fasta.xz"
-      annotation: "annotation.gff3"
+      annotation:
+        - "annotation.gff3"
       translations: "translations/{cds}.fasta.xz"
       allow_missing_sequences: true
 

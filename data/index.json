@@ -526,11 +526,11 @@
     },
     {
       "path": "mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml",
-      "size": 1805
+      "size": 1815
     },
     {
       "path": "mpox/clade-ii/2000/pipeline-nextstrain.yaml",
-      "size": 1970
+      "size": 1980
     },
     {
       "path": "mpox/clade-ii/2000/prune-collapse.yaml",
@@ -1522,7 +1522,7 @@
     },
     {
       "path": "sc2/2844/README.md",
-      "size": 1646
+      "size": 1691
     },
     {
       "path": "sc2/2844/aln.fasta.xz",
@@ -1534,7 +1534,7 @@
     },
     {
       "path": "sc2/2844/annotation.gff3",
-      "size": 544
+      "size": 1138
     },
     {
       "path": "sc2/2844/metadata.tsv.xz",
@@ -1558,7 +1558,7 @@
     },
     {
       "path": "sc2/5100/annotation.gff3",
-      "size": 544
+      "size": 1138
     },
     {
       "path": "sc2/5100/clock-outgroup.yaml",

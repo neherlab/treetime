@@ -45,5 +45,6 @@ steps:
         - "aln.fasta.xz"
       method_anc: "marginal"
       impute_missing_data: true
-      annotation: "annotation.gff3"
+      annotation:
+        - "annotation.gff3"
       translations: "translations/{cds}.fasta.xz"
