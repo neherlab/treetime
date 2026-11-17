@@ -45,7 +45,7 @@ pub(crate) fn sparse_mixture_update(
     let root = node_states
       .get_mut(root_key)
       .ok_or_else(|| make_internal_report!("Rate category has no state at the root {root_key}"))?;
-    site_log_lh.push(SparseSiteLogLh::from_root(root, &partition.alphabet));
+    site_log_lh.push(SparseSiteLogLh::from_pass(root, &edges.backward, &partition.alphabet));
     root.profile.scales = SiteScales::default();
     for edge in edges.backward.values_mut() {
       edge.msg_to_parent.scales = SiteScales::default();
@@ -105,8 +105,8 @@ pub(crate) fn sparse_mixture_log_lh(
     .category_gtrs()?
     .iter()
     .map(|gtr| {
-      let MarginalBackward { node_states, .. } = partition.marginal_backward(gtr, graph, branch_lengths, &input)?;
-      Ok(SparseSiteLogLh::from_root(&node_states[&root_key], &partition.alphabet))
+      let MarginalBackward { node_states, backward } = partition.marginal_backward(gtr, graph, branch_lengths, &input)?;
+      Ok(SparseSiteLogLh::from_pass(&node_states[&root_key], &backward, &partition.alphabet))
     })
     .try_collect::<_, Vec<_>, Report>()?;
   Ok(

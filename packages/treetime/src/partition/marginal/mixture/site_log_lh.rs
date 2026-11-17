@@ -1,12 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::storage::dense::DenseEdgeBackward;
-use crate::partition::storage::sparse::SparseNodeState;
+use crate::partition::storage::sparse::{SparseEdgeBackward, SparseNodeState};
 use crate::seq::composition::Composition;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::{Array1, Array2, ArrayView1};
-use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use smallvec::{SmallVec, smallvec};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::schedule::GraphSchedule;
@@ -88,12 +87,26 @@ pub(crate) struct SparseSiteLogLh {
 }
 
 impl SparseSiteLogLh {
-  pub(crate) fn from_root(root: &SparseNodeState, alphabet: &Alphabet) -> Self {
+  pub(crate) fn from_pass(
+    root: &SparseNodeState,
+    backward: &EdgeMap<SparseEdgeBackward>,
+    alphabet: &Alphabet,
+  ) -> Self {
     let scales = &root.profile.scales;
-    let sites = scales
-      .sites()
-      .iter()
-      .map(|&(pos, offset)| {
+    let sites = backward
+      .values()
+      .map(|edge| edge.msg_to_parent.scales.sites())
+      .chain([scales.sites()])
+      .map(|sites| sites.iter().copied())
+      .kmerge_by(|a, b| a.0 < b.0)
+      .coalesce(|(pos_a, a), (pos_b, b)| {
+        if pos_a == pos_b {
+          Ok((pos_a, a + b))
+        } else {
+          Err(((pos_a, a), (pos_b, b)))
+        }
+      })
+      .map(|(pos, offset)| {
         let state = root.sequence[pos];
         let base = if root.profile.variable.contains_key(pos) || !alphabet.is_canonical(state) {
           0.0
@@ -146,19 +159,24 @@ impl SparseMixture {
       );
     }
     let log_weights = weights.mapv(f64::ln);
-    let mut listed: BTreeMap<usize, (AsciiChar, Vec<Option<f64>>)> = BTreeMap::new();
-    for (k, category) in categories.iter().enumerate() {
-      for &(pos, state, value) in &category.sites {
-        listed
-          .entry(pos)
-          .or_insert_with(|| (state, vec![None; categories.len()]))
-          .1[k] = Some(value);
+    let mut listed: Vec<(usize, AsciiChar, SmallVec<[Option<f64>; INLINE_CATEGORIES]>)> = vec![];
+    let entries = categories
+      .iter()
+      .enumerate()
+      .map(|(k, category)| category.sites.iter().map(move |&(pos, state, value)| (pos, k, state, value)))
+      .kmerge_by(|a, b| (a.0, a.1) < (b.0, b.1));
+    for (pos, k, state, value) in entries {
+      if listed.last().is_none_or(|&(last, ..)| last != pos) {
+        listed.push((pos, state, smallvec![None; categories.len()]));
+      }
+      if let Some((_, _, values)) = listed.last_mut() {
+        values[k] = Some(value);
       }
     }
     let mut log_lh = 0.0;
     let sites = listed
       .into_iter()
-      .map(|(pos, (state, values))| {
+      .map(|(pos, state, values)| {
         let site_log_lh: CategoryValues = izip!(categories, values)
           .map(|(category, value)| value.unwrap_or_else(|| category.group(state)))
           .collect();

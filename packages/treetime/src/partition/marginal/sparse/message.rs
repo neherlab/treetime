@@ -7,7 +7,7 @@ use crate::partition::storage::sparse::{FixedProfiles, INLINE_STATES, SiteProfil
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use eyre::Report;
-use itertools::{Itertools, izip};
+use itertools::izip;
 use ndarray::linalg::general_mat_vec_mul;
 use ndarray::{Array1, Array2, ArrayViewMut1, aview_mut1, aview1};
 use smallvec::{SmallVec, smallvec};
@@ -89,7 +89,7 @@ pub(crate) fn combine_messages(
     let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
     if let Some(inputs) = &scale_inputs {
       let child_scales: f64 = izip!(messages, inputs.child_sequences)
-        .map(|(msg, child_sequence)| message_site_scale(msg, child_sequence, pos, alphabet))
+        .map(|(msg, child_sequence)| message_group_scale(msg, child_sequence, pos, alphabet))
         .sum();
       candidate_scales.push((pos, log_norm + child_scales));
     }
@@ -125,7 +125,6 @@ pub(crate) fn combine_messages(
       messages,
       &inputs,
       &seq_dis,
-      sites,
       &shared_log_norms,
       candidate_scales,
       alphabet,
@@ -140,12 +139,12 @@ pub(crate) struct ScaleInputs<'a> {
   pub(crate) child_sequences: &'a [&'a Seq],
 }
 
-fn message_site_scale(message: &SparseSeqDistribution, sequence: &Seq, pos: usize, alphabet: &Alphabet) -> f64 {
+fn message_group_scale(message: &SparseSeqDistribution, sequence: &Seq, pos: usize, alphabet: &Alphabet) -> f64 {
   let state = sequence[pos];
   if message.variable.contains_key(pos) || !alphabet.is_canonical(state) {
-    message.scales.site(pos)
+    0.0
   } else {
-    message.scales.group(state) + message.scales.site(pos)
+    message.scales.group(state)
   }
 }
 
@@ -153,7 +152,6 @@ fn combine_scales(
   messages: &[&SparseSeqDistribution],
   inputs: &ScaleInputs<'_>,
   seq_dis: &SparseSeqDistribution,
-  sites: &CandidateSites,
   shared_log_norms: &[(AsciiChar, f64)],
   candidate_scales: Vec<(usize, f64)>,
   alphabet: &Alphabet,
@@ -171,28 +169,16 @@ fn combine_scales(
       .find(|(group_state, _)| *group_state == state)
       .map_or(0.0, |(_, scale)| *scale)
   };
-  let own = candidate_scales.into_iter().map(|(pos, scale)| {
-    let state = inputs.sequence[pos];
-    let base = if seq_dis.variable.contains_key(pos) || !alphabet.is_canonical(state) {
-      0.0
-    } else {
-      group(state)
-    };
-    (pos, scale - base)
-  });
-  let inherited = messages
-    .iter()
-    .flat_map(|msg| msg.scales.sites().iter().copied())
-    .filter(|&(pos, _)| !sites.contains(pos));
-  let sites = own
-    .chain(inherited)
-    .sorted_by_key(|&(pos, _)| pos)
-    .coalesce(|(pos_a, a), (pos_b, b)| {
-      if pos_a == pos_b {
-        Ok((pos_a, a + b))
+  let sites = candidate_scales
+    .into_iter()
+    .map(|(pos, scale)| {
+      let state = inputs.sequence[pos];
+      let base = if seq_dis.variable.contains_key(pos) || !alphabet.is_canonical(state) {
+        0.0
       } else {
-        Err(((pos_a, a), (pos_b, b)))
-      }
+        group(state)
+      };
+      (pos, scale - base)
     })
     .collect();
   SiteScales::new(groups, sites)
@@ -204,7 +190,7 @@ pub(crate) fn propagate_raw(exp_qt: &Array2<f64>, seq_dis: &SparseSeqDistributio
     variable: VarPosMap::with_capacity(seq_dis.variable.len()),
     fixed: FixedProfiles::default(),
     log_lh: seq_dis.log_lh,
-    scales: seq_dis.scales.clone(),
+    scales: seq_dis.scales.groups_only(),
   };
   for (pos, var) in &seq_dis.variable {
     message

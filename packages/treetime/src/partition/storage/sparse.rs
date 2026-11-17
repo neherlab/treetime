@@ -179,11 +179,11 @@ impl SiteScales {
       .map_or(0.0, |(_, scale)| *scale)
   }
 
-  pub(crate) fn site(&self, pos: usize) -> f64 {
-    self
-      .sites
-      .binary_search_by_key(&pos, |(site, _)| *site)
-      .map_or(0.0, |index| self.sites[index].1)
+  pub(crate) fn groups_only(&self) -> Self {
+    Self {
+      groups: self.groups.clone(),
+      sites: vec![],
+    }
   }
 
   pub(crate) fn sites(&self) -> &[(usize, f64)] {

@@ -40,12 +40,15 @@ mod tests {
     let fixture = fixture(alignment)?;
     let gtr = make_nonuniform_gtr()?;
     let root = fixture.graph.root_key()?;
-    let MarginalUpdate { node_states, log_lh, .. } =
-      fixture
+    let MarginalUpdate {
+      node_states,
+      edges,
+      log_lh,
+    } = fixture
         .sparse
         .marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &fixture.sparse_nodes)?;
 
-    let sites = SparseSiteLogLh::from_root(&node_states[&root], &fixture.sparse.alphabet);
+    let sites = SparseSiteLogLh::from_pass(&node_states[&root], &edges.backward, &fixture.sparse.alphabet);
     let composition = &fixture.sparse.obs_nodes[&root].composition;
     let actual = SparseMixture::new(&[sites], &array![1.0], composition, &fixture.sparse.alphabet)?.log_lh;
 
@@ -67,7 +70,7 @@ mod tests {
         .marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &fixture.sparse_nodes)?;
     let expected = dense_site_log_lh(&fixture.graph, gtr.pi(), &dense.edges.backward, fixture.dense.length)?;
 
-    let sites = SparseSiteLogLh::from_root(&sparse.node_states[&root], &fixture.sparse.alphabet);
+    let sites = SparseSiteLogLh::from_pass(&sparse.node_states[&root], &sparse.edges.backward, &fixture.sparse.alphabet);
     let mixture = SparseMixture::new(
       &[sites],
       &array![1.0],
@@ -102,11 +105,11 @@ mod tests {
       let (partition, nodes) = fitch.into_marginal_sparse(graph).expect("sparse partition builds");
       let partition = partition.with_site_scales(true);
       let gtr = gtr_from_model(&case.model, 1.0).expect("model converts");
-      let MarginalUpdate { node_states, log_lh, .. } =
+      let MarginalUpdate { node_states, edges, log_lh } =
         partition.marginal_update(&gtr, graph, &lengths, &nodes).expect("marginal update runs");
       let root = graph.root_key().expect("tree has a root");
 
-      let sites = SparseSiteLogLh::from_root(&node_states[&root], &partition.alphabet);
+      let sites = SparseSiteLogLh::from_pass(&node_states[&root], &edges.backward, &partition.alphabet);
       let actual = SparseMixture::new(&[sites], &array![1.0], &partition.obs_nodes[&root].composition, &partition.alphabet)
         .expect("mixture builds")
         .log_lh;
