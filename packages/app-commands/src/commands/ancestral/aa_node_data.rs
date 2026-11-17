@@ -194,16 +194,14 @@ pub(crate) fn read_gff3_annotations(
     return Ok(BTreeMap::new());
   };
 
-  let features = select_cds_features(gff3_cds_read_file(path)?, cdses, path)?;
-  Ok(
-    features
-      .into_iter()
-      .map(|feature| {
-        let annotation = gff_cds_to_annotation(&feature);
-        (feature.name, annotation)
-      })
-      .collect(),
-  )
+  let features = select_cds_features(gff3_cds_read_file(path)?.features, cdses, path)?;
+  features
+    .into_iter()
+    .map(|feature| {
+      let annotation = gff_cds_to_annotation(&feature)?;
+      Ok((feature.label, annotation))
+    })
+    .collect()
 }
 
 fn select_cds_features(
@@ -218,7 +216,7 @@ fn select_cds_features(
   let wanted: BTreeSet<&str> = cdses.iter().map(String::as_str).collect();
   if let Some(cds) = wanted
     .iter()
-    .find(|cds| !features.iter().any(|feature| feature.name == **cds))
+    .find(|cds| !features.iter().any(|feature| feature.label == **cds))
   {
     return make_error!(
       "--annotation '{}' does not contain a CDS feature for CDS '{cds}'",
@@ -229,43 +227,46 @@ fn select_cds_features(
   Ok(
     features
       .into_iter()
-      .filter(|feature| wanted.contains(feature.name.as_str()))
+      .filter(|feature| wanted.contains(feature.label.as_str()))
       .collect(),
   )
 }
 
-fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotationEntry {
+fn gff_cds_to_annotation(feature: &GffCdsFeature) -> Result<AugurNodeDataJsonAnnotationEntry, Report> {
   let mut other = BTreeMap::new();
   other.insert("seqid".to_owned(), feature.seqid.as_str().into());
+  let strand = Some(feature.strand.symbol().to_owned());
+  let entry_type = Some("CDS".to_owned());
 
-  if feature.segments.len() == 1 {
-    let seg = &feature.segments[0];
-    AugurNodeDataJsonAnnotationEntry {
-      start: Some(seg.start),
-      end: Some(seg.end),
-      strand: Some(feature.strand.clone()),
-      entry_type: Some("CDS".to_owned()),
+  if let [seg] = feature.segments.as_slice() {
+    return Ok(AugurNodeDataJsonAnnotationEntry {
+      start: Some(i64::try_from(seg.start)?),
+      end: Some(i64::try_from(seg.end)?),
+      strand,
+      entry_type,
       segments: None,
       other,
-    }
-  } else {
-    AugurNodeDataJsonAnnotationEntry {
-      start: None,
-      end: None,
-      strand: Some(feature.strand.clone()),
-      entry_type: Some("CDS".to_owned()),
-      segments: Some(
-        feature
-          .segments
-          .iter()
-          .map(|seg| AugurNodeDataJsonAnnotationSegment {
-            start: seg.start,
-            end: seg.end,
-            other: BTreeMap::new(),
-          })
-          .collect(),
-      ),
-      other,
-    }
+    });
   }
+
+  let segments = feature
+    .segments
+    .iter()
+    .map(|seg| {
+      Ok(AugurNodeDataJsonAnnotationSegment {
+        start: i64::try_from(seg.start)?,
+        end: i64::try_from(seg.end)?,
+        other: BTreeMap::new(),
+      })
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+
+  Ok(AugurNodeDataJsonAnnotationEntry {
+    start: None,
+    end: None,
+    strand,
+    entry_type,
+    segments: Some(segments),
+    other,
+  })
 }

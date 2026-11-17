@@ -33,7 +33,7 @@ eyre = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
-percent-encoding = { workspace = true }
+noodles-gff = { workspace = true }
 smart-default = { workspace = true }
 
 [dev-dependencies]

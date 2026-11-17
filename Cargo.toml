@@ -175,6 +175,7 @@ napi-build = "=2.4.3"
 napi-derive = "=3.6.7"
 ndarray-conv = "=0.6.1"
 noisy_float = "=0.2.1"
+noodles-gff = "=0.63.0"
 num = "=0.4.3"
 num-traits = "=0.2.19"
 ordered-float = { version = "=5.5.0", default-features = false }
