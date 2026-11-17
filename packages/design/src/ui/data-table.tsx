@@ -22,6 +22,8 @@ import {
   TableLayout,
   Virtualizer,
   type ColumnProps,
+  type Key,
+  type Selection,
   type SortDescriptor,
   type SortDirection,
 } from "react-aria-components";
@@ -63,6 +65,7 @@ export function DataTable<Data extends RowData>({
   initialSorting,
   rowClassName,
   label,
+  selection,
 }: {
   columns: ReadonlyArray<DataColumn<Data>>;
   rows: readonly Data[];
@@ -70,6 +73,7 @@ export function DataTable<Data extends RowData>({
   initialSorting: SortingState;
   rowClassName?: ((row: Data) => string | undefined) | undefined;
   label: string;
+  selection?: RowSelection | undefined;
 }) {
   const options = useMemo(
     () => ({
@@ -87,6 +91,8 @@ export function DataTable<Data extends RowData>({
 
   const dependencies = useMemo(() => [columns, rowClassName], [columns, rowClassName]);
 
+  const selectionProps = useMemo(() => tableSelection(selection), [selection]);
+
   const toggleSorting = useCallback(
     (descriptor: SortDescriptor) => table.getColumn(String(descriptor.column))?.toggleSorting(),
     [table],
@@ -102,6 +108,7 @@ export function DataTable<Data extends RowData>({
           aria-label={label}
           {...(sort === undefined ? {} : { sortDescriptor: sort })}
           onSortChange={toggleSorting}
+          {...selectionProps}
           className="max-h-[36rem] w-full overflow-auto overscroll-contain text-xs"
         >
           <TableHeader className="bg-card size-full border-b">
@@ -114,7 +121,7 @@ export function DataTable<Data extends RowData>({
                 defaultWidth={header.column.columnDef.meta?.width ?? DEFAULT_WIDTH}
                 minWidth={header.column.columnDef.meta?.minWidth ?? null}
                 className={cn(
-                  "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex h-full cursor-default items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                  "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex h-full items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
                   header.column.columnDef.meta?.numeric === true && "justify-end",
                 )}
               >
@@ -132,7 +139,7 @@ export function DataTable<Data extends RowData>({
               <Row
                 id={row.id}
                 className={cn(
-                  "hover:bg-muted/50 data-focus-visible:ring-ring size-full border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                  "hover:not-data-selected:bg-muted/50 data-selected:bg-selected data-focus-visible:ring-ring size-full border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
                   rowClassName?.(row.original),
                 )}
               >
@@ -155,11 +162,42 @@ export function DataTable<Data extends RowData>({
         </Table>
       </Virtualizer>
     );
-  }, [dependencies, label, rowClassName, table, toggleSorting]);
+  }, [dependencies, label, rowClassName, selectionProps, table, toggleSorting]);
+}
+
+export interface RowSelection {
+  selected: string | undefined;
+  onChange: (id: string) => void;
 }
 
 export function CellText({ text }: { text: string }) {
   return <span title={text}>{text}</span>;
+}
+
+function tableSelection(selection: RowSelection | undefined) {
+  if (selection === undefined) {
+    return {};
+  }
+
+  const { selected, onChange } = selection;
+
+  return {
+    selectionMode: "single",
+    selectionBehavior: "replace",
+    disallowEmptySelection: true,
+    selectedKeys: selected === undefined ? [] : [selected],
+    onSelectionChange: (keys: Selection) => {
+      const key = selectedKey(keys);
+
+      if (key !== undefined) {
+        onChange(String(key));
+      }
+    },
+  } as const;
+}
+
+function selectedKey(keys: Selection): Key | undefined {
+  return keys === "all" ? undefined : keys.values().next().value;
 }
 
 function SortIcon({ direction }: { direction: SortDirection | undefined }) {
