@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::sites::SiteRange;
+  use crate::partition::sites::{SiteRange, site_ranges_from_columns};
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
+  use std::collections::BTreeSet;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
@@ -57,7 +58,30 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::empty(              vec![],                                      vec![]                     )]
+  #[case::singleton(          vec![4],                                     vec!["5"]                  )]
+  #[case::codon_position(     (9..30).step_by(3).collect_vec(),            vec!["10-28\\3"]          )]
+  #[case::gene(               (99..150).collect_vec(),                     vec!["100-150"]            )]
+  #[case::gene_with_a_gap(    (0..10).chain(20..30).collect_vec(),         vec!["1-10", "21-30"]      )]
+  #[case::position_two_spans( vec![1, 4, 7, 20, 23],                       vec!["2-8\\3", "21-24\\3"] )]
+  #[trace]
+  fn test_site_ranges_from_columns(#[case] columns: Vec<usize>, #[case] expected: Vec<&str>) {
+    let columns: BTreeSet<usize> = columns.into_iter().collect();
+    let actual = site_ranges_from_columns(&columns).iter().map(ToString::to_string).collect_vec();
+    assert_eq!(expected, actual);
+  }
+
   proptest! {
+    #[test]
+    fn test_prop_site_ranges_from_columns_cover_the_columns_once(
+      columns in proptest::collection::btree_set(0_usize..200, 0..60),
+    ) {
+      let covered = site_ranges_from_columns(&columns).into_iter().flat_map(SiteRange::columns).collect_vec();
+      prop_assert_eq!(columns.iter().copied().collect_vec(), covered);
+    }
+
     #[test]
     fn test_prop_site_range_text_round_trips(text in generators::site_range_text()) {
       let range: SiteRange = text.parse().unwrap();

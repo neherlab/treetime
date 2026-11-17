@@ -230,7 +230,8 @@ mod tests {
     "Standard input can be read only once, but --alignment lists it 2 times")]
   #[case::ancestral_annotation_without_translations(
     &["ancestral", "--tree", "tree.nwk", "--alignment", "aln.fasta", "--annotation", "genes.gff", "--output-all", "out"],
-    "--translations is required when using --cds-selection, --annotation, or --aa-root-sequence")]
+    "--annotation applies only with --partition-by codon-positions or genes, which read the CDSs of each alignment from \
+     it, or with --translations")]
   #[case::ancestral_translations_with_two_alignments(
     &["ancestral", "--tree", "tree.nwk", "--alignment", "a.fasta", "--alignment", "b.fasta", "--translations", "tr/{cds}.fasta",
       "--cds-selection", "S", "--output-all", "out"],

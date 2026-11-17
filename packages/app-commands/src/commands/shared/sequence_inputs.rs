@@ -1,15 +1,20 @@
 use crate::commands::shared::alignment::{PairedAlignment, pair_alignment};
-use crate::commands::shared::partition::resolve_run_partitions;
+use crate::commands::shared::argument_error::argument_error;
+use crate::commands::shared::partition::{PartitionSpec, partition_entries, resolve_run_partitions};
+use crate::commands::shared::partition_by::{
+  AnnotatedAlignment, PartitionScheme, RateCategoryRule, codon_position_entries, gene_entries, rate_category_entries,
+};
 use crate::commands::shared::tree_input::read_input_tree;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrModel;
+use treetime::partition::fitch::site_changes::fitch_site_change_counts;
 use treetime::partition::resolve::{PartitionEntry, PartitionPlan};
 use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
@@ -19,8 +24,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read_file;
+use treetime_io::gff::{GffCdsAnnotation, gff3_cds_read_file};
 use treetime_io::nwk::{NewickDialect, NwkParse};
 use treetime_schema::schema_defaults;
+use treetime_utils::error::report_to_string;
 
 pub(crate) fn read_tree_and_sources(
   tree: &Path,
@@ -84,7 +91,7 @@ pub(crate) struct SequenceInputs {
   pub(crate) alphabet: Option<AlphabetName>,
   pub(crate) gap_fill: GapFill,
   pub(crate) missing_leaves: MissingLeafLimit,
-  pub(crate) partition_entries: Vec<PartitionEntry>,
+  pub(crate) partitions: PartitionSource,
 }
 
 impl SequenceInputs {
@@ -112,9 +119,106 @@ impl SequenceInputs {
   ) -> Result<SequenceSources, Report> {
     let alignments = self.read(graph, names, log)?;
     let lengths = alignments.iter().map(|alignment| alignment.source.length).collect_vec();
-    let partitions = resolve_run_partitions(&self.partition_entries, model, &lengths, self.alphabet, log)?;
+    let partitions = match &self.partitions {
+      PartitionSource::Entries(entries) => resolve_run_partitions(entries, model, &lengths, self.alphabet, log)?,
+      PartitionSource::Scheme(scheme) => {
+        let entries = scheme.entries(model, graph, &alignments, log)?;
+        resolve_run_partitions(&entries, model, &lengths, self.alphabet, log)?
+      },
+    };
     Ok(SequenceSources { alignments, partitions })
   }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum PartitionSource {
+  Entries(Vec<PartitionEntry>),
+  Scheme(SchemeSource),
+}
+
+impl PartitionSource {
+  pub(crate) fn new(
+    partition: &[PartitionSpec],
+    partition_by: Option<PartitionScheme>,
+    rate_category_rule: Option<RateCategoryRule>,
+    annotation: &[PathBuf],
+  ) -> Result<Self, Report> {
+    Ok(match partition_by {
+      Some(scheme) => Self::Scheme(SchemeSource {
+        scheme,
+        rule: rate_category_rule.unwrap_or_default(),
+        annotations: annotation.to_vec(),
+      }),
+      None => Self::Entries(partition_entries(partition)?),
+    })
+  }
+
+  pub(crate) fn entry_count(&self) -> usize {
+    match self {
+      Self::Entries(entries) => entries.len(),
+      Self::Scheme(_) => 0,
+    }
+  }
+
+  pub(crate) const fn is_scheme(&self) -> bool {
+    matches!(self, Self::Scheme(_))
+  }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SchemeSource {
+  scheme: PartitionScheme,
+  rule: RateCategoryRule,
+  annotations: Vec<PathBuf>,
+}
+
+impl SchemeSource {
+  fn entries(
+    &self,
+    model: &GtrModel,
+    graph: &Graph,
+    alignments: &[AlignmentSource],
+    log: &dyn LogSink,
+  ) -> Result<Vec<PartitionEntry>, Report> {
+    match self.scheme {
+      PartitionScheme::RateCategories => {
+        let counts = alignments
+          .iter()
+          .map(|alignment| {
+            fitch_site_change_counts(graph, alignment.source.alphabet.clone(), alignment.source.nodes.clone())
+          })
+          .collect::<Result<Vec<_>, Report>>()?;
+        rate_category_entries(self.rule, &counts, model, log)
+      },
+      PartitionScheme::CodonPositions | PartitionScheme::Genes => {
+        let annotations = self
+          .annotations
+          .iter()
+          .map(|path| read_annotation(path))
+          .collect::<Result<Vec<_>, Report>>()?;
+        let annotated = izip!(alignments, &annotations)
+          .map(|(alignment, annotation)| AnnotatedAlignment {
+            length: alignment.source.length,
+            annotation,
+          })
+          .collect_vec();
+        if self.scheme == PartitionScheme::CodonPositions {
+          codon_position_entries(&annotated, model, log)
+        } else {
+          gene_entries(&annotated, model, log)
+        }
+      },
+    }
+  }
+}
+
+fn read_annotation(path: &Path) -> Result<GffCdsAnnotation, Report> {
+  gff3_cds_read_file(path).map_err(|report| {
+    argument_error(
+      &["annotation"],
+      format!("--annotation '{}': {}", path.display(), report_to_string(&report)),
+    )
+  })
 }
 
 pub(crate) fn read_sequence_sources(

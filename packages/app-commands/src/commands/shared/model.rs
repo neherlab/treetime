@@ -403,7 +403,11 @@ pub fn check_partition_rates(
   partition_rates: Option<PartitionRatesCli>,
   alignment_files: usize,
   partition_entries: usize,
+  partition_scheme: bool,
 ) -> Result<(), Report> {
+  if partition_scheme {
+    return Ok(());
+  }
   if partition_entries > 0 {
     return check_applies(
       "partition_rates",

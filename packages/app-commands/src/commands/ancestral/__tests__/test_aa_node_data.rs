@@ -168,7 +168,7 @@ mod tests {
     )?;
     let mut settings = settings;
     if settings.get("annotation").is_some() {
-      settings["annotation"] = json!(gff);
+      settings["annotation"] = json!([gff]);
     }
 
     let actual = cds_names(settings.as_object().unwrap())?;
@@ -182,7 +182,7 @@ mod tests {
     let dir = tempdir().unwrap();
     let gff = dir.path().join("genes.gff");
     fs::write(&gff, "##gff-version 3\nref\t.\tCDS\t1\t9\t.\t+\t0\tName=F\n").unwrap();
-    let settings = json!({ "cds_selection": ["S"], "annotation": gff });
+    let settings = json!({ "cds_selection": ["S"], "annotation": [gff] });
 
     assert_error!(
       cds_names(settings.as_object().unwrap()),

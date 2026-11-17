@@ -14,7 +14,9 @@ use crate::commands::shared::output_args::{
 use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
-use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
+use crate::commands::shared::sequence_inputs::{
+  MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
+};
 use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -136,7 +138,7 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
         alphabet: alphabet.map(Into::into),
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
-        partition_entries: vec![],
+        partitions: PartitionSource::Entries(vec![]),
       },
       positions: PositionBase::from_zero_based(zero_based),
       method_anc: method_anc.into(),

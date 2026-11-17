@@ -61,6 +61,8 @@ pub enum RunWarningKind {
   DuplicateMetadataNames,
   /// More than one partition entry has the same name.
   DuplicatePartitionNames,
+  /// Every site of some CDSs of the annotation is also covered by a longer CDS, which owns the site, so `--partition-by` makes no partition for these CDSs.
+  CdsWithoutPartitionSites,
   /// The branch-length optimizer did not converge on some edges: it reached its iteration limit, or it stopped at the upper end of its search interval while the likelihood still increased; their lengths may not maximize the likelihood.
   BranchLengthsNotConverged,
   /// Some final dates lie outside the input dates: a tip outside its own input date range, a tip without an input date outside the sampling period (the range from the earliest to the latest input date), or an internal node after the latest input date. The clock alone dates these nodes, as it does for the tips that the clock filter flagged.

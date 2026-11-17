@@ -19,7 +19,12 @@ const ANNOTATION_KEY: &str = "annotation";
 
 pub fn cds_names(settings: &Map<String, Value>) -> Result<Vec<String>, Report> {
   let listed = cds_selection_names(settings);
-  let annotation = settings.get(ANNOTATION_KEY).and_then(Value::as_str).map(Path::new);
+  let annotation = settings
+    .get(ANNOTATION_KEY)
+    .and_then(Value::as_array)
+    .and_then(|paths| paths.first())
+    .and_then(Value::as_str)
+    .map(Path::new);
   let annotations = read_gff3_annotations(annotation, &listed)?;
   Ok(selected_cdses(&listed, &annotations))
 }

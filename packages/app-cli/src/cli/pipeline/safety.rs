@@ -269,7 +269,7 @@ mod tests {
     "aa/F.fasta",
   )]
   #[case::cds_names_of_the_annotation(
-    json!({ "translations": "tr/{cds}.fasta", "annotation": "genes.gff", "output_translations": "aa/{cds}.fasta" }),
+    json!({ "translations": "tr/{cds}.fasta", "annotation": ["genes.gff"], "output_translations": "aa/{cds}.fasta" }),
     json!({ "output_sequences": "aa/G.fasta" }),
     "aa/G.fasta",
   )]
@@ -322,7 +322,7 @@ mod tests {
       json!({
         "steps": [
           ancestral_step("a", json!({ "output_sequences": "a.fasta" })),
-          ancestral_step("b", json!({ "translations": "tr/{cds}.fasta", "annotation": "absent.gff", "output_translations": "aa/{cds}.fasta" }))
+          ancestral_step("b", json!({ "translations": "tr/{cds}.fasta", "annotation": ["absent.gff"], "output_translations": "aa/{cds}.fasta" }))
         ]
       }),
       Some(&btreeset! { o!("a") }),
@@ -337,7 +337,7 @@ mod tests {
       dir.path(),
       json!({
         "steps": [
-          ancestral_step("b", json!({ "translations": "tr/{cds}.fasta", "annotation": "absent.gff", "output_translations": "aa/{cds}.fasta" }))
+          ancestral_step("b", json!({ "translations": "tr/{cds}.fasta", "annotation": ["absent.gff"], "output_translations": "aa/{cds}.fasta" }))
         ]
       }),
       None,

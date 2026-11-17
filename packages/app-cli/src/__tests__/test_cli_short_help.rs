@@ -34,7 +34,7 @@ mod tests {
            "--keep-polytomies", "--max-iter", "--coalescent", "--n-skyline", "--model", "--output-all",
            "--output-selection", "--config", "--dry-run", "--seed", "--jobs", "--verbose", "--quiet", "--help"]),
     (AN, &["--tree", "--alignment", "--model", "--method-anc", "--include-leaves", "--impute-missing-data",
-           "--reconstruct-tip-states", "--report-ambiguous", "--annotation", "--translations", "--cds-selection",
+           "--reconstruct-tip-states", "--report-ambiguous", "--translations", "--cds-selection",
            "--aa-root-sequence", "--aa-model", "--output-all", "--output-selection", "--config", "--dry-run", "--seed",
            "--jobs", "--verbose", "--quiet", "--help"]),
     (CL, &["--tree", "--metadata", "--date-column", "--clock-filter", "--prune-filtered-tips", "--prune-undated-tips", "--reroot", "--outgroup", "--keep-root",

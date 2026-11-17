@@ -493,7 +493,7 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk", "translations": "tr/{cds}.fasta", "annotation": "genes.gff", "output_translations": "out/{cds}.fasta" } },
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk", "translations": "tr/{cds}.fasta", "annotation": ["genes.gff"], "output_translations": "out/{cds}.fasta" } },
         { "name": "anc2", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.anc.outputs.translations }}" } }
       ]
     });

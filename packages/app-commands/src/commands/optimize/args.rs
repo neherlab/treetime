@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::annotation::AnnotationArgs;
 use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::dependent_settings::check_applies;
@@ -13,11 +14,14 @@ use crate::commands::shared::model::{
 use crate::commands::shared::output_args::{
   DivergenceUnits, OptimizeOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
 };
-use crate::commands::shared::partition::{PartitionArgs, partition_entries};
+use crate::commands::shared::partition::PartitionArgs;
+use crate::commands::shared::partition_by::{SchemeArguments, check_scheme_arguments};
 use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
-use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
+use crate::commands::shared::sequence_inputs::{
+  MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
+};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 #[cfg(feature = "clap")]
@@ -77,7 +81,12 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
     let TreetimeOptimizeArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
-      partition: PartitionArgs { partition },
+      partition: PartitionArgs {
+        partition,
+        partition_by,
+        rate_category_rule,
+      },
+      annotation_args: AnnotationArgs { annotation },
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       missing_sequences: MissingSequenceArgs {
@@ -112,7 +121,20 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
     } = raw;
     let tree = tree.ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
     check_required_alignment_paths(&alignment)?;
-    check_partition_rates(partition_rates, alignment.len(), partition.len())?;
+    check_scheme_arguments(&SchemeArguments {
+      partition_by,
+      rate_category_rule,
+      annotation: &annotation,
+      alignments: alignment.len(),
+      alphabet: alphabet.map(Into::into),
+      translations: None,
+    })?;
+    check_partition_rates(
+      partition_rates,
+      alignment.len(),
+      partition.len(),
+      partition_by.is_some(),
+    )?;
     let dense = representation_dense(representation);
     check_sparse_only_settings(dense, no_merge_shared_mutations, no_hoist_reversions)?;
     Ok(Self {
@@ -124,7 +146,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
         alphabet: alphabet.map(Into::into),
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
-        partition_entries: partition_entries(&partition)?,
+        partitions: PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?,
       },
       positions: PositionBase::from_zero_based(zero_based),
       model: resolve_model(model, &model_params)?,
@@ -263,6 +285,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub partition: PartitionArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub annotation_args: AnnotationArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

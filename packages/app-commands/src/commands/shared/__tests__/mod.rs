@@ -10,6 +10,8 @@ mod test_output_args;
 mod test_output_requests;
 mod test_output_resolution;
 mod test_partition;
+mod test_partition_by;
+mod test_partition_by_args;
 mod test_run_paths;
 mod test_seed_args;
 mod test_sequence_inputs;

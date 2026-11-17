@@ -1,6 +1,7 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::{TimetreeAmbiguityArgs, resolve_ambiguity_outputs};
+use crate::commands::shared::annotation::AnnotationArgs;
 use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
 use crate::commands::shared::clock_filter::{ClockFilterArgs, TipPruning};
@@ -19,13 +20,16 @@ use crate::commands::shared::output_args::{
   ClockOutputArgs, DivergenceUnits, OutputCoreArgs, OutputRequest, TimetreeOutputSelectionArgs, TreeOutputPaths,
   selected_outputs,
 };
-use crate::commands::shared::partition::{PartitionArgs, PartitionSpec, partition_entries};
+use crate::commands::shared::partition::PartitionArgs;
+use crate::commands::shared::partition_by::{SchemeArguments, check_scheme_arguments};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
 use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootArgs, RerootTarget, RootingArgs};
 use crate::commands::shared::seed::SeedArgs;
-use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
+use crate::commands::shared::sequence_inputs::{
+  MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
+};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -109,7 +113,12 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     let TreetimeTimetreeArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
-      partition: PartitionArgs { partition },
+      partition: PartitionArgs {
+        partition,
+        partition_by,
+        rate_category_rule,
+      },
+      annotation_args: AnnotationArgs { annotation },
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       missing_sequences,
@@ -173,7 +182,16 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       coalescent_confidence,
       gen_per_year,
     )?;
-    let sequences = timetree_sequence_inputs(alignment, &partition, alphabet_args, gap_fill_args, missing_sequences)?;
+    check_scheme_arguments(&SchemeArguments {
+      partition_by,
+      rate_category_rule,
+      annotation: &annotation,
+      alignments: alignment_count,
+      alphabet: alphabet_args.alphabet.map(Into::into),
+      translations: None,
+    })?;
+    let partitions = PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?;
+    let sequences = timetree_sequence_inputs(alignment, partitions, alphabet_args, gap_fill_args, missing_sequences);
     let file_paths = vec![
       (OutputSelection::NodeData, output_node_data),
       (OutputSelection::Model, output_model),
@@ -314,7 +332,8 @@ fn timetree_sequence_model(
   check_partition_rates(
     partition_rates,
     sequences.alignments.len(),
-    sequences.partition_entries.len(),
+    sequences.partitions.entry_count(),
+    sequences.partitions.is_scheme(),
   )?;
   Ok(TimetreeSequenceModel {
     model: resolve_model(model, &model_params)?,
@@ -448,20 +467,20 @@ fn timetree_outputs(
 #[deny(unused_variables)]
 fn timetree_sequence_inputs(
   alignment: Vec<PathBuf>,
-  partition: &[PartitionSpec],
+  partitions: PartitionSource,
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   MissingSequenceArgs {
     allow_missing_sequences,
   }: MissingSequenceArgs,
-) -> Result<SequenceInputs, Report> {
-  Ok(SequenceInputs {
+) -> SequenceInputs {
+  SequenceInputs {
     alignments: alignment,
     alphabet: alphabet.map(Into::into),
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
-    partition_entries: partition_entries(partition)?,
-  })
+    partitions,
+  }
 }
 
 #[deny(unused_variables)]
@@ -665,6 +684,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub partition: PartitionArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub annotation_args: AnnotationArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

@@ -4,6 +4,7 @@ mod tests {
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::shared::argument_error::ArgumentError;
   use crate::commands::shared::partition::{partition_entries, resolve_run_partitions};
+  use crate::commands::shared::sequence_inputs::PartitionSource;
   use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use crate::yaml::yaml_read_str;
   use clap::Parser;
@@ -40,7 +41,7 @@ mod tests {
       .concat(),
     )?;
     assert_eq!(
-      vec![
+      PartitionSource::Entries(vec![
         PartitionEntry {
           name: Some(o!("cp12")),
           alignment: None,
@@ -62,8 +63,8 @@ mod tests {
           sites: None,
           model: GtrModel::from(GtrModelName::JC69),
         },
-      ],
-      TreetimeAncestralArgs::try_from(raw)?.sequences.partition_entries
+      ]),
+      TreetimeAncestralArgs::try_from(raw)?.sequences.partitions
     );
     Ok(())
   }
@@ -201,14 +202,11 @@ mod tests {
       .concat(),
     )?;
     let args = TreetimeAncestralArgs::try_from(raw)?;
+    let PartitionSource::Entries(entries) = &args.sequences.partitions else {
+      panic!("--partition entries give a partition source with entries");
+    };
     let log = RecordingLog::default();
-    let plans = resolve_run_partitions(
-      &args.sequences.partition_entries,
-      &GtrModel::Infer,
-      &[9],
-      Some(AlphabetName::Nuc),
-      &log,
-    )?;
+    let plans = resolve_run_partitions(entries, &GtrModel::Infer, &[9], Some(AlphabetName::Nuc), &log)?;
 
     assert_eq!(
       (

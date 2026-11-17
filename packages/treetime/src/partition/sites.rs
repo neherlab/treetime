@@ -4,10 +4,30 @@ use deser::{Deserialize, Serialize};
 use regex::{Regex, regex};
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::StepBy;
 use std::ops::Range;
 use std::str::FromStr;
+
+pub fn site_ranges_from_columns(columns: &BTreeSet<usize>) -> Vec<SiteRange> {
+  columns.iter().fold(Vec::<SiteRange>::new(), |mut ranges, &column| {
+    let site = column + 1;
+    match ranges.last_mut() {
+      Some(range) if range.first == range.last => {
+        range.step = site - range.last;
+        range.last = site;
+      },
+      Some(range) if site - range.last == range.step => range.last = site,
+      _ => ranges.push(SiteRange {
+        first: site,
+        last: site,
+        step: 1,
+      }),
+    }
+    ranges
+  })
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[deser(as = TryFromInto<String>)]

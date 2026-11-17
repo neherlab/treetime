@@ -4,6 +4,8 @@ use crate::commands::ancestral::aa_node_data::{cds_output_paths, validate_aa_arg
 use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::{AncestralAmbiguityArgs, resolve_ambiguity_outputs};
+use crate::commands::shared::annotation::AnnotationArgs;
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
@@ -16,13 +18,16 @@ use crate::commands::shared::model::{GtrModelNameCli, ModelArgs, resolve_model};
 use crate::commands::shared::output_args::{
   AncestralOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
 };
-use crate::commands::shared::partition::{PartitionArgs, PartitionSpec, partition_entries};
+use crate::commands::shared::partition::{PartitionArgs, PartitionSpec};
+use crate::commands::shared::partition_by::{PartitionScheme, SchemeArguments, check_scheme_arguments};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
 use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::run_paths::{RunPath, run_inputs};
 use crate::commands::shared::seed::SeedArgs;
-use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
+use crate::commands::shared::sequence_inputs::{
+  MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
+};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -125,7 +130,11 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
     let TreetimeAncestralArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
-      partition: PartitionArgs { partition },
+      partition: PartitionArgs {
+        partition,
+        partition_by,
+        rate_category_rule,
+      },
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       alphabet_args,
@@ -150,7 +159,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       reconstructed_fasta_output,
       translations,
       cds_selection,
-      annotation,
+      annotation_args: AnnotationArgs { annotation },
       aa_root_sequence,
       aa_model,
       output_translations,
@@ -168,16 +177,26 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
     check_dependent_settings(&DependentSettings {
       method_anc,
       partition: &partition,
+      partition_by,
       model,
       model_params: &model_params,
       translations: translations.is_some(),
       representation,
       ambiguity_threshold,
     })?;
+    check_scheme_arguments(&SchemeArguments {
+      partition_by,
+      rate_category_rule,
+      annotation: &annotation,
+      alignments: alignment.len(),
+      alphabet: alphabet_args.alphabet.map(Into::into),
+      translations: Some(translations.is_some()),
+    })?;
+    let translation_annotation = translation_annotation(translations.is_some(), &annotation)?;
     validate_aa_args(
       translations.as_deref(),
       &cds_selection,
-      annotation.as_deref(),
+      translation_annotation.as_deref(),
       aa_root_sequence.as_deref(),
       alignment.len(),
       output_translations.as_deref(),
@@ -196,7 +215,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       ),
       sequences: ancestral_sequence_inputs(
         alignment,
-        &partition,
+        PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?,
         alphabet_args,
         gap_fill_args,
         allow_missing_sequences,
@@ -213,7 +232,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       seed,
       translations,
       cds_selection,
-      annotation,
+      annotation: translation_annotation,
       aa_root_sequence,
       aa_model,
       ambiguity_outputs: resolve_ambiguity_outputs(ambiguity_threshold, &ambiguity_outputs)?,
@@ -271,7 +290,7 @@ fn ancestral_outputs(
 #[deny(unused_variables)]
 fn ancestral_sequence_inputs(
   alignment: Vec<PathBuf>,
-  partition: &[PartitionSpec],
+  partitions: PartitionSource,
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   allow_missing_sequences: bool,
@@ -282,8 +301,26 @@ fn ancestral_sequence_inputs(
     alphabet: alphabet.map(Into::into),
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
-    partition_entries: partition_entries(partition)?,
+    partitions,
   })
+}
+
+fn translation_annotation(translations: bool, annotation: &[PathBuf]) -> Result<Option<PathBuf>, Report> {
+  if !translations {
+    return Ok(None);
+  }
+  match annotation {
+    [] => Ok(None),
+    [path] => Ok(Some(path.clone())),
+    paths => Err(argument_error(
+      &["annotation", "translations"],
+      format!(
+        "--translations takes one --annotation file, the CDS coordinates of its one --alignment file, but {} were \
+         given",
+        paths.len()
+      ),
+    )),
+  }
 }
 
 #[deny(unused_variables)]
@@ -305,7 +342,7 @@ fn ancestral_topology_order(
 
 fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Report> {
   check_model_with_method_anc(settings.method_anc, settings.model, settings.model_params)?;
-  check_partition_with_method_anc(settings.method_anc, settings.partition)?;
+  check_partition_with_method_anc(settings.method_anc, settings.partition, settings.partition_by)?;
   let marginal = MarginalReconstruction {
     runs: settings.method_anc.is_marginal() || settings.translations,
     condition: "--method-anc marginal, or the amino-acid reconstruction of --translations",
@@ -317,6 +354,7 @@ fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Repo
 struct DependentSettings<'a> {
   method_anc: MethodAncestralCli,
   partition: &'a [PartitionSpec],
+  partition_by: Option<PartitionScheme>,
   model: Option<GtrModelNameCli>,
   model_params: &'a [String],
   translations: bool,
@@ -384,14 +422,10 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   pub zero_based: ZeroBasedArgs,
 
-  /// Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data
-  ///
-  /// Also supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`,
-  /// `.xz`, or `.zst` reads a compressed file.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub annotation: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub annotation_args: AnnotationArgs,
 
   /// Path template of the amino-acid alignments, one FASTA file per CDS
   ///

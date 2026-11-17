@@ -4,6 +4,7 @@ use crate::commands::shared::dependent_settings::check_applies;
 use crate::commands::shared::documented_default::documented_default;
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 use crate::commands::shared::model::{GtrModelNameCli, MODEL_DEFAULT, ModelSource, parse_model_params, resolve_model};
+use crate::commands::shared::partition_by::{PartitionScheme, RateCategoryRule};
 #[cfg(feature = "clap")]
 use crate::yaml::yaml_read_str;
 use deser::{Deserialize, Serialize};
@@ -78,10 +79,16 @@ pub(crate) fn log_partition_layouts(layouts: &[PartitionLayout], log: &dyn LogSi
 
 /// Partitions of the sites of the `--alignment` files, each with its own substitution model
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
+#[cfg_attr(
+  feature = "clap",
+  command(mut_arg("rate_category_rule", |arg| documented_default(&RateCategoryRule::default()).help(arg)))
+)]
 pub struct PartitionArgs {
   /// One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each
   /// partition
@@ -113,12 +120,60 @@ pub struct PartitionArgs {
     )
   )]
   pub partition: Vec<PartitionSpec>,
+
+  /// Build the partitions of each `--alignment` file from a scheme instead of `--partition` entries
+  ///
+  /// `codon-positions` makes the partitions `cp1`, `cp2` and `cp3` from codon positions 1, 2 and 3 of the CDSs of
+  /// `--annotation`, and `noncoding` from the other sites. `genes` makes one partition per CDS of `--annotation`,
+  /// named by the CDS, and `noncoding` from the other sites. Both need one `--annotation` file per `--alignment` file,
+  /// matched in list order, whose `##sequence-region` runs from 1 to the length of its alignment, because annotation
+  /// positions are alignment columns only for an alignment on that reference. Where CDSs overlap, the longest CDS owns
+  /// the shared sites and gives them their codon positions; a CDS whose sites all belong to longer CDSs gets no
+  /// partition. `rate-categories` counts the changes at each site in a Fitch reconstruction on the input tree and puts
+  /// the sites into the partitions `slow`, `medium` and `fast` by the rule of `--rate-category-rule`; it uses no
+  /// annotation. Every partition gets the model of `--model` and `--model-params`; with the default `infer`, each
+  /// partition fits its own model, subject to `--shared-params`. With two or more `--alignment` files, the partition
+  /// names start with the number of the file, for example `2/cp1`. A scheme needs the alphabet `nuc` and must make at
+  /// least two partitions over all files.
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long,
+      value_enum,
+      value_name = "SCHEME",
+      conflicts_with = "partition",
+      hide_short_help = true,
+      help_heading = "Input data",
+    )
+  )]
+  pub partition_by: Option<PartitionScheme>,
+
+  /// Rule that sorts the sites into the partitions of `--partition-by rate-categories` by their change counts
+  ///
+  /// `change-counts` puts sites without changes into `slow`, sites with one change into `medium`, and sites with two
+  /// or more changes into `fast`. `median-split` puts sites without changes into `slow`, and splits the changed sites
+  /// at the median of their counts: at or below the median into `medium`, above it into `fast`. `k-means` splits all
+  /// counts into the three groups with the smallest sum of squared deviations from their means, named by increasing
+  /// mean count. Empty partitions are left out.
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long,
+      value_enum,
+      value_name = "RULE",
+      hide_short_help = true,
+      help_heading = "Input data"
+    )
+  )]
+  #[schemars(transform = documented_default(&RateCategoryRule::default()))]
+  pub rate_category_rule: Option<RateCategoryRule>,
 }
 
 pub struct ConfigPartitions {
   entries: Vec<PartitionEntry>,
   model: GtrModel,
   alphabet: Option<AlphabetName>,
+  scheme: Option<PartitionScheme>,
 }
 
 impl ConfigPartitions {
@@ -129,6 +184,7 @@ impl ConfigPartitions {
       .collect();
     let PartitionSettings {
       partition,
+      partition_by,
       model,
       model_params,
       alphabet,
@@ -137,10 +193,14 @@ impl ConfigPartitions {
       entries: partition_entries(&partition)?,
       model: resolve_model(model, &model_params)?,
       alphabet: alphabet.map(Into::into),
+      scheme: partition_by,
     })
   }
 
   pub fn resolve(&self, lengths: &[usize]) -> Result<Vec<PartitionPlan>, Report> {
+    if self.scheme.is_some() {
+      return Ok(vec![]);
+    }
     let ResolvedPartitions { plans, .. } = resolve_partitions(&self.entries, lengths, &self.model, self.alphabet)
       .map_err(|report| partition_argument_error(report, !self.entries.is_empty()))?;
     Ok(plans)
@@ -168,13 +228,14 @@ pub fn partition_argument_error(report: Report, has_entries: bool) -> Report {
 #[deser(default, deny_unknown_fields)]
 struct PartitionSettings {
   partition: Vec<PartitionSpec>,
+  partition_by: Option<PartitionScheme>,
   model: Option<GtrModelNameCli>,
   model_params: Vec<String>,
   alphabet: Option<AlphabetNameCli>,
 }
 
 impl PartitionSettings {
-  const KEYS: [&str; 4] = ["partition", "model", "model_params", "alphabet"];
+  const KEYS: [&str; 5] = ["partition", "partition_by", "model", "model_params", "alphabet"];
 }
 
 #[cfg(feature = "clap")]
