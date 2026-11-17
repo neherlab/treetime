@@ -154,11 +154,15 @@ pub(crate) fn sparse_mixture_contribution(
     }
   }
   let mut group_rows = BTreeMap::<(AsciiChar, AsciiChar), Option<GroupRows>>::new();
+  let mut variable_positions = variable.iter().copied().peekable();
+  let mut no_data = child_no_data.iter().copied().peekable();
   for (pos, site) in state.mixture.listed() {
+    while variable_positions.next_if(|&variable_pos| variable_pos < pos).is_some() {}
+    while no_data.next_if(|&(_, end)| end <= pos).is_some() {}
     let parent_state = parent_sequence[pos];
     let child_state = child_sequence[pos];
-    if variable.contains(&pos)
-      || range_contains(child_no_data, pos)
+    if variable_positions.peek() == Some(&pos)
+      || no_data.peek().is_some_and(|&(start, _)| start <= pos)
       || !alphabet.is_canonical(parent_state)
       || !alphabet.is_canonical(child_state)
     {
