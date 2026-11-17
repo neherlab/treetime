@@ -6,6 +6,7 @@ mod tests {
   use eyre::Report;
   use helpers::{IqtreeInputs, IqtreeOutputs, Representation, TreetimeCase};
   use rstest::rstest;
+  use treetime_utils::pretty_assert_relative_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -29,9 +30,11 @@ mod tests {
   #[case::dense_shape_0_2( Representation::Dense,  0)]
   #[case::dense_shape_1(   Representation::Dense,  1)]
   #[case::dense_shape_5(   Representation::Dense,  2)]
+  #[case::dense_shape_0_02(Representation::Dense,  3)]
   #[case::sparse_shape_0_2(Representation::Sparse, 0)]
   #[case::sparse_shape_1(  Representation::Sparse, 1)]
   #[case::sparse_shape_5(  Representation::Sparse, 2)]
+  #[case::sparse_shape_0_02(Representation::Sparse, 3)]
   #[trace]
   fn test_gamma_mixture_site_log_lh_matches_iqtree(
     #[case] representation: Representation,
@@ -63,6 +66,18 @@ mod tests {
     let actual = GammaRates::new(inputs.categories, iqtree_gamma.shape)?;
 
     pretty_assert_abs_diff_eq!(iqtree_gamma.category_rates, actual.rates(), epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gamma_category_rates_at_the_lowest_shape_match_iqtree() -> Result<(), Report> {
+    let inputs = IqtreeInputs::load()?;
+    let iqtree = IqtreeOutputs::load()?;
+    let iqtree_gamma = &iqtree.gamma[3];
+
+    let actual = GammaRates::new(inputs.categories, iqtree_gamma.shape)?;
+
+    pretty_assert_relative_eq!(iqtree_gamma.category_rates, actual.rates(), max_relative = 1e-8);
     Ok(())
   }
 

@@ -46,10 +46,10 @@ files = [
 name = "gm_gamma_iqtree"
 kind = "golden-master"
 test = "packages/treetime/src/gtr/__tests__/test_gm_gamma_iqtree.rs"
-origin = "IQ-TREE per-site log-likelihoods and gamma category rates of GTR{W}+FU{pi} and GTR{W}+FU{pi}+G4{alpha}, alpha 0.2, 1 and 5, with the branch lengths of the tree fixed (-te -blfix) on an alignment simulated with gamma site rates; the capture script documents the mapping of W, pi, mu and branch lengths"
+origin = "IQ-TREE per-site log-likelihoods and gamma category rates of GTR{W}+FU{pi} and GTR{W}+FU{pi}+G4{alpha}, alpha 0.02, 0.2, 1 and 5, with the branch lengths of the tree fixed (-te -blfix) on an alignment simulated with gamma site rates; the capture script documents the mapping of W, pi, mu and branch lengths"
 revision = "IQ-TREE 3.1.4 of .config/mise.toml"
 capture = "./dev/docker/run python3 packages/treetime/src/gtr/__tests__/__fixtures__/gm_gamma_iqtree_capture, which runs iqtree3 -s <aln> -st DNA -m <model> -te <tree> -blfix -keep-ident -nt 1 -seed 1 -prec 17 once per site and once on the whole alignment"
-normalization = "per-site log-likelihoods read from the log-likelihood of the tree in the .iqtree report of a one-column run, printed with 17 significant digits; the owning test compares them at 1e-6 and the category rates at 1e-8"
+normalization = "per-site log-likelihoods read from the log-likelihood of the tree in the .iqtree report of a one-column run, printed with 17 significant digits; the owning test compares them at 1e-6, the category rates at 1e-8 and, at alpha 0.02, at 1e-8 relative"
 files = [
   "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gamma_iqtree_inputs.json",
   "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gamma_iqtree_outputs.json",
