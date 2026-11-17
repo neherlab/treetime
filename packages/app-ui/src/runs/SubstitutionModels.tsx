@@ -1,13 +1,26 @@
-import type { AlignmentSummary, RunModel, RunModels, RunRecord } from "@neherlab/app-contracts";
+import type { RunModels, RunRecord } from "@neherlab/app-contracts";
 import { Button } from "@neherlab/design/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@neherlab/design/ui/chart";
+import { CellText, DataTable, dataColumns, type DataColumn, type RowSelection } from "@neherlab/design/ui/data-table";
 import { cn } from "cn";
-import { useCallback, useMemo } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 import Download from "~icons/lucide/download";
 
 import { Panel } from "../components/Panel";
 import { baseName } from "../settings/inputs";
+import {
+  gammaText,
+  indelText,
+  modelColumnsInUse,
+  modelRows,
+  parameterSharing,
+  rateText,
+  sharedParamsText,
+  type ModelColumnsInUse,
+  type ModelRow,
+  type ParameterSharing,
+} from "./modelRows";
 import { useSaveRunOutput } from "./OutputFiles";
 import { CHART, PLOT_MARGIN, TICK_STYLE } from "./palette";
 
@@ -18,6 +31,8 @@ const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
 const FREQUENCY_DOMAIN: [number, string] = [0, "auto"];
 
 const FREQUENCY_MARGIN = { ...PLOT_MARGIN, top: 20 };
+
+const DOCUMENT_ORDER = [{ id: "label", desc: false }];
 
 const RATE_SHADES = [
   "bg-chart-series/10 text-chart-ink",
@@ -31,13 +46,72 @@ const RATE_SHADES = [
   "bg-chart-series/90 text-chart-paper",
 ] as const;
 
-export function SubstitutionModels({
-  record,
-  models: { alignments, models },
-}: {
-  record: RunRecord;
-  models: RunModels;
-}) {
+const modelColumn = dataColumns<ModelRow>();
+
+const LABEL_COLUMN = modelColumn.accessor((row) => row.order, {
+  id: "label",
+  header: "Partition",
+  meta: { width: "2fr", minWidth: 180 },
+  cell: ({ row }) => <CellText text={row.original.label} />,
+});
+
+const ALIGNMENT_COLUMN = modelColumn.accessor((row) => row.alignment, {
+  id: "alignment",
+  header: "Alignment",
+  meta: { width: "1.5fr", minWidth: 120 },
+  sortUndefined: "last",
+  cell: ({ getValue }) => <CellText text={getValue() ?? ""} />,
+});
+
+const SITES_COLUMN = modelColumn.accessor((row) => row.sites, {
+  id: "sites",
+  header: "Sites",
+  meta: { width: 80, numeric: true },
+  sortUndefined: "last",
+  cell: ({ getValue }) => getValue()?.toLocaleString() ?? "",
+});
+
+const MODEL_COLUMN = modelColumn.accessor((row) => row.model, {
+  id: "model",
+  header: "Model",
+  meta: { width: 90 },
+});
+
+const MU_COLUMN = modelColumn.accessor((row) => row.mu, {
+  id: "mu",
+  header: "μ",
+  meta: { width: 90, numeric: true },
+  cell: ({ getValue }) => rateText(getValue()),
+});
+
+const INDEL_COLUMN = modelColumn.accessor((row) => row.indel?.perSite ?? row.indel?.perAlignment, {
+  id: "indel",
+  header: "Indel rate",
+  meta: { width: 100, numeric: true },
+  sortUndefined: "last",
+  cell: ({ row }) => {
+    const { indel } = row.original;
+
+    return indel === undefined ? "" : <IndelRateText text={indelText(indel)} perSite={indel.perSite} />;
+  },
+});
+
+const GAMMA_COLUMN = modelColumn.accessor((row) => row.gamma?.alpha, {
+  id: "gamma",
+  header: "α",
+  meta: { width: 100, numeric: true, hint: "Gamma shape α of the rate variation across sites, with K rate categories" },
+  sortUndefined: "last",
+  cell: ({ row }) => (row.original.gamma === undefined ? "" : gammaText(row.original.gamma)),
+});
+
+const SHARED_COLUMN = modelColumn.accessor((row) => sharedParamsText(row.shared), {
+  id: "shared",
+  header: "Shared parameters",
+  meta: { width: "2fr", minWidth: 160 },
+  cell: ({ getValue }) => <CellText text={getValue()} />,
+});
+
+export function SubstitutionModels({ record, models }: { record: RunRecord; models: RunModels }) {
   const save = useSaveRunOutput();
   const file = record.output_files.find((output) => output.kind === "model");
 
@@ -49,8 +123,8 @@ export function SubstitutionModels({
 
   return (
     <Panel
-      title={models.length === 1 ? "Substitution model" : "Substitution models"}
-      hint="Equilibrium frequencies and substitution rates of the fitted model"
+      title={models.models.length === 1 ? "Substitution model" : "Substitution models"}
+      hint="Select a model to show its equilibrium frequencies and substitution rates"
       actions={
         file !== undefined && (
           <Button type="button" variant="outline" size="sm" onClick={onDownload}>
@@ -60,44 +134,93 @@ export function SubstitutionModels({
         )
       }
     >
-      <div className="divide-y">
-        {models.map((model) => (
-          <ModelView key={modelKey(model)} model={model} alignments={alignments} />
-        ))}
-      </div>
+      <ModelsView models={models} />
     </Panel>
   );
 }
 
-function ModelView({ model, alignments }: { model: RunModel; alignments: readonly AlignmentSummary[] }) {
+export function ModelsView({ models }: { models: RunModels }) {
+  const rows = useMemo(() => modelRows(models), [models]);
+  const columns = useMemo(() => modelColumns(modelColumnsInUse(rows)), [rows]);
+
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const selected = rows.find((row) => row.id === selectedId) ?? rows[0];
+  const selection = useMemo<RowSelection>(() => ({ selected: selected?.id, onChange: setSelectedId }), [selected?.id]);
+
+  const sharing = useMemo(
+    () => (selected === undefined ? undefined : parameterSharing(rows, selected)),
+    [rows, selected],
+  );
+
   return (
-    <section className="grid gap-3 p-3">
-      <ModelFacts model={model} alignments={alignments} />
+    <>
+      <DataTable
+        label="Substitution models"
+        columns={columns}
+        rows={rows}
+        rowId={rowKey}
+        initialSorting={DOCUMENT_ORDER}
+        selection={selection}
+      />
+      {selected !== undefined && <ModelDetail row={selected} sharing={sharing} />}
+    </>
+  );
+}
+
+function modelColumns(inUse: ModelColumnsInUse): Array<DataColumn<ModelRow>> {
+  return modelColumn.columns([
+    LABEL_COLUMN,
+    ...(inUse.alignment ? [ALIGNMENT_COLUMN] : []),
+    ...(inUse.sites ? [SITES_COLUMN] : []),
+    MODEL_COLUMN,
+    MU_COLUMN,
+    ...(inUse.indel ? [INDEL_COLUMN] : []),
+    ...(inUse.gamma ? [GAMMA_COLUMN] : []),
+    ...(inUse.shared ? [SHARED_COLUMN] : []),
+  ]);
+}
+
+function rowKey(row: ModelRow): string {
+  return row.id;
+}
+
+function IndelRateText({ text, perSite }: { text: string; perSite: number | undefined }) {
+  return <span title={text}>{perSite === undefined ? text : perSite.toPrecision(3)}</span>;
+}
+
+function ModelDetail({ row, sharing }: { row: ModelRow; sharing: ParameterSharing | undefined }) {
+  const headingId = useId();
+  const { states, pi, rates } = row.source;
+
+  return (
+    <section aria-labelledby={headingId} className="grid gap-3 border-t p-3">
+      <div className="grid gap-1">
+        <h3 id={headingId} className="text-sm font-medium">
+          {row.label}
+        </h3>
+        {sharing !== undefined && <SharingNote sharing={sharing} />}
+      </div>
       <div className="grid gap-4 @3xl:grid-cols-2">
-        <FrequencyChart states={model.states} pi={model.pi} />
-        <RateHeatmap states={model.states} rates={model.rates} />
+        <FrequencyChart states={states} pi={pi} />
+        <RateHeatmap states={states} rates={rates} />
       </div>
     </section>
   );
 }
 
-function ModelFacts({ model, alignments }: { model: RunModel; alignments: readonly AlignmentSummary[] }) {
-  const facts =
-    model.kind === "sequence"
-      ? [
-          partitionText(model.partition, model.name),
-          model.path === undefined ? `Alignment ${model.alignment}` : baseName(model.path),
-          `${model.sites.toLocaleString()} sites`,
-          `Model ${model.model}`,
-          `μ = ${model.mu.toPrecision(4)}`,
-          ...indelText(alignments.find((alignment) => alignment.alignment === model.alignment)),
-        ]
-      : [`Trait ${model.attribute}`, `Model ${model.model}`, `μ = ${model.mu.toPrecision(4)}`];
-
-  return <p className="text-muted-foreground text-xs">{facts.join(" · ")}</p>;
+function SharingNote({ sharing: { params, partitions, all } }: { sharing: ParameterSharing }) {
+  return (
+    <p className="text-muted-foreground text-xs">
+      {all
+        ? `Shared parameters: ${params}, shared by all ${partitions.length} partitions`
+        : `Shared parameters: ${params}, shared by ${partitions.length} partitions: ${partitions.join(", ")}`}
+    </p>
+  );
 }
 
 function FrequencyChart({ states, pi }: { states: readonly string[]; pi: readonly number[] }) {
+  const captionId = useId();
+
   const data = useMemo(
     () =>
       states.map((state, index) => {
@@ -109,8 +232,10 @@ function FrequencyChart({ states, pi }: { states: readonly string[]; pi: readonl
   );
 
   return (
-    <figure className="grid gap-1">
-      <figcaption className="text-sm font-medium">Equilibrium frequencies</figcaption>
+    <figure aria-labelledby={captionId} className="grid gap-1">
+      <figcaption id={captionId} className="text-sm font-medium">
+        Equilibrium frequencies
+      </figcaption>
       <ChartContainer className="aspect-auto h-[200px] w-full">
         <BarChart data={data} margin={FREQUENCY_MARGIN}>
           <CartesianGrid stroke={CHART.grid} vertical={false} />
@@ -129,12 +254,15 @@ function FrequencyChart({ states, pi }: { states: readonly string[]; pi: readonl
 }
 
 function RateHeatmap({ states, rates }: { states: readonly string[]; rates: readonly (readonly number[])[] }) {
+  const captionId = useId();
   const max = useMemo(() => Math.max(0, ...rates.flat()), [rates]);
   const labeled = states.length <= LABELED_STATES;
 
   return (
-    <figure className="grid content-start gap-1">
-      <figcaption className="text-sm font-medium">Substitution rates</figcaption>
+    <figure aria-labelledby={captionId} className="grid content-start gap-1">
+      <figcaption id={captionId} className="text-sm font-medium">
+        Substitution rates
+      </figcaption>
       <table className="w-full table-fixed border-separate border-spacing-0.5 text-center font-mono text-xs">
         <thead>
           <tr>
@@ -198,26 +326,4 @@ function RateCell({
       {labeled ? rate.toPrecision(2) : <span className="sr-only">{rate.toPrecision(3)}</span>}
     </td>
   );
-}
-
-function indelText(alignment: AlignmentSummary | undefined): string[] {
-  if (alignment?.indel_rate === undefined) {
-    return [];
-  }
-
-  const perSite = alignment.sites > 0 ? alignment.indel_rate / alignment.sites : undefined;
-
-  return [
-    perSite === undefined
-      ? `indel rate ${alignment.indel_rate.toPrecision(4)} per alignment`
-      : `indel rate ${perSite.toPrecision(3)} per site (${alignment.indel_rate.toPrecision(4)} per alignment)`,
-  ];
-}
-
-function partitionText(partition: number, name: string | undefined): string {
-  return name === undefined ? `Partition ${partition}` : `Partition ${partition} (${name})`;
-}
-
-function modelKey(model: RunModel): string {
-  return model.kind === "sequence" ? `sequence-${model.partition}` : `trait-${model.attribute}`;
 }
