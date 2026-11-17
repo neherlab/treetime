@@ -548,6 +548,15 @@ export const zGammaOutput = z.object({
 });
 
 /**
+ * Model parameter that the partitions with an inferred model share.
+ */
+export const zSharedParam2 = z.union([
+  z.literal('exchange-rates'),
+  z.literal('frequencies'),
+  z.literal('gamma-shape')
+]);
+
+/**
  * The substitution model fitted to one partition.
  */
 export const zSequenceModelSummary = z.object({
@@ -561,7 +570,8 @@ export const zSequenceModelSummary = z.object({
   states: z.array(z.string()),
   pi: z.array(z.number()),
   rates: z.array(z.array(z.number())),
-  gamma: zGammaOutput.optional()
+  gamma: zGammaOutput.optional(),
+  shared_params: z.array(zSharedParam2)
 });
 
 /**
@@ -575,15 +585,6 @@ export const zTraitModelSummary = z.object({
   pi: z.array(z.number()),
   rates: z.array(z.array(z.number()))
 });
-
-/**
- * Model parameter that the partitions with an inferred model share.
- */
-export const zSharedParam2 = z.union([
-  z.literal('exchange-rates'),
-  z.literal('frequencies'),
-  z.literal('gamma-shape')
-]);
 
 /**
  * Unit of a fixed coalescent time scale.

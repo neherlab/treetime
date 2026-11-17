@@ -296,6 +296,7 @@ mod tests {
         "states": ["A", "T"],
         "pi": [0.5, 0.5],
         "rates": [[0.0, mu], [mu, 0.0]],
+        "shared_params": [],
       })
     };
     assert_eq!(

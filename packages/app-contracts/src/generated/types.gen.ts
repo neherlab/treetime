@@ -979,6 +979,11 @@ export type GammaOutput = {
 };
 
 /**
+ * Model parameter that the partitions with an inferred model share.
+ */
+export type SharedParam2 = 'exchange-rates' | 'frequencies' | 'gamma-shape';
+
+/**
  * The substitution model fitted to one partition.
  */
 export type SequenceModelSummary = {
@@ -1027,6 +1032,11 @@ export type SequenceModelSummary = {
    * Discrete gamma rate variation across the sites of the partition; absent for runs without `--gamma-categories`.
    */
   gamma?: GammaOutput;
+  /**
+   * Parameters that this partition shares with the other partitions whose model is inferred; empty for a partition
+   * with a named model and for runs that share none.
+   */
+  shared_params: Array<SharedParam2>;
 };
 
 /**
@@ -1059,11 +1069,6 @@ export type TraitModelSummary = {
    */
   rates: Array<Array<number>>;
 };
-
-/**
- * Model parameter that the partitions with an inferred model share.
- */
-export type SharedParam2 = 'exchange-rates' | 'frequencies' | 'gamma-shape';
 
 /**
  * Results specific to the command of a run.

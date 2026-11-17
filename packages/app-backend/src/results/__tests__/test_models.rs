@@ -3,6 +3,7 @@ mod tests {
   use crate::results::models::{RunModel, run_models};
   use eyre::Report;
   use indoc::indoc;
+  use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use treetime::gtr::get_gtr::{GammaOutput, ModelOutput};
   use treetime::gtr::shared_params::SharedParam;
@@ -77,17 +78,43 @@ mod tests {
   }
 
   #[test]
-  fn test_run_models_carry_the_shared_parameters_of_the_run() -> Result<(), Report> {
+  fn test_run_models_give_the_shared_parameters_to_the_inferred_partitions_only() -> Result<(), Report> {
     let output: ModelOutput = json_read_str(indoc! {r#"{
-      "models": [],
+      "alignments": [{ "alignment": 1, "path": "aln.fasta", "sites": 30 }],
+      "models": [
+        {
+          "kind": "sequence", "partition": 1, "alignment": 1, "sites": 10, "states": ["A", "C"],
+          "model_type": "inferred", "model_name": "infer", "mu": 1.0, "pi": [0.5, 0.5],
+          "W": [[0.0, 1.0], [1.0, 0.0]], "n_states": 2
+        },
+        {
+          "kind": "sequence", "partition": 2, "alignment": 1, "sites": 10, "states": ["A", "C"],
+          "model_type": "inferred", "model_name": "infer", "mu": 1.0, "pi": [0.5, 0.5],
+          "W": [[0.0, 1.0], [1.0, 0.0]], "n_states": 2
+        },
+        {
+          "kind": "sequence", "partition": 3, "alignment": 1, "sites": 10, "states": ["A", "C"],
+          "model_type": "named", "model_name": "jc69", "mu": 1.0, "pi": [0.5, 0.5],
+          "W": [[0.0, 1.0], [1.0, 0.0]], "n_states": 2
+        }
+      ],
       "shared_params": ["exchange-rates", "frequencies"]
     }"#})?;
 
     let models = run_models(Some(&output));
 
+    let shared = vec![SharedParam::ExchangeRates, SharedParam::Frequencies];
+    let per_model = models
+      .models
+      .iter()
+      .map(|model| match model {
+        RunModel::Sequence(model) => model.shared_params.clone(),
+        RunModel::Trait(_) => panic!("expected a sequence model"),
+      })
+      .collect_vec();
     assert_eq!(
-      vec![SharedParam::ExchangeRates, SharedParam::Frequencies],
-      models.shared_params
+      (shared.clone(), vec![shared.clone(), shared, vec![]]),
+      (models.shared_params, per_model)
     );
     Ok(())
   }

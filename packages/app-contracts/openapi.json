@@ -2969,6 +2969,26 @@
           "rates"
         ]
       },
+      "SharedParam2": {
+        "description": "Model parameter that the partitions with an inferred model share.",
+        "oneOf": [
+          {
+            "description": "Exchange rates `W`, shared up to one scale per partition, so that the rate matrix of each partition has mean rate 1 under its own `pi`.",
+            "type": "string",
+            "const": "exchange-rates"
+          },
+          {
+            "description": "Equilibrium frequencies `pi`.",
+            "type": "string",
+            "const": "frequencies"
+          },
+          {
+            "description": "Shape alpha of the gamma rate categories.",
+            "type": "string",
+            "const": "gamma-shape"
+          }
+        ]
+      },
       "SequenceModelSummary": {
         "description": "The substitution model fitted to one partition.",
         "type": "object",
@@ -3040,6 +3060,13 @@
             "description": "Discrete gamma rate variation across the sites of the partition; absent for runs without `--gamma-categories`.",
             "$ref": "#/components/schemas/GammaOutput",
             "x-unset": true
+          },
+          "shared_params": {
+            "description": "Parameters that this partition shares with the other partitions whose model is inferred; empty for a partition\nwith a named model and for runs that share none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedParam2"
+            }
           }
         },
         "required": [
@@ -3050,7 +3077,8 @@
           "mu",
           "states",
           "pi",
-          "rates"
+          "rates",
+          "shared_params"
         ]
       },
       "TraitModelSummary": {
@@ -3104,26 +3132,6 @@
           "states",
           "pi",
           "rates"
-        ]
-      },
-      "SharedParam2": {
-        "description": "Model parameter that the partitions with an inferred model share.",
-        "oneOf": [
-          {
-            "description": "Exchange rates `W`, shared up to one scale per partition, so that the rate matrix of each partition has mean rate 1 under its own `pi`.",
-            "type": "string",
-            "const": "exchange-rates"
-          },
-          {
-            "description": "Equilibrium frequencies `pi`.",
-            "type": "string",
-            "const": "frequencies"
-          },
-          {
-            "description": "Shape alpha of the gamma rate categories.",
-            "type": "string",
-            "const": "gamma-shape"
-          }
         ]
       },
       "CommandResults": {

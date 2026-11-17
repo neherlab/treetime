@@ -2,20 +2,23 @@ use deser::Serialize;
 use schemars::JsonSchema;
 use std::path::PathBuf;
 use treetime::gtr::get_gtr::{
-  AlignmentModel, GammaOutput, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel,
+  AlignmentModel, GammaOutput, GtrModelName, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel,
 };
 use treetime::gtr::shared_params::SharedParam;
 use treetime_schema::skip_serializing_optionals;
 
 pub fn run_models(gtr: Option<&ModelOutput>) -> RunModels {
-  gtr.map_or_else(RunModels::default, |gtr| RunModels {
-    alignments: gtr.alignments.iter().map(AlignmentSummary::from_model).collect(),
-    models: gtr
-      .models
-      .iter()
-      .map(|entry| RunModel::from_entry(entry, &gtr.alignments))
-      .collect(),
-    shared_params: gtr.shared_params.clone().unwrap_or_default(),
+  gtr.map_or_else(RunModels::default, |gtr| {
+    let shared_params = gtr.shared_params.clone().unwrap_or_default();
+    RunModels {
+      alignments: gtr.alignments.iter().map(AlignmentSummary::from_model).collect(),
+      models: gtr
+        .models
+        .iter()
+        .map(|entry| RunModel::from_entry(entry, &gtr.alignments, &shared_params))
+        .collect(),
+      shared_params,
+    }
   })
 }
 
@@ -68,9 +71,9 @@ pub enum RunModel {
 }
 
 impl RunModel {
-  fn from_entry(entry: &ModelEntry, alignments: &[AlignmentModel]) -> Self {
+  fn from_entry(entry: &ModelEntry, alignments: &[AlignmentModel], shared_params: &[SharedParam]) -> Self {
     match entry {
-      ModelEntry::Sequence(model) => Self::Sequence(SequenceModelSummary::from_model(model, alignments)),
+      ModelEntry::Sequence(model) => Self::Sequence(SequenceModelSummary::from_model(model, alignments, shared_params)),
       ModelEntry::Trait(model) => Self::Trait(TraitModelSummary::from_model(model)),
     }
   }
@@ -104,10 +107,18 @@ pub struct SequenceModelSummary {
   pub rates: Vec<Vec<f64>>,
   /// Discrete gamma rate variation across the sites of the partition; absent for runs without `--gamma-categories`.
   pub gamma: Option<GammaOutput>,
+  /// Parameters that this partition shares with the other partitions whose model is inferred; empty for a partition
+  /// with a named model and for runs that share none.
+  pub shared_params: Vec<SharedParam>,
 }
 
 impl SequenceModelSummary {
-  fn from_model(model: &SequenceModel, alignments: &[AlignmentModel]) -> Self {
+  fn from_model(model: &SequenceModel, alignments: &[AlignmentModel], shared_params: &[SharedParam]) -> Self {
+    let shared_params = if matches!(model.model.model_name(), GtrModelName::Infer) {
+      shared_params.to_vec()
+    } else {
+      vec![]
+    };
     Self {
       partition: model.partition,
       name: model.name.clone(),
@@ -123,6 +134,7 @@ impl SequenceModelSummary {
       pi: model.model.pi().to_vec(),
       rates: substitution_rates(&model.model),
       gamma: model.gamma.clone(),
+      shared_params,
     }
   }
 }
