@@ -32,9 +32,10 @@ pub struct SiteModelArgs {
   /// shape alpha (Yang 1994). The likelihood of a site is the mean of its likelihoods under the K rates, and the
   /// ancestral states are weighted by the probability of each rate at the site. Each partition estimates its own
   /// alpha by maximum likelihood between 0.02 and 100, unless the partitions share `gamma-shape` (`--shared-params`).
-  /// Without the setting, all sites of a partition share one rate. Runtime and memory grow about K-fold; 4 categories
-  /// are the common choice. The setting applies to marginal reconstructions only: not with `--method-anc parsimony`
-  /// and not with `--branch-length-mode input`.
+  /// Without the setting, all sites of a partition share one rate. Memory grows about K-fold, runtime more: with 4
+  /// categories, optimize on the example datasets takes 7 to 25 times as long, most on large trees in sparse mode. 4
+  /// categories are the common choice. The setting applies to marginal reconstructions only: not with
+  /// `--method-anc parsimony` and not with `--branch-length-mode input`.
   #[cfg_attr(
     feature = "clap",
     clap(long, hide_short_help = true, value_name = "K", help_heading = "Substitution model")
