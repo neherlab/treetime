@@ -56,7 +56,7 @@ Auspice derives the ancestral state of a position from the "from" letter of the 
 
 - **Translation rule of the comparison**: `---` gives `-`; any other codon with a gap gives `X`; an ambiguous codon gives its amino acid when all resolutions code the same amino acid, else `X`. The annotated terminal stop codon is counted apart
 - **Peptide input**: the bundled peptide files are translations of the same alignment by `data/translate`, so peptide columns match the CDS codons exactly, and the comparison contains no column misalignment from indels
-- **Annotations**: the alignment length equals the reference length (15,225 and 197,209 nucleotides), every CDS length is a multiple of 3, and each CDS is one GFF3 row with phase 0. The RSV runs used `--cds-selection`, because the RSV annotation uses strand `.` ([kb/issues/M-io-gff3-rejects-unstranded-cds.md](../issues/M-io-gff3-rejects-unstranded-cds.md)). The mpox runs used `--annotation`: 179 CDS, 96 of them on the minus strand
+- **Annotations**: the alignment length equals the reference length (15,225 and 197,209 nucleotides), every CDS length is a multiple of 3, and each CDS is one GFF3 row with phase 0. The RSV runs used `--cds-selection`, because the RSV annotation used strand `.`. The mpox runs used `--annotation`: 179 CDS, 96 of them on the minus strand
 
 Commands, with `D=data/<dataset>` and `O=<output folder>`:
 
@@ -292,8 +292,8 @@ When each site keeps one nucleotide value, an overlap region can be decoded join
 
 - **Reads `CDS` rows only**, so annotations with `gene` rows only give no CDS: SARS-CoV-2 `orfs`, dengue, yellow fever, and most influenza HA and NA files (38 of the 120). `data/sc2/*/annotation.gff3` has 12 `gene` rows and no `CDS` row
 - **Groups rows by the first name attribute**, `Name` before `ID`, and ignores `Parent`. GFF3 joins the rows of one feature by a shared `ID`, and `Name` need not be unique ([GFF3 specification](https://github.com/The-Sequence-Ontology/Specifications/blob/fe73505276dd324bf6a55773f3413fe2bed47af4/gff3.md?plain=1))
-- **Rejects strand `.` and `?`** ([kb/issues/M-io-gff3-rejects-unstranded-cds.md](../issues/M-io-gff3-rejects-unstranded-cds.md)); every RSV row uses `.`
-- **Ignores the phase column** ([kb/issues/M-io-gff3-cds-phase-ignored.md](../issues/M-io-gff3-cds-phase-ignored.md)), and sorts segments by coordinate. Its only checks are that each row has $1 \le \text{start} \le \text{end}$ and that the CDS length is a multiple of 3
+- **Rejects strand `.` and `?`**; every RSV row uses `.`
+- **Ignores the phase column** ([kb/issues/M-ancestral-node-data-annotation-drops-cds-phase.md](../issues/M-ancestral-node-data-annotation-drops-cds-phase.md)), and sorts segments by coordinate. Its only checks are that each row has $1 \le \text{start} \le \text{end}$ and that the CDS length is a multiple of 3
 
 Nextclade, which produces the annotations of the Nextstrain datasets, groups adjacent rows that share an `ID`, builds the hierarchy from `Parent`, uses a `gene` without `CDS` as a CDS, reads `.` and `?` as forward, computes the phase from the cumulative length, keeps segments in file order, and wraps circular genomes ([gene.rs#L42-L130](https://github.com/nextstrain/nextclade/blob/6190424cf8014d999fccf59d049c2c78a8bc28bb/packages/nextclade/src/gene/gene.rs#L42), [cds.rs#L46-L90](https://github.com/nextstrain/nextclade/blob/6190424cf8014d999fccf59d049c2c78a8bc28bb/packages/nextclade/src/gene/cds.rs#L46-L90)).
 

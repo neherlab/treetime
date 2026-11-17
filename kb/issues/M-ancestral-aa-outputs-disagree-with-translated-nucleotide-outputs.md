@@ -53,6 +53,6 @@ Model differences at confident codons cause most both-determined differences; th
 
 ## Related
 
-- [M-io-gff3-rejects-unstranded-cds.md](M-io-gff3-rejects-unstranded-cds.md), [M-io-gff3-cds-phase-ignored.md](M-io-gff3-cds-phase-ignored.md), [M-io-gff3-gene-only-annotations-yield-no-cds.md](M-io-gff3-gene-only-annotations-yield-no-cds.md), [M-io-gff3-cds-rows-grouped-by-name-not-id.md](M-io-gff3-cds-rows-grouped-by-name-not-id.md), [M-io-annotation-coordinates-not-checked-against-alignment.md](M-io-annotation-coordinates-not-checked-against-alignment.md): the annotation reader that the coding view needs
+- [M-ancestral-node-data-annotation-drops-cds-phase.md](M-ancestral-node-data-annotation-drops-cds-phase.md), [M-io-gff3-cds-segment-order-wrong-across-circular-origin.md](M-io-gff3-cds-segment-order-wrong-across-circular-origin.md), [M-ancestral-translation-annotation-not-checked-against-alignment.md](M-ancestral-translation-annotation-not-checked-against-alignment.md): the annotation reader that the coding view needs
 - [M-ancestral-sample-from-profile-draws-nodes-independently.md](M-ancestral-sample-from-profile-draws-nodes-independently.md): sampled sequences
 - [M-ancestral-codon-substitution-models-unimplemented.md](M-ancestral-codon-substitution-models-unimplemented.md): the optional codon model, which this fix does not need

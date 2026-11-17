@@ -4,7 +4,8 @@
 
 - [x] FASTA (plain text)
 - [x] Compressed FASTA (gzip, xz, bzip2, zstd)
-- [x] Several FASTA files, numbered in the order of the `--alignment` list, one partition per file unless `--partition` entries split the files into sets of sites ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); homoplasy, `--translations` and `--annotation` accept one file
+- [x] Several FASTA files, numbered in the order of the `--alignment` list, one partition per file unless `--partition` entries split the files into sets of sites ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); homoplasy and `--translations` accept one file; with `--partition-by codon-positions` or `genes`, `--annotation` takes one GFF3 file per alignment file
+- [x] GFF3 reader on `noodles-gff`: `CDS` rows with strand `+` or `-` and phase 0, 1 or 2 (stored), rows grouped into CDSs by `ID`, labels from the first name attribute or the `ID` for repeated names, `##sequence-region` landmarks; a file without `CDS` rows is an error ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md), section "Partition schemes")
 - [/] Stdin input (`-` for at most one input of a run; `--config -` together with an input `-` reads standard input twice: [kb/issues/M-io-stdin-config-and-input-read-twice.md](../issues/M-io-stdin-config-and-input-read-twice.md))
 - [x] Newick tree
 - [x] Nexus tree

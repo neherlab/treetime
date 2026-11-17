@@ -10,7 +10,7 @@
 - [x] Partition set: partitions as sets of sites of the `--alignment` files, one per file by default or one per `--partition` entry, each with its own model; one representation per run (`enum PartitionSet`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [x] Partition entries with site ranges `a`, `a-b` and `a-b\k` (1-based, the syntax of RAxML-NG partition files and NEXUS charsets) and a model per entry; every site of a file belongs to one entry, and each model must fit the alphabet, also without entries ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [x] Assembly of a split alignment back to file coordinates: sequences, ambiguity codes, substitutions, and indel events counted once per file ([kb/algo/partition-assembly.md](../algo/partition-assembly.md))
-- [ ] Automatic codon-position partitioning from GFF annotation input (codon positions given by hand work through `--partition` site ranges with a step of 3, for example `101-1600\3`)
+- [x] Partition schemes from `--partition-by`: `codon-positions` and `genes` from the CDSs of a GFF3 annotation (longest CDS owns overlapping sites, codon positions from the phase), `rate-categories` from Fitch change counts with the rules `change-counts`, `median-split` and `k-means` ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md), section "Partition schemes")
 
 ## Payloads
 

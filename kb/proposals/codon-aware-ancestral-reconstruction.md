@@ -162,11 +162,14 @@ Rules for the other shapes:
 
 ### 6. Annotation reader and coordinate contract
 
+> [!WARNING]
+> **Needs review.** The reader now parses GFF3 with `noodles-gff`, rejects strand `.` and `?`, builds no CDS from `gene` rows, groups rows by `ID`, validates and stores the phase, and checks the landmark length against the alignment on the partition scheme path (`--partition-by codon-positions` and `genes`). The bundled RSV and SARS-CoV-2 annotations were fixed to fit these rules. See section "Partition schemes" of [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md#partition-schemes).
+
 The reader (`fn parse_gff3_cds_features()` [packages/treetime-io/src/gff.rs#L40-L136](../../packages/treetime-io/src/gff.rs#L40-L136)) reads `CDS` rows only, groups rows by `Name` before `ID` and ignores `Parent`, rejects strand `.` and `?`, ignores the phase, sorts segments by coordinate, and compares the coordinates with nothing in the alignment. Nextclade, which produces the annotations of the Nextstrain datasets, reads all of these cases.
 
 - **6a. Rewrite the reader with the semantics of Nextclade, plus checks** (recommended): group by `ID` and `Parent` (name as fallback); a `gene` without `CDS` acts as a CDS; `.` and `?` read as forward, with an entry in the run record; segments in biological 5' to 3' order; the phase column checked against the cumulative phase, with an error on mismatch; circular genomes wrapped. Coordinate contract: the alignment length must equal the landmark length (`##sequence-region` or the `region` row), else an error; the documented contract is that alignment columns are reference coordinates, with insertions relative to the reference removed
   - (+) **Reads the annotations of the Nextclade datasets as Nextclade does**. This is format compatibility, not a scientific choice taken from Nextclade
-  - (+) **Resolves** [kb/issues/M-io-gff3-rejects-unstranded-cds.md](../issues/M-io-gff3-rejects-unstranded-cds.md) and [kb/issues/M-io-gff3-cds-phase-ignored.md](../issues/M-io-gff3-cds-phase-ignored.md)
+  - (+) **Resolves** [kb/issues/M-ancestral-node-data-annotation-drops-cds-phase.md](../issues/M-ancestral-node-data-annotation-drops-cds-phase.md)
   - (+) **Turns silent coordinate shifts into errors**: with an alignment that has insertions relative to the reference, the node data today puts annotations and mutations into different coordinates, and a decoder would shift every codon after the first insertion, both without a message
   - (-) **The forward default for `.` is a convention**, not evidence of orientation, so the run record must report it
 - **6b. Fix only the two known defects** (strand and gene fallback)
@@ -363,7 +366,7 @@ graph TD
 
 ### Engineering
 
-- **Coordinate contract**: with an alignment that has insertions relative to the reference, annotations and mutations use different coordinates, without a message ([kb/issues/M-io-annotation-coordinates-not-checked-against-alignment.md](../issues/M-io-annotation-coordinates-not-checked-against-alignment.md)). The bundled annotated datasets fit the contract; `sc2` has `gene` rows only, and ebola, influenza and dengue have no annotation in `data/`
+- **Coordinate contract**: with an alignment that has insertions relative to the reference, annotations and mutations use different coordinates, without a message ([kb/issues/M-ancestral-translation-annotation-not-checked-against-alignment.md](../issues/M-ancestral-translation-annotation-not-checked-against-alignment.md)). The bundled annotated datasets fit the contract; `sc2` has `gene` rows only, and ebola, influenza and dengue have no annotation in `data/`
 - **Frameshifted tips** (7.4): TreeTime has no detection of frameshifting indels
 - **Sparse 61-state engineering**: leaf observations as state sets, shared profiles per message, per-site allocations, and the resolved-site threshold at 61 states
 - **GenBank pipelines**: most Nextstrain pipelines read GenBank, while TreeTime reads GFF3 only
@@ -380,7 +383,7 @@ graph TD
 The work items of this proposal:
 
 - [kb/issues/M-ancestral-aa-outputs-disagree-with-translated-nucleotide-outputs.md](../issues/M-ancestral-aa-outputs-disagree-with-translated-nucleotide-outputs.md): axes 1 to 5, 7, 10a, 12 and 14.1
-- [kb/issues/M-io-gff3-rejects-unstranded-cds.md](../issues/M-io-gff3-rejects-unstranded-cds.md), [kb/issues/M-io-gff3-cds-phase-ignored.md](../issues/M-io-gff3-cds-phase-ignored.md), [kb/issues/M-io-gff3-gene-only-annotations-yield-no-cds.md](../issues/M-io-gff3-gene-only-annotations-yield-no-cds.md), [kb/issues/M-io-gff3-cds-rows-grouped-by-name-not-id.md](../issues/M-io-gff3-cds-rows-grouped-by-name-not-id.md), [kb/issues/M-io-annotation-coordinates-not-checked-against-alignment.md](../issues/M-io-annotation-coordinates-not-checked-against-alignment.md): axis 6
+- [kb/issues/M-ancestral-node-data-annotation-drops-cds-phase.md](../issues/M-ancestral-node-data-annotation-drops-cds-phase.md), [kb/issues/M-io-gff3-cds-segment-order-wrong-across-circular-origin.md](../issues/M-io-gff3-cds-segment-order-wrong-across-circular-origin.md), [kb/issues/M-ancestral-translation-annotation-not-checked-against-alignment.md](../issues/M-ancestral-translation-annotation-not-checked-against-alignment.md): axis 6
 - [kb/issues/M-cli-run-warnings-and-diagnostics-only-on-stderr.md](../issues/M-cli-run-warnings-and-diagnostics-only-on-stderr.md): axis 13
 - [kb/issues/M-ancestral-codon-substitution-models-unimplemented.md](../issues/M-ancestral-codon-substitution-models-unimplemented.md): axes 8 to 11 and the benchmark of axis 15
 - [kb/issues/N-simulation-substitution-models-nucleotide-only.md](../issues/N-simulation-substitution-models-nucleotide-only.md): the simulation of axis 15
