@@ -94,8 +94,9 @@ mod tests {
         .iter()
         .exactly_one()
         .map_err(|error| make_report!("Expected one partition: {error}"))?
-        .gtr
+        .model
         .as_ref()
+        .map(|model| model.gtr())
         .ok_or_else(|| make_report!("The partition has no inferred model"))?;
       if gtr.W().shape() != [NUCLEOTIDES.len(), NUCLEOTIDES.len()] {
         return make_error!("The inferred model has shape {:?}, expected 4x4", gtr.W().shape());

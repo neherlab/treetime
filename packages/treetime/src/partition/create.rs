@@ -1,6 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::gtr::gamma::{GammaRates, INITIAL_GAMMA_SHAPE};
 use crate::gtr::get_gtr::{GtrModel, log_gtr};
 use crate::gtr::gtr::GTR;
+use crate::gtr::partition_model::PartitionModel;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
 use crate::partition::fitch::partition::PartitionFitch;
@@ -16,39 +18,35 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 
 #[expect(
   clippy::too_many_arguments,
-  reason = "the partition takes its representation, model and rate rule, and its data (graph, alphabet, leaf inputs, branch lengths) and the log sink as separate values; no type holds them together"
+  reason = "the partition takes its representation, model, rate rule and gamma category count, and its data (graph, alphabet, leaf inputs, branch lengths) and the log sink as separate values; no type holds them together"
 )]
 pub(crate) fn build_marginal_partition(
   representation: Representation,
   model: &GtrModel,
   rate: InferredRate,
+  gamma_categories: usize,
   graph: &Graph,
   alphabet: Alphabet,
   node_inputs: NodeMap<NodeSeqInput>,
   branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
+  let gamma = GammaRates::new(gamma_categories, INITIAL_GAMMA_SHAPE)?;
   Ok(match representation {
-    Representation::Sparse => MarginalReconstruction::Sparse(build_sparse_reconstruction(
-      model,
-      rate,
-      graph,
-      alphabet,
-      node_inputs,
-      branch_lengths,
-      log,
-    )?),
+    Representation::Sparse => MarginalReconstruction::Sparse(
+      build_sparse_reconstruction(model, rate, graph, alphabet, node_inputs, branch_lengths, log)?.with_gamma(gamma),
+    ),
     Representation::Dense if model.is_infer() => {
       let fitch = create_fitch_partition(graph, alphabet, node_inputs.clone())?;
       let gtr = fitch_gtr(model, rate, &fitch, graph, branch_lengths, log)?;
       let partition = fitch.into_marginal_dense(graph, &node_inputs)?;
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
+      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, PartitionModel::new(gtr, gamma)))
     },
     Representation::Dense => {
       let alphabet_name = alphabet.name();
       let partition = PartitionMarginalDense::new(alphabet, graph, &node_inputs)?;
       let gtr = named_gtr(model, alphabet_name, log)?;
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
+      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, PartitionModel::new(gtr, gamma)))
     },
   })
 }

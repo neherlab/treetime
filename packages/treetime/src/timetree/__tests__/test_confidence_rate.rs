@@ -4,6 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::date_constraints::DateConstraints;
+  use crate::gtr::gamma::NO_RATE_VARIATION;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::partition::inferred_rate::InferredRate;
@@ -195,6 +196,7 @@ mod tests {
           Representation::Dense,
           &GtrModel::JC69(JC69Params::default()),
           InferredRate::Unit,
+          NO_RATE_VARIATION,
           &graph,
           alphabet,
           leaf_seq_inputs(&graph, &names, aln),

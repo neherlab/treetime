@@ -25,7 +25,7 @@ use treetime::clock::prune_tips::PruneTips;
 use treetime::make_internal_error;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::AlignmentSequences;
-use treetime::partition::split::SequenceInput;
+use treetime::partition::split::{ModelSettings, SequenceInput};
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::reroot::params::RerootSpec;
@@ -77,6 +77,7 @@ pub fn run_timetree_estimation(
     TimetreeSequences::Alignments(SequenceInput {
       alignments: sources,
       partitions: input_data.partitions,
+      models: ModelSettings::default(),
     })
   };
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;

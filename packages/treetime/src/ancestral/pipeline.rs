@@ -111,7 +111,7 @@ fn ancestral_results(
         Ok(PartitionResult::new(
           &layout,
           model_name,
-          partition.gtr().cloned(),
+          partition.model().cloned(),
           log_lh,
         ))
       },

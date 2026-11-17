@@ -51,7 +51,7 @@ mod tests {
     let [result] = output.partitions.as_slice() else {
       panic!("one alignment gives one result");
     };
-    let gtr = result.gtr.as_ref().expect("optimize fits a model");
+    let gtr = result.model.as_ref().expect("optimize fits a model").gtr();
     pretty_assert_ulps_eq!(gtr.mu(), 1.0, max_ulps = 4);
 
     Ok(())

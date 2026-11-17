@@ -111,7 +111,7 @@ mod tests {
       );
       let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let counts = recon.partition.count_transitions(
-        &recon.gtr,
+        recon.model.gtr(),
         &graph,
         &branch_lengths_or_zero(&branch_lengths),
         &recon.node_states,

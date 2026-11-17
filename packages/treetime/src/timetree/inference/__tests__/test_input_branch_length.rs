@@ -5,7 +5,7 @@ mod tests {
   use crate::partition::create::Representation;
   use crate::partition::resolve::{PartitionEntry, resolve_partitions};
   use crate::partition::sites::SiteRange;
-  use crate::partition::split::SequenceInput;
+  use crate::partition::split::{ModelSettings, SequenceInput};
   use crate::progress::NoopProgress;
   use crate::test_utils::JC69_NUCLEOTIDE_SATURATED_DIFFERENCE;
   use crate::timetree::inference::input_branch_length::{InputBranchLikelihood, InputBranchModel, input_branch_model};
@@ -216,6 +216,7 @@ mod tests {
     let sequences = TimetreeSequences::Alignments(SequenceInput {
       alignments: vec![source],
       partitions,
+      models: ModelSettings::default(),
     });
 
     let actual = input_branch_model(

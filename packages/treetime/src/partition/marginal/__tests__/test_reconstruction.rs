@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
+  use crate::gtr::gamma::NO_RATE_VARIATION;
   use crate::gtr::get_gtr::GtrModel;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::create::Representation;
@@ -212,6 +213,7 @@ mod tests {
         representation,
         &GtrModel::JC69(JC69Params::default()),
         InferredRate::Unit,
+        NO_RATE_VARIATION,
         &graph,
         Alphabet::new(AlphabetName::Nuc)?,
         leaf_seq_inputs(&graph, &names, aln),

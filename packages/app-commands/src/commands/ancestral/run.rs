@@ -30,7 +30,7 @@ use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::marginal::sample::SampleMode;
-use treetime::partition::split::SequenceInput;
+use treetime::partition::split::{ModelSettings, SequenceInput};
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
 use treetime::seq::alignment::{LeafSequences, SequenceSource};
@@ -85,6 +85,7 @@ pub fn run_ancestral_reconstruction(
   let sequences = SequenceInput {
     alignments: sources,
     partitions,
+    models: ModelSettings::default(),
   };
   let input = ancestral_input(graph, branch_lengths, sequences);
   let branch_lengths = input.branch_lengths();

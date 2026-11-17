@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
-use crate::gtr::gtr::GTR;
+use crate::gtr::partition_model::PartitionModel;
 use crate::partition::alignment_sequences::PartitionSequences;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::posterior_states::AmbiguityThreshold;
@@ -29,10 +29,10 @@ pub(crate) enum AncestralPartition {
 }
 
 impl AncestralPartition {
-  pub(crate) fn gtr(&self) -> Option<&GTR> {
+  pub(crate) fn model(&self) -> Option<&PartitionModel> {
     match self {
       Self::Fitch(_) => None,
-      Self::Marginal { reconstruction, .. } => Some(reconstruction.gtr()),
+      Self::Marginal { reconstruction, .. } => Some(reconstruction.model()),
     }
   }
 

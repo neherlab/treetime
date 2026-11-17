@@ -97,7 +97,7 @@ mod tests {
       &aln,
     )?;
     let counts = partition.partition.count_transitions(
-      &partition.gtr,
+      partition.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &partition.node_states,
@@ -212,8 +212,8 @@ mod tests {
     let (graph1, partition1, branch_lengths1) = setup_dense(&tree1, &aln)?;
     let (graph2, partition2, branch_lengths2) = setup_dense(&tree2, &aln)?;
 
-    let counts1 = partition1.partition.count_transitions(&partition1.gtr, &graph1, &branch_lengths_or_zero(&branch_lengths1), &partition1.node_states, &partition1.edges.backward, &partition1.edges.forward)?;
-    let counts2 = partition2.partition.count_transitions(&partition2.gtr, &graph2, &branch_lengths_or_zero(&branch_lengths2), &partition2.node_states, &partition2.edges.backward, &partition2.edges.forward)?;
+    let counts1 = partition1.partition.count_transitions(partition1.model.gtr(), &graph1, &branch_lengths_or_zero(&branch_lengths1), &partition1.node_states, &partition1.edges.backward, &partition1.edges.forward)?;
+    let counts2 = partition2.partition.count_transitions(partition2.model.gtr(), &graph2, &branch_lengths_or_zero(&branch_lengths2), &partition2.node_states, &partition2.edges.backward, &partition2.edges.forward)?;
 
     let ratio = bl2 / bl1;
     pretty_assert_ulps_eq!(counts2.Ti, &counts1.Ti * ratio, epsilon = 1e-7);
@@ -247,7 +247,7 @@ mod tests {
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.partition.count_transitions(
-      &partition_d.gtr,
+      partition_d.model.gtr(),
       &graph_d,
       &branch_lengths_or_zero(&branch_lengths_d),
       &partition_d.node_states,
@@ -314,7 +314,7 @@ mod tests {
 
     let (graph, partition, branch_lengths) = setup_dense("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
     let counts = partition.partition.count_transitions(
-      &partition.gtr,
+      partition.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &partition.node_states,
@@ -438,7 +438,7 @@ mod tests {
     let tree_nwk = "((a1:0.1,a2:0.1,t1:0.1)left:0.05,(a3:0.1,a4:0.1,t2:0.1)right:0.05)root:0.0;";
     let (graph, partition, branch_lengths) = setup_dense(tree_nwk, &aln)?;
     let counts = partition.partition.count_transitions(
-      &partition.gtr,
+      partition.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &partition.node_states,
@@ -519,7 +519,7 @@ mod tests {
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.partition.count_transitions(
-      &partition_d.gtr,
+      partition_d.model.gtr(),
       &graph_d,
       &branch_lengths_or_zero(&branch_lengths_d),
       &partition_d.node_states,
@@ -573,7 +573,7 @@ mod tests {
     let (graph, partition, branch_lengths) =
       setup_dense("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
     let counts = partition.partition.count_transitions(
-      &partition.gtr,
+      partition.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &partition.node_states,
@@ -612,7 +612,7 @@ mod tests {
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.partition.count_transitions(
-      &partition_d.gtr,
+      partition_d.model.gtr(),
       &graph_d,
       &branch_lengths_or_zero(&branch_lengths_d),
       &partition_d.node_states,
@@ -653,7 +653,7 @@ mod tests {
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.partition.count_transitions(
-      &partition_d.gtr,
+      partition_d.model.gtr(),
       &graph_d,
       &branch_lengths_or_zero(&branch_lengths_d),
       &partition_d.node_states,
@@ -694,7 +694,7 @@ mod tests {
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.partition.count_transitions(
-      &partition_d.gtr,
+      partition_d.model.gtr(),
       &graph_d,
       &branch_lengths_or_zero(&branch_lengths_d),
       &partition_d.node_states,

@@ -94,6 +94,7 @@ mod tests {
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::cancel::NoopCancel;
     use crate::error::OperationError;
+    use crate::gtr::gamma::NO_RATE_VARIATION;
     use crate::gtr::get_gtr::{GtrModel, HKY85Params, JC69Params};
     use crate::gtr::gtr::GTR;
     use crate::partition::alignment_sequences::PartitionSequences;
@@ -103,7 +104,7 @@ mod tests {
     use crate::partition::marginal::sample::SampleMode;
     use crate::partition::resolve::{PartitionEntry, resolve_partitions};
     use crate::partition::sites::SiteRange;
-    use crate::partition::split::SequenceInput;
+    use crate::partition::split::{ModelSettings, SequenceInput};
     use crate::progress::NoopProgress;
     use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
     use crate::seq::mutation::Mutation;
@@ -228,6 +229,7 @@ mod tests {
         sequences: SequenceInput {
           alignments: vec![source],
           partitions,
+          models: ModelSettings::default(),
         },
       };
       let params = AncestralParams {
@@ -260,7 +262,7 @@ mod tests {
         models: output
           .partitions
           .iter()
-          .map(|partition| model_of(partition.gtr.as_ref().expect("a marginal run fits a model")))
+          .map(|partition| model_of(partition.model.as_ref().expect("a marginal run fits a model").gtr()))
           .collect(),
         log_lh: output
           .partitions
@@ -298,6 +300,7 @@ mod tests {
         representation,
         model,
         InferredRate::Unit,
+        NO_RATE_VARIATION,
         &parse.graph,
         source.alphabet,
         source.nodes,
@@ -333,7 +336,7 @@ mod tests {
         root_sequence: mutations.root_sequence,
         edge_mutations: mutations.edge_mutations,
         edge_mutation_counts: EdgeMap::new(),
-        models: vec![model_of(partition.gtr().expect("a marginal run fits a model"))],
+        models: vec![model_of(partition.model().expect("a marginal run fits a model").gtr())],
         log_lh: vec![log_lh.value()],
       })
     }

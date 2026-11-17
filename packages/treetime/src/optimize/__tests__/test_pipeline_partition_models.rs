@@ -75,7 +75,7 @@ mod tests {
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::{OptimizeInput, OptimizeOutput, OptimizeParams, run};
     use crate::partition::resolve::{PartitionEntry, resolve_partitions};
-    use crate::partition::split::SequenceInput;
+    use crate::partition::split::{ModelSettings, SequenceInput};
     use crate::progress::NoopProgress;
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{Columns, TestDataset, leaf_seq_inputs, sequence_source, split_at_gap_free_column};
@@ -154,7 +154,11 @@ mod tests {
       let input = OptimizeInput {
         graph: parse.graph,
         names: parse.names,
-        sequences: SequenceInput { alignments, partitions },
+        sequences: SequenceInput {
+          alignments,
+          partitions,
+          models: ModelSettings::default(),
+        },
         branch_lengths: parse.branch_lengths,
       };
       Ok(run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?)
@@ -165,7 +169,7 @@ mod tests {
         .partitions
         .iter()
         .map(|partition| {
-          let gtr = partition.gtr.as_ref().expect("optimize fits a model");
+          let gtr = partition.model.as_ref().expect("optimize fits a model").gtr();
           (partition.sites, gtr.mu())
         })
         .collect()

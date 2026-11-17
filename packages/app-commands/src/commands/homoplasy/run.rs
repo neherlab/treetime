@@ -23,7 +23,7 @@ use treetime::cancel::Cancel;
 use treetime::homoplasy;
 use treetime::homoplasy::pipeline::{HomoplasyInput, HomoplasyParams};
 use treetime::partition::marginal::sample::SampleMode;
-use treetime::partition::split::SequenceInput;
+use treetime::partition::split::{ModelSettings, SequenceInput};
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::PositionBase;
@@ -73,6 +73,7 @@ pub fn run_homoplasy(
   let sequences = SequenceInput {
     alignments: vec![source],
     partitions,
+    models: ModelSettings::default(),
   };
   let mut input = ancestral_input(graph, branch_lengths, sequences);
   for edge in input.edges.values_mut() {

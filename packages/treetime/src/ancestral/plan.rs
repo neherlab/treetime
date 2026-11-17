@@ -5,6 +5,7 @@ use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::partition::AncestralPartition;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
+use crate::gtr::gamma::NO_RATE_VARIATION;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::gtr::gtr::GTR;
 use crate::optimize::partition_rates::scale_rates_to_unit_mean;
@@ -15,7 +16,7 @@ use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalRe
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::resolve::PartitionLayout;
-use crate::partition::split::{AlignmentInfo, PartitionData, SplitInput, SplitPartition};
+use crate::partition::split::{AlignmentInfo, ModelSettings, PartitionData, SplitInput, SplitPartition};
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::NodeSeqInput;
 use crate::{progress_info, progress_warn};
@@ -57,7 +58,11 @@ pub(crate) fn reconstruct_partitions(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<Vec<ReconstructedPartition>, Report> {
-  let SplitInput { alignments, partitions } = input;
+  let SplitInput {
+    alignments,
+    partitions,
+    models,
+  } = input;
   let (heads, inputs): (Vec<_>, Vec<_>) = partitions
     .into_iter()
     .map(|SplitPartition { data, model }| {
@@ -78,6 +83,7 @@ pub(crate) fn reconstruct_partitions(
         &alignments,
         &heads,
         inputs,
+        models,
         branch_lengths,
         cancel,
         stages,
@@ -119,6 +125,7 @@ fn build_alignment_partitions(
   alignments: &[AlignmentInfo],
   heads: &[(PartitionLayout, GtrModel)],
   inputs: Vec<(Alphabet, NodeMap<NodeSeqInput>)>,
+  models: ModelSettings,
   branch_lengths: &EdgeMap<f64>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
@@ -138,8 +145,17 @@ fn build_alignment_partitions(
         );
       }
       let rate = InferredRate::for_partition_count(counts[&layout.alignment]);
-      let reconstruction =
-        build_marginal_partition(representation, model, rate, graph, alphabet, nodes, branch_lengths, log)?;
+      let reconstruction = build_marginal_partition(
+        representation,
+        model,
+        rate,
+        models.gamma_categories,
+        graph,
+        alphabet,
+        nodes,
+        branch_lengths,
+        log,
+      )?;
       Ok(
         reconstruction
           .with_layout(layout.clone())
@@ -161,8 +177,8 @@ fn build_alignment_partitions(
 
 fn reconstruction_gtr(reconstruction: &mut MarginalReconstruction) -> &mut GTR {
   match reconstruction {
-    MarginalReconstruction::Dense(dense) => &mut dense.gtr,
-    MarginalReconstruction::Sparse(sparse) => &mut sparse.gtr,
+    MarginalReconstruction::Dense(dense) => dense.model.gtr_mut(),
+    MarginalReconstruction::Sparse(sparse) => sparse.model.gtr_mut(),
   }
 }
 
@@ -208,6 +224,7 @@ pub(crate) fn reconstruct_partition(
         representation,
         model,
         rate,
+        NO_RATE_VARIATION,
         graph,
         alphabet,
         node_inputs,
@@ -296,29 +313,33 @@ fn fit_reconstruction(
   Ok(match reconstruction {
     MarginalReconstruction::Sparse(SparseReconstruction {
       partition,
-      gtr,
+      model,
       node_states,
       layout,
       ..
     }) => {
       let partition = partition.with_imputation(impute);
       let MarginalUpdate { node_states, edges, .. } =
-        partition.marginal_update(&gtr, graph, branch_lengths, &node_states)?;
+        partition.marginal_update(model.gtr(), graph, branch_lengths, &node_states)?;
       MarginalReconstruction::Sparse(SparseReconstruction {
         partition,
-        gtr,
+        model,
         node_states,
         edges,
         layout,
       })
     },
     MarginalReconstruction::Dense(DenseReconstruction {
-      partition, gtr, layout, ..
+      partition,
+      model,
+      layout,
+      ..
     }) => {
-      let MarginalUpdate { node_states, edges, .. } = partition.marginal_update(&gtr, graph, branch_lengths, &())?;
+      let MarginalUpdate { node_states, edges, .. } =
+        partition.marginal_update(model.gtr(), graph, branch_lengths, &())?;
       MarginalReconstruction::Dense(DenseReconstruction {
         partition,
-        gtr,
+        model,
         node_states,
         edges,
         layout,

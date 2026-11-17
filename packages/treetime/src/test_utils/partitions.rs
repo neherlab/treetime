@@ -3,7 +3,7 @@ use crate::partition::create::Representation;
 use crate::partition::resolve::{PartitionEntry, resolve_partitions};
 use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::partition::sites::SiteRange;
-use crate::partition::split::{SequenceInput, SplitInput};
+use crate::partition::split::{ModelSettings, SequenceInput, SplitInput};
 use crate::progress::NoopProgress;
 use crate::seq::alignment::SequenceSource;
 use eyre::Report;
@@ -39,7 +39,11 @@ pub(crate) fn codon_positions_input(
     .try_collect::<_, _, Report>()?;
   let lengths = [length];
   let partitions = resolve_partitions(&entries, &lengths, model, Some(alignment.alphabet.name()))?.plans;
-  Ok(SequenceInput { alignments, partitions })
+  Ok(SequenceInput {
+    alignments,
+    partitions,
+    models: ModelSettings::default(),
+  })
 }
 
 pub(crate) fn codon_partition_set(
@@ -49,6 +53,6 @@ pub(crate) fn codon_partition_set(
   sources: Vec<SequenceSource>,
   branch_lengths: &EdgeMap<f64>,
 ) -> Result<PartitionSet, Report> {
-  let SplitInput { partitions, .. } = codon_positions_input(sources, model)?.split()?;
-  build_partition_set(representation, graph, partitions, branch_lengths, &NoopProgress)
+  let SplitInput { partitions, models, .. } = codon_positions_input(sources, model)?.split()?;
+  build_partition_set(representation, graph, partitions, models, branch_lengths, &NoopProgress)
 }

@@ -120,7 +120,7 @@ mod tests {
       };
       Ok(PartitionSet::Dense(vec![DenseReconstruction {
         partition,
-        gtr: jc69(JC69Params::default())?,
+        model: jc69(JC69Params::default())?.into(),
         node_states,
         edges: MarginalEdges::default(),
         layout: None,

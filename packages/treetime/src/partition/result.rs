@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::gtr::GTR;
+use crate::gtr::partition_model::PartitionModel;
 use crate::partition::resolve::PartitionLayout;
 use crate::partition::split::AlignmentInfo;
 use crate::seq::mutation::{Mutation, SequenceMutations, edge_state_change_counts};
@@ -18,7 +18,7 @@ pub struct PartitionResult {
   pub alignment: usize,
   pub sites: usize,
   pub model_name: GtrModelName,
-  pub gtr: Option<GTR>,
+  pub model: Option<PartitionModel>,
   pub log_lh: Option<LogLh>,
 }
 
@@ -26,7 +26,7 @@ impl PartitionResult {
   pub(crate) fn new(
     layout: &PartitionLayout,
     model_name: GtrModelName,
-    gtr: Option<GTR>,
+    model: Option<PartitionModel>,
     log_lh: Option<LogLh>,
   ) -> Self {
     Self {
@@ -35,7 +35,7 @@ impl PartitionResult {
       alignment: layout.alignment,
       sites: layout.columns.len(),
       model_name,
-      gtr,
+      model,
       log_lh,
     }
   }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::gtr::gamma::NO_RATE_VARIATION;
   use crate::gtr::get_gtr::{GtrModel, GtrModelName, JC69Params, K80Params, k80};
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::partition::inferred_rate::InferredRate;
@@ -36,6 +37,7 @@ mod tests {
       representation,
       &GtrModel::from(model),
       rate,
+      NO_RATE_VARIATION,
       &input.graph,
       Alphabet::default(),
       input.node_inputs.clone(),
@@ -47,7 +49,7 @@ mod tests {
     assert_eq!(4, reconstruction.view().length());
     assert_eq!(
       format!("{:#?}", expected_gtr(&input)?),
-      format!("{:#?}", reconstruction.gtr())
+      format!("{:#?}", reconstruction.model().gtr())
     );
     let (updated, _) = marginal_update_reconstruction(reconstruction, &input.graph, &input.branch_lengths)?;
     assert_eq!("ACGT", updated.view().root_sequence(&input.graph)?.to_string());
@@ -72,6 +74,7 @@ mod tests {
       representation,
       &GtrModel::K80(params),
       InferredRate::Fitted,
+      NO_RATE_VARIATION,
       &input.graph,
       Alphabet::default(),
       input.node_inputs.clone(),
@@ -79,7 +82,10 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(format!("{:#?}", k80(params)?), format!("{:#?}", reconstruction.gtr()));
+    assert_eq!(
+      format!("{:#?}", k80(params)?),
+      format!("{:#?}", reconstruction.model().gtr())
+    );
     Ok(())
   }
 
@@ -96,6 +102,7 @@ mod tests {
       representation,
       &GtrModel::JC69(JC69Params::default()),
       InferredRate::Unit,
+      NO_RATE_VARIATION,
       &input.graph,
       Alphabet::new(AlphabetName::AaNoStop)?,
       input.node_inputs.clone(),
@@ -103,7 +110,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(20, reconstruction.gtr().pi().len());
+    assert_eq!(20, reconstruction.model().gtr().pi().len());
     Ok(())
   }
 
@@ -115,6 +122,7 @@ mod tests {
       Representation::Dense,
       &GtrModel::JC69(JC69Params::default()),
       InferredRate::Unit,
+      NO_RATE_VARIATION,
       &input.graph,
       Alphabet::default(),
       input.node_inputs.clone(),

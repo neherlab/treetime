@@ -81,7 +81,7 @@ mod tests {
       setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
     let counts = recon.partition.count_transitions(
-      &recon.gtr,
+      recon.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
@@ -116,7 +116,7 @@ mod tests {
     let (graph, recon, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
     let counts = recon.partition.count_transitions(
-      &recon.gtr,
+      recon.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
@@ -167,7 +167,7 @@ mod tests {
       setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
     let counts = recon.partition.count_transitions(
-      &recon.gtr,
+      recon.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
@@ -242,7 +242,7 @@ mod tests {
     let (graph, recon, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;
 
     let counts = recon.partition.count_transitions(
-      &recon.gtr,
+      recon.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,

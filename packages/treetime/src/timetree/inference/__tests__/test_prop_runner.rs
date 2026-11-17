@@ -155,7 +155,7 @@ mod tests {
         .collect();
       let partition = PartitionSet::Dense(vec![DenseReconstruction {
         partition: PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
-        gtr: jc69(JC69Params::default())?,
+        model: jc69(JC69Params::default())?.into(),
         node_states: NodeMap::new(),
         edges: MarginalEdges::default(),
         layout: None,

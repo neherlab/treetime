@@ -481,11 +481,16 @@ fn initialize_branch_model(
       };
       let split = input.split().map_err(OperationError::classify)?;
       let model_names = split.model_names();
-      let SplitInput { alignments, partitions } = split;
+      let SplitInput {
+        alignments,
+        partitions,
+        models,
+      } = split;
       let partitions = build_partition_set(
         representation,
         graph,
         partitions,
+        models,
         &branch_lengths_or_zero(branch_lengths),
         log,
       )
@@ -779,7 +784,7 @@ fn final_partition_results(
       Ok(PartitionResult::new(
         &layout,
         model_name,
-        Some(partition.gtr().clone()),
+        Some(partition.model().clone()),
         Some(log_lh),
       ))
     })

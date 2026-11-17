@@ -47,7 +47,7 @@ mod tests {
     let (graph, recon, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
     let counts = recon.partition.count_transitions(
-      &recon.gtr,
+      recon.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
@@ -82,7 +82,7 @@ mod tests {
 
     let (graph, recon, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
     let counts = recon.partition.count_transitions(
-      &recon.gtr,
+      recon.model.gtr(),
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,

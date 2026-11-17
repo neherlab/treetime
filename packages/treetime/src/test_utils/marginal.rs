@@ -199,8 +199,8 @@ pub(crate) trait SingleReconstruction {
 
   fn gtr_mut(&mut self) -> &mut GTR {
     match self.single_mut() {
-      ReconstructionMut::Dense(dense) => &mut dense.gtr,
-      ReconstructionMut::Sparse(sparse) => &mut sparse.gtr,
+      ReconstructionMut::Dense(dense) => dense.model.gtr_mut(),
+      ReconstructionMut::Sparse(sparse) => sparse.model.gtr_mut(),
     }
   }
 }
@@ -321,8 +321,8 @@ pub(crate) fn whole_alignment_set(
   sources: Vec<SequenceSource>,
   branch_lengths: &EdgeMap<f64>,
 ) -> Result<PartitionSet, Report> {
-  let SplitInput { partitions, .. } = SequenceInput::whole_alignments(sources, model)?.split()?;
-  build_partition_set(representation, graph, partitions, branch_lengths, &NoopProgress)
+  let SplitInput { partitions, models, .. } = SequenceInput::whole_alignments(sources, model)?.split()?;
+  build_partition_set(representation, graph, partitions, models, branch_lengths, &NoopProgress)
 }
 
 pub(crate) fn complete_leaf_sequences(

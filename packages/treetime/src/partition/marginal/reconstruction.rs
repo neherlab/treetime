@@ -1,6 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
+use crate::gtr::gamma::GammaRates;
 use crate::gtr::gtr::GTR;
+use crate::gtr::partition_model::PartitionModel;
 use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate};
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::posterior_states::AmbiguityThreshold;
@@ -52,8 +54,8 @@ impl MarginalReconstruction {
     }
   }
 
-  pub(crate) fn gtr(&self) -> &GTR {
-    self.view().gtr()
+  pub(crate) fn model(&self) -> &PartitionModel {
+    self.view().model()
   }
 
   #[must_use]
@@ -135,7 +137,11 @@ pub(crate) enum ReconstructionRef<'a> {
 
 impl<'a> ReconstructionRef<'a> {
   pub(crate) fn gtr(self) -> &'a GTR {
-    each_kind!(self, |reconstruction| &reconstruction.gtr)
+    each_kind!(self, |reconstruction| reconstruction.model.gtr())
+  }
+
+  pub(crate) fn model(self) -> &'a PartitionModel {
+    each_kind!(self, |reconstruction| &reconstruction.model)
   }
 
   pub(crate) fn length(self) -> usize {
@@ -305,13 +311,13 @@ impl<'a> ReconstructionRef<'a> {
   pub(crate) fn create_edge_contribution(self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
       Self::Dense(reconstruction) => reconstruction.partition.create_edge_contribution(
-        &reconstruction.gtr,
+        reconstruction.model.gtr(),
         &reconstruction.edges.backward,
         &reconstruction.edges.forward,
         edge_key,
       ),
       Self::Sparse(reconstruction) => reconstruction.partition.create_edge_contribution(
-        &reconstruction.gtr,
+        reconstruction.model.gtr(),
         &reconstruction.edges.backward,
         &reconstruction.edges.forward,
         edge_key,
@@ -332,17 +338,29 @@ impl<'a> ReconstructionRef<'a> {
 #[derive(Clone, Debug)]
 pub struct SparseReconstruction {
   pub(crate) partition: PartitionMarginalSparse,
-  pub(crate) gtr: GTR,
+  pub(crate) model: PartitionModel,
   pub(crate) node_states: NodeMap<SparseNodeState>,
   pub(crate) edges: SparseMarginalEdges,
   pub(crate) layout: Option<PartitionLayout>,
 }
 
 impl SparseReconstruction {
-  pub(crate) fn seeded(partition: PartitionMarginalSparse, gtr: GTR, node_states: NodeMap<SparseNodeState>) -> Self {
+  #[must_use]
+  pub(crate) fn with_gamma(self, gamma: GammaRates) -> Self {
+    Self {
+      model: self.model.with_gamma(gamma),
+      ..self
+    }
+  }
+
+  pub(crate) fn seeded(
+    partition: PartitionMarginalSparse,
+    model: impl Into<PartitionModel>,
+    node_states: NodeMap<SparseNodeState>,
+  ) -> Self {
     Self {
       partition,
-      gtr,
+      model: model.into(),
       node_states,
       edges: SparseMarginalEdges::default(),
       layout: None,
@@ -377,7 +395,7 @@ impl SparseReconstruction {
   pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<(Self, LogLh), Report> {
     let Self {
       partition,
-      gtr,
+      model,
       node_states,
       edges,
       layout,
@@ -387,11 +405,11 @@ impl SparseReconstruction {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(&gtr, graph, branch_lengths, &node_states)?;
+    } = partition.marginal_update(model.gtr(), graph, branch_lengths, &node_states)?;
     Ok((
       Self {
         partition,
-        gtr,
+        model,
         node_states,
         edges,
         layout,
@@ -416,14 +434,14 @@ impl SparseReconstruction {
   ) -> Result<Self, Report> {
     let (gtr, _, _) = optimize_gtr_rate(
       &self.partition,
-      self.gtr,
+      self.model.gtr().clone(),
       &self.node_states,
       graph,
       branch_lengths,
       RateRangeEdge::LowerCostEnd,
       log,
     )?;
-    Ok(Self::seeded(self.partition, gtr, self.node_states).keeping_layout(self.layout))
+    Ok(Self::seeded(self.partition, self.model.with_gtr(gtr), self.node_states).keeping_layout(self.layout))
   }
 
   pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
@@ -433,7 +451,7 @@ impl SparseReconstruction {
     Ok(
       Self::seeded(
         partition,
-        self.gtr,
+        self.model,
         reconcile_node_states(self.node_states, &live_nodes, SparseNodeState::empty),
       )
       .keeping_layout(self.layout),
@@ -444,7 +462,7 @@ impl SparseReconstruction {
   pub(crate) fn reconcile_node_states(self, graph: &Graph) -> Self {
     Self::seeded(
       self.partition,
-      self.gtr,
+      self.model,
       reconcile_node_states(self.node_states, &live_node_keys(graph), SparseNodeState::empty),
     )
     .keeping_layout(self.layout)
@@ -459,17 +477,17 @@ impl SparseReconstruction {
 #[derive(Clone, Debug)]
 pub struct DenseReconstruction {
   pub(crate) partition: PartitionMarginalDense,
-  pub(crate) gtr: GTR,
+  pub(crate) model: PartitionModel,
   pub(crate) node_states: NodeMap<DenseNodeState>,
   pub(crate) edges: DenseMarginalEdges,
   pub(crate) layout: Option<PartitionLayout>,
 }
 
 impl DenseReconstruction {
-  pub(crate) fn seeded(partition: PartitionMarginalDense, gtr: GTR) -> Self {
+  pub(crate) fn seeded(partition: PartitionMarginalDense, model: impl Into<PartitionModel>) -> Self {
     Self {
       partition,
-      gtr,
+      model: model.into(),
       node_states: NodeMap::new(),
       edges: DenseMarginalEdges::default(),
       layout: None,
@@ -500,7 +518,7 @@ impl DenseReconstruction {
   pub(crate) fn reseeded(self) -> Self {
     Self {
       layout: self.layout,
-      ..Self::seeded(self.partition, self.gtr)
+      ..Self::seeded(self.partition, self.model)
     }
   }
 
@@ -512,7 +530,7 @@ impl DenseReconstruction {
   ) -> Result<Self, Report> {
     let (gtr, _, _) = optimize_gtr_rate(
       &self.partition,
-      self.gtr,
+      self.model.gtr().clone(),
       &self.node_states,
       graph,
       branch_lengths,
@@ -521,14 +539,14 @@ impl DenseReconstruction {
     )?;
     Ok(Self {
       layout: self.layout,
-      ..Self::seeded(self.partition, gtr)
+      ..Self::seeded(self.partition, self.model.with_gtr(gtr))
     })
   }
 
   pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<(Self, LogLh), Report> {
     let Self {
       partition,
-      gtr,
+      model,
       node_states,
       edges,
       layout,
@@ -539,11 +557,11 @@ impl DenseReconstruction {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(&gtr, graph, branch_lengths, &())?;
+    } = partition.marginal_update(model.gtr(), graph, branch_lengths, &())?;
     Ok((
       Self {
         partition,
-        gtr,
+        model,
         node_states,
         edges,
         layout,

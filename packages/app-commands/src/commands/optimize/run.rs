@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 use treetime::cancel::Cancel;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use treetime::partition::result::AlignmentSequences;
-use treetime::partition::split::SequenceInput;
+use treetime::partition::split::{ModelSettings, SequenceInput};
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
@@ -43,6 +43,7 @@ pub fn run_optimize(
   let sequences = SequenceInput {
     alignments: alignments.into_iter().map(|source| source.source).collect(),
     partitions,
+    models: ModelSettings::default(),
   };
 
   let params = OptimizeParams {

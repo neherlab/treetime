@@ -53,13 +53,13 @@ pub(crate) fn reroot_sparse(
       .map(
         |SparseReconstruction {
            partition,
-           gtr,
+           model,
            node_states,
            layout,
            ..
          }| {
           let node_states = reconcile_node_states(&partition, node_states);
-          SparseReconstruction::seeded(partition, gtr, node_states).keeping_layout(layout)
+          SparseReconstruction::seeded(partition, model, node_states).keeping_layout(layout)
         },
       )
       .collect(),

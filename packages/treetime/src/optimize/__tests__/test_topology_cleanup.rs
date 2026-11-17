@@ -696,7 +696,7 @@ pub(super) mod tests {
           obs_edges: keymap! {},
           impute_missing_data: false,
         },
-        gtr: jc69(JC69Params::default())?,
+        model: jc69(JC69Params::default())?.into(),
         node_states: keymap! {},
         edges: MarginalEdges::default(),
         layout: None,

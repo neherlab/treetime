@@ -6,6 +6,7 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::ClockFit;
   use crate::clock::gaussian::GaussianTree;
+  use crate::gtr::gamma::NO_RATE_VARIATION;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::partition::inferred_rate::InferredRate;
@@ -65,6 +66,7 @@ mod tests {
       Representation::Sparse,
       &GtrModel::JC69(JC69Params::default()),
       InferredRate::Unit,
+      NO_RATE_VARIATION,
       &graph,
       alphabet,
       leaf_seq_inputs(&graph, &names, aln),

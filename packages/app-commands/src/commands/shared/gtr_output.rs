@@ -52,8 +52,9 @@ pub(crate) fn partition_models(
 ) -> Result<ModelOutput, Report> {
   let models = partitions
     .iter()
-    .filter_map(|partition| Some((partition, partition.gtr.as_ref()?)))
-    .map(|(partition, gtr)| {
+    .filter_map(|partition| Some((partition, partition.model.as_ref()?)))
+    .map(|(partition, partition_model)| {
+      let gtr = partition_model.gtr();
       let Some(alignment) = alignments
         .iter()
         .find(|alignment| alignment.number == partition.alignment)

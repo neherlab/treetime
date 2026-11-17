@@ -157,7 +157,7 @@ fn prune_results(
       .map(|partition| (partition.layout(), partition.partition.length)),
   );
   let results = izip!(&layouts, partitions)
-    .map(|(layout, partition)| PartitionResult::new(layout, GtrModelName::JC69, Some(partition.gtr.clone()), None))
+    .map(|(layout, partition)| PartitionResult::new(layout, GtrModelName::JC69, Some(partition.model.clone()), None))
     .collect();
   Ok((alignment_results(alignments, outcomes)?, results))
 }

@@ -1,9 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::gtr::gamma::NO_RATE_VARIATION;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::partition::resolve::{PartitionLayout, PartitionPlan, ResolvedPartitions, resolve_partitions};
 use crate::seq::alignment::{NodeSeqInput, SequenceSource};
 use eyre::Report;
 use itertools::{Itertools, izip};
+use smart_default::SmartDefault;
 use std::iter::repeat_with;
 use std::path::PathBuf;
 use treetime_graph::key_map::NodeMap;
@@ -14,6 +16,13 @@ use treetime_utils::{make_internal_error, make_internal_report};
 pub struct SequenceInput {
   pub alignments: Vec<SequenceSource>,
   pub partitions: Vec<PartitionPlan>,
+  pub models: ModelSettings,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault)]
+pub struct ModelSettings {
+  #[default(NO_RATE_VARIATION)]
+  pub gamma_categories: usize,
 }
 
 impl SequenceInput {
@@ -24,6 +33,7 @@ impl SequenceInput {
     Ok(Self {
       alignments,
       partitions: plans,
+      models: ModelSettings::default(),
     })
   }
 
@@ -49,7 +59,11 @@ impl SequenceInput {
     let partitions = izip!(partitions, models)
       .map(|(data, model)| SplitPartition { data, model })
       .collect();
-    Ok(SplitInput { alignments, partitions })
+    Ok(SplitInput {
+      alignments,
+      partitions,
+      models: self.models,
+    })
   }
 }
 
@@ -102,6 +116,7 @@ pub(crate) fn split_alignments(
 pub(crate) struct SplitInput {
   pub(crate) alignments: Vec<AlignmentInfo>,
   pub(crate) partitions: Vec<SplitPartition>,
+  pub(crate) models: ModelSettings,
 }
 
 impl SplitInput {

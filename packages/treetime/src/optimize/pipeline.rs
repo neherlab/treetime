@@ -143,11 +143,16 @@ fn prepare_partitions(
   let normalize_inferred = sequences.has_inferred_model();
   let split = sequences.split()?;
   let model_names = split.model_names();
-  let SplitInput { alignments, partitions } = split;
+  let SplitInput {
+    alignments,
+    partitions,
+    models,
+  } = split;
   let partitions = build_partition_set(
     Representation::resolve(params.dense),
     graph,
     partitions,
+    models,
     &branch_lengths_or_zero(branch_lengths),
     log,
   )?;
@@ -257,7 +262,7 @@ fn optimize_results(
       Ok(PartitionResult::new(
         &layout,
         model_name,
-        Some(partition.gtr().clone()),
+        Some(partition.model().clone()),
         Some(partition.graph_log_lh(graph)?),
       ))
     })

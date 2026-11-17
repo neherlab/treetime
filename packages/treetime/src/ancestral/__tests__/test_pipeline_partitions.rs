@@ -167,8 +167,9 @@ mod tests {
       );
       let model = |result: &PartitionResult| {
         result
-          .gtr
+          .model
           .as_ref()
+          .map(|model| model.gtr())
           .map(|gtr| (gtr.mu(), gtr.W().clone(), gtr.pi().clone()))
       };
       assert_eq!(model(single), model(joint));

@@ -10,6 +10,10 @@ pub const GAMMA_SHAPE_MIN: f64 = 0.02;
 
 pub const GAMMA_SHAPE_MAX: f64 = 100.0;
 
+pub const INITIAL_GAMMA_SHAPE: f64 = 1.0;
+
+pub const NO_RATE_VARIATION: usize = 1;
+
 #[derive(Clone, Debug, PartialEq, Getters, CopyGetters)]
 pub struct GammaRates {
   #[getset(get_copy = "pub")]

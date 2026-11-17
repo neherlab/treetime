@@ -211,6 +211,7 @@ mod tests {
     use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
     use treetime::gtr::get_gtr::{GtrModelName, JC69Params, ModelOutput, jc69};
     use treetime::gtr::gtr::{GTR, Mu};
+    use treetime::gtr::partition_model::PartitionModel;
     use treetime::partition::result::{AlignmentResult, PartitionResult};
     use treetime_utils::io::json::json_value_read_file;
 
@@ -269,7 +270,7 @@ mod tests {
         } else {
           GtrModelName::Infer
         },
-        gtr,
+        model: gtr.map(PartitionModel::from),
         log_lh: None,
       };
       (partition, alignment(number, path, indel_rate))
@@ -291,7 +292,7 @@ mod tests {
           alignment: 1,
           sites,
           model_name: GtrModelName::JC69,
-          gtr: Some(jc69_gtr()?),
+          model: Some(jc69_gtr()?.into()),
           log_lh: None,
         })
       };
@@ -309,10 +310,13 @@ mod tests {
         alignment: 1,
         sites: 12,
         model_name: GtrModelName::JC69,
-        gtr: Some(jc69(JC69Params {
-          alphabet: AlphabetName::Aa,
-          ..JC69Params::default()
-        })?),
+        model: Some(
+          jc69(JC69Params {
+            alphabet: AlphabetName::Aa,
+            ..JC69Params::default()
+          })?
+          .into(),
+        ),
         log_lh: None,
       };
       let alignment = AlignmentResult {

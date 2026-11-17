@@ -8,7 +8,7 @@ use crate::partition::marginal::reconstruction::{
 use crate::partition::marginal::sparse::alignment_indels::merge_sparse_edges;
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::resolve::PartitionLayout;
-use crate::partition::split::{PartitionData, SplitPartition};
+use crate::partition::split::{ModelSettings, PartitionData, SplitPartition};
 use crate::progress::LogSink;
 use eyre::Report;
 use itertools::{Either, Itertools, izip};
@@ -24,6 +24,7 @@ pub(crate) fn build_partition_set(
   representation: Representation,
   graph: &Graph,
   partitions: Vec<SplitPartition>,
+  models: ModelSettings,
   branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
@@ -40,6 +41,7 @@ pub(crate) fn build_partition_set(
         representation,
         &model,
         rate,
+        models.gamma_categories,
         graph,
         alphabet,
         nodes,
@@ -214,11 +216,11 @@ impl PartitionSet {
     match self {
       Self::Dense(partitions) => partitions
         .iter_mut()
-        .map(|partition| (partition.partition.length, &mut partition.gtr))
+        .map(|partition| (partition.partition.length, partition.model.gtr_mut()))
         .collect(),
       Self::Sparse(partitions) => partitions
         .iter_mut()
-        .map(|partition| (partition.partition.length, &mut partition.gtr))
+        .map(|partition| (partition.partition.length, partition.model.gtr_mut()))
         .collect(),
     }
   }

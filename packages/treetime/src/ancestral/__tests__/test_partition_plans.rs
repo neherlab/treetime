@@ -117,7 +117,11 @@ mod tests {
       .collect_vec();
     assert_eq!(vec![(1, 1, GtrModelName::Infer), (2, 2, GtrModelName::HKY85)], summary);
     let expected = hky85.build(fixture.alphabet.name())?;
-    let actual = output.partitions[1].gtr.as_ref().expect("a marginal run fits a model");
+    let actual = output.partitions[1]
+      .model
+      .as_ref()
+      .expect("a marginal run fits a model")
+      .gtr();
     assert_eq!(
       (expected.W().clone(), expected.pi().clone(), expected.mu()),
       (actual.W().clone(), actual.pi().clone(), actual.mu())
@@ -139,7 +143,7 @@ mod tests {
     use crate::partition::marginal::sample::SampleMode;
     use crate::partition::resolve::{PartitionEntry, resolve_partitions};
     use crate::partition::sites::SiteRange;
-    use crate::partition::split::SequenceInput;
+    use crate::partition::split::{ModelSettings, SequenceInput};
     use crate::progress::{LogSink, NoopProgress};
     use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
     use crate::test_utils::{TestDataset, complete_sequence_source, get_common_length};
@@ -217,7 +221,11 @@ mod tests {
             .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
             .collect(),
           graph: parse.graph,
-          sequences: SequenceInput { alignments, partitions },
+          sequences: SequenceInput {
+            alignments,
+            partitions,
+            models: ModelSettings::default(),
+          },
         })
       }
     }
@@ -325,7 +333,11 @@ mod tests {
       partitions
         .iter()
         .map(|partition| {
-          let gtr = partition.partition.gtr().expect("a marginal partition has a model");
+          let gtr = partition
+            .partition
+            .model()
+            .map(|model| model.gtr())
+            .expect("a marginal partition has a model");
           (partition.layout.columns.len(), gtr.mu())
         })
         .collect()

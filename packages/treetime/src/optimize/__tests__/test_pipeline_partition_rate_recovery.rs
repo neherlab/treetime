@@ -118,8 +118,9 @@ mod tests {
         .iter()
         .map(|result| {
           result
-            .gtr
+            .model
             .as_ref()
+            .map(|model| model.gtr())
             .map(|gtr| gtr.mu())
             .ok_or_else(|| make_internal_report!("Partition {} has no model", result.number))
         })

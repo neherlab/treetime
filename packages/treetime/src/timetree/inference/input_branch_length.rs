@@ -52,11 +52,12 @@ pub(crate) fn input_branch_model(
       (saturated_difference(gtr.pi()), None)
     },
     TimetreeSequences::Alignments(input) => {
-      let SplitInput { partitions, .. } = input.split()?;
+      let SplitInput { partitions, models, .. } = input.split()?;
       let reconstruction = build_partition_set(
         representation,
         graph,
         partitions,
+        models,
         &branch_lengths_or_zero(branch_lengths),
         log,
       )?;
