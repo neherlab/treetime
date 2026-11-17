@@ -7,6 +7,7 @@ pub struct BrentBracketed {
   tol: f64,
   zeps: f64,
   xb: f64,
+  fxb: Option<f64>,
   a: f64,
   b: f64,
   x: f64,
@@ -22,12 +23,13 @@ pub struct BrentBracketed {
 #[bon]
 impl BrentBracketed {
   #[builder]
-  pub(crate) fn new(xa: f64, xb: f64, xc: f64) -> Self {
+  pub(crate) fn new(xa: f64, xb: f64, xc: f64, fxb: Option<f64>, abs_tol: Option<f64>) -> Self {
     let (a, b) = if xa < xc { (xa, xc) } else { (xc, xa) };
     Self {
       tol: f64::EPSILON.sqrt(),
-      zeps: 1e-11,
+      zeps: abs_tol.unwrap_or(1e-11),
       xb,
+      fxb,
       a,
       b,
       x: xb,
@@ -55,7 +57,10 @@ where
     problem: &mut Problem<O>,
     state: IterState<f64, (), (), (), (), f64>,
   ) -> Result<(IterState<f64, (), (), (), (), f64>, Option<KV>), Error> {
-    let fb = problem.cost(&self.xb)?;
+    let fb = match self.fxb {
+      Some(fb) => fb,
+      None => problem.cost(&self.xb)?,
+    };
     self.fx = fb;
     self.fw = fb;
     self.fv = fb;

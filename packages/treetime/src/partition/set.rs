@@ -1,5 +1,5 @@
-use crate::gtr::gamma::GammaRates;
-use crate::gtr::gamma_shape::optimize_gamma_shape;
+use crate::gtr::gamma::{GammaRates, INITIAL_GAMMA_SHAPE};
+use crate::gtr::gamma_shape::{ShapeEstimate, optimize_gamma_shape};
 use crate::gtr::gtr::GTR;
 use crate::gtr::partition_model::PartitionModel;
 use crate::partition::assembly::{AlignmentGroup, alignment_groups};
@@ -16,6 +16,7 @@ use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use itertools::{Either, Itertools, izip};
+use log::debug;
 use std::borrow::Cow;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -214,7 +215,12 @@ impl PartitionSet {
     let partitions = self.iter().collect_vec();
     let mut shapes = vec![None; partitions.len()];
     for group in &groups {
-      let shape = optimize_gamma_shape(|shape| {
+      let start = partitions[group[0]]
+        .model()
+        .gamma()
+        .shape()
+        .unwrap_or(INITIAL_GAMMA_SHAPE);
+      let ShapeEstimate { shape, evaluations } = optimize_gamma_shape(start, |shape| {
         group
           .iter()
           .map(|&index| {
@@ -224,14 +230,12 @@ impl PartitionSet {
           })
           .sum()
       })?;
-      progress_info!(
-        log,
-        "Gamma shape of {}: {shape:.4}",
-        group
-          .iter()
-          .map(|&index| partition_label(partitions[index], index))
-          .join(", ")
-      );
+      let labels = group
+        .iter()
+        .map(|&index| partition_label(partitions[index], index))
+        .join(", ");
+      progress_info!(log, "Gamma shape of {labels}: {shape:.4}");
+      debug!("Gamma shape of {labels}: {evaluations} likelihood evaluations, starting from {start:.4}");
       for &index in group {
         shapes[index] = Some(shape);
       }

@@ -1,6 +1,7 @@
 mod prop_support;
 mod rate_matrix;
 mod test_gamma;
+mod test_gamma_shape;
 mod test_gm_gamma_iqtree;
 mod test_gm_gtr;
 mod test_gtr_construction;
