@@ -4,8 +4,8 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::dense::partition::assign_sequence;
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::normalize::{
-  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_inplace, normalize_sites_from_log,
-  normalize_sites_inplace,
+  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_inplace,
+  normalize_sites_from_log, normalize_sites_inplace,
 };
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, TransitionCounts};
 use crate::partition::storage::dense::{

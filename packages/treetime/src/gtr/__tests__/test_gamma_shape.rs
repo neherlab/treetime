@@ -2,11 +2,11 @@
 mod tests {
   use crate::gtr::gamma::{GAMMA_SHAPE_MAX, GAMMA_SHAPE_MIN};
   use crate::gtr::gamma_shape::{ShapeEstimate, optimize_gamma_shape};
+  use crate::make_error;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::LogLh;
-  use crate::make_error;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]

@@ -107,8 +107,13 @@ pub(crate) fn sparse_mixture_log_lh(
     .category_gtrs()?
     .iter()
     .map(|gtr| {
-      let MarginalBackward { node_states, backward } = partition.marginal_backward(gtr, graph, branch_lengths, &input)?;
-      Ok(SparseSiteLogLh::from_pass(&node_states[&root_key], &backward, &partition.alphabet))
+      let MarginalBackward { node_states, backward } =
+        partition.marginal_backward(gtr, graph, branch_lengths, &input)?;
+      Ok(SparseSiteLogLh::from_pass(
+        &node_states[&root_key],
+        &backward,
+        &partition.alphabet,
+      ))
     })
     .try_collect::<_, Vec<_>, Report>()?;
   Ok(

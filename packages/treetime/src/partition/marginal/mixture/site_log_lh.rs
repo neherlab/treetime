@@ -56,11 +56,7 @@ pub(crate) struct SparseSiteLogLh {
 }
 
 impl SparseSiteLogLh {
-  pub(crate) fn from_pass(
-    root: &SparseNodeState,
-    backward: &EdgeMap<SparseEdgeBackward>,
-    alphabet: &Alphabet,
-  ) -> Self {
+  pub(crate) fn from_pass(root: &SparseNodeState, backward: &EdgeMap<SparseEdgeBackward>, alphabet: &Alphabet) -> Self {
     let scales = &root.profile.scales;
     let sites = backward
       .values()
@@ -133,7 +129,12 @@ impl SparseMixture {
     let entries = categories
       .iter()
       .enumerate()
-      .map(|(k, category)| category.sites.iter().map(move |&(pos, state, value)| (pos, k, state, value)))
+      .map(|(k, category)| {
+        category
+          .sites
+          .iter()
+          .map(move |&(pos, state, value)| (pos, k, state, value))
+      })
       .kmerge_by(|a, b| (a.0, a.1) < (b.0, b.1));
     for (pos, k, state, value) in entries {
       if listed.last().is_none_or(|&(last, ..)| last != pos) {

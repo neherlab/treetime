@@ -81,7 +81,11 @@ mod tests {
       fixture.dense.length,
     )?;
 
-    let sites = SparseSiteLogLh::from_pass(&sparse.node_states[&root], &sparse.edges.backward, &fixture.sparse.alphabet);
+    let sites = SparseSiteLogLh::from_pass(
+      &sparse.node_states[&root],
+      &sparse.edges.backward,
+      &fixture.sparse.alphabet,
+    );
     let mixture = SparseMixture::new(
       &[sites],
       &array![1.0],

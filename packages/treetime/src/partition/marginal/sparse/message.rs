@@ -62,8 +62,7 @@ pub(crate) fn combine_messages(
       SharedProfile { dis, log_norm }
     })
     .collect();
-  let mut scales =
-    scale_inputs.map(|inputs| SiteScaleBuilder::new(inputs, messages, &canonical, &shared, sites.len()));
+  let mut scales = scale_inputs.map(|inputs| SiteScaleBuilder::new(inputs, messages, &canonical, &shared, sites.len()));
 
   for (pos, state, references) in sites.iter() {
     let mut all_states_equal = true;
