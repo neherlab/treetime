@@ -4,7 +4,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-  use treetime::gtr::get_gtr::ModelOutput;
+  use treetime::gtr::get_gtr::{GammaOutput, ModelOutput};
   use treetime_utils::io::json::json_read_str;
 
   #[test]
@@ -38,6 +38,40 @@ mod tests {
       ),
       (model.pi.clone(), model.rates.clone())
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_models_carry_the_gamma_rate_categories_of_a_partition() -> Result<(), Report> {
+    let output: ModelOutput = json_read_str(indoc! {r#"{
+      "alignments": [{ "alignment": 1, "path": "aln.fasta", "sites": 100 }],
+      "models": [{
+        "kind": "sequence",
+        "partition": 1,
+        "alignment": 1,
+        "sites": 100,
+        "states": ["A", "C"],
+        "model_type": "inferred",
+        "model_name": "infer",
+        "mu": 1.0,
+        "pi": [0.5, 0.5],
+        "W": [[0.0, 2.0], [2.0, 0.0]],
+        "n_states": 2,
+        "gamma": { "categories": 2, "shape": 0.5, "rates": [0.2, 1.8] }
+      }]
+    }"#})?;
+
+    let models = run_models(Some(&output));
+
+    let RunModel::Sequence(model) = &models.models[0] else {
+      panic!("expected a sequence model");
+    };
+    let expected = GammaOutput {
+      categories: 2,
+      shape: 0.5,
+      rates: vec![0.2, 1.8],
+    };
+    assert_eq!(Some(expected), model.gamma.clone());
     Ok(())
   }
 }

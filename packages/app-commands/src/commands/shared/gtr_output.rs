@@ -7,7 +7,8 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use std::path::PathBuf;
 use treetime::gtr::get_gtr::{
-  AlignmentModel, GtrModelName, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel, model_states,
+  AlignmentModel, GammaOutput, GtrModelName, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel,
+  model_states,
 };
 use treetime::gtr::gtr::GTR;
 use treetime::partition::result::{AlignmentResult, PartitionResult};
@@ -74,6 +75,7 @@ pub(crate) fn partition_models(
         clock_rate: clock_rate.map(|rate| rate * model.mu()),
         states: model_states(&alignment.alphabet, gtr)?,
         model,
+        gamma: GammaOutput::new(partition_model.gamma()),
       }))
     })
     .try_collect()?;

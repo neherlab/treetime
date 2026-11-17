@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::gtr::gamma::GammaRates;
 use crate::gtr::gtr::{GTR, Mu};
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -91,6 +92,30 @@ pub struct SequenceModel {
   #[deser(flatten)]
   #[schemars(flatten)]
   pub model: GtrOutput,
+  /// Discrete gamma rate variation across the sites of the partition; absent without `--gamma-categories`.
+  #[deser(skip_serializing_if = Option::is_none)]
+  pub gamma: Option<GammaOutput>,
+}
+
+/// Discrete gamma rate variation across the sites of one partition, with the mean-rate categories of Yang (1994).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct GammaOutput {
+  /// Number of rate categories; each category holds the same share of the sites.
+  pub categories: usize,
+  /// Shape alpha of the gamma distribution with mean 1: small values mean that few sites carry most changes.
+  pub shape: f64,
+  /// Rate of each category relative to the partition rate `mu`, from slow to fast; the rates have mean 1.
+  pub rates: Vec<f64>,
+}
+
+impl GammaOutput {
+  pub fn new(gamma: &GammaRates) -> Option<Self> {
+    gamma.shape().map(|shape| Self {
+      categories: gamma.categories(),
+      shape,
+      rates: gamma.rates().to_vec(),
+    })
+  }
 }
 
 /// Substitution model of the states of one discrete trait.

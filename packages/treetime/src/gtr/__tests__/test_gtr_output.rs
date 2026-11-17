@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use crate::gtr::gamma::GammaRates;
   use crate::gtr::get_gtr::{
-    AlignmentModel, GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel, TraitModel, jc69,
+    AlignmentModel, GammaOutput, GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel,
+    TraitModel, jc69,
   };
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -48,6 +50,7 @@ mod tests {
           clock_rate: None,
           states: vec_of_owned!["A", "C", "G", "T"],
           model: model.clone(),
+          gamma: GammaOutput::new(&GammaRates::new(4, 0.5)?),
         }),
         ModelEntry::Trait(TraitModel {
           attribute: "region".to_owned(),

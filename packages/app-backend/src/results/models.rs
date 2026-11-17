@@ -1,7 +1,9 @@
 use deser::Serialize;
 use schemars::JsonSchema;
 use std::path::PathBuf;
-use treetime::gtr::get_gtr::{AlignmentModel, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel};
+use treetime::gtr::get_gtr::{
+  AlignmentModel, GammaOutput, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel,
+};
 use treetime_schema::skip_serializing_optionals;
 
 pub fn run_models(gtr: Option<&ModelOutput>) -> RunModels {
@@ -96,6 +98,8 @@ pub struct SequenceModelSummary {
   /// Substitution rates between the states per unit of branch length: `rates[a][b]` is the rate from state `a` to
   /// state `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.
   pub rates: Vec<Vec<f64>>,
+  /// Discrete gamma rate variation across the sites of the partition; absent for runs without `--gamma-categories`.
+  pub gamma: Option<GammaOutput>,
 }
 
 impl SequenceModelSummary {
@@ -114,6 +118,7 @@ impl SequenceModelSummary {
       states: model.states.clone(),
       pi: model.model.pi().to_vec(),
       rates: substitution_rates(&model.model),
+      gamma: model.gamma.clone(),
     }
   }
 }
