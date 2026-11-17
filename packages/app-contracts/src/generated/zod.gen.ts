@@ -425,6 +425,7 @@ export const zRunWarningKind = z.union([
   z.literal('duplicate-sequence-names'),
   z.literal('duplicate-metadata-names'),
   z.literal('duplicate-partition-names'),
+  z.literal('cds-without-partition-sites'),
   z.literal('branch-lengths-not-converged'),
   z.literal('dates-outside-input-dates'),
   z.literal('filtered-tips-removed'),
@@ -538,6 +539,15 @@ export const zAlignmentSummary = z.object({
 });
 
 /**
+ * Discrete gamma rate variation across the sites of one partition, with the mean-rate categories of Yang (1994).
+ */
+export const zGammaOutput = z.object({
+  categories: z.int().gte(0),
+  shape: z.number(),
+  rates: z.array(z.number())
+});
+
+/**
  * The substitution model fitted to one partition.
  */
 export const zSequenceModelSummary = z.object({
@@ -550,7 +560,8 @@ export const zSequenceModelSummary = z.object({
   mu: z.number(),
   states: z.array(z.string()),
   pi: z.array(z.number()),
-  rates: z.array(z.array(z.number()))
+  rates: z.array(z.array(z.number())),
+  gamma: zGammaOutput.optional()
 });
 
 /**
@@ -564,6 +575,15 @@ export const zTraitModelSummary = z.object({
   pi: z.array(z.number()),
   rates: z.array(z.array(z.number()))
 });
+
+/**
+ * Model parameter that the partitions with an inferred model share.
+ */
+export const zSharedParam2 = z.union([
+  z.literal('exchange-rates'),
+  z.literal('frequencies'),
+  z.literal('gamma-shape')
+]);
 
 /**
  * Unit of a fixed coalescent time scale.
@@ -1223,6 +1243,18 @@ export const zPartitionSpec = z.strictObject({
   model_params: z.array(z.string()).optional()
 });
 
+export const zPartitionScheme = z.union([
+  z.literal('codon-positions'),
+  z.literal('genes'),
+  z.literal('rate-categories')
+]);
+
+export const zRateCategoryRule = z.union([
+  z.literal('change-counts'),
+  z.literal('median-split'),
+  z.literal('k-means')
+]);
+
 export const zAlphabetName = z.enum([
   'nuc',
   'aa',
@@ -1245,6 +1277,16 @@ export const zBranchLengthMode = z.union([
 export const zPartitionRates = z.union([
   z.literal('estimate'),
   z.literal('equal')
+]);
+
+/**
+ * Model parameter that partitions share, or `none`.
+ */
+export const zSharedParam = z.union([
+  z.literal('exchange-rates'),
+  z.literal('frequencies'),
+  z.literal('gamma-shape'),
+  z.literal('none')
 ]);
 
 export const zRepresentation = z.union([
@@ -1314,6 +1356,9 @@ export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   partition: z.array(zPartitionSpec).optional(),
+  partition_by: zPartitionScheme.optional(),
+  rate_category_rule: zRateCategoryRule.optional(),
+  annotation: z.array(z.string()).optional(),
   tree: z.string().optional(),
   newick_dialect: z.enum([
     'classic,plain',
@@ -1369,6 +1414,8 @@ export const zTimetreeConfig = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
+  gamma_categories: z.int().gte(2).optional(),
+  shared_params: z.array(zSharedParam).optional(),
   representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
   include_leaves: z.boolean().optional(),
@@ -1517,6 +1564,8 @@ export const zAncestralAmbiguityOutput = z.union([
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   partition: z.array(zPartitionSpec).optional(),
+  partition_by: zPartitionScheme.optional(),
+  rate_category_rule: zRateCategoryRule.optional(),
   tree: z.string().optional(),
   newick_dialect: z.enum([
     'classic,plain',
@@ -1535,11 +1584,13 @@ export const zAncestralConfig = z.strictObject({
   allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
   zero_based: z.boolean().optional(),
-  annotation: z.string().optional(),
+  annotation: z.array(z.string()).optional(),
   translations: z.string().optional(),
   cds_selection: z.array(z.string()).optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
+  gamma_categories: z.int().gte(2).optional(),
+  shared_params: z.array(zSharedParam).optional(),
   aa_model: zAaModelName.optional(),
   method_anc: zMethodAncestral.optional(),
   representation: zRepresentation.optional(),
@@ -1625,6 +1676,9 @@ export const zOptimizeOutputSelection = z.enum([
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   partition: z.array(zPartitionSpec).optional(),
+  partition_by: zPartitionScheme.optional(),
+  rate_category_rule: zRateCategoryRule.optional(),
+  annotation: z.array(z.string()).optional(),
   tree: z.string().optional(),
   newick_dialect: z.enum([
     'classic,plain',
@@ -1657,6 +1711,8 @@ export const zOptimizeConfig = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
+  gamma_categories: z.int().gte(2).optional(),
+  shared_params: z.array(zSharedParam).optional(),
   representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
   output_all: z.string().optional(),
@@ -1938,7 +1994,8 @@ export const zRunModel = z.discriminatedUnion('kind', [
  */
 export const zRunModels = z.object({
   alignments: z.array(zAlignmentSummary),
-  models: z.array(zRunModel)
+  models: z.array(zRunModel),
+  shared_params: z.array(zSharedParam2)
 });
 
 export const zCommandResultsClock = z.object({

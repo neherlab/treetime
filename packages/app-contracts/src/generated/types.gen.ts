@@ -696,7 +696,7 @@ export type RunWarning = {
 /**
  * Kind of a run warning.
  */
-export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'duplicate-partition-names' | 'branch-lengths-not-converged' | 'dates-outside-input-dates' | 'filtered-tips-removed' | 'undated-tips-removed' | 'locations-without-coordinates';
+export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'duplicate-partition-names' | 'cds-without-partition-sites' | 'branch-lengths-not-converged' | 'dates-outside-input-dates' | 'filtered-tips-removed' | 'undated-tips-removed' | 'locations-without-coordinates';
 
 /**
  * Error of a failed run.
@@ -923,6 +923,10 @@ export type RunModels = {
    * Models in the order of the model document: one per partition, or one per trait.
    */
   models: Array<RunModel>;
+  /**
+   * Parameters that the partitions with an inferred model share in the run; empty when they share none.
+   */
+  shared_params: Array<SharedParam2>;
 };
 
 /**
@@ -955,6 +959,24 @@ export type RunModel = ({
 } & RunModelSequence) | ({
   kind: 'trait';
 } & RunModelTrait);
+
+/**
+ * Discrete gamma rate variation across the sites of one partition, with the mean-rate categories of Yang (1994).
+ */
+export type GammaOutput = {
+  /**
+   * Number of rate categories; each category holds the same share of the sites.
+   */
+  categories: number;
+  /**
+   * Shape alpha of the gamma distribution with mean 1: small values mean that few sites carry most changes.
+   */
+  shape: number;
+  /**
+   * Rate of each category relative to the partition rate `mu`, from slow to fast; the rates have mean 1.
+   */
+  rates: Array<number>;
+};
 
 /**
  * The substitution model fitted to one partition.
@@ -1001,6 +1023,10 @@ export type SequenceModelSummary = {
    * state `b`, `mu * pi[b] * W[a][b]`, with zeros on the diagonal.
    */
   rates: Array<Array<number>>;
+  /**
+   * Discrete gamma rate variation across the sites of the partition; absent for runs without `--gamma-categories`.
+   */
+  gamma?: GammaOutput;
 };
 
 /**
@@ -1033,6 +1059,11 @@ export type TraitModelSummary = {
    */
   rates: Array<Array<number>>;
 };
+
+/**
+ * Model parameter that the partitions with an inferred model share.
+ */
+export type SharedParam2 = 'exchange-rates' | 'frequencies' | 'gamma-shape';
 
 /**
  * Results specific to the command of a run.
@@ -2486,6 +2517,10 @@ export type PartitionSpec = {
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
 
+export type PartitionScheme = 'codon-positions' | 'genes' | 'rate-categories';
+
+export type RateCategoryRule = 'change-counts' | 'median-split' | 'k-means';
+
 export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
 
 export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'midpoint';
@@ -2493,6 +2528,11 @@ export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'midpoint';
 export type BranchLengthMode = 'auto' | 'input' | 'marginal';
 
 export type PartitionRates = 'estimate' | 'equal';
+
+/**
+ * Model parameter that partitions share, or `none`.
+ */
+export type SharedParam = 'exchange-rates' | 'frequencies' | 'gamma-shape' | 'none';
 
 export type Representation = 'auto' | 'dense' | 'sparse';
 
@@ -2543,6 +2583,44 @@ export type TimetreeConfig = {
    * ['103-1600\3'], model: hky85, model_params: ['kappa=4']}" --partition "{name: noncoding}"`.
    */
   partition?: Array<PartitionSpec>;
+  /**
+   * Build the partitions of each `--alignment` file from a scheme instead of `--partition` entries
+   *
+   * `codon-positions` makes the partitions `cp1`, `cp2` and `cp3` from codon positions 1, 2 and 3 of the CDSs of
+   * `--annotation`, and `noncoding` from the other sites. `genes` makes one partition per CDS of `--annotation`,
+   * named by the CDS, and `noncoding` from the other sites. Both need one `--annotation` file per `--alignment` file,
+   * matched in list order, whose `##sequence-region` runs from 1 to the length of its alignment, because annotation
+   * positions are alignment columns only for an alignment on that reference. Where CDSs overlap, the longest CDS owns
+   * the shared sites and gives them their codon positions; a CDS whose sites all belong to longer CDSs gets no
+   * partition. `rate-categories` counts the changes at each site in a Fitch reconstruction on the input tree and puts
+   * the sites into the partitions `slow`, `medium` and `fast` by the rule of `--rate-category-rule`; it uses no
+   * annotation. Every partition gets the model of `--model` and `--model-params`; with the default `infer`, each
+   * partition fits its own model, subject to `--shared-params`. With two or more `--alignment` files, the partition
+   * names start with the number of the file, for example `2/cp1`. A scheme needs the alphabet `nuc` and must make at
+   * least two partitions over all files.
+   */
+  partition_by?: PartitionScheme;
+  /**
+   * Rule that sorts the sites into the partitions of `--partition-by rate-categories` by their change counts
+   *
+   * `change-counts` puts sites without changes into `slow`, sites with one change into `medium`, and sites with two
+   * or more changes into `fast`. `median-split` puts sites without changes into `slow`, and splits the changed sites
+   * at the median of their counts: at or below the median into `medium`, above it into `fast`. `k-means` splits all
+   * counts into the three groups with the smallest sum of squared deviations from their means, named by increasing
+   * mean count. Empty partitions are left out.
+   */
+  rate_category_rule?: RateCategoryRule;
+  /**
+   * Genome annotation (GFF3) with the coordinates of the CDSs of an `--alignment` file
+   *
+   * With `--partition-by codon-positions` or `genes`, give one file per `--alignment` file, matched in list order:
+   * the scheme builds the partitions of each alignment from the CDSs of its annotation. In `ancestral`, the file also
+   * supplies the annotations of the augur node data and, without `--cds-selection`, the CDSs that `--translations`
+   * reconstructs; `--translations` takes one `--alignment` file and one annotation file. TreeTime reads the coding
+   * regions from the CDS rows, which need strand `+` or `-` and phase 0, 1 or 2. A path that ends in `.gz`, `.bz2`,
+   * `.xz`, or `.zst` reads a compressed file.
+   */
+  annotation?: Array<string>;
   /**
    * Tree in Newick format
    *
@@ -2837,6 +2915,37 @@ export type TimetreeConfig = {
    * The setting applies only with two or more partitions.
    */
   partition_rates?: PartitionRates;
+  /**
+   * Number of discrete gamma rate categories of each partition (2 or more)
+   *
+   * Sites of one partition evolve at different speeds. With this setting, every partition gets K rate categories of
+   * equal probability whose rates are the means of K equal-probability slices of a gamma distribution with mean 1 and
+   * shape alpha (Yang 1994). The likelihood of a site is the mean of its likelihoods under the K rates, and the
+   * ancestral states are weighted by the probability of each rate at the site. Each partition estimates its own
+   * alpha by maximum likelihood between 0.02 and 100, unless the partitions share `gamma-shape` (`--shared-params`).
+   * Without the setting, all sites of a partition share one rate. Runtime and memory grow about K-fold; 4 categories
+   * are the common choice. The setting applies to marginal reconstructions only: not with `--method-anc parsimony`
+   * and not with `--branch-length-mode input`.
+   */
+  gamma_categories?: number;
+  /**
+   * Model parameters that the partitions with an inferred model share, as a comma-separated list
+   *
+   * `exchange-rates`: one set of exchange rates W for all these partitions. Each partition scales W so that its rate
+   * matrix has mean rate 1 under its own frequencies, so with different frequencies the stored W of the partitions
+   * differ by a factor. `frequencies`: one set of equilibrium frequencies. `gamma-shape`: one gamma shape alpha; needs
+   * `--gamma-categories`. `none`: every partition fits its own model; stands alone. The fit of the shared parameters
+   * uses the substitutions of all sharing partitions together. A partition with a named model keeps the parameters
+   * of its model. Every partition keeps its own relative rate (`--partition-rates`), and all partitions share the
+   * tree and the branch lengths.
+   *
+   * Default: with `--partition-by genes` or `rate-categories`, the partitions share `exchange-rates` and
+   * `frequencies`, and also `gamma-shape` with `--gamma-categories`, because genes of one genome share the mutation
+   * process and rate buckets differ only in speed. With `--partition-by codon-positions`, `--partition` entries, or
+   * one partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of
+   * change. The setting applies only with two or more partitions whose model is `infer`.
+   */
+  shared_params?: Array<SharedParam>;
   /**
    * Representation of the sequences on the tree
    *
@@ -3380,6 +3489,33 @@ export type AncestralConfig = {
    */
   partition?: Array<PartitionSpec>;
   /**
+   * Build the partitions of each `--alignment` file from a scheme instead of `--partition` entries
+   *
+   * `codon-positions` makes the partitions `cp1`, `cp2` and `cp3` from codon positions 1, 2 and 3 of the CDSs of
+   * `--annotation`, and `noncoding` from the other sites. `genes` makes one partition per CDS of `--annotation`,
+   * named by the CDS, and `noncoding` from the other sites. Both need one `--annotation` file per `--alignment` file,
+   * matched in list order, whose `##sequence-region` runs from 1 to the length of its alignment, because annotation
+   * positions are alignment columns only for an alignment on that reference. Where CDSs overlap, the longest CDS owns
+   * the shared sites and gives them their codon positions; a CDS whose sites all belong to longer CDSs gets no
+   * partition. `rate-categories` counts the changes at each site in a Fitch reconstruction on the input tree and puts
+   * the sites into the partitions `slow`, `medium` and `fast` by the rule of `--rate-category-rule`; it uses no
+   * annotation. Every partition gets the model of `--model` and `--model-params`; with the default `infer`, each
+   * partition fits its own model, subject to `--shared-params`. With two or more `--alignment` files, the partition
+   * names start with the number of the file, for example `2/cp1`. A scheme needs the alphabet `nuc` and must make at
+   * least two partitions over all files.
+   */
+  partition_by?: PartitionScheme;
+  /**
+   * Rule that sorts the sites into the partitions of `--partition-by rate-categories` by their change counts
+   *
+   * `change-counts` puts sites without changes into `slow`, sites with one change into `medium`, and sites with two
+   * or more changes into `fast`. `median-split` puts sites without changes into `slow`, and splits the changed sites
+   * at the median of their counts: at or below the median into `medium`, above it into `fast`. `k-means` splits all
+   * counts into the three groups with the smallest sum of squared deviations from their means, named by increasing
+   * mean count. Empty partitions are left out.
+   */
+  rate_category_rule?: RateCategoryRule;
+  /**
    * Tree in Newick format
    *
    * A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
@@ -3419,12 +3555,16 @@ export type AncestralConfig = {
    */
   zero_based?: boolean;
   /**
-   * Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data
+   * Genome annotation (GFF3) with the coordinates of the CDSs of an `--alignment` file
    *
-   * Also supplies the CDSs to reconstruct when `--cds-selection` is not given. A path that ends in `.gz`, `.bz2`,
+   * With `--partition-by codon-positions` or `genes`, give one file per `--alignment` file, matched in list order:
+   * the scheme builds the partitions of each alignment from the CDSs of its annotation. In `ancestral`, the file also
+   * supplies the annotations of the augur node data and, without `--cds-selection`, the CDSs that `--translations`
+   * reconstructs; `--translations` takes one `--alignment` file and one annotation file. TreeTime reads the coding
+   * regions from the CDS rows, which need strand `+` or `-` and phase 0, 1 or 2. A path that ends in `.gz`, `.bz2`,
    * `.xz`, or `.zst` reads a compressed file.
    */
-  annotation?: string;
+  annotation?: Array<string>;
   /**
    * Path template of the amino-acid alignments, one FASTA file per CDS
    *
@@ -3461,6 +3601,37 @@ export type AncestralConfig = {
    * kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
+  /**
+   * Number of discrete gamma rate categories of each partition (2 or more)
+   *
+   * Sites of one partition evolve at different speeds. With this setting, every partition gets K rate categories of
+   * equal probability whose rates are the means of K equal-probability slices of a gamma distribution with mean 1 and
+   * shape alpha (Yang 1994). The likelihood of a site is the mean of its likelihoods under the K rates, and the
+   * ancestral states are weighted by the probability of each rate at the site. Each partition estimates its own
+   * alpha by maximum likelihood between 0.02 and 100, unless the partitions share `gamma-shape` (`--shared-params`).
+   * Without the setting, all sites of a partition share one rate. Runtime and memory grow about K-fold; 4 categories
+   * are the common choice. The setting applies to marginal reconstructions only: not with `--method-anc parsimony`
+   * and not with `--branch-length-mode input`.
+   */
+  gamma_categories?: number;
+  /**
+   * Model parameters that the partitions with an inferred model share, as a comma-separated list
+   *
+   * `exchange-rates`: one set of exchange rates W for all these partitions. Each partition scales W so that its rate
+   * matrix has mean rate 1 under its own frequencies, so with different frequencies the stored W of the partitions
+   * differ by a factor. `frequencies`: one set of equilibrium frequencies. `gamma-shape`: one gamma shape alpha; needs
+   * `--gamma-categories`. `none`: every partition fits its own model; stands alone. The fit of the shared parameters
+   * uses the substitutions of all sharing partitions together. A partition with a named model keeps the parameters
+   * of its model. Every partition keeps its own relative rate (`--partition-rates`), and all partitions share the
+   * tree and the branch lengths.
+   *
+   * Default: with `--partition-by genes` or `rate-categories`, the partitions share `exchange-rates` and
+   * `frequencies`, and also `gamma-shape` with `--gamma-categories`, because genes of one genome share the mutation
+   * process and rate buckets differ only in speed. With `--partition-by codon-positions`, `--partition` entries, or
+   * one partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of
+   * change. The setting applies only with two or more partitions whose model is `infer`.
+   */
+  shared_params?: Array<SharedParam>;
   /**
    * Substitution model of the amino-acid sequences, as `--model` for the nucleotides
    *
@@ -3745,6 +3916,44 @@ export type OptimizeConfig = {
    */
   partition?: Array<PartitionSpec>;
   /**
+   * Build the partitions of each `--alignment` file from a scheme instead of `--partition` entries
+   *
+   * `codon-positions` makes the partitions `cp1`, `cp2` and `cp3` from codon positions 1, 2 and 3 of the CDSs of
+   * `--annotation`, and `noncoding` from the other sites. `genes` makes one partition per CDS of `--annotation`,
+   * named by the CDS, and `noncoding` from the other sites. Both need one `--annotation` file per `--alignment` file,
+   * matched in list order, whose `##sequence-region` runs from 1 to the length of its alignment, because annotation
+   * positions are alignment columns only for an alignment on that reference. Where CDSs overlap, the longest CDS owns
+   * the shared sites and gives them their codon positions; a CDS whose sites all belong to longer CDSs gets no
+   * partition. `rate-categories` counts the changes at each site in a Fitch reconstruction on the input tree and puts
+   * the sites into the partitions `slow`, `medium` and `fast` by the rule of `--rate-category-rule`; it uses no
+   * annotation. Every partition gets the model of `--model` and `--model-params`; with the default `infer`, each
+   * partition fits its own model, subject to `--shared-params`. With two or more `--alignment` files, the partition
+   * names start with the number of the file, for example `2/cp1`. A scheme needs the alphabet `nuc` and must make at
+   * least two partitions over all files.
+   */
+  partition_by?: PartitionScheme;
+  /**
+   * Rule that sorts the sites into the partitions of `--partition-by rate-categories` by their change counts
+   *
+   * `change-counts` puts sites without changes into `slow`, sites with one change into `medium`, and sites with two
+   * or more changes into `fast`. `median-split` puts sites without changes into `slow`, and splits the changed sites
+   * at the median of their counts: at or below the median into `medium`, above it into `fast`. `k-means` splits all
+   * counts into the three groups with the smallest sum of squared deviations from their means, named by increasing
+   * mean count. Empty partitions are left out.
+   */
+  rate_category_rule?: RateCategoryRule;
+  /**
+   * Genome annotation (GFF3) with the coordinates of the CDSs of an `--alignment` file
+   *
+   * With `--partition-by codon-positions` or `genes`, give one file per `--alignment` file, matched in list order:
+   * the scheme builds the partitions of each alignment from the CDSs of its annotation. In `ancestral`, the file also
+   * supplies the annotations of the augur node data and, without `--cds-selection`, the CDSs that `--translations`
+   * reconstructs; `--translations` takes one `--alignment` file and one annotation file. TreeTime reads the coding
+   * regions from the CDS rows, which need strand `+` or `-` and phase 0, 1 or 2. A path that ends in `.gz`, `.bz2`,
+   * `.xz`, or `.zst` reads a compressed file.
+   */
+  annotation?: Array<string>;
+  /**
    * Tree in Newick format
    *
    * A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` reads a compressed file.
@@ -3891,6 +4100,37 @@ export type OptimizeConfig = {
    * The setting applies only with two or more partitions.
    */
   partition_rates?: PartitionRates;
+  /**
+   * Number of discrete gamma rate categories of each partition (2 or more)
+   *
+   * Sites of one partition evolve at different speeds. With this setting, every partition gets K rate categories of
+   * equal probability whose rates are the means of K equal-probability slices of a gamma distribution with mean 1 and
+   * shape alpha (Yang 1994). The likelihood of a site is the mean of its likelihoods under the K rates, and the
+   * ancestral states are weighted by the probability of each rate at the site. Each partition estimates its own
+   * alpha by maximum likelihood between 0.02 and 100, unless the partitions share `gamma-shape` (`--shared-params`).
+   * Without the setting, all sites of a partition share one rate. Runtime and memory grow about K-fold; 4 categories
+   * are the common choice. The setting applies to marginal reconstructions only: not with `--method-anc parsimony`
+   * and not with `--branch-length-mode input`.
+   */
+  gamma_categories?: number;
+  /**
+   * Model parameters that the partitions with an inferred model share, as a comma-separated list
+   *
+   * `exchange-rates`: one set of exchange rates W for all these partitions. Each partition scales W so that its rate
+   * matrix has mean rate 1 under its own frequencies, so with different frequencies the stored W of the partitions
+   * differ by a factor. `frequencies`: one set of equilibrium frequencies. `gamma-shape`: one gamma shape alpha; needs
+   * `--gamma-categories`. `none`: every partition fits its own model; stands alone. The fit of the shared parameters
+   * uses the substitutions of all sharing partitions together. A partition with a named model keeps the parameters
+   * of its model. Every partition keeps its own relative rate (`--partition-rates`), and all partitions share the
+   * tree and the branch lengths.
+   *
+   * Default: with `--partition-by genes` or `rate-categories`, the partitions share `exchange-rates` and
+   * `frequencies`, and also `gamma-shape` with `--gamma-categories`, because genes of one genome share the mutation
+   * process and rate buckets differ only in speed. With `--partition-by codon-positions`, `--partition` entries, or
+   * one partition per `--alignment` file, they share nothing, because codon positions differ in their pattern of
+   * change. The setting applies only with two or more partitions whose model is `infer`.
+   */
+  shared_params?: Array<SharedParam>;
   /**
    * Representation of the sequences on the tree
    *
