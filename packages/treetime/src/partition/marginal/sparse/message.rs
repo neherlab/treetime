@@ -67,11 +67,13 @@ pub(crate) fn combine_messages(
   for (pos, state, references) in sites.iter() {
     let mut all_states_equal = true;
     let mut log_vec = initial_log.clone();
-    let mut child_variable = SmallVec::<[bool; 4]>::with_capacity(messages.len());
+    let mut child_variable = SmallVec::<[bool; 4]>::new();
 
     for (msg, reference, log_fixed) in izip!(messages, references, &log_fixed) {
       let variable = msg.variable.get(pos);
-      child_variable.push(variable.is_some());
+      if scales.is_some() {
+        child_variable.push(variable.is_some());
+      }
       if let Some(var) = variable {
         add_log(&mut log_vec, var.dis.iter().map(|p| p.ln()));
         if var.state != state {
