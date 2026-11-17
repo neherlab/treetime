@@ -33,7 +33,6 @@ pub(crate) fn combine_messages(
     log_lh: messages.iter().map(|m| m.log_lh).sum(),
     scales: SiteScales::default(),
   };
-  let mut candidate_scales = Vec::with_capacity(if scale_inputs.is_some() { sites.len() } else { 0 });
 
   let canonical: SmallVec<[AsciiChar; INLINE_STATES]> = alphabet.canonical().collect();
   let mut kept_counts = canonical
@@ -63,13 +62,18 @@ pub(crate) fn combine_messages(
       SharedProfile { dis, log_norm }
     })
     .collect();
+  let mut scales =
+    scale_inputs.map(|inputs| SiteScaleBuilder::new(inputs, messages, &canonical, &shared, sites.len()));
 
   for (pos, state, references) in sites.iter() {
     let mut all_states_equal = true;
     let mut log_vec = initial_log.clone();
+    let mut child_variable = SmallVec::<[bool; 4]>::with_capacity(messages.len());
 
     for (msg, reference, log_fixed) in izip!(messages, references, &log_fixed) {
-      if let Some(var) = msg.variable.get(pos) {
+      let variable = msg.variable.get(pos);
+      child_variable.push(variable.is_some());
+      if let Some(var) = variable {
         add_log(&mut log_vec, var.dis.iter().map(|p| p.ln()));
         if var.state != state {
           all_states_equal = false;
@@ -87,12 +91,6 @@ pub(crate) fn combine_messages(
     }
 
     let log_norm = softmax_with_log_norm_inplace(aview_mut1(&mut log_vec));
-    if let Some(inputs) = &scale_inputs {
-      let child_scales: f64 = izip!(messages, inputs.child_sequences)
-        .map(|(msg, child_sequence)| message_group_scale(msg, child_sequence, pos, alphabet))
-        .sum();
-      candidate_scales.push((pos, log_norm + child_scales));
-    }
     let dis = log_vec;
     seq_dis.log_lh += LogLh::new(log_norm);
     let index = canonical.iter().position(|&c| c == state);
@@ -111,24 +109,17 @@ pub(crate) fn combine_messages(
       };
       seq_dis.variable.insert(pos, label, &dis);
     }
+    if let Some(scales) = &mut scales {
+      scales.push(messages, alphabet, pos, log_norm, &child_variable, !is_shared);
+    }
   }
 
-  let shared_log_norms: SmallVec<[(AsciiChar, f64); INLINE_STATES]> = izip!(&canonical, &shared)
-    .map(|(&state, profile)| (state, profile.log_norm))
-    .collect();
   for (index, (&state, SharedProfile { dis, log_norm })) in izip!(&canonical, shared).enumerate() {
     seq_dis.log_lh += LogLh::new(weights[index] * log_norm);
     seq_dis.fixed.insert(state, kept_counts[index], dis);
   }
-  if let Some(inputs) = scale_inputs {
-    seq_dis.scales = combine_scales(
-      messages,
-      &inputs,
-      &seq_dis,
-      &shared_log_norms,
-      candidate_scales,
-      alphabet,
-    );
+  if let Some(scales) = scales {
+    seq_dis.scales = scales.finish();
   }
   Ok(seq_dis)
 }
@@ -139,49 +130,72 @@ pub(crate) struct ScaleInputs<'a> {
   pub(crate) child_sequences: &'a [&'a Seq],
 }
 
-fn message_group_scale(message: &SparseSeqDistribution, sequence: &Seq, pos: usize, alphabet: &Alphabet) -> f64 {
-  let state = sequence[pos];
-  if message.variable.contains_key(pos) || !alphabet.is_canonical(state) {
-    0.0
-  } else {
-    message.scales.group(state)
-  }
+struct SiteScaleBuilder<'a> {
+  inputs: ScaleInputs<'a>,
+  groups: SmallVec<[(AsciiChar, f64); INLINE_STATES]>,
+  sites: Vec<(usize, f64)>,
 }
 
-fn combine_scales(
-  messages: &[&SparseSeqDistribution],
-  inputs: &ScaleInputs<'_>,
-  seq_dis: &SparseSeqDistribution,
-  shared_log_norms: &[(AsciiChar, f64)],
-  candidate_scales: Vec<(usize, f64)>,
-  alphabet: &Alphabet,
-) -> SiteScales {
-  let groups: SmallVec<[(AsciiChar, f64); INLINE_STATES]> = shared_log_norms
-    .iter()
-    .map(|&(state, log_norm)| {
-      let children: f64 = messages.iter().map(|msg| msg.scales.group(state)).sum();
-      (state, children + log_norm)
-    })
-    .collect();
-  let group = |state: AsciiChar| {
-    groups
+impl<'a> SiteScaleBuilder<'a> {
+  fn new(
+    inputs: ScaleInputs<'a>,
+    messages: &[&SparseSeqDistribution],
+    canonical: &[AsciiChar],
+    shared: &[SharedProfile],
+    capacity: usize,
+  ) -> Self {
+    let groups = izip!(canonical, shared)
+      .map(|(&state, profile)| {
+        let children: f64 = messages.iter().map(|msg| msg.scales.group(state)).sum();
+        (state, children + profile.log_norm)
+      })
+      .collect();
+    Self {
+      inputs,
+      groups,
+      sites: Vec::with_capacity(capacity),
+    }
+  }
+
+  fn push(
+    &mut self,
+    messages: &[&SparseSeqDistribution],
+    alphabet: &Alphabet,
+    pos: usize,
+    log_norm: f64,
+    child_variable: &[bool],
+    own_variable: bool,
+  ) {
+    let child_scales: f64 = izip!(messages, self.inputs.child_sequences, child_variable)
+      .map(|(msg, child_sequence, &variable)| {
+        let state = child_sequence[pos];
+        if variable || !alphabet.is_canonical(state) {
+          0.0
+        } else {
+          msg.scales.group(state)
+        }
+      })
+      .sum();
+    let state = self.inputs.sequence[pos];
+    let base = if own_variable || !alphabet.is_canonical(state) {
+      0.0
+    } else {
+      self.group(state)
+    };
+    self.sites.push((pos, log_norm + child_scales - base));
+  }
+
+  fn group(&self, state: AsciiChar) -> f64 {
+    self
+      .groups
       .iter()
       .find(|(group_state, _)| *group_state == state)
       .map_or(0.0, |(_, scale)| *scale)
-  };
-  let sites = candidate_scales
-    .into_iter()
-    .map(|(pos, scale)| {
-      let state = inputs.sequence[pos];
-      let base = if seq_dis.variable.contains_key(pos) || !alphabet.is_canonical(state) {
-        0.0
-      } else {
-        group(state)
-      };
-      (pos, scale - base)
-    })
-    .collect();
-  SiteScales::new(groups, sites)
+  }
+
+  fn finish(self) -> SiteScales {
+    SiteScales::new(self.groups, self.sites)
+  }
 }
 
 pub(crate) fn propagate_raw(exp_qt: &Array2<f64>, seq_dis: &SparseSeqDistribution) -> SparseSeqDistribution {
