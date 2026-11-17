@@ -16,7 +16,7 @@ use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::fitch::site_changes::fitch_site_change_counts;
 use treetime::partition::resolve::{PartitionEntry, PartitionPlan};
-use treetime::partition::split::SequenceInput;
+use treetime::partition::split::{ModelSettings, SequenceInput};
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
@@ -92,6 +92,7 @@ pub(crate) struct SequenceInputs {
   pub(crate) gap_fill: GapFill,
   pub(crate) missing_leaves: MissingLeafLimit,
   pub(crate) partitions: PartitionSource,
+  pub(crate) models: ModelSettings,
 }
 
 impl SequenceInputs {

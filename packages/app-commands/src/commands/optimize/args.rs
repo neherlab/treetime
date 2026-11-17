@@ -22,6 +22,7 @@ use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
 use crate::commands::shared::sequence_inputs::{
   MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
 };
+use crate::commands::shared::site_model::{SiteModelArgs, site_model_settings};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 #[cfg(feature = "clap")]
@@ -96,6 +97,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       zero_based: ZeroBasedArgs { zero_based },
       model_args: ModelArgs { model, model_params },
       partition_rates_args: PartitionRatesArgs { partition_rates },
+      site_model_args,
       representation: RepresentationArgs { representation },
       output,
       branch_lengths: BranchLengthArgs {
@@ -147,6 +149,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
         partitions: PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?,
+        models: site_model_settings(&site_model_args)?,
       },
       positions: PositionBase::from_zero_based(zero_based),
       model: resolve_model(model, &model_params)?,
@@ -417,6 +420,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub partition_rates_args: PartitionRatesArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub site_model_args: SiteModelArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

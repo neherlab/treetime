@@ -30,6 +30,7 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
   MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
 };
+use crate::commands::shared::site_model::{SiteModelArgs, site_model_settings};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -55,6 +56,7 @@ use std::path::PathBuf;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::partition_rates::PartitionRates;
+use treetime::partition::split::ModelSettings;
 use treetime::seq::mutation::PositionBase;
 use treetime::timetree::coalescent_timescale::CoalescentMode;
 use treetime_grid::MaxGridPoints;
@@ -144,6 +146,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       rooting: RootingArgs { outgroup, keep_root },
       model_args,
       partition_rates_args,
+      site_model_args,
       alphabet_args,
       representation,
       gap_fill_args,
@@ -172,7 +175,8 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     } = raw;
     let (tree, dates) = timetree_inputs(tree, metadata, metadata_id, date_column)?;
     let alignment_count = alignment.len();
-    let marginal_only_settings = timetree_marginal_only_settings(&representation, &partition_rates_args, &ambiguity);
+    let marginal_only_settings =
+      timetree_marginal_only_settings(&representation, &partition_rates_args, &site_model_args, &ambiguity);
     check_marginal_only_settings(&marginal_only_settings, branch_length_mode, alignment_count > 0)?;
     let output_settings = timetree_output_settings(branch_length_mode, alignment_count > 0, coalescent.is_some());
     let coalescent = coalescent_settings(
@@ -191,7 +195,14 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       translations: None,
     })?;
     let partitions = PartitionSource::new(&partition, partition_by, rate_category_rule, &annotation)?;
-    let sequences = timetree_sequence_inputs(alignment, partitions, alphabet_args, gap_fill_args, missing_sequences);
+    let sequences = timetree_sequence_inputs(
+      alignment,
+      partitions,
+      site_model_settings(&site_model_args)?,
+      alphabet_args,
+      gap_fill_args,
+      missing_sequences,
+    );
     let file_paths = vec![
       (OutputSelection::NodeData, output_node_data),
       (OutputSelection::Model, output_model),
@@ -269,11 +280,13 @@ fn timetree_inputs(
 fn timetree_marginal_only_settings(
   representation: &RepresentationArgs,
   partition_rates: &PartitionRatesArgs,
+  site_model: &SiteModelArgs,
   ambiguity: &TimetreeAmbiguityArgs,
 ) -> Vec<&'static str> {
   [
     ("representation", representation.representation.is_some()),
     ("partition_rates", partition_rates.partition_rates.is_some()),
+    ("gamma_categories", site_model.gamma_categories.is_some()),
     ("ambiguity_threshold", ambiguity.ambiguity_threshold.is_some()),
   ]
   .into_iter()
@@ -468,6 +481,7 @@ fn timetree_outputs(
 fn timetree_sequence_inputs(
   alignment: Vec<PathBuf>,
   partitions: PartitionSource,
+  models: ModelSettings,
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   MissingSequenceArgs {
@@ -480,6 +494,7 @@ fn timetree_sequence_inputs(
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
     partitions,
+    models,
   }
 }
 
@@ -899,6 +914,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub partition_rates_args: PartitionRatesArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub site_model_args: SiteModelArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

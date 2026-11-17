@@ -25,6 +25,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
+use treetime::partition::split::ModelSettings;
 use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
@@ -129,6 +130,7 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
         partitions: PartitionSource::Entries(vec![]),
+        models: ModelSettings::default(),
       },
       positions: PositionBase::from_zero_based(zero_based),
       collapse_short,

@@ -12,7 +12,7 @@ use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::method_anc::{
   MarginalReconstruction, MethodAncArgs, MethodAncestralCli, SampleFromProfileArgs, check_model_with_method_anc,
-  check_partition_with_method_anc,
+  check_partition_with_method_anc, check_site_model_with_method_anc,
 };
 use crate::commands::shared::model::{GtrModelNameCli, ModelArgs, resolve_model};
 use crate::commands::shared::output_args::{
@@ -28,6 +28,7 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
   MissingSequenceArgs, PartitionSource, SequenceInputs, missing_leaf_limit,
 };
+use crate::commands::shared::site_model::{SiteModelArgs, site_model_settings};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -51,6 +52,7 @@ use treetime::ancestral::params::MethodAncestral;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::partition::split::ModelSettings;
 use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
@@ -139,6 +141,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       newick_dialect: TreeDialectArgs { newick_dialect },
       alphabet_args,
       model_args: ModelArgs { model, model_params },
+      site_model_args,
       method_anc: MethodAncArgs { method_anc },
       representation: RepresentationArgs { representation },
       sample_from_profile: SampleFromProfileArgs { sample_from_profile },
@@ -180,6 +183,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       partition_by,
       model,
       model_params: &model_params,
+      site_model: &site_model_args,
       translations: translations.is_some(),
       representation,
       ambiguity_threshold,
@@ -219,6 +223,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
         alphabet_args,
         gap_fill_args,
         allow_missing_sequences,
+        site_model_settings(&site_model_args)?,
       )?,
       allow_missing_sequences,
       positions: PositionBase::from_zero_based(zero_based),
@@ -294,6 +299,7 @@ fn ancestral_sequence_inputs(
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   allow_missing_sequences: bool,
+  models: ModelSettings,
 ) -> Result<SequenceInputs, Report> {
   check_required_alignment_paths(&alignment)?;
   Ok(SequenceInputs {
@@ -302,6 +308,7 @@ fn ancestral_sequence_inputs(
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
     partitions,
+    models,
   })
 }
 
@@ -342,6 +349,7 @@ fn ancestral_topology_order(
 
 fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Report> {
   check_model_with_method_anc(settings.method_anc, settings.model, settings.model_params)?;
+  check_site_model_with_method_anc(settings.method_anc, settings.site_model)?;
   check_partition_with_method_anc(settings.method_anc, settings.partition, settings.partition_by)?;
   let marginal = MarginalReconstruction {
     runs: settings.method_anc.is_marginal() || settings.translations,
@@ -357,6 +365,7 @@ struct DependentSettings<'a> {
   partition_by: Option<PartitionScheme>,
   model: Option<GtrModelNameCli>,
   model_params: &'a [String],
+  site_model: &'a SiteModelArgs,
   translations: bool,
   representation: Option<RepresentationCli>,
   ambiguity_threshold: Option<AmbiguityThreshold>,
@@ -456,6 +465,11 @@ pub struct TreetimeAncestralArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub site_model_args: SiteModelArgs,
 
   /// Substitution model of the amino-acid sequences, as `--model` for the nucleotides
   ///

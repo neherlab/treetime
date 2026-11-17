@@ -36,6 +36,7 @@ use std::path::PathBuf;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::partition::split::ModelSettings;
 use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
@@ -139,6 +140,7 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
         partitions: PartitionSource::Entries(vec![]),
+        models: ModelSettings::default(),
       },
       positions: PositionBase::from_zero_based(zero_based),
       method_anc: method_anc.into(),

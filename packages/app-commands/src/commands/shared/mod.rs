@@ -29,6 +29,7 @@ pub mod reroot;
 pub mod run_paths;
 pub mod seed;
 pub mod sequence_inputs;
+pub mod site_model;
 pub mod tip_sequences;
 pub mod topology_order_args;
 pub mod tree_input;

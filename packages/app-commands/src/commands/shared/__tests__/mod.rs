@@ -15,4 +15,5 @@ mod test_partition_by_args;
 mod test_run_paths;
 mod test_seed_args;
 mod test_sequence_inputs;
+mod test_site_model_args;
 mod test_tree_input;

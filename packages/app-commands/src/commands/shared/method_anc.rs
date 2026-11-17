@@ -3,6 +3,7 @@ use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{GtrModelNameCli, check_model_applies};
 use crate::commands::shared::partition::{PartitionSpec, check_partition_applies};
 use crate::commands::shared::partition_by::PartitionScheme;
+use crate::commands::shared::site_model::{SiteModelArgs, check_site_model_applies};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -30,6 +31,15 @@ pub fn check_model_with_method_anc(
 ) -> Result<(), Report> {
   check_model_applies(model, model_params, "method_anc", method_anc.is_marginal(), || {
     o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model")
+  })
+}
+
+pub fn check_site_model_with_method_anc(
+  method_anc: MethodAncestralCli,
+  site_model: &SiteModelArgs,
+) -> Result<(), Report> {
+  check_site_model_applies(site_model, "method_anc", method_anc.is_marginal(), || {
+    o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model and no site rates")
   })
 }
 
