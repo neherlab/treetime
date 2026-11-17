@@ -6,6 +6,7 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::{Array1, Array2, ArrayView1};
 use smallvec::{SmallVec, smallvec};
+use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_graph::schedule::GraphSchedule;
@@ -134,7 +135,8 @@ pub(crate) struct SparseMixture {
   pub(crate) log_lh: LogLh,
   prior: CategoryValues,
   groups: SmallVec<[MixedSite; 4]>,
-  sites: Vec<(usize, MixedSite)>,
+  patterns: Vec<MixedSite>,
+  sites: Vec<(usize, usize)>,
 }
 
 #[derive(Clone, Debug)]
@@ -174,28 +176,37 @@ impl SparseMixture {
       }
     }
     let mut log_lh = 0.0;
+    let mut pattern_index = BTreeMap::<(AsciiChar, SmallVec<[u64; INLINE_CATEGORIES]>), usize>::new();
+    let mut patterns = vec![];
+    let mut pattern_totals = vec![];
     let sites = listed
       .into_iter()
       .map(|(pos, state, values)| {
         let site_log_lh: CategoryValues = izip!(categories, values)
           .map(|(category, value)| value.unwrap_or_else(|| category.group(state)))
           .collect();
-        let (total, posterior) = mix_site(&log_weights.view(), site_log_lh.iter().copied());
-        log_lh += total;
-        (
-          pos,
-          MixedSite {
+        let key = (state, site_log_lh.iter().map(|value| value.to_bits()).collect());
+        let pattern = *pattern_index.entry(key).or_insert_with(|| {
+          let (total, posterior) = mix_site(&log_weights.view(), site_log_lh.iter().copied());
+          pattern_totals.push(total);
+          patterns.push(MixedSite {
             state,
             site_log_lh,
             posterior,
-          },
-        )
+          });
+          patterns.len() - 1
+        });
+        log_lh += pattern_totals[pattern];
+        (pos, pattern)
       })
       .collect_vec();
     let groups = alphabet
       .canonical()
       .map(|state| {
-        let listed_count = sites.iter().filter(|(_, site)| site.state == state).count();
+        let listed_count = sites
+          .iter()
+          .filter(|&&(_, pattern)| patterns[pattern].state == state)
+          .count();
         let count = composition.get(state).unwrap_or(0).saturating_sub(listed_count);
         let site_log_lh: CategoryValues = categories.iter().map(|category| category.group(state)).collect();
         let (total, posterior) = mix_site(&log_weights.view(), site_log_lh.iter().copied());
@@ -213,12 +224,24 @@ impl SparseMixture {
       log_lh: LogLh::new(log_lh),
       prior: weights.iter().copied().collect(),
       groups,
+      patterns,
       sites,
     })
   }
 
-  pub(crate) fn listed(&self) -> impl Iterator<Item = (usize, &MixedSite)> {
-    self.sites.iter().map(|(pos, site)| (*pos, site))
+  pub(crate) fn listed(&self) -> impl Iterator<Item = (usize, usize, &MixedSite)> {
+    self
+      .sites
+      .iter()
+      .map(|&(pos, pattern)| (pos, pattern, &self.patterns[pattern]))
+  }
+
+  pub(crate) fn pattern_count(&self) -> usize {
+    self.patterns.len()
+  }
+
+  pub(crate) fn pattern(&self, pattern: usize) -> &MixedSite {
+    &self.patterns[pattern]
   }
 
   pub(crate) fn group(&self, state: AsciiChar) -> Option<&MixedSite> {
@@ -230,7 +253,7 @@ impl SparseMixture {
       .sites
       .binary_search_by_key(&pos, |(site, _)| *site)
       .ok()
-      .map(|index| &self.sites[index].1)
+      .map(|index| &self.patterns[self.sites[index].1])
       .or_else(|| self.group(state))
   }
 

@@ -13,6 +13,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::{Array1, Array2, ArrayView1, Axis, aview1, concatenate};
+use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::key_map::NodeMap;
@@ -154,9 +155,11 @@ pub(crate) fn sparse_mixture_contribution(
     }
   }
   let mut group_rows = BTreeMap::<(AsciiChar, AsciiChar), Option<GroupRows>>::new();
+  let mut listed = Vec::<ListedEntry>::new();
+  let mut pattern_entries: Vec<SmallVec<[usize; 1]>> = vec![SmallVec::new(); state.mixture.pattern_count()];
   let mut variable_positions = variable.iter().copied().peekable();
   let mut no_data = child_no_data.iter().copied().peekable();
-  for (pos, site) in state.mixture.listed() {
+  for (pos, pattern, _) in state.mixture.listed() {
     while variable_positions.next_if(|&variable_pos| variable_pos < pos).is_some() {}
     while no_data.next_if(|&(_, end)| end <= pos).is_some() {}
     let parent_state = parent_sequence[pos];
@@ -169,11 +172,30 @@ pub(crate) fn sparse_mixture_contribution(
       continue;
     }
     *taken_from_groups.entry(parent_state).or_default() += 1;
+    let entries = &mut pattern_entries[pattern];
+    let known = entries.iter().copied().find(|&entry| {
+      let entry = &listed[entry];
+      entry.parent_state == parent_state && entry.child_state == child_state
+    });
+    if let Some(entry) = known {
+      listed[entry].count += 1;
+    } else {
+      entries.push(listed.len());
+      listed.push(ListedEntry {
+        pattern,
+        parent_state,
+        child_state,
+        count: 1,
+      });
+    }
+  }
+  for entry in listed {
     let rows = group_rows
-      .entry((parent_state, child_state))
-      .or_insert_with(|| GroupRows::new(&categories, weights, parent_state, child_state));
+      .entry((entry.parent_state, entry.child_state))
+      .or_insert_with(|| GroupRows::new(&categories, weights, entry.parent_state, entry.child_state));
     if let Some(rows) = rows {
-      sites.add(1.0, rows.mixed(&site.site_log_lh));
+      let site = state.mixture.pattern(entry.pattern);
+      sites.add(entry.count.to_f64_exact(), rows.mixed(&site.site_log_lh));
     }
   }
   for fixed in categories[0].to_child.fixed.iter() {
@@ -233,6 +255,13 @@ fn variable_label(categories: &[EdgeCategory<'_>], pos: usize, parent_side: bool
       .or_else(|| other.variable.get(pos))
       .map(|var| var.state)
   })
+}
+
+struct ListedEntry {
+  pattern: usize,
+  parent_state: AsciiChar,
+  child_state: AsciiChar,
+  count: usize,
 }
 
 struct GroupRows {

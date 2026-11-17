@@ -209,11 +209,11 @@ fn mix_sparse_node(
     .map(|state| state.profile.variable.keys().copied())
     .kmerge()
     .dedup()
-    .merge_join_by(mixture.listed(), |pos, (listed, _)| pos.cmp(listed))
+    .merge_join_by(mixture.listed(), |pos, (listed, ..)| pos.cmp(listed))
     .map(|position| match position {
       EitherOrBoth::Left(pos) => (pos, true, None),
-      EitherOrBoth::Right((pos, site)) => (pos, false, Some(site)),
-      EitherOrBoth::Both(pos, (_, site)) => (pos, true, Some(site)),
+      EitherOrBoth::Right((pos, _, site)) => (pos, false, Some(site)),
+      EitherOrBoth::Both(pos, (_, _, site)) => (pos, true, Some(site)),
     });
   let mut variable = VarPosMap::default();
   let mut labeled = AsciiTable::<usize>::default();
