@@ -2,7 +2,7 @@
 mod tests {
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use eyre::Report;
-  use helpers::{block_rates, optimize};
+  use helpers::{block_rates, optimize, optimize_with_invariant_partition};
   use pretty_assertions::assert_eq;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_ulps_eq;
@@ -49,6 +49,23 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_optimize_partition_without_changes_keeps_finite_rates_and_branch_lengths() -> Result<(), Report> {
+    let output = optimize_with_invariant_partition(2)?;
+
+    let rates = block_rates(&output);
+    assert!(
+      rates.iter().all(|(_, mu)| mu.is_finite() && *mu >= 0.0),
+      "the rate step and the normalization keep every rate finite and non-negative, got {rates:?}"
+    );
+    let lengths = output.branch_lengths.values().flatten().copied().collect::<Vec<f64>>();
+    assert!(
+      !lengths.is_empty() && lengths.iter().all(|length| length.is_finite() && *length >= 0.0),
+      "every branch length stays finite, got {lengths:?}"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::cancel::NoopCancel;
@@ -66,16 +83,38 @@ mod tests {
     use itertools::{Itertools, izip};
     use std::path::PathBuf;
     use treetime_io::nwk::nwk_read;
+    use treetime_primitives::{AlignmentRecord, Seq};
 
     pub(super) fn optimize(models: &[GtrModel], max_iter: usize) -> Result<OptimizeOutput, Report> {
-      let dataset = TestDataset::Flu20;
-      let parse = nwk_read(dataset.tree().as_bytes())?;
-      let records = dataset.alignment_columns(Columns::Leading(400))?;
+      let records = TestDataset::Flu20.alignment_columns(Columns::Leading(400))?;
       let blocks = if models.len() == 1 {
         vec![records]
       } else {
         split_at_gap_free_column(&records)?.into_iter().collect_vec()
       };
+      optimize_blocks(blocks, models, max_iter)
+    }
+
+    pub(super) fn optimize_with_invariant_partition(max_iter: usize) -> Result<OptimizeOutput, Report> {
+      let records = TestDataset::Flu20.alignment_columns(Columns::Leading(400))?;
+      let invariant = records
+        .iter()
+        .map(|record| {
+          Ok(AlignmentRecord {
+            name: record.name.clone(),
+            seq: Seq::try_from_str(&"ACGT".repeat(25))?,
+          })
+        })
+        .collect::<Result<Vec<_>, Report>>()?;
+      optimize_blocks(vec![records, invariant], &[GtrModel::Infer, GtrModel::Infer], max_iter)
+    }
+
+    fn optimize_blocks(
+      blocks: Vec<Vec<AlignmentRecord>>,
+      models: &[GtrModel],
+      max_iter: usize,
+    ) -> Result<OptimizeOutput, Report> {
+      let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
       let alignments = izip!(1.., blocks)
         .map(|(number, records)| {
           let source = sequence_source(
