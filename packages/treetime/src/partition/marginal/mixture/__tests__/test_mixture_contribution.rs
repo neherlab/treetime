@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::gtr::gamma::GAMMA_SHAPE_MIN;
   use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
@@ -17,16 +18,21 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::dense_gap_free(  Representation::Dense,  &GAP_FREE)]
-  #[case::sparse_gap_free( Representation::Sparse, &GAP_FREE)]
-  #[case::dense_missing(   Representation::Dense,  &MISSING_DATA)]
-  #[case::sparse_missing(  Representation::Sparse, &MISSING_DATA)]
+  #[case::dense_gap_free(               Representation::Dense,  &GAP_FREE,     LONG_BRANCHES, 5.0)]
+  #[case::sparse_gap_free(              Representation::Sparse, &GAP_FREE,     LONG_BRANCHES, 5.0)]
+  #[case::dense_missing(                Representation::Dense,  &MISSING_DATA, LONG_BRANCHES, 5.0)]
+  #[case::sparse_missing(               Representation::Sparse, &MISSING_DATA, LONG_BRANCHES, 5.0)]
+  #[case::dense_smallest_shape(         Representation::Dense,  &GAP_FREE,     1.0,           GAMMA_SHAPE_MIN)]
+  #[case::sparse_smallest_shape(        Representation::Sparse, &GAP_FREE,     LONG_BRANCHES, GAMMA_SHAPE_MIN)]
+  #[case::dense_missing_smallest_shape( Representation::Dense,  &MISSING_DATA, 1.0,           GAMMA_SHAPE_MIN)]
   #[trace]
   fn test_mixture_contribution_differences_match_full_passes(
     #[case] representation: Representation,
     #[case] alignment: &[(&str, &str)],
+    #[case] scale: f64,
+    #[case] shape: f64,
   ) -> Result<(), Report> {
-    let (fixture, set) = mixture_set(representation, alignment, LONG_BRANCHES, 5.0)?;
+    let (fixture, set) = mixture_set(representation, alignment, scale, shape)?;
     let partition = set.iter().next().expect("set has one partition");
     let full = |edge_key, length: f64| -> Result<f64, Report> {
       let mut lengths = fixture.branch_lengths.clone();

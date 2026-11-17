@@ -21,6 +21,8 @@ use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::make_internal_report;
 
+const SITE_LH_RESOLUTION: f64 = 1e-13;
+
 pub(crate) fn dense_mixture_contribution(
   partition: &PartitionMarginalDense,
   state: &DenseMixtureState,
@@ -257,6 +259,10 @@ fn scale_exponent(weight: f64, site_log_lh: f64, row: ArrayView1<'_, f64>, decay
   if site_log_lh == f64::NEG_INFINITY {
     return f64::NEG_INFINITY;
   }
-  let site_lh = row.dot(decay).max(f64::MIN_POSITIVE);
-  weight.ln() + site_log_lh - site_lh.ln()
+  let (site_lh, magnitude) = izip!(row, decay).fold((0.0, 0.0), |(sum, magnitude), (&coefficient, &decay)| {
+    let term = coefficient * decay;
+    (sum + term, magnitude + term.abs())
+  });
+  let resolved = site_lh.max(magnitude * SITE_LH_RESOLUTION).max(f64::MIN_POSITIVE);
+  weight.ln() + site_log_lh - resolved.ln()
 }
