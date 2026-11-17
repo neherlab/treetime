@@ -25,7 +25,7 @@
 ### Reconstruction: one pass per category
 
 - **Category passes**: a partition reconstruction with K >= 2 holds K passes, each the existing dense or sparse pass with the scalar rate μ_p * r_k, so the propagation code is the same as without gamma (`packages/treetime/src/partition/marginal/mixture/`). Sparse fixed positions are exact in every pass, because each pass uses one scalar rate. A run with K = 1 runs the plain pass
-- **Per-site log-likelihoods**: each pass gives the root log-likelihood ℓ_{s,k} of every site s. Dense passes compute it after the backward pass from the stored child messages. Sparse passes keep a scale per state group and an offset per site during the backward pass; a fixed-state group counts once per site of the group
+- **Per-site log-likelihoods**: each pass gives the root log-likelihood ℓ_{s,k} of every site s. The backward pass records them: every node keeps the per-site log-normalizations of its own combination step, and the root sums them over all nodes in node-key order, so the sum does not depend on the order in which parallel workers finish. In sparse passes the record holds a scale per state group and an increment per explicit site; a fixed-state group counts once per site of the group
 - **Mixture log-likelihood**: Σ_s log Σ_k (1/K) e^{ℓ_{s,k}}, with a log-sum-exp per site. It replaces the root log-likelihood wherever the reconstruction reports one: the run log-likelihood, the stop rule of optimize, the rate step and the α step
 - **Combined posteriors**: the weight of category k at site s is P(k|s) = e^{ℓ_{s,k}} / Σ_j e^{ℓ_{s,j}}, and the posterior of a node state is Σ_k P(k|s) P_k(x|s), the marginal reconstruction under a rate mixture. The combined posteriors fill the node states of the existing types, so sequences, ambiguity codes, mutations, sampling and assembly read them without change. Leaf posteriors of ambiguous and missing states combine the category posteriors in the same way. A sparse combined node state keeps as explicit sites the union of the variable sites of the categories, plus the sites whose combined posterior differs from the combined group profile by more than the sparse profile tolerance (1e-4). Edge substitutions come from the combined node states
 - **Edge contributions**: for edge e, the branch-length objective of the mixture is again a sum of exponentials in the branch length, with K * S terms: the coefficients of category k are the coefficients without gamma, built from the messages of pass k, with the eigenvalues r_k * λ_j, weighted by (1/K) e^{ℓ_{s,k} - log f_{s,k}(t_e) - m_s}, where f_{s,k}(t_e) is the site term at the branch length of the pass and m_s the largest exponent over k at site s. A category whose rate is near zero has a site value f_{s,k}(t_e) at the round-off level of its expansion, so f_{s,k}(t_e) is floored at 1e-13 times the sum of the magnitudes of its terms; such a category then contributes at most its own small likelihood, instead of dominating the branch-length objective through a division by round-off. With K = 1 the contribution equals the one without gamma. The contribution and the full log-likelihood differ by a constant per edge, so tests compare differences
@@ -33,7 +33,8 @@
 
 ### Shape estimation and schedules
 
-- **Rule**: α of each partition, or of each group that shares `gamma-shape`, maximizes the mixture log-likelihood (the sum over the group) with the bounded Brent solver of `argmin` in log α over [ln 0.02, ln 100] (`fn optimize_gamma_shape()`, [packages/treetime/src/gtr/gamma_shape.rs#L14](../../packages/treetime/src/gtr/gamma_shape.rs#L14)). Each evaluation rebuilds the category rates and runs the backward passes of all categories. The solver takes no start point; the first passes of a run use α = 1
+- **Rule**: α of each partition, or of each group that shares `gamma-shape`, maximizes the mixture log-likelihood (the sum over the group) in ln α over [ln 0.02, ln 100] (`fn optimize_gamma_shape()`, [packages/treetime/src/gtr/gamma_shape.rs#L18](../../packages/treetime/src/gtr/gamma_shape.rs#L18)). Each evaluation rebuilds the category rates and runs the backward passes of all categories
+- **Search**: a local search from the current α (α = 1 at the start of a run). It evaluates steps of 0.1 in ln α on both sides; when one side is better, it expands in that direction by the golden ratio until the likelihood falls again or the step reaches a bound. Brent's method then refines the bracket to an absolute tolerance of 1e-4 in ln α. At a bound, one step of 1e-4 inward decides: when it is not better, α stays at the bound, which costs two evaluations per iteration. IQ-TREE searches in the same way (`minimizeOneDimen()`, `.repos/iqtree3/utils/optimization.cpp#L322`: probes next to the current value, stays at a bound when the inward probe is worse), and RAxML-NG also starts at the current value. The search finds a local maximum: a likelihood with two separate maxima in α can keep α at a bound while the other maximum is higher. The tolerance follows from the curvature: in the recovery pilot, the standard error of ln α was 0.043 for 3000 sites, so at 2e5 informative sites an error of 2e-4 in ln α costs at most 7e-4 log-likelihood units, far below the stop tolerance 0.1 of optimize
 - **Rate step**: the rate step of a mixture partition maximizes the mixture log-likelihood with the bracket and Brent search of the rate step without gamma (`fn optimize_mixture_rate()`, [packages/treetime/src/gtr/refinement.rs#L204](../../packages/treetime/src/gtr/refinement.rs#L204))
 - **Optimize**: each iteration runs the branch-length step, the damping, the rate step, the α step, and the normalization (`fn update_partition_rates()`, [packages/treetime/src/optimize/partition_rates.rs#L13](../../packages/treetime/src/optimize/partition_rates.rs#L13)). A run with one partition has no rate step and runs the α step at the same place
 - **Timetree**: each of the two ML branch-length passes before the dating rounds ends with the rate step, the α step and the normalization; the dating rounds keep α fixed
@@ -43,12 +44,31 @@
 
 The model document (`--output-model`) gives each partition a `gamma` entry with the number of categories, α and the category rates; the entry is absent without `--gamma-categories`. The app shows α and K in the model table.
 
+## Cost
+
+Optimize with `--gamma-categories 4` against the same run without gamma, release build on a 20-thread host under a load of 13 to 25, with `-j 4`, mean of two runs:
+
+| Dataset | Mode | Without gamma | With K = 4 | Time | Peak memory |
+| --- | --- | --- | --- | --- | --- |
+| `data/mpox/clade-ii/500` | sparse | 15.6 s, 731 MB | 394 s, 2.17 GB | 25 times | 3.0 times |
+| `data/mpox/clade-ii/100` | sparse | 2.1 s, 203 MB | 26.2 s, 492 MB | 12.5 times | 2.4 times |
+| `data/flu/h3n2/500` | dense | 2.0 s, 335 MB | 17.6 s, 984 MB | 8.8 times | 2.9 times |
+| `data/zika/86` | dense | 1.7 s, 231 MB | 12.2 s, 853 MB | 7 times | 3.7 times |
+
+Memory grows about K-fold, as the K category passes predict. Runtime grows more, for three reasons:
+
+- **Edge contributions in sparse mode**: without gamma, the sites that are not variable on an edge collapse into a few state groups; with gamma, each distinct site pattern keeps its own category weights on every edge. On `mpox/clade-ii/500`, both runs take 8 iterations, and the branch-length step of one iteration takes 47.5 s against 0.41 s, about three quarters of the iteration ([kb/issues/N-optimize-sparse-gamma-edge-contributions-scale-with-site-patterns.md](../issues/N-optimize-sparse-gamma-edge-contributions-scale-with-site-patterns.md))
+- **Shape step**: each evaluation runs K backward passes. The first step of a run takes 10 to 14 evaluations, later steps 2 when α stays at a bound and about 8 inside the range ([kb/issues/N-optimize-gamma-shape-step-repeats-backward-passes.md](../issues/N-optimize-gamma-shape-step-repeats-backward-passes.md))
+- **Marginal update**: K backward and K forward passes, and the mixing of the node states
+
+The category passes run one after another and are not fused into one pass with a category axis. No measurement compared K separate passes with a fused pass at fixed α.
+
 ## Why
 
 - **Rate variation across sites**: sites of one gene evolve at different speeds, and a model with one rate per partition underestimates long branches when slow and fast sites mix. Discrete gamma with four categories is the common approximation in IQ-TREE, RAxML-NG, BEAST and PhyML
 - **One pass per category** keeps the propagation code of dense and sparse mode unchanged and keeps sparse fixed positions exact, because each pass uses one scalar rate. A fused pass with a category axis would need new message types in both representations
 - **Mean-rate discretization** with equal weights matches the defaults of RAxML-NG and IQ-TREE, so the likelihoods of the three tools agree on the same model
-- **Brent in log α**: the likelihood is smooth and usually unimodal in log α, the bracket is fixed by the shape range, and the solver needs no derivatives of the passes
+- **Local search in log α**: the likelihood is smooth and usually unimodal in log α, each evaluation costs K backward passes, and α changes little between iterations, so a search from the current α needs few evaluations and no derivatives of the passes
 
 ## Verification
 
