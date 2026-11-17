@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::gtr::partition_model::PartitionModel;
-use crate::partition::marginal::mixture::site_log_lh::{SparseMixture, SparseSiteLogLh};
+use crate::partition::marginal::mixture::site_log_lh::{INLINE_CATEGORIES, SparseMixture, SparseSiteLogLh};
 use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::forward::compute_ml_subs_for_nodes;
@@ -15,7 +15,7 @@ use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::{Itertools, izip};
+use itertools::{EitherOrBoth, Itertools, izip};
 use ndarray::aview1;
 use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
@@ -24,6 +24,8 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, AsciiTable, LogLh};
 use treetime_utils::{make_internal_error, make_internal_report};
+
+const GROUP_SPREAD_LIMIT: f64 = EPS / 2.0;
 
 pub(crate) fn sparse_mixture_update(
   partition: &PartitionMarginalSparse,
@@ -180,7 +182,7 @@ fn mix_sparse_node(
 ) -> SparseNodeState {
   let first = states[0];
   let n_states = alphabet.n_canonical();
-  let groups: SmallVec<[(AsciiChar, SiteProfile); INLINE_STATES]> = first
+  let groups: SmallVec<[MixedGroup; INLINE_STATES]> = first
     .profile
     .fixed
     .iter()
@@ -188,32 +190,39 @@ fn mix_sparse_node(
       let weights = mixture.group(entry.state).map(|group| group.posterior.as_slice());
       let profiles = states
         .iter()
+        .filter_map(|state| state.profile.fixed.get(entry.state).map(|fixed| fixed.dis.as_slice()))
+        .collect::<SmallVec<[&[f64]; INLINE_CATEGORIES]>>();
+      let profiles_by_category = states
+        .iter()
         .map(|state| state.profile.fixed.get(entry.state).map(|fixed| fixed.dis.as_slice()));
-      (
-        entry.state,
-        weighted_profile(n_states, weights, profiles).unwrap_or_else(|| entry.dis.clone()),
-      )
+      MixedGroup {
+        state: entry.state,
+        dis: weighted_profile(n_states, weights, profiles_by_category).unwrap_or_else(|| entry.dis.clone()),
+        spread: profile_spread(n_states, &profiles),
+      }
     })
     .collect();
-  let group = |state: AsciiChar| {
-    groups
-      .iter()
-      .find(|(group_state, _)| *group_state == state)
-      .map(|(_, dis)| dis)
-  };
+  let group = |state: AsciiChar| groups.iter().find(|group| group.state == state);
 
   let positions = states
     .iter()
     .map(|state| state.profile.variable.keys().copied())
     .kmerge()
-    .merge(mixture.listed().map(|(pos, _)| pos))
-    .dedup();
+    .dedup()
+    .merge_join_by(mixture.listed(), |pos, (listed, _)| pos.cmp(listed))
+    .map(|position| match position {
+      EitherOrBoth::Left(pos) => (pos, true, None),
+      EitherOrBoth::Right((pos, site)) => (pos, false, Some(site)),
+      EitherOrBoth::Both(pos, (_, site)) => (pos, true, Some(site)),
+    });
   let mut variable = VarPosMap::default();
   let mut labeled = AsciiTable::<usize>::default();
-  for pos in positions {
+  for (pos, in_variable, listed) in positions {
     let state = first.sequence[pos];
-    let in_variable = states.iter().any(|node| node.profile.variable.contains_key(pos));
-    let weights = mixture.posterior(pos, state);
+    if !in_variable && group(state).is_some_and(|group| group.spread <= GROUP_SPREAD_LIMIT) {
+      continue;
+    }
+    let weights = listed.map_or_else(|| mixture.unlisted_posterior(state), |site| &site.posterior);
     let profiles = states.iter().map(|node| {
       node.profile.variable.get(pos).map(|var| var.dis).or_else(|| {
         alphabet
@@ -225,7 +234,7 @@ fn mix_sparse_node(
     let Some(mixed) = weighted_profile(n_states, Some(weights), profiles) else {
       continue;
     };
-    let differs = group(state).is_none_or(|group_dis| izip!(&mixed, group_dis).any(|(a, b)| (a - b).abs() > EPS));
+    let differs = group(state).is_none_or(|group| izip!(&mixed, &group.dis).any(|(a, b)| (a - b).abs() > EPS));
     if !in_variable && !differs {
       continue;
     }
@@ -242,7 +251,7 @@ fn mix_sparse_node(
   }
 
   let mut fixed = FixedProfiles::default();
-  for (state, dis) in groups {
+  for MixedGroup { state, dis, .. } in groups {
     let count = composition.get(state).unwrap_or(0).saturating_sub(labeled[state]);
     fixed.insert(state, count, dis);
   }
@@ -256,6 +265,25 @@ fn mix_sparse_node(
     },
     globally_missing: Arc::clone(&first.globally_missing),
   }
+}
+
+struct MixedGroup {
+  state: AsciiChar,
+  dis: SiteProfile,
+  spread: f64,
+}
+
+fn profile_spread(n_states: usize, profiles: &[&[f64]]) -> f64 {
+  (0..n_states)
+    .map(|i| {
+      let (min, max) = profiles
+        .iter()
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), profile| {
+          (min.min(profile[i]), max.max(profile[i]))
+        });
+      max - min
+    })
+    .fold(0.0, f64::max)
 }
 
 fn weighted_profile<'a>(

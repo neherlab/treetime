@@ -237,6 +237,10 @@ impl SparseMixture {
   pub(crate) fn posterior(&self, pos: usize, state: AsciiChar) -> &[f64] {
     self.site(pos, state).map_or(&self.prior, |site| &site.posterior)
   }
+
+  pub(crate) fn unlisted_posterior(&self, state: AsciiChar) -> &[f64] {
+    self.group(state).map_or(&self.prior, |site| &site.posterior)
+  }
 }
 
 pub(crate) fn mix_site(
