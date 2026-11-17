@@ -2,7 +2,7 @@
 mod tests {
   use crate::__tests__::test_support::tests::helpers::{chisquare_p_value, three_tip_tree};
   use crate::FALSE_FAIL_RATE;
-  use crate::evolve::{evolve_sequences, evolve_site};
+  use crate::evolve::{draw_site_rates, evolve_sequences, evolve_sequences_at_site_rates, evolve_site};
   use crate::substitution_model::{NUCLEOTIDES, SubstitutionModel};
   use helpers::{f81_transition, state_counts};
   use itertools::{Itertools, iproduct, izip};
@@ -185,6 +185,75 @@ mod tests {
     assert!(
       failed.is_empty(),
       "chi-square tests over {SITE_COUNT} sites against the JC69 probabilities with p <= {threshold}: {failed:?}"
+    );
+  }
+
+  #[test]
+  fn test_stat_evolve_sequences_at_drawn_site_rates_match_the_category_mixture() {
+    let tree = three_tip_tree();
+    let durations = keymap! { tree.root_inner => 0.2, tree.root_c => 0.6, tree.inner_a => 0.1, tree.inner_b => 0.9 };
+    let model = SubstitutionModel::jc69(1.0).unwrap();
+    let category_rates = array![0.1, 0.5, 1.2, 2.2];
+    let mut rng = get_random_number_generator(35);
+    let site_rates = draw_site_rates(category_rates.view(), SITE_COUNT, &mut rng).unwrap();
+    let simulated =
+      evolve_sequences_at_site_rates(&tree.graph, &durations, &model, site_rates.view(), &mut rng).unwrap();
+
+    let category_counts = site_rates
+      .iter()
+      .map(|rate| category_rates.iter().position(|r| r == rate).unwrap())
+      .counts();
+    let observed = (0..category_rates.len())
+      .map(|k| category_counts.get(&k).copied().unwrap_or(0))
+      .collect_vec();
+    let category_check = (
+      o!("category frequencies"),
+      chisquare_p_value(&observed, &vec![0.25; category_rates.len()]),
+    );
+
+    let state_of = |node| {
+      simulated.sequences[&node]
+        .iter()
+        .map(|character| {
+          NUCLEOTIDES
+            .iter()
+            .position(|nucleotide| nucleotide == character)
+            .unwrap()
+        })
+        .collect_vec()
+    };
+    let pi = model.pi().clone();
+    let edge_checks = tree.graph.get_edges().map(|edge| {
+      let duration = durations[&edge.key()];
+      let pair_counts = izip!(state_of(edge.source()), state_of(edge.target())).counts();
+      let observed = iproduct!(0..4, 0..4)
+        .map(|pair| pair_counts.get(&pair).copied().unwrap_or(0))
+        .collect_vec();
+      let probabilities = iproduct!(0..4, 0..4)
+        .map(|(parent, child)| {
+          pi[parent]
+            * category_rates
+              .iter()
+              .map(|rate| f81_transition(&pi, parent, child, rate * duration))
+              .sum::<f64>()
+            / category_rates.len().to_f64_exact()
+        })
+        .collect_vec();
+      (
+        format!("state pairs of edge {} of duration {duration}", edge.key()),
+        chisquare_p_value(&observed, &probabilities),
+      )
+    });
+
+    let p_values = once(category_check).chain(edge_checks).collect_vec();
+    let threshold = FALSE_FAIL_RATE / p_values.len().to_f64_exact();
+    let failed = p_values
+      .iter()
+      .filter(|(_, p_value)| *p_value <= threshold)
+      .collect_vec();
+    assert!(
+      failed.is_empty(),
+      "chi-square tests over {SITE_COUNT} sites against the JC69 category mixture with p <= {threshold}: {failed:?}"
     );
   }
 

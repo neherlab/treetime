@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::helpers::three_tip_tree;
-  use crate::evolve::{SiteEvolution, evolve_sequences, evolve_site};
+  use crate::evolve::{SiteEvolution, draw_site_rates, evolve_sequences, evolve_sequences_at_site_rates, evolve_site};
   use crate::substitution_model::SubstitutionModel;
   use treetime_graph::key_map::EdgeMap;
   use treetime_graph::keymap;
+
+  use itertools::Itertools;
+  use ndarray::{Array1, array};
 
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -76,6 +79,84 @@ mod tests {
     ];
     let actual = simulated.leaf_records(&tree.graph, &tree.names);
     assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::slow(0.5)]
+  #[case::fast(3.0)]
+  #[trace]
+  fn test_evolve_sequences_at_a_uniform_site_rate_equals_scaled_durations(#[case] rate: f64) {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(1.0).unwrap();
+    let durations = keymap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
+    let scaled = durations.iter().map(|(edge, &duration)| (edge, duration * rate)).collect();
+    let length = 50;
+
+    let expected = evolve_sequences(&tree.graph, &scaled, &model, length, &mut get_random_number_generator(8)).unwrap();
+    let actual = evolve_sequences_at_site_rates(
+      &tree.graph,
+      &durations,
+      &model,
+      Array1::from_elem(length, rate).view(),
+      &mut get_random_number_generator(8),
+    )
+    .unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_evolve_sequences_at_site_rates_keeps_zero_rate_sites() {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(1.0).unwrap();
+    let durations = keymap! { tree.root_inner => 2.0, tree.root_c => 2.0, tree.inner_a => 2.0, tree.inner_b => 2.0 };
+    let site_rates = (0..200)
+      .map(|site| if site % 2 == 0 { 0.0 } else { 5.0 })
+      .collect::<Array1<f64>>();
+    let simulated = evolve_sequences_at_site_rates(
+      &tree.graph,
+      &durations,
+      &model,
+      site_rates.view(),
+      &mut get_random_number_generator(9),
+    )
+    .unwrap();
+
+    let zero_rate_columns = |node| simulated.sequences[&node].iter().step_by(2).copied().collect_vec();
+    let expected = vec![zero_rate_columns(tree.root); 3];
+    let actual = [tree.tip_a, tree.tip_b, tree.tip_c].map(zero_rate_columns).to_vec();
+    assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::empty(        array![],                "Sequence length must be positive, got 0")]
+  #[case::negative_rate(array![1.0, -0.5],       "Rate of site 1 must be finite and non-negative, got -0.5")]
+  #[case::nan_rate(     array![f64::NAN],        "Rate of site 0 must be finite and non-negative, got NaN")]
+  #[case::infinite_rate(array![1.0, f64::INFINITY], "Rate of site 1 must be finite and non-negative, got inf")]
+  #[trace]
+  fn test_evolve_sequences_at_site_rates_rejects_invalid_rates(#[case] site_rates: Array1<f64>, #[case] expected: &str) {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(1.0).unwrap();
+    let durations = keymap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
+    let result = evolve_sequences_at_site_rates(
+      &tree.graph,
+      &durations,
+      &model,
+      site_rates.view(),
+      &mut get_random_number_generator(0),
+    );
+    assert_error!(result, expected);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_category(   array![],          "Site rates need at least one rate category, got none")]
+  #[case::negative_rate( array![0.5, -1.0], "Rate of category 1 must be finite and non-negative, got -1")]
+  #[trace]
+  fn test_draw_site_rates_rejects_invalid_categories(#[case] category_rates: Array1<f64>, #[case] expected: &str) {
+    let result = draw_site_rates(category_rates.view(), 10, &mut get_random_number_generator(0));
+    assert_error!(result, expected);
   }
 
   #[rustfmt::skip]

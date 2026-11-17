@@ -1,8 +1,9 @@
 use crate::substitution_model::{NUCLEOTIDES, SubstitutionModel};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
+use ndarray::{Array1, ArrayView1};
 use rand::Rng;
-use rand_distr::{Distribution, Exp1};
+use rand_distr::{Distribution, Exp1, Uniform};
 use std::iter::repeat_with;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -41,9 +42,21 @@ pub fn evolve_sequences(
   length: usize,
   rng: &mut impl Rng,
 ) -> Result<SimulatedSequences, Report> {
+  evolve_sequences_at_site_rates(graph, durations, model, Array1::ones(length).view(), rng)
+}
+
+pub fn evolve_sequences_at_site_rates(
+  graph: &Graph,
+  durations: &EdgeMap<f64>,
+  model: &SubstitutionModel,
+  site_rates: ArrayView1<'_, f64>,
+  rng: &mut impl Rng,
+) -> Result<SimulatedSequences, Report> {
+  let length = site_rates.len();
   if length == 0 {
     return make_error!("Sequence length must be positive, got 0");
   }
+  validate_rates(site_rates, "Rate of site")?;
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   for edge in graph.get_edges() {
@@ -61,9 +74,8 @@ pub fn evolve_sequences(
       [] => repeat_with(|| model.sample_state(rng)).take(length).collect_vec(),
       [(parent, edge)] => {
         let duration = durations[edge];
-        let evolutions = states[parent]
-          .iter()
-          .map(|&state| jump_process(state, duration, model, rng))
+        let evolutions = izip!(&states[parent], site_rates)
+          .map(|(&state, &rate)| jump_process(state, duration * rate, model, rng))
           .collect_vec();
         substitutions.insert(*edge, evolutions.iter().map(|evolution| evolution.jumps).sum());
         evolutions.iter().map(|evolution| evolution.state).collect_vec()
@@ -83,6 +95,25 @@ pub fn evolve_sequences(
     sequences,
     substitutions,
   })
+}
+
+pub fn draw_site_rates(
+  category_rates: ArrayView1<'_, f64>,
+  length: usize,
+  rng: &mut impl Rng,
+) -> Result<Array1<f64>, Report> {
+  if category_rates.is_empty() {
+    return make_error!("Site rates need at least one rate category, got none");
+  }
+  validate_rates(category_rates, "Rate of category")?;
+  let category = Uniform::new(0, category_rates.len())?;
+  Ok(
+    category
+      .sample_iter(rng)
+      .take(length)
+      .map(|k| category_rates[k])
+      .collect(),
+  )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -116,6 +147,13 @@ fn validate_duration(duration: f64, what: &str) -> Result<(), Report> {
     return make_error!("{what} must be finite and non-negative, got {duration}");
   }
   Ok(())
+}
+
+fn validate_rates(rates: ArrayView1<'_, f64>, what: &str) -> Result<(), Report> {
+  match rates.iter().position(|&rate| !(rate.is_finite() && rate >= 0.0)) {
+    Some(index) => make_error!("{what} {index} must be finite and non-negative, got {}", rates[index]),
+    None => Ok(()),
+  }
 }
 
 fn jump_process(state: usize, duration: f64, model: &SubstitutionModel, rng: &mut impl Rng) -> SiteEvolution {
