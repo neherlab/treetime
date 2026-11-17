@@ -45,37 +45,60 @@ fn shape_at(log_shape: f64) -> f64 {
 }
 
 fn bracket_minimum(start: f64, cost: &impl Fn(f64) -> Result<f64, Report>) -> Result<Bracket, Report> {
-  let start = Point::at(start.clamp(GAMMA_SHAPE_MIN.ln(), GAMMA_SHAPE_MAX.ln()), cost)?;
-  let above = neighbor(start, 1.0, cost)?;
-  if let Some(above) = above.filter(|above| above.f < start.f) {
+  let (lower, upper) = (GAMMA_SHAPE_MIN.ln(), GAMMA_SHAPE_MAX.ln());
+  let start = Point::at(start.clamp(lower, upper), cost)?;
+  if start.x <= lower {
+    return bracket_from_bound(start, 1.0, cost);
+  }
+  if start.x >= upper {
+    return bracket_from_bound(start, -1.0, cost);
+  }
+  let above = step_from(start, 1.0, SHAPE_STEP, cost)?;
+  if above.f < start.f {
     return expand(start, above, cost);
   }
-  let below = neighbor(start, -1.0, cost)?;
-  if let Some(below) = below.filter(|below| below.f < start.f) {
+  let below = step_from(start, -1.0, SHAPE_STEP, cost)?;
+  if below.f < start.f {
     return expand(start, below, cost);
   }
-  match (below, above) {
-    (Some(below), Some(above)) => Ok(Bracket::Interior {
-      a: below.x,
-      b: start,
-      c: above.x,
-    }),
-    (Some(inner), None) | (None, Some(inner)) => resolve_bound(start, inner.x, cost),
-    (None, None) => Ok(Bracket::Bound(start)),
+  Ok(Bracket::Interior {
+    a: below.x,
+    b: start,
+    c: above.x,
+  })
+}
+
+fn bracket_from_bound(
+  at_bound: Point,
+  inward: f64,
+  cost: &impl Fn(f64) -> Result<f64, Report>,
+) -> Result<Bracket, Report> {
+  let near = step_from(at_bound, inward, SHAPE_ABS_TOL, cost)?;
+  if at_bound.f <= near.f {
+    return Ok(Bracket::Bound(at_bound));
+  }
+  let far = step_from(at_bound, inward, SHAPE_STEP, cost)?;
+  if far.f < near.f {
+    expand(near, far, cost)
+  } else {
+    Ok(Bracket::Interior {
+      a: at_bound.x,
+      b: near,
+      c: far.x,
+    })
   }
 }
 
-#[expect(
-  clippy::float_cmp,
-  reason = "the clamp returns the start itself when the start lies on the bound in this direction"
-)]
-fn neighbor(start: Point, direction: f64, cost: &impl Fn(f64) -> Result<f64, Report>) -> Result<Option<Point>, Report> {
-  let x = (start.x + direction * SHAPE_STEP).clamp(GAMMA_SHAPE_MIN.ln(), GAMMA_SHAPE_MAX.ln());
-  if x == start.x {
-    Ok(None)
-  } else {
-    Ok(Some(Point::at(x, cost)?))
-  }
+fn step_from(
+  start: Point,
+  direction: f64,
+  step: f64,
+  cost: &impl Fn(f64) -> Result<f64, Report>,
+) -> Result<Point, Report> {
+  Point::at(
+    (start.x + direction * step).clamp(GAMMA_SHAPE_MIN.ln(), GAMMA_SHAPE_MAX.ln()),
+    cost,
+  )
 }
 
 #[expect(

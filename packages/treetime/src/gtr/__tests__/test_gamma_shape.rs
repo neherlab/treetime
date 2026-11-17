@@ -41,10 +41,10 @@ mod tests {
   }
 
   #[test]
-  fn test_gamma_shape_at_the_bound_needs_three_evaluations_from_the_bound() -> Result<(), Report> {
+  fn test_gamma_shape_at_the_bound_needs_two_evaluations_from_the_bound() -> Result<(), Report> {
     let estimate = optimize_gamma_shape(GAMMA_SHAPE_MIN, |shape| Ok(log_lh_peaked_at(0.001, shape)))?;
     pretty_assert_ulps_eq!(GAMMA_SHAPE_MIN, estimate.shape, max_ulps = 0);
-    assert_eq!(3, estimate.evaluations);
+    assert_eq!(2, estimate.evaluations);
     Ok(())
   }
 
