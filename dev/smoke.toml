@@ -249,8 +249,8 @@ variant = "allow-missing-sequences"
 datasets = ["zika/20"]
 args = "--tree={data}/zika/86/tree.nwk --allow-missing-sequences"
 
-# Amino-acid reconstruction of every CDS, from the translations that `data/translate` writes. The CDSes are listed
-# because the GFF reader rejects the unstranded (`.`) CDS rows of this annotation.
+# Amino-acid reconstruction of every CDS, from the translations that `data/translate` writes. `--cds-selection` names
+# the CDSs, so this case reads no annotation; the variant `annotation` takes the CDSs from the GFF3 annotation.
 # The template is a literal path because smoke checks every `{data}` path as one input file; the dataset directory
 # is hashed as a whole, so the translations still key the case. `%GENE` keeps it clear of the smoke placeholders.
 [[ancestral]]
@@ -297,7 +297,12 @@ args = "--method-anc=parsimony --translations=data/rsv/a/20/translations/%GENE.f
 variant = "annotation"
 datasets = ["rsv/a/20"]
 args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --annotation={dataset}/annotation.gff3"
-fail = "kb/issues/M-io-gff3-rejects-unstranded-cds.md"
+
+# Partitions from the codon positions of the CDSs of the annotation
+[[ancestral]]
+variant = "partition-by-codon-positions"
+datasets = ["rsv/a/20"]
+args = "--method-anc=marginal --partition-by=codon-positions --annotation={dataset}/annotation.gff3"
 
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
 [[ancestral]]
@@ -551,6 +556,34 @@ variant = "model-hky85-dense"
 datasets = ["flu/h3n2/20"]
 args = "--representation=dense --model=hky85"
 
+# Partition schemes: codon positions and rate buckets from Fitch change counts
+[[optimize]]
+variant = "partition-by-codon-positions"
+datasets = ["rsv/a/20"]
+args = "--partition-by=codon-positions --annotation={dataset}/annotation.gff3"
+
+[[optimize]]
+variant = "partition-by-rate-categories"
+datasets = ["rsv/a/20"]
+args = "--partition-by=rate-categories"
+
+[[optimize]]
+variant = "partition-by-rate-categories-k-means"
+datasets = ["rsv/a/20"]
+args = "--partition-by=rate-categories --rate-category-rule=k-means"
+
+# Frequencies shared across codon positions, the setup of SRD06
+[[optimize]]
+variant = "shared-frequencies"
+datasets = ["rsv/a/20"]
+args = "--partition-by=codon-positions --annotation={dataset}/annotation.gff3 --shared-params=frequencies"
+
+# Discrete gamma rate variation with 4 categories
+[[optimize]]
+variant = "gamma-4"
+datasets = ["rsv/a/20"]
+args = "--gamma-categories=4"
+
 [[optimize]]
 variant = "tolerance-0.01"
 datasets = ["flu/h3n2/20"]
@@ -676,6 +709,17 @@ args = "--remove-file={dataset}/prune-nodes.txt"
 [[timetree]]
 variant = "basic"
 fail.'lassa/L/20' = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
+
+# One partition per CDS; the CDSs M2-1 and M2-2 overlap, and the longer M2-1 owns the shared sites
+[[timetree]]
+variant = "partition-by-genes"
+datasets = ["rsv/a/20"]
+args = "--partition-by=genes --annotation={dataset}/annotation.gff3"
+
+[[timetree]]
+variant = "gamma-4"
+datasets = ["rsv/a/20"]
+args = "--gamma-categories=4"
 
 [[timetree]]
 variant = "fixed-clock"
