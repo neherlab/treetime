@@ -1,5 +1,6 @@
 mod prop_support;
 mod rate_matrix;
+mod test_gamma;
 mod test_gm_gtr;
 mod test_gtr_construction;
 mod test_gtr_hierarchy;
