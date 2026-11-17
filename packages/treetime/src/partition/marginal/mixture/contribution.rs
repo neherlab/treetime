@@ -110,21 +110,9 @@ pub(crate) fn sparse_mixture_contribution(
     })
     .chain(partition.obs_edges[&edge_key].fitch_subs().iter().map(Sub::pos))
     .collect::<BTreeSet<_>>();
-  let listed = state
-    .mixture
-    .listed()
-    .map(|(pos, _)| pos)
-    .filter(|&pos| {
-      !variable.contains(&pos)
-        && !range_contains(child_no_data, pos)
-        && alphabet.is_canonical(parent_sequence[pos])
-        && alphabet.is_canonical(child_sequence[pos])
-    })
-    .collect_vec();
-
-  let mut sites = GroupedSiteContributions::with_capacity(variable.len() + listed.len() + alphabet.n_canonical());
+  let mut sites = GroupedSiteContributions::with_capacity(variable.len() + alphabet.n_canonical());
   let mut taken_from_groups = BTreeMap::<AsciiChar, usize>::new();
-  for &pos in variable.iter().chain(&listed) {
+  for &pos in &variable {
     let (parent_state, child_state) = fitch_states.get(&pos).copied().unwrap_or_else(|| {
       (
         variable_label(&categories, pos, true).unwrap_or(parent_sequence[pos]),
@@ -162,7 +150,26 @@ pub(crate) fn sparse_mixture_contribution(
       })
       .collect::<Option<Vec<_>>>();
     if let Some(rows) = rows {
-      sites.add(1.0, mixed_row(&categories, &rows, site, weights)?);
+      sites.add(1.0, mixed_row(&categories, &rows, site, weights));
+    }
+  }
+  let mut group_rows = BTreeMap::<(AsciiChar, AsciiChar), Option<GroupRows>>::new();
+  for (pos, site) in state.mixture.listed() {
+    let parent_state = parent_sequence[pos];
+    let child_state = child_sequence[pos];
+    if variable.contains(&pos)
+      || range_contains(child_no_data, pos)
+      || !alphabet.is_canonical(parent_state)
+      || !alphabet.is_canonical(child_state)
+    {
+      continue;
+    }
+    *taken_from_groups.entry(parent_state).or_default() += 1;
+    let rows = group_rows
+      .entry((parent_state, child_state))
+      .or_insert_with(|| GroupRows::new(&categories, weights, parent_state, child_state));
+    if let Some(rows) = rows {
+      sites.add(1.0, rows.mixed(&site.site_log_lh));
     }
   }
   for fixed in categories[0].to_child.fixed.iter() {
@@ -174,16 +181,11 @@ pub(crate) fn sparse_mixture_contribution(
     let Some(site) = state.mixture.group(fixed.state) else {
       continue;
     };
-    let rows = categories
-      .iter()
-      .map(|category| {
-        let parent = category.to_child.fixed.get(fixed.state)?;
-        let child = category.to_parent.fixed.get(fixed.state)?;
-        Some(category.row(&parent.dis, &child.dis))
-      })
-      .collect::<Option<Vec<_>>>();
+    let rows = group_rows
+      .entry((fixed.state, fixed.state))
+      .or_insert_with(|| GroupRows::new(&categories, weights, fixed.state, fixed.state));
     if let Some(rows) = rows {
-      sites.add(count.to_f64_exact(), mixed_row(&categories, &rows, site, weights)?);
+      sites.add(count.to_f64_exact(), rows.mixed(&site.site_log_lh));
     }
   }
   let rate_eigvals = concatenate(
@@ -229,26 +231,65 @@ fn variable_label(categories: &[EdgeCategory<'_>], pos: usize, parent_side: bool
   })
 }
 
+struct GroupRows {
+  rows: Vec<Array1<f64>>,
+  log_weights: CategoryValues,
+  log_resolved: CategoryValues,
+}
+
+impl GroupRows {
+  fn new(
+    categories: &[EdgeCategory<'_>],
+    weights: &Array1<f64>,
+    parent_state: AsciiChar,
+    child_state: AsciiChar,
+  ) -> Option<Self> {
+    let rows = categories
+      .iter()
+      .map(|category| {
+        let parent = category.to_child.fixed.get(parent_state)?;
+        let child = category.to_parent.fixed.get(child_state)?;
+        Some(category.row(&parent.dis, &child.dis))
+      })
+      .collect::<Option<Vec<_>>>()?;
+    let log_resolved = izip!(categories, &rows)
+      .map(|(category, row)| resolved_site_lh(row.view(), &category.decay).ln())
+      .collect();
+    Some(Self {
+      rows,
+      log_weights: weights.iter().map(|weight| weight.ln()).collect(),
+      log_resolved,
+    })
+  }
+
+  fn mixed(&self, site_log_lh: &[f64]) -> Array1<f64> {
+    let exponents: CategoryValues = izip!(&self.log_weights, site_log_lh, &self.log_resolved)
+      .map(|(&log_weight, &site_log_lh, &log_resolved)| site_exponent(log_weight, site_log_lh, log_resolved))
+      .collect();
+    scaled_rows(&self.rows, &exponents)
+  }
+}
+
 fn mixed_row(
   categories: &[EdgeCategory<'_>],
   rows: &[Array1<f64>],
   site: &MixedSite,
   weights: &Array1<f64>,
-) -> Result<Array1<f64>, Report> {
+) -> Array1<f64> {
   let exponents: CategoryValues = izip!(categories, rows, &site.site_log_lh, weights)
     .map(|(category, row, &site_log_lh, &weight)| scale_exponent(weight, site_log_lh, row.view(), &category.decay))
     .collect();
+  scaled_rows(rows, &exponents)
+}
+
+fn scaled_rows(rows: &[Array1<f64>], exponents: &[f64]) -> Array1<f64> {
   let max = exponents.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-  let scaled = izip!(rows, &exponents)
-    .map(|(row, &exponent)| {
+  izip!(rows, exponents)
+    .flat_map(|(row, &exponent)| {
       let scale = if max.is_finite() { (exponent - max).exp() } else { 0.0 };
-      row * scale
+      row.iter().map(move |&coefficient| coefficient * scale)
     })
-    .collect_vec();
-  Ok(concatenate(
-    Axis(0),
-    &scaled.iter().map(|values| values.view()).collect_vec(),
-  )?)
+    .collect()
 }
 
 #[expect(
@@ -256,13 +297,25 @@ fn mixed_row(
   reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
 )]
 fn scale_exponent(weight: f64, site_log_lh: f64, row: ArrayView1<'_, f64>, decay: &Array1<f64>) -> f64 {
+  site_exponent(weight.ln(), site_log_lh, resolved_site_lh(row, decay).ln())
+}
+
+fn site_exponent(log_weight: f64, site_log_lh: f64, log_resolved: f64) -> f64 {
   if site_log_lh == f64::NEG_INFINITY {
-    return f64::NEG_INFINITY;
+    f64::NEG_INFINITY
+  } else {
+    log_weight + site_log_lh - log_resolved
   }
+}
+
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
+fn resolved_site_lh(row: ArrayView1<'_, f64>, decay: &Array1<f64>) -> f64 {
   let (site_lh, magnitude) = izip!(row, decay).fold((0.0, 0.0), |(sum, magnitude), (&coefficient, &decay)| {
     let term = coefficient * decay;
     (sum + term, magnitude + term.abs())
   });
-  let resolved = site_lh.max(magnitude * SITE_LH_RESOLUTION).max(f64::MIN_POSITIVE);
-  weight.ln() + site_log_lh - resolved.ln()
+  site_lh.max(magnitude * SITE_LH_RESOLUTION).max(f64::MIN_POSITIVE)
 }
