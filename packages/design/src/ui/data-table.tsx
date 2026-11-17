@@ -46,7 +46,7 @@ const FEATURES = tableFeatures({
   columnMeta: metaHelper<DataColumnMeta>(),
 });
 
-const LAYOUT = { headingHeight: 40, estimatedRowHeight: 41 };
+const LAYOUT = { headingHeight: 40, estimatedRowHeight: 32 };
 
 const DEFAULT_WIDTH = "1fr";
 
