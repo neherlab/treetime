@@ -67,20 +67,9 @@ This is a v1-only feature. See the indel models report ([kb/reports/indel-models
 
 O(1) interval lookup via `floor((x - x_min) / dx)` for uniformly spaced grids. Used throughout the distribution system for evaluating discretized probability distributions and branch length likelihoods on fixed grids.
 
-v1: [`packages/treetime-grid/src/grid_fn.rs#L274-L345`](../../packages/treetime-grid/src/grid_fn.rs#L274-L345).
+v1: `fn Grid.find_interval_index()` [`packages/treetime-grid/src/grid.rs#L266-L279`](../../packages/treetime-grid/src/grid.rs#L266-L279) finds the interval, and `fn GridFn.interp_with_extrap()` [`packages/treetime-grid/src/grid_fn.rs#L151`](../../packages/treetime-grid/src/grid_fn.rs#L151) interpolates in it.
 
 Standard treatment in <a id="cite-7"></a>[Burden and Faires 2010](https://doi.org/10.1007/978-3-319-07671-3) [[7](#ref-7)], Chapter 3.
-
----
-
-## Piecewise Linear Interpolation (Non-Uniform Grid)
-
-O(log n) binary search interval lookup for non-uniformly spaced grids. Used for the skyline coalescent Tc(t) function where grid points are placed at coalescent event times rather than on a uniform grid.
-
-v1: `packages/treetime-grid/src/interp_nonuniform.rs` (deleted in commit `9a45a2576`).
-
-> [!WARNING]
-> **Needs review.** Commit `9a45a2576` deleted `interp_nonuniform.rs`. The skyline Tc(t) is now piecewise constant: `fn segment_index()` in [`packages/treetime/src/coalescent/skyline.rs#L310`](../../packages/treetime/src/coalescent/skyline.rs#L310) finds the segment by binary search (`partition_point`), and [`packages/treetime/src/coalescent/skyline.rs#L304`](../../packages/treetime/src/coalescent/skyline.rs#L304) returns the segment value with no interpolation. Confirm whether v1 still uses piecewise linear interpolation on a non-uniform grid anywhere; otherwise delete this section.
 
 ---
 
@@ -206,4 +195,4 @@ v1: [`packages/treetime/src/timetree/optimization/polytomy/`](../../packages/tre
 | [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/) | Stochastic temporal polytomy resolution                                                |
 | [`packages/treetime/src/optimize/topology/`](../../packages/treetime/src/optimize/topology/)         | Edge collapse (shared)                                                                 |
 | [`packages/treetime/src/partition/`](../../packages/treetime/src/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
-| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                   | Interpolation (uniform, non-uniform)                                                   |
+| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                   | Interpolation on uniform grids                                                         |

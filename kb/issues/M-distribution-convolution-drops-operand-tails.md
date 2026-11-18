@@ -36,4 +36,3 @@ Closed-form tail moments (`TailMoments`, `fn SoftTailLaw::moments()`, `fn HardAp
 ## Related
 
 - [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)
-- [kb/proposals/exponential-branch-length-tails.md](../proposals/exponential-branch-length-tails.md)
