@@ -326,8 +326,9 @@ fn mixed_estimates(
 ) -> Result<EdgeMap<Vec<Sub>>, Report> {
   graph
     .get_edges()
-    .map(|edge| {
-      let edge_key = edge.key();
+    .map(|edge| edge.key())
+    .filter(|&edge_key| partition.inheritance.carries(edge_key))
+    .map(|edge_key| {
       let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
       let subs = compute_ml_subs_for_nodes(
         &partition.alphabet,
