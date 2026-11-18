@@ -5,17 +5,21 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::split::SequenceInput;
+  use crate::partition::resolve::{PartitionEntry, resolve_partitions};
+  use crate::partition::sites::SiteRange;
+  use crate::partition::split::{ModelSettings, SequenceInput};
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
+  use crate::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
   use crate::seq::mutation::Mutation;
   use crate::seq::sink::{SeqItem, SeqSink, SeqStream, SeqTrack};
   use crate::test_utils::{NUC_ALPHABET, complete_sequence_source};
   use eyre::Report;
+  use itertools::{Itertools, iproduct};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use std::path::PathBuf;
+  use std::str::FromStr;
   use std::sync::Arc;
   use treetime_graph::graph::Graph;
   use treetime_graph::key_map::EdgeMap;
@@ -28,6 +32,8 @@ mod tests {
   use treetime_utils::{make_report, pretty_assert_abs_diff_eq};
 
   const SEGMENTS: [&str; 3] = ["seg1", "seg2", "seg3"];
+
+  const GAMMA_CATEGORIES: usize = 4;
 
   #[derive(Clone, Copy, Debug)]
   enum Case {
@@ -55,18 +61,32 @@ mod tests {
     }
   }
 
+  #[derive(Clone, Copy, Debug)]
+  enum SiteModel {
+    Uniform,
+    GammaRates,
+    OddEvenPartitions,
+  }
+
+  #[rustfmt::skip]
   #[rstest]
-  #[case::dense_jc69(Case::MarginalDenseJc69)]
-  #[case::dense_infer(Case::MarginalDenseInfer)]
-  #[case::sparse_jc69(Case::MarginalSparseJc69)]
-  #[case::sparse_infer(Case::MarginalSparseInfer)]
+  #[case::dense_jc69(                   Case::MarginalDenseJc69,   SiteModel::Uniform)]
+  #[case::dense_infer(                  Case::MarginalDenseInfer,  SiteModel::Uniform)]
+  #[case::sparse_jc69(                  Case::MarginalSparseJc69,  SiteModel::Uniform)]
+  #[case::sparse_infer(                 Case::MarginalSparseInfer, SiteModel::Uniform)]
+  #[case::dense_gamma_rates(            Case::MarginalDenseInfer,  SiteModel::GammaRates)]
+  #[case::sparse_gamma_rates(           Case::MarginalSparseInfer, SiteModel::GammaRates)]
+  #[case::dense_odd_even_partitions(    Case::MarginalDenseInfer,  SiteModel::OddEvenPartitions)]
+  #[case::sparse_odd_even_partitions(   Case::MarginalSparseInfer, SiteModel::OddEvenPartitions)]
+  #[case::parsimony_odd_even_partitions(Case::Parsimony,           SiteModel::OddEvenPartitions)]
   #[trace]
-  fn test_ancestral_marginal_on_segment_graph_gives_each_segment_the_result_of_its_own_tree(
+  fn test_ancestral_on_segment_graph_gives_each_segment_the_result_of_its_own_tree(
     #[case] case: Case,
+    #[case] site_model: SiteModel,
   ) -> Result<(), Report> {
-    let merged = run_segment_graph(case)?;
+    let merged = run_segment_graph(case, site_model)?;
     for (index, segment) in SEGMENTS.iter().enumerate() {
-      let separate = run_segment_tree(segment, case)?;
+      let separate = run_segment_tree(segment, case, site_model)?;
       assert_eq!(
         (&separate.sequences, &separate.mutations, &separate.root_sequence),
         (
@@ -83,7 +103,7 @@ mod tests {
 
   #[test]
   fn test_ancestral_parsimony_on_segment_graph_gives_each_segment_the_result_of_its_own_tree() -> Result<(), Report> {
-    let merged = run_segment_graph(Case::Parsimony)?;
+    let merged = run_segment_graph(Case::Parsimony, SiteModel::Uniform)?;
     assert_eq!(
       vec![(20, true), (20, true), (21, true)],
       merged
@@ -92,7 +112,7 @@ mod tests {
         .collect::<Vec<_>>()
     );
     for (index, segment) in SEGMENTS.iter().enumerate() {
-      let separate = run_segment_tree(segment, Case::Parsimony)?;
+      let separate = run_segment_tree(segment, Case::Parsimony, SiteModel::Uniform)?;
       assert_eq!(
         (&separate.sequences, &separate.mutations, &separate.root_sequence),
         (
@@ -108,7 +128,7 @@ mod tests {
 
   #[test]
   fn test_ancestral_parsimony_on_segment_graph_reconstructs_only_the_nodes_of_each_segment() -> Result<(), Report> {
-    let merged = run_segment_graph(Case::Parsimony)?;
+    let merged = run_segment_graph(Case::Parsimony, SiteModel::Uniform)?;
     let internal = |index: usize| -> BTreeSet<&str> {
       merged[index]
         .sequences
@@ -143,6 +163,7 @@ mod tests {
       None,
       alignments,
       Case::Parsimony,
+      SiteModel::Uniform,
     );
     let message = result.err().map(|error| error.to_string()).unwrap_or_default();
     assert!(
@@ -170,7 +191,7 @@ mod tests {
     Ok(records.into_iter().map(AlignmentRecord::from).collect())
   }
 
-  fn run_segment_graph(case: Case) -> Result<Vec<SegmentResult>, Report> {
+  fn run_segment_graph(case: Case, site_model: SiteModel) -> Result<Vec<SegmentResult>, Report> {
     let paths = SEGMENTS.map(|segment| toy_path(&format!("tree_{segment}.nwk")));
     let merged = segment_trees_read_files(&paths, TREE_DIALECT_DEFAULT)?;
     let alignments = SEGMENTS
@@ -184,10 +205,11 @@ mod tests {
       Some(Arc::new(merged.scopes)),
       alignments,
       case,
+      site_model,
     )
   }
 
-  fn run_segment_tree(segment: &str, case: Case) -> Result<SegmentResult, Report> {
+  fn run_segment_tree(segment: &str, case: Case, site_model: SiteModel) -> Result<SegmentResult, Report> {
     let tree = tree_read_file(toy_path(&format!("tree_{segment}.nwk")), TREE_DIALECT_DEFAULT)?;
     let mut results = run(
       tree.graph,
@@ -196,6 +218,7 @@ mod tests {
       None,
       vec![alignment(segment)?],
       case,
+      site_model,
     )?;
     results
       .pop()
@@ -209,6 +232,7 @@ mod tests {
     scopes: Option<Arc<EdgeScopes>>,
     alignments: Vec<Vec<AlignmentRecord>>,
     case: Case,
+    site_model: SiteModel,
   ) -> Result<Vec<SegmentResult>, Report> {
     let sources = alignments
       .into_iter()
@@ -223,7 +247,7 @@ mod tests {
         .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
         .collect(),
       graph,
-      sequences: SequenceInput::whole_alignments(sources, &case.model())?,
+      sequences: sequence_input(sources, &case.model(), site_model)?,
       scopes,
     };
     let (method, dense) = case.method();
@@ -246,16 +270,19 @@ mod tests {
       &NoopProgress,
     )
     .map_err(|error| error.into_report())?;
-    let log_lh = output
-      .partitions
-      .iter()
-      .map(|partition| partition.log_lh.map_or(0.0, LogLh::value))
-      .collect::<Vec<_>>();
+    let alignment_log_lh = |alignment: usize| -> f64 {
+      output
+        .partitions
+        .iter()
+        .filter(|partition| partition.alignment == alignment)
+        .map(|partition| partition.log_lh.map_or(0.0, LogLh::value))
+        .sum()
+    };
     output
       .alignments
       .into_iter()
-      .zip(log_lh)
-      .map(|(result, log_lh)| {
+      .map(|result| {
+        let log_lh = alignment_log_lh(result.number);
         let sequences = result
           .sequences
           .ok_or_else(|| make_report!("Alignment {} has no sequences", result.number))?;
@@ -275,6 +302,43 @@ mod tests {
         })
       })
       .collect()
+  }
+
+  fn sequence_input(
+    sources: Vec<SequenceSource>,
+    model: &GtrModel,
+    site_model: SiteModel,
+  ) -> Result<SequenceInput, Report> {
+    match site_model {
+      SiteModel::Uniform => SequenceInput::whole_alignments(sources, model),
+      SiteModel::GammaRates => Ok(SequenceInput {
+        models: ModelSettings {
+          gamma_categories: GAMMA_CATEGORIES,
+          ..ModelSettings::default()
+        },
+        ..SequenceInput::whole_alignments(sources, model)?
+      }),
+      SiteModel::OddEvenPartitions => {
+        let lengths = sources.iter().map(|source| source.length).collect_vec();
+        let entries: Vec<PartitionEntry> = iproduct!(lengths.iter().enumerate(), [1, 2])
+          .map(|((index, length), first)| {
+            Ok(PartitionEntry {
+              name: None,
+              alignment: Some(index + 1),
+              sites: Some(vec![SiteRange::from_str(&format!("{first}-{length}\\2"))?]),
+              model: model.clone(),
+            })
+          })
+          .try_collect::<_, _, Report>()?;
+        let alphabet = sources.first().map(|source| source.alphabet.name());
+        let partitions = resolve_partitions(&entries, &lengths, model, alphabet)?.plans;
+        Ok(SequenceInput {
+          alignments: sources,
+          partitions,
+          models: ModelSettings::default(),
+        })
+      },
+    }
   }
 
   #[derive(Default)]
