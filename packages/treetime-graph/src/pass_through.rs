@@ -1,11 +1,13 @@
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
+use std::iter::once;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SegmentTree<'a> {
   pub(crate) root: &'a str,
   pub(crate) children: BTreeMap<&'a str, Vec<&'a str>>,
   pub(crate) parent: BTreeMap<&'a str, (&'a str, Option<f64>)>,
+  pub(crate) merged: BTreeSet<&'a str>,
 }
 
 impl<'a> SegmentTree<'a> {
@@ -39,22 +41,49 @@ impl<'a> SegmentTree<'a> {
     }
   }
 
-  fn reroute(&mut self, ancestor: &'a str, descendant: &'a str, path: &[&'a str], lengths: &[Option<f64>]) {
-    let chain = std::iter::once(ancestor)
+  fn chain_from(&self, ancestor: &str, path: &[&'a str]) -> usize {
+    path
+      .iter()
+      .scan(ancestor, |up, &name| {
+        let continues = self.parent.get(name).is_some_and(|&(parent, _)| parent == *up) && self.is_open(name);
+        *up = name;
+        continues.then_some(())
+      })
+      .count()
+  }
+
+  fn is_open(&self, name: &str) -> bool {
+    self.merged.contains(name) || self.children.get(name).is_some_and(|children| children.len() == 1)
+  }
+
+  fn reroute(&mut self, ancestor: &'a str, descendant: &'a str, path: &[&'a str], attach: usize, lengths: &[Option<f64>]) {
+    let (shared, path) = path.split_at(attach);
+    let start = shared.last().copied().unwrap_or(ancestor);
+    let (_, lengths) = lengths.split_at(attach);
+    let chain = once(start)
       .chain(path.iter().copied())
       .chain([descendant])
       .collect_vec();
-    if let Some(children) = self.children.get_mut(ancestor)
-      && let Some(slot) = children.iter_mut().find(|child| **child == descendant)
-    {
-      *slot = chain[1];
+    if let Some(children) = self.children.get_mut(ancestor) {
+      if start == ancestor {
+        if let Some(slot) = children.iter_mut().find(|child| **child == descendant) {
+          *slot = chain[1];
+        }
+      } else {
+        children.retain(|child| *child != descendant);
+      }
+    }
+    if start != ancestor {
+      self.children.entry(start).or_default().push(chain[1]);
+      self.merged.insert(start);
     }
     for (index, (&parent, &child)) in chain.iter().tuple_windows().enumerate() {
       self
         .parent
         .insert(child, (parent, lengths.get(index).copied().flatten()));
-      if parent != ancestor {
+      if parent != start {
         self.children.insert(parent, vec![child]);
+        self.merged.insert(parent);
       }
     }
   }
@@ -98,14 +127,20 @@ pub(crate) fn insert_pass_through_nodes(trees: &mut [SegmentTree<'_>]) -> PassTh
           ambiguous.insert((segment, parent, child));
           continue;
         }
-        if longest_nodes.iter().any(|name| trees[segment].contains(name)) {
+        let shared = trees[segment].chain_from(parent, &longest_nodes);
+        if longest_nodes[shared..]
+          .iter()
+          .any(|name| trees[segment].contains(name))
+        {
           conflicting.insert((segment, parent, child));
           continue;
         }
+        ambiguous.remove(&(segment, parent, child));
+        conflicting.remove(&(segment, parent, child));
         let steps = longest.iter().map(|&(_, length)| length).collect_vec();
         let lengths = split_length(length, &steps);
-        trees[segment].reroute(parent, child, &longest_nodes, &lengths);
-        report.inserted_nodes += longest_nodes.len();
+        trees[segment].reroute(parent, child, &longest_nodes, shared, &lengths);
+        report.inserted_nodes += longest_nodes.len() - shared;
         changed = true;
       }
     }

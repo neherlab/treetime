@@ -372,6 +372,66 @@ mod tests {
   }
 
   #[test]
+  fn test_merge_trees_by_name_routes_every_sibling_of_a_polytomy_through_the_node_another_segment_puts_above_them()
+  -> Result<(), Report> {
+    let trees = vec![
+      TestTree::new(
+        "seg1",
+        &[
+          ("X", "W", 0.1),
+          ("W", "Y1", 0.1),
+          ("W", "Y2", 0.1),
+          ("W", "Y3", 0.1),
+          ("X", "Z", 0.2),
+        ],
+      )?,
+      TestTree::new(
+        "seg2",
+        &[("X", "Y1", 0.2), ("X", "Y2", 0.2), ("X", "Y3", 0.2), ("X", "Z", 0.2)],
+      )?,
+    ];
+    let merged = merge(&trees)?;
+    let s = |name: &str| name.to_owned();
+    assert_eq!(
+      (
+        PassThroughReport {
+          inserted_nodes: 1,
+          ambiguous_edges: 0,
+          conflicting_edges: 0,
+        },
+        vec![
+          (s("X"), s("W"), Some(0.1), vec![0, 1]),
+          (s("W"), s("Y1"), Some(0.1), vec![0, 1]),
+          (s("W"), s("Y2"), Some(0.1), vec![0, 1]),
+          (s("W"), s("Y3"), Some(0.1), vec![0, 1]),
+          (s("X"), s("Z"), Some(0.2), vec![0, 1]),
+        ],
+      ),
+      (merged.pass_through, edges(&merged))
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_trees_by_name_routes_an_edge_through_a_node_the_segment_passes_through_with_one_child()
+  -> Result<(), Report> {
+    let trees = vec![
+      TestTree::new("seg1", &[("X", "W", 0.1), ("W", "c", 0.1), ("W", "Y", 0.1)])?,
+      TestTree::new("seg2", &[("X", "W", 0.1), ("W", "c", 0.1), ("X", "Y", 0.2)])?,
+    ];
+    let merged = merge(&trees)?;
+    assert_eq!(
+      (0, vec![0, 1], Vec::<usize>::new()),
+      (
+        merged.pass_through.conflicting_edges,
+        segments_of(&merged, "W", "Y"),
+        segments_of(&merged, "X", "Y"),
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_merge_trees_by_name_refines_paths_until_every_segment_shares_the_longest() -> Result<(), Report> {
     let trees = vec![
       TestTree::new(

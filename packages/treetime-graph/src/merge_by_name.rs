@@ -130,7 +130,12 @@ fn segment_tree<'a>(tree: &NamedTree<'a>) -> Result<SegmentTree<'a>, Report> {
       );
     }
   }
-  Ok(SegmentTree { root, children, parent })
+  Ok(SegmentTree {
+    root,
+    children,
+    parent,
+    merged: BTreeSet::new(),
+  })
 }
 
 fn require_unique_names(tree: &NamedTree<'_>) -> Result<(), Report> {
