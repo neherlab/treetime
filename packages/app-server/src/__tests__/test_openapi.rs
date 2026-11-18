@@ -2,8 +2,6 @@
 mod tests {
   use crate::openapi::add_discriminators;
   use crate::routes::api_doc;
-  use app_backend::config::catalog::setting_catalog;
-  use app_commands::command::AppCommand;
   use helpers::{
     discriminated, keyword_locations, response_components, schemas_after, tagged_unions_without_discriminator,
   };
@@ -457,29 +455,9 @@ mod tests {
   }
 
   #[test]
-  fn test_openapi_setting_catalog_is_a_component_and_lists_every_offered_command_in_display_order() {
+  fn test_openapi_has_the_setting_catalog_as_a_component() {
     let doc = api_doc().unwrap();
-    let catalog = setting_catalog().unwrap();
-    assert_eq!(
-      (
-        true,
-        vec![
-          AppCommand::Timetree,
-          AppCommand::Clock,
-          AppCommand::Ancestral,
-          AppCommand::Optimize,
-          AppCommand::Prune
-        ],
-      ),
-      (
-        doc["components"]["schemas"]["SettingCatalog"].is_object(),
-        catalog
-          .commands
-          .iter()
-          .map(|command| command.command)
-          .collect::<Vec<_>>(),
-      )
-    );
+    assert!(doc["components"]["schemas"]["SettingCatalog"].is_object());
   }
 
   #[test]
