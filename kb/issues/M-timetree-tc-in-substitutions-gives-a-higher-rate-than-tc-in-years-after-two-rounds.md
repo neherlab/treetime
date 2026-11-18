@@ -8,7 +8,8 @@ The test runs 633 simulated replicates of the standard timetree cell (`fn timetr
 
 - before the start-rate floor (with the shrinking probe window of the rate step): passes
 - with the floor: fails, mean $0.0292$, standard deviation $0.126$, interval $[0.0136, 0.0448]$
-- with the floor and the denser-end anchor of resampled functions: fails, mean $0.0307$, standard deviation $0.125$, interval $[0.0153, 0.0461]$; the later commits leave these numbers unchanged
+- with the floor and the denser-end anchor of resampled functions: fails, mean $0.0307$, standard deviation $0.125$, interval $[0.0153, 0.0461]$
+- at `945fde158` (partition schemes and gamma rate variation): fails, mean $0.0309$, standard deviation $0.124$, interval $[0.0156, 0.0463]$
 
 The floor changes no output of the `timetree` smoke cases. It changes a run only where the regression slope is positive and at most the floor, so on these simulated cells it replaces the slope by the Gaussian rate in some replicates. The first clock fit does not read the coalescent time scale, so both runs of a replicate start from the same rate.
 
