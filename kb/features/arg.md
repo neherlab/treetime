@@ -1,6 +1,6 @@
 # ARG Inference
 
-- [/] **Partial in v1**: `ancestral` and `optimize` with `--segment-trees --segment-alignments` reconstruct segments and fit shared branch lengths on one graph of named segment trees
+- [/] **Partial in v1**: `ancestral` and `optimize` with `--segment-trees --segment-alignments` reconstruct segments and fit shared branch lengths on one graph of named segment trees, and `timetree` dates the graph at a fixed clock rate ([kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md))
 
 ## v0 Features (All Missing)
 
