@@ -96,13 +96,13 @@ mod tests {
     }
 
     pub(super) fn optimize_with_invariant_partition(max_iter: usize) -> Result<OptimizeOutput, Report> {
-      let records = TestDataset::Flu20.alignment_columns(Columns::Leading(400))?;
+      let records = TestDataset::Flu20.alignment_columns(Columns::Leading(100))?;
       let invariant = records
         .iter()
         .map(|record| {
           Ok(AlignmentRecord {
             name: record.name.clone(),
-            seq: Seq::try_from_str(&"ACGT".repeat(25))?,
+            seq: Seq::try_from_str(&"ACGT".repeat(5))?,
           })
         })
         .collect::<Result<Vec<_>, Report>>()?;

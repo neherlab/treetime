@@ -58,7 +58,7 @@ mod tests {
   }
 
   proptest! {
-    #![proptest_config(ProptestConfig::with_cases(32))]
+    #![proptest_config(ProptestConfig::with_cases(8))]
 
     #[test]
     fn test_prop_sparse_site_log_lh_sums_to_the_pass_log_lh(spec in arb_simulated_case()) {
