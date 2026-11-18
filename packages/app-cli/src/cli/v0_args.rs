@@ -296,9 +296,10 @@ fn rewrite_command(command: &Command, tokens: &[OsString], out: &mut Output) {
       .messages
       .push(o!("TreeTime 0.x command 'version' read as '--version'"));
   } else if name == Some("arg") {
-    out
-      .errors
-      .push(o!("the TreeTime 0.x command 'arg' is not available in TreeTime 1"));
+    out.errors.push(o!(
+      "the TreeTime 0.x command 'arg' is not available in TreeTime 1: use 'treetime timetree --segment-trees \
+       --segment-alignments --clock-rate', which merges the segment trees by node name instead of reading MCCs"
+    ));
   } else if is_flag_like(first) {
     out.args.push(OsString::from(TIMETREE));
     out.messages.push(format!(

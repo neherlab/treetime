@@ -201,7 +201,7 @@ mod tests {
   #[case::n_branches_posterior( "timetree --n-branches-posterior",        "--n-branches-posterior is not available in TreeTime 1")]
   #[case::vcf_reference(        "ancestral --vcf-reference ref.fasta",    "--vcf-reference is not available in TreeTime 1")]
   #[case::custom_gtr(           "homoplasy --custom-gtr gtr.txt",         "--custom-gtr is not available in TreeTime 1")]
-  #[case::arg_command(          "arg --trees a.nwk b.nwk",                "the TreeTime 0.x command 'arg' is not available in TreeTime 1")]
+  #[case::arg_command(          "arg --trees a.nwk b.nwk",                "the TreeTime 0.x command 'arg' is not available in TreeTime 1: use 'treetime timetree --segment-trees --segment-alignments --clock-rate', which merges the segment trees by node name instead of reading MCCs")]
   #[case::every_message(        "clock --covariation --plot-rtt rtt.pdf", "--covariation is not available in TreeTime 1: TreeTime 1 fits the root-to-tip regression by ordinary least squares, without the covariation model\n--plot-rtt is not available in TreeTime 1")]
   #[trace]
   fn test_v0_args_message(#[case] argv: &str, #[case] expected: &str) {

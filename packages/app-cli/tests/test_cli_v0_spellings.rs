@@ -71,7 +71,7 @@ mod tests {
   #[case::changed_value( &["timetree", "--time-marginal", "always"],
                          "error: --time-marginal=always is not available in TreeTime 1: use --confidence\n")]
   #[case::arg_command(   &["arg"],
-                         "error: the TreeTime 0.x command 'arg' is not available in TreeTime 1\n")]
+                         "error: the TreeTime 0.x command 'arg' is not available in TreeTime 1: use 'treetime timetree --segment-trees --segment-alignments --clock-rate', which merges the segment trees by node name instead of reading MCCs\n")]
   #[trace]
   fn test_cli_v0_spellings_stop_with_a_usage_error(#[case] args: &[&str], #[case] stderr: &str) {
     let run = treetime(args);
