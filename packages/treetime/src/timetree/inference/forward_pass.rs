@@ -84,6 +84,23 @@ pub(crate) fn propagate_distributions_forward_on_graph<S: Send + Sync>(
        `--verbosity=debug` to see which nodes and where the tree puts each of them."
     );
   }
+  let disjoint = schedule
+    .preorder()
+    .iter()
+    .filter(|&&key| outputs[key].parents_disjoint)
+    .map(|&key| &inputs.names[key])
+    .collect_vec();
+  if !disjoint.is_empty() {
+    progress_warn!(
+      log,
+      "Timetree forward pass: {} node(s) with several parents received parent messages that leave no \
+       time with any probability together with their subtree, so each was dated from its subtree alone. \
+       The parents of such a node place it at incompatible times, for example a reassortant whose \
+       segment trees disagree on its age: {}",
+      disjoint.len(),
+      disjoint.iter().join(", ")
+    );
+  }
 
   let mut summaries = NodeMap::new();
   let mut from_parents = EdgeMap::new();
@@ -201,6 +218,7 @@ where
       summary: (self.summarize)(key, view)?,
       undated,
       contradicted,
+      parents_disjoint: false,
       from_parents: PerEdge::new(),
     };
     let posterior = Posterior {
@@ -265,8 +283,10 @@ where
         .normalize()
         .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?
     };
-    let contradicted = matches!(product, Distribution::Empty) && date_constraint.is_some();
-    let distribution = if contradicted || matches!(product, Distribution::Empty) {
+    let empty = matches!(product, Distribution::Empty);
+    let contradicted = empty && date_constraint.is_some();
+    let parents_disjoint = empty && !contradicted && !exact && !from_parents.is_empty();
+    let distribution = if empty {
       subtree
         .as_deref()
         .map(Distribution::normalize)
@@ -295,6 +315,7 @@ where
       summary: (self.summarize)(key, view)?,
       undated,
       contradicted,
+      parents_disjoint,
       from_parents,
     };
     let posterior = Posterior {
@@ -352,6 +373,7 @@ struct ForwardOutput<S> {
   summary: S,
   undated: bool,
   contradicted: bool,
+  parents_disjoint: bool,
   from_parents: PerEdge<(GraphEdgeKey, Arc<Distribution<NegLog>>)>,
 }
 
