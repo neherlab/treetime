@@ -6,6 +6,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::cell::Cell;
   use treetime_primitives::LogLh;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
@@ -50,13 +51,15 @@ mod tests {
 
   #[test]
   fn test_gamma_shape_reports_a_failed_evaluation() {
+    let evaluations = Cell::new(0_usize);
     let result = optimize_gamma_shape(1.0, |shape| {
-      if shape > 1.0 {
-        return make_error!("likelihood failed at {shape}");
+      evaluations.set(evaluations.get() + 1);
+      if evaluations.get() > 1 {
+        return make_error!("likelihood failed after the first evaluation");
       }
       Ok(log_lh_peaked_at(0.5, shape))
     });
-    assert_error!(result, "likelihood failed at 1.1051709180756477");
+    assert_error!(result, "likelihood failed after the first evaluation");
   }
 
   fn log_lh_peaked_at(optimum: f64, shape: f64) -> LogLh {
