@@ -78,14 +78,15 @@ afterEach(() => {
 });
 
 describe("substitution models", () => {
-  test("selects the first model and shows its charts when the panel opens", () => {
+  test("selects the first model and shows its charts and shared parameters when the panel opens", () => {
     render();
 
     expect([
       selectedRows(),
       rateStates("Partition 1 (OPG001)"),
       frequencyChartShown("Partition 1 (OPG001)"),
-    ]).toStrictEqual([["Partition 1 (OPG001)"], ["A", "C", "G", "T"], true]);
+      textShown("Partition 1 (OPG001)", "Shared parameters: exchange rates, shared by all 2 partitions"),
+    ]).toStrictEqual([["Partition 1 (OPG001)"], ["A", "C", "G", "T"], true, true]);
   });
 
   test("shows the charts of the row that the user selects", async () => {
@@ -95,19 +96,6 @@ describe("substitution models", () => {
     await user.click(page().getByRole("row", { name: /Trait country/u }));
 
     expect([selectedRows(), rateStates("Trait country")]).toStrictEqual([["Trait country"], ["UK", "US"]]);
-  });
-
-  test("names the shared parameters and the partitions that share them", async () => {
-    render();
-    const user = userEvent.setup({ document });
-
-    await user.click(page().getByRole("row", { name: /Partition 2 \(OPG002\)/u }));
-
-    expect(
-      within(page().getByRole("region", { name: "Partition 2 (OPG002)" })).queryByText(
-        "Shared parameters: exchange rates, shared by all 2 partitions",
-      ),
-    ).not.toBeNull();
   });
 });
 
@@ -130,6 +118,10 @@ function frequencyChartShown(model: string): boolean {
     within(page().getByRole("region", { name: model })).queryByRole("figure", { name: "Equilibrium frequencies" }) !==
     null
   );
+}
+
+function textShown(model: string, text: string): boolean {
+  return within(page().getByRole("region", { name: model })).queryByText(text) !== null;
 }
 
 function rateStates(model: string): string[] {
