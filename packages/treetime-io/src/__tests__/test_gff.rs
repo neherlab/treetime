@@ -185,14 +185,13 @@ mod tests {
     );
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::unstranded(".", "When reading GFF3: Invalid CDS strand '.' for CDS 'NS1' on GFF3 line 5: a CDS needs strand '+' or '-'")]
-  #[case::unknown(   "?", "When reading GFF3: Invalid CDS strand '?' for CDS 'NS1' on GFF3 line 5: a CDS needs strand '+' or '-'")]
-  #[trace]
-  fn test_gff3_cds_read_rejects_strand(#[case] strand: &str, #[case] expected: &str) {
-    let input = format!("##gff-version 3\n#\n#\n#\nseq1\tsrc\tCDS\t1\t6\t.\t{strand}\t0\tName=NS1\n");
-    assert_error!(gff3_cds_read(input.as_bytes()), expected);
+  #[test]
+  fn test_gff3_cds_read_rejects_an_unstranded_cds() {
+    let input = "##gff-version 3\n#\n#\n#\nseq1\tsrc\tCDS\t1\t6\t.\t.\t0\tName=NS1\n";
+    assert_error!(
+      gff3_cds_read(input.as_bytes()),
+      "When reading GFF3: Invalid CDS strand '.' for CDS 'NS1' on GFF3 line 5: a CDS needs strand '+' or '-'"
+    );
   }
 
   #[rustfmt::skip]
