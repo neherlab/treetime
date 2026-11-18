@@ -3,8 +3,8 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::{TimetreeAmbiguityArgs, resolve_ambiguity_outputs};
 use crate::commands::shared::annotation::AnnotationArgs;
 use crate::commands::shared::argument_error::argument_error;
-use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
-use crate::commands::shared::clock_filter::{ClockFilterArgs, TipPruning};
+use crate::commands::shared::branch_lengths::BranchLengthArgs;
+use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::dates_input::DatesInput;
 use crate::commands::shared::dependent_settings::{check_applies, setting_flag};
@@ -13,17 +13,14 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataArgs, MetadataIdArgs, MetadataInput};
-use crate::commands::shared::model::{
-  ModelArgs, PartitionRatesArgs, check_partition_rates, resolve_model, resolve_partition_rates,
-};
+use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs, resolve_model};
 use crate::commands::shared::output_args::{
-  ClockOutputArgs, DivergenceUnits, OutputCoreArgs, OutputRequest, TimetreeOutputSelectionArgs, TreeOutputPaths,
-  selected_outputs,
+  ClockOutputArgs, OutputCoreArgs, OutputRequest, TimetreeOutputSelectionArgs, TreeOutputPaths, selected_outputs,
 };
 use crate::commands::shared::partition::PartitionArgs;
 use crate::commands::shared::partition_by::{SchemeArguments, check_scheme_arguments};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
-use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
+use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootArgs, RerootTarget, RootingArgs};
 use crate::commands::shared::seed::SeedArgs;
@@ -41,6 +38,11 @@ use crate::commands::timetree::branch_length_mode::{BranchLengthModeCli, Resolve
 use crate::commands::timetree::coalescent::CoalescentArg;
 #[cfg(feature = "clap")]
 use crate::commands::timetree::coalescent::parse_coalescent;
+use crate::commands::timetree::settings::{
+  TimetreeBranchLengths, TimetreeClock, TimetreeDating, TimetreeSequenceModel, TimetreeTipSequences,
+  coalescent_settings, timetree_branch_lengths, timetree_clock, timetree_dating, timetree_sequence_model,
+  timetree_tip_sequences,
+};
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::{NotReconstructed, OutputSettings, SequenceOutputs};
@@ -53,12 +55,8 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
-use treetime::gtr::get_gtr::GtrModel;
-use treetime::optimize::indel::IndelPolicy;
-use treetime::optimize::partition_rates::PartitionRates;
 use treetime::partition::split::ModelSettings;
 use treetime::seq::mutation::PositionBase;
-use treetime::timetree::coalescent_timescale::CoalescentMode;
 use treetime_grid::MaxGridPoints;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
@@ -69,7 +67,7 @@ pub const TIMETREE_ABOUT: &str =
 
 pub const N_SKYLINE_DEFAULT: usize = 20;
 
-const N_SKYLINE_MIN: usize = 2;
+pub(crate) const N_SKYLINE_MIN: usize = 2;
 
 pub const SKYLINE_STIFFNESS_DEFAULT: f64 = 2.0;
 
@@ -176,7 +174,8 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       jobs_args: _,
       gen_per_year,
     } = raw;
-    let (tree_input, alignment, dates) = timetree_inputs(tree, alignment, segments, metadata, metadata_id, date_column)?;
+    let (tree_input, alignment, dates) =
+      timetree_inputs(tree, alignment, segments, metadata, metadata_id, date_column)?;
     if tree_input.is_segments() {
       check_segment_settings(&SegmentSettings {
         clock_rate,
@@ -330,12 +329,18 @@ fn check_segment_settings(settings: &SegmentSettings) -> Result<(), Report> {
     ("relax", settings.relax, "--relax"),
     ("reroot", settings.reroot, "--reroot and --outgroup"),
     ("prune_filtered_tips", settings.prune_tips, "tip pruning"),
-    ("branch_length_mode", settings.input_branch_lengths, "--branch-length-mode input"),
+    (
+      "branch_length_mode",
+      settings.input_branch_lengths,
+      "--branch-length-mode input",
+    ),
   ];
   if let Some((key, _, flag)) = unsupported.iter().find(|(_, set, _)| *set) {
     return Err(argument_error(
       &[*key, "segment_trees"],
-      format!("{flag} is not supported with --segment-trees yet: a graph of segment trees keeps its roots, runs without a coalescent prior or a relaxed clock, and dates nodes from the joint reconstruction of all segments"),
+      format!(
+        "{flag} is not supported with --segment-trees yet: a graph of segment trees keeps its roots, runs without a coalescent prior or a relaxed clock, and dates nodes from the joint reconstruction of all segments"
+      ),
     ));
   }
   Ok(())
@@ -370,137 +375,6 @@ fn check_marginal_only_settings(
     marginal_only_settings,
     &ResolvedBranchLengthMode::new(branch_length_mode, has_alignment, None),
   )
-}
-
-#[deny(unused_variables)]
-fn timetree_branch_lengths(
-  branch_length_mode: BranchLengthModeCli,
-  alignment_count: usize,
-  sequence_length: Option<usize>,
-  BranchLengthArgs {
-    no_indels,
-    divergence_units,
-  }: BranchLengthArgs,
-) -> Result<TimetreeBranchLengths, Report> {
-  check_sequence_source(alignment_count > 0, sequence_length, branch_length_mode)?;
-  Ok(TimetreeBranchLengths {
-    mode: branch_length_mode,
-    sequence_length,
-    indel_policy: indel_policy(no_indels),
-    mutation_units: divergence_units == DivergenceUnits::Mutations,
-  })
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TimetreeBranchLengths {
-  pub(crate) mode: BranchLengthModeCli,
-  pub(crate) sequence_length: Option<usize>,
-  pub(crate) indel_policy: IndelPolicy,
-  pub(crate) mutation_units: bool,
-}
-
-#[deny(unused_variables)]
-fn timetree_sequence_model(
-  model: GtrModel,
-  RepresentationArgs { representation }: RepresentationArgs,
-  PartitionRatesArgs { partition_rates }: PartitionRatesArgs,
-  sequences: &SequenceInputs,
-) -> Result<TimetreeSequenceModel, Report> {
-  check_partition_rates(
-    partition_rates,
-    sequences.alignments.len(),
-    sequences.partitions.entry_count(),
-    sequences.partitions.is_scheme(),
-  )?;
-  Ok(TimetreeSequenceModel {
-    model,
-    dense: representation_dense(representation),
-    partition_rates: resolve_partition_rates(partition_rates),
-  })
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TimetreeSequenceModel {
-  pub(crate) model: GtrModel,
-  pub(crate) dense: Option<bool>,
-  pub(crate) partition_rates: PartitionRates,
-}
-
-#[deny(unused_variables)]
-fn timetree_clock(
-  clock_rate: Option<f64>,
-  clock_std_dev: Option<f64>,
-  confidence: bool,
-  ClockFilterArgs {
-    clock_filter,
-    allow_negative_rate,
-    prune_filtered_tips,
-    prune_undated_tips,
-    keep_tips,
-    keep_tips_file,
-  }: ClockFilterArgs,
-  relax: Vec<f64>,
-) -> Result<TimetreeClock, Report> {
-  check_applies(
-    "clock_std_dev",
-    clock_std_dev.is_some(),
-    "confidence",
-    confidence,
-    || o!("applies only with --confidence: only the date intervals use the clock rate uncertainty"),
-  )?;
-  Ok(TimetreeClock {
-    clock_rate,
-    clock_std_dev,
-    clock_filter,
-    allow_negative_rate,
-    prune_tips: TipPruning::new(
-      clock_filter,
-      prune_filtered_tips,
-      prune_undated_tips,
-      keep_tips,
-      keep_tips_file,
-    )?,
-    relax,
-  })
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TimetreeClock {
-  pub(crate) clock_rate: Option<f64>,
-  pub(crate) clock_std_dev: Option<f64>,
-  pub(crate) clock_filter: f64,
-  pub(crate) allow_negative_rate: bool,
-  pub(crate) prune_tips: TipPruning,
-  pub(crate) relax: Vec<f64>,
-}
-
-#[deny(unused_variables)]
-fn timetree_dating(
-  max_iter: usize,
-  keep_polytomies: bool,
-  no_collapse_short_branches: bool,
-  confidence: bool,
-  max_grid_points: Option<MaxGridPoints>,
-  coalescent: CoalescentSettings,
-) -> TimetreeDating {
-  TimetreeDating {
-    max_iter,
-    keep_polytomies,
-    collapse_short_branches: !no_collapse_short_branches,
-    confidence,
-    max_grid_points: max_grid_points.unwrap_or_default(),
-    coalescent,
-  }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TimetreeDating {
-  pub(crate) max_iter: usize,
-  pub(crate) keep_polytomies: bool,
-  pub(crate) collapse_short_branches: bool,
-  pub(crate) confidence: bool,
-  pub(crate) max_grid_points: MaxGridPoints,
-  pub(crate) coalescent: CoalescentSettings,
 }
 
 #[deny(unused_variables)]
@@ -563,29 +437,6 @@ fn timetree_sequence_inputs(
 }
 
 #[deny(unused_variables)]
-fn timetree_tip_sequences(
-  TipSequenceArgs {
-    include_leaves,
-    reconstruct_tip_states,
-    report_ambiguous,
-  }: TipSequenceArgs,
-  ImputeMissingDataArgs { impute_missing_data }: ImputeMissingDataArgs,
-) -> TimetreeTipSequences {
-  TimetreeTipSequences {
-    include_leaves: include_leaves || reconstruct_tip_states,
-    report_ambiguous,
-    impute_missing_data: impute_missing_data || reconstruct_tip_states,
-  }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TimetreeTipSequences {
-  pub(crate) include_leaves: bool,
-  pub(crate) report_ambiguous: bool,
-  pub(crate) impute_missing_data: bool,
-}
-
-#[deny(unused_variables)]
 fn timetree_ambiguity_outputs(
   TimetreeAmbiguityArgs {
     ambiguity_threshold,
@@ -638,95 +489,6 @@ pub(crate) fn timetree_output_settings(
     trait_probabilities: false,
     sequences,
   }
-}
-
-fn check_sequence_source(
-  has_alignment: bool,
-  sequence_length: Option<usize>,
-  branch_length_mode: BranchLengthModeCli,
-) -> Result<(), Report> {
-  if has_alignment {
-    return check_applies("sequence_length", sequence_length.is_some(), "alignment", false, || {
-      o!(
-        "applies only without --alignment: the run takes the sequence length from the alignment, and an \
-            alignment of variable sites with a separate genome length is not supported"
-      )
-    });
-  }
-  if branch_length_mode == BranchLengthModeCli::Marginal {
-    return Err(argument_error(
-      &["alignment", "branch_length_mode"],
-      "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input",
-    ));
-  }
-  if sequence_length.is_none_or(|length| length == 0) {
-    return Err(argument_error(
-      &["alignment", "sequence_length"],
-      "--sequence-length is required without an alignment: the time inference needs the sequence length",
-    ));
-  }
-  Ok(())
-}
-
-fn coalescent_settings(
-  coalescent: Option<CoalescentArg>,
-  n_skyline: Option<usize>,
-  skyline_stiffness: Option<f64>,
-  coalescent_confidence: Option<f64>,
-  gen_per_year: Option<f64>,
-) -> Result<CoalescentSettings, Report> {
-  let actual = || coalescent.map_or_else(|| o!("not set"), |coalescent| coalescent.to_string());
-  let skyline = matches!(coalescent, Some(CoalescentArg::Skyline));
-  for (setting, given) in [
-    ("n_skyline", n_skyline.is_some()),
-    ("skyline_stiffness", skyline_stiffness.is_some()),
-  ] {
-    check_applies(setting, given, "coalescent", skyline, || {
-      format!("applies only to --coalescent skyline, but --coalescent is {}", actual())
-    })?;
-  }
-  if let Some(n_skyline) = n_skyline.filter(|&n_skyline| n_skyline < N_SKYLINE_MIN) {
-    return Err(argument_error(
-      &["n_skyline"],
-      format!("--n-skyline is {n_skyline}, but the skyline needs at least {N_SKYLINE_MIN} grid points"),
-    ));
-  }
-  let fitted = matches!(coalescent, Some(CoalescentArg::Opt | CoalescentArg::Skyline));
-  check_applies(
-    "coalescent_confidence",
-    coalescent_confidence.is_some(),
-    "coalescent",
-    fitted,
-    || {
-      format!(
-        "applies only to --coalescent opt and --coalescent skyline, but --coalescent is {}",
-        actual()
-      )
-    },
-  )?;
-  check_applies(
-    "gen_per_year",
-    gen_per_year.is_some(),
-    "coalescent",
-    coalescent.is_some(),
-    || o!("applies only with --coalescent, which is not set"),
-  )?;
-  Ok(CoalescentSettings {
-    mode: coalescent.map_or(CoalescentMode::Disabled, CoalescentArg::mode),
-    n_skyline: n_skyline.unwrap_or(N_SKYLINE_DEFAULT),
-    skyline_stiffness: skyline_stiffness.unwrap_or(SKYLINE_STIFFNESS_DEFAULT),
-    confidence: coalescent_confidence.unwrap_or(COALESCENT_CONFIDENCE_DEFAULT),
-    gen_per_year: gen_per_year.unwrap_or(GEN_PER_YEAR_DEFAULT),
-  })
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct CoalescentSettings {
-  pub(crate) mode: CoalescentMode,
-  pub(crate) n_skyline: usize,
-  pub(crate) skyline_stiffness: f64,
-  pub(crate) confidence: f64,
-  pub(crate) gen_per_year: f64,
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

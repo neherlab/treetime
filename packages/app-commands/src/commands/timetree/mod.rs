@@ -5,6 +5,7 @@ pub mod initialization;
 pub mod output;
 pub mod run;
 mod segments;
+mod settings;
 mod trace;
 
 #[cfg(test)]
