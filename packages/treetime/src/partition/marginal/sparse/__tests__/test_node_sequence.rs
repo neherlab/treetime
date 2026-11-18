@@ -49,7 +49,10 @@ mod tests {
 
     assert_error!(
       result,
-      format!("Node {c_key} has 2 parents that pass on all sites, but every site has one parent")
+      format!(
+        "When reconstructing the sequence of node {c_key}: Node {c_key} has 2 parents that pass on all sites, but every \
+         site has one parent"
+      )
     );
     Ok(())
   }
