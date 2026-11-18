@@ -35,7 +35,15 @@ pub(crate) fn build_partition_set(
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
   let inheritances = vec![Inheritance::ALL; partitions.len()];
-  build_inherited_partition_set(representation, graph, partitions, inheritances, models, branch_lengths, log)
+  build_inherited_partition_set(
+    representation,
+    graph,
+    partitions,
+    inheritances,
+    models,
+    branch_lengths,
+    log,
+  )
 }
 
 pub(crate) fn build_inherited_partition_set(

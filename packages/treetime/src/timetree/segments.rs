@@ -1,4 +1,5 @@
 use crate::cancel::Cancel;
+use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::load_date_constraints;
 use crate::error::OperationError;
 use crate::optimize::indel::IndelPolicy;
@@ -18,7 +19,6 @@ use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, TimeInferenceInputs, blended_clock_branch_lengths, run_timetree_with,
   timetree_branch_lengths,
 };
-use crate::clock::clock_model::ClockModel;
 use eyre::WrapErr;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -151,7 +151,10 @@ pub fn run_segment_timetree(
     }
     round += 1;
     cancel.check().map_err(OperationError::classify)?;
-    progress_info!(log, "## Refinement round {round}: marginal reconstruction at the clock branch lengths");
+    progress_info!(
+      log,
+      "## Refinement round {round}: marginal reconstruction at the clock branch lengths"
+    );
     clock_lengths = blended_clock_branch_lengths(
       &graph,
       params.clock_rate,
@@ -162,7 +165,10 @@ pub fn run_segment_timetree(
       log,
     );
     branch_model = branch_model
-      .marginal_update(&graph, &timetree_branch_lengths(&graph, &branch_lengths, &clock_lengths))
+      .marginal_update(
+        &graph,
+        &timetree_branch_lengths(&graph, &branch_lengths, &clock_lengths),
+      )
       .map_err(OperationError::classify)?;
   };
   let BranchModel::Marginal(partitions) = branch_model else {
@@ -170,9 +176,8 @@ pub fn run_segment_timetree(
       "The timetree of segment trees lost its marginal reconstruction"
     )));
   };
-  let (alignments, partition_results) =
-    optimize_results(&graph, alignments, &partitions, &model_names, &indel_rates)
-      .map_err(OperationError::InferenceFailed)?;
+  let (alignments, partition_results) = optimize_results(&graph, alignments, &partitions, &model_names, &indel_rates)
+    .map_err(OperationError::InferenceFailed)?;
 
   let node_dates = inference.node_times();
   let confidence_intervals = params

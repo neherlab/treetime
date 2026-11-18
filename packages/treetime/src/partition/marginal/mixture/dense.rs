@@ -36,7 +36,8 @@ pub(crate) fn dense_mixture_update(
   }
   let mixture = dense_mixture(&site_log_lh, model.gamma().weights())?;
   let node_states = mix_dense_node_states(profiles, &mixture)?;
-  let (node_states, estimates) = indexed_forward_sequences(partition.inputs(), partition.indexed_kind(), graph, node_states)?;
+  let (node_states, estimates) =
+    indexed_forward_sequences(partition.inputs(), partition.indexed_kind(), graph, node_states)?;
   let update = MarginalUpdate {
     node_states,
     edges: MarginalEdges {

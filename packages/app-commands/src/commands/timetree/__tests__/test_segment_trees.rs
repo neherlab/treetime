@@ -107,7 +107,9 @@ mod tests {
       clock_rate: None,
       ..segment_raw(Path::new("dates.tsv"), OutputCoreArgs::default())
     };
-    let error = TreetimeTimetreeArgs::try_from(raw).err().map(|report| report.to_string());
+    let error = TreetimeTimetreeArgs::try_from(raw)
+      .err()
+      .map(|report| report.to_string());
     assert!(
       error.as_deref().is_some_and(|message| message.contains("--clock-rate")),
       "{error:?}"
@@ -120,7 +122,9 @@ mod tests {
       coalescent: Some(CoalescentArg::Skyline),
       ..segment_raw(Path::new("dates.tsv"), OutputCoreArgs::default())
     };
-    let error = TreetimeTimetreeArgs::try_from(raw).err().map(|report| report.to_string());
+    let error = TreetimeTimetreeArgs::try_from(raw)
+      .err()
+      .map(|report| report.to_string());
     assert!(
       error.as_deref().is_some_and(|message| message.contains("--coalescent")),
       "{error:?}"
@@ -137,7 +141,9 @@ mod tests {
       },
       ..segment_raw(Path::new("dates.tsv"), OutputCoreArgs::default())
     };
-    let error = TreetimeTimetreeArgs::try_from(raw).err().map(|report| report.to_string());
+    let error = TreetimeTimetreeArgs::try_from(raw)
+      .err()
+      .map(|report| report.to_string());
     assert!(
       error.as_deref().is_some_and(|message| message.contains("segment")),
       "{error:?}"

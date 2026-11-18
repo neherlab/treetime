@@ -56,7 +56,14 @@ impl<'a> SegmentTree<'a> {
     self.merged.contains(name) || self.children.get(name).is_some_and(|children| children.len() == 1)
   }
 
-  fn reroute(&mut self, ancestor: &'a str, descendant: &'a str, path: &[&'a str], attach: usize, lengths: &[Option<f64>]) {
+  fn reroute(
+    &mut self,
+    ancestor: &'a str,
+    descendant: &'a str,
+    path: &[&'a str],
+    attach: usize,
+    lengths: &[Option<f64>],
+  ) {
     let (shared, path) = path.split_at(attach);
     let start = shared.last().copied().unwrap_or(ancestor);
     let (_, lengths) = lengths.split_at(attach);
@@ -128,10 +135,7 @@ pub(crate) fn insert_pass_through_nodes(trees: &mut [SegmentTree<'_>]) -> PassTh
           continue;
         }
         let shared = trees[segment].chain_from(parent, &longest_nodes);
-        if longest_nodes[shared..]
-          .iter()
-          .any(|name| trees[segment].contains(name))
-        {
+        if longest_nodes[shared..].iter().any(|name| trees[segment].contains(name)) {
           conflicting.insert((segment, parent, child));
           continue;
         }
