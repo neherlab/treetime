@@ -7,8 +7,8 @@ The `rust` branch has no root README and no user-facing page that says how to in
 ## Evidence
 
 - The repository root holds no `README.md`; the docs site holds a command overview with placeholder text (`docs/en/guide/commands.md`) and the generated command-line reference (`packages/app-docs/src/generated/en/reference/cli.md`); none of them covers installation.
-- The floors exist only in the developer guide: [docs/en/development/releases.md#L22](../../docs/en/development/releases.md#L22) lists the CPU baselines of the release binaries (x86-64-v2, Armv8.0 on Linux aarch64, Armv8.1 LSE on Windows aarch64, Apple M1).
-- The desktop app adds its own floors through Electron 44.4.1 ([packages/app-desktop/package.json#L25](../../packages/app-desktop/package.json#L25)), which are higher than those of the CLI for macOS and Linux.
+- The floors exist only in the developer guide: [docs/en/development/releases.md#L22-L25](../../docs/en/development/releases.md#L22-L25) lists the CPU baselines of the release binaries (x86-64-v2, Armv8.0 on Linux aarch64, Armv8.1 LSE on Windows aarch64, Apple M1).
+- The desktop app adds its own floors through Electron 44.9.3 ([packages/app-desktop/package.json#L25](../../packages/app-desktop/package.json#L25)), which are higher than those of the CLI for macOS and Linux.
 
 > [!IMPORTANT]
 > **Investigation required.** The macOS, Windows, and Linux (glibc) minimums of Electron 44 are not confirmed. Read them from the Electron 44 release notes and the Chromium platform support pages before the page states them.

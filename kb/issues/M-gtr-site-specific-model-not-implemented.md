@@ -11,7 +11,7 @@ v1 has no site-specific substitution model, and no command has a flag for it (v0
 - A site-specific model with per-site eigendecomposition, transition matrices `[n_states, n_states, seq_len]`, and backward and forward propagation
 - The `--site-specific-gtr` flag of `ancestral` and `homoplasy`, added together with the model
 - Inference of $W$, $\pi^a$ and $\mu^a$ from per-site mutation counts, with golden-master tests against v0
-- Model access that both scalar and site-specific models can honor: partitions and reconstructions store the concrete scalar `GTR` type, for example [`packages/treetime/src/partition/create.rs#L95`](../../packages/treetime/src/partition/create.rs#L95) and [`packages/treetime/src/partition/optimize/dense.rs#L17`](../../packages/treetime/src/partition/optimize/dense.rs#L17)
+- Model access that both scalar and site-specific models can honor: partitions and reconstructions store the concrete scalar `GTR` type, for example [`packages/treetime/src/partition/create.rs#L121`](../../packages/treetime/src/partition/create.rs#L121) and [`packages/treetime/src/partition/optimize/dense.rs#L8`](../../packages/treetime/src/partition/optimize/dense.rs#L8)
 - Callers of the 2D `expQt()` that handle a different matrix per site
 - A policy for sparse mode: compressed positions share transition matrices, while a site-specific model gives each position its own matrix
 

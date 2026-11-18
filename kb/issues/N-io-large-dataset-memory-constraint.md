@@ -4,7 +4,7 @@ The current input model loads all sequences into memory before attachment, then 
 
 ## Current flow
 
-Sequence loading in `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124), called once per `--alignment` file:
+Sequence loading in `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L256-L296](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L256-L296), called once per `--alignment` file:
 
 ```rust
 let mut records = fasta_read_file(path, alphabet)?;
@@ -25,7 +25,7 @@ All records of a file must fit in memory, and the paired sequences of every file
 
 True streaming (process each sequence once as it arrives) is blocked by:
 
-1. Length validation: `LeafSequences::common_length()` [packages/treetime/src/seq/alignment.rs#L91-L93](../../packages/treetime/src/seq/alignment.rs#L91-L93), through the free function `common_length()` [packages/treetime/src/seq/alignment.rs#L128](../../packages/treetime/src/seq/alignment.rs#L128), verifies that all sequences of a file have uniform length before processing begins
+1. Length validation: `LeafSequences::common_length()` [packages/treetime/src/seq/alignment.rs#L80-L82](../../packages/treetime/src/seq/alignment.rs#L80-L82), through the free function `common_length()` [packages/treetime/src/seq/alignment.rs#L115](../../packages/treetime/src/seq/alignment.rs#L115), verifies that all sequences of a file have uniform length before processing begins
 
 2. Tree-order access: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
 

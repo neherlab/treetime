@@ -2,18 +2,18 @@
 
 The rule that normalizes a probability vector and returns its log normalization exists in two functions, one for each sequence representation:
 
-- `fn normalize_inplace()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L6-L21](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L6-L21): dense mode, every row of an `(L, K)` profile, returns the sum of the row log norms. Callers: [packages/treetime/src/partition/marginal/shared/pass.rs#L203](../../packages/treetime/src/partition/marginal/shared/pass.rs#L203), [#L321](../../packages/treetime/src/partition/marginal/shared/pass.rs#L321), [#L328](../../packages/treetime/src/partition/marginal/shared/pass.rs#L328)
-- `fn normalize_1d_inplace()` [packages/treetime/src/partition/marginal/sparse/message.rs#L210-L219](../../packages/treetime/src/partition/marginal/sparse/message.rs#L210-L219): sparse mode, one site or fixed-state vector, returns `weight` times its log norm. Callers: `fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L247](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L247) and [#L260](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L260)
+- `fn normalize_inplace()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L7-L25](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L7-L25): dense mode, every row of an `(L, K)` profile, returns the sum of the row log norms. Callers: [packages/treetime/src/partition/marginal/shared/pass.rs#L243](../../packages/treetime/src/partition/marginal/shared/pass.rs#L243) (`normalize_sites_inplace`), [#L403](../../packages/treetime/src/partition/marginal/shared/pass.rs#L403), [#L410](../../packages/treetime/src/partition/marginal/shared/pass.rs#L410)
+- `fn normalize_1d_inplace()` [packages/treetime/src/partition/marginal/sparse/message.rs#L255-L265](../../packages/treetime/src/partition/marginal/sparse/message.rs#L255-L265): sparse mode, one site or fixed-state vector, returns `weight` times its log norm. Callers: `fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L264](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L264) and [#L312](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L312)
 
 Both apply the same rule to one vector: when its sum is positive and finite, divide by the sum and take the log of the sum; otherwise fill the vector uniformly with `1 / K` and report negative infinity. A change to the rule in one copy does not reach the other mode, and dense mode is the independent check of sparse mode, so the two copies must agree.
 
 ## The callers already diverge on degenerate vectors
 
-`fn forward_log_lh_add_normalization()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43) skips a normalization of negative infinity. The two modes reach it with different granularity:
+`fn forward_log_lh_add_normalization()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L41-L47](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L41-L47) skips a normalization of negative infinity. The two modes reach it with different granularity:
 
 - Sparse `compute_msg_to_child` passes each site and each fixed state separately, so a degenerate vector drops only its own term
-- Dense `msg_to_child` (`pass.rs#L320-L323`) passes the sum over all rows, so one degenerate row turns the sum into negative infinity and drops the log norms of every row of the message
-- Dense node profiles (`pass.rs#L203`, `#L328`) add the sum directly, so one degenerate row makes the node log-likelihood negative infinity
+- Dense `msg_to_child` (`pass.rs#L402-L405`) passes the sum over all rows, so one degenerate row turns the sum into negative infinity and drops the log norms of every row of the message
+- Dense node profiles (`pass.rs#L243`, `#L410`) add the sum directly, so one degenerate row makes the node log-likelihood negative infinity
 
 On input with a degenerate position, `msg_to_child.log_lh` therefore differs between dense and sparse mode. Which result is correct is the open question of [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md).
 

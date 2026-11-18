@@ -34,6 +34,9 @@
 - [x] Per-partition GTR assignment after dummy JC69 bootstrap
 - [x] Single `update_marginal()` pass after final GTR assignment
 
+> [!WARNING]
+> **Needs review.** No function `initialize_marginal()` or `update_marginal()` exists in the v1 source; marginal reconstruction now runs through `fn reconstruct_marginal` (`packages/treetime/src/ancestral/plan.rs#L294`). Check whether the bootstrap and the single final pass still hold.
+
 ## Several Alignment Files and Partitions
 
 - [x] One partition per `--alignment` file, or one per `--partition` entry over a set of sites of a file, each with its own model and reconstruction ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))

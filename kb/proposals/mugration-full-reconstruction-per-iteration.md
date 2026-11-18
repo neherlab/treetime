@@ -10,7 +10,7 @@ Convergence guarantees require that the E-step uses messages computed under a si
 
 The iterative GTR refinement in `refine_gtr()` ([packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) follows v0: after the first fit, it runs one full marginal update under the fitted model, and every later fit counts with the forward-pass messages (`msg_to_child`) of that update. Each iteration updates backward messages via rate optimization but does not refresh forward messages, because v0's `infer_gtr(marginal=True)` ([packages/legacy/treetime/treetime/treeanc.py#L1544](../../packages/legacy/treetime/treetime/treeanc.py#L1544)) skips `_ml_anc_marginal()` when `sequence_reconstruction == 'marginal'`.
 
-The mutation counting formula in `get_branch_mutation_matrix()` ([packages/treetime/src/gtr/infer_gtr/common.rs#L186-L212](../../packages/treetime/src/gtr/infer_gtr/common.rs#L186-L212)) computes the joint `P(child=i, parent=j | data)` from three components that may be under different GTR models:
+The mutation counting formula in `get_branch_mutation_matrix()` ([packages/treetime/src/gtr/infer_gtr/common.rs#L250](../../packages/treetime/src/gtr/infer_gtr/common.rs#L250)) computes the joint `P(child=i, parent=j | data)` from three components that may be under different GTR models:
 
 - `msg_to_parent[i]`: subtree likelihood from backward pass with current GTR (fresh)
 - `exp_qt[i,j]`: transition matrix from current GTR (fresh)

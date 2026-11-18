@@ -14,7 +14,7 @@ Multiply two ranges whose supports meet at a single point, for example `range(1.
 
 ## Root cause
 
-The touching case is a degenerate overlap, not a disjoint pair. All other multiplication arms of two extended operands already handle it: `fn multiplication_support_intersection()` [packages/treetime-distribution/src/distribution_ops/multiply.rs#L346-L363](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L346-L363) returns `SupportIntersection::Point(t)` at endpoint contact, which produces a point mass. `multiply_range_function`, `multiply_functions`, `multiply_formula_formula`, `multiply_formula_function`, and `multiply_formula_range` use it (see `test_multiply_range_function_endpoint_contact_returns_point` and `test_multiply_function_function_endpoint_contact_returns_point`). The range/range arm does not use `SupportIntersection`, so it never takes the point-mass path.
+The touching case is a degenerate overlap, not a disjoint pair. All other multiplication arms of two extended operands already handle it: `fn multiplication_support_intersection()` [packages/treetime-distribution/src/distribution_ops/multiply.rs#L347-L364](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L347-L364) returns `SupportIntersection::Point(t)` at endpoint contact, which produces a point mass. `multiply_range_function`, `multiply_functions`, `multiply_formula_formula`, `multiply_formula_function`, and `multiply_formula_range` use it (see `test_multiply_range_function_endpoint_contact_returns_point` and `test_multiply_function_function_endpoint_contact_returns_point`). The range/range arm does not use `SupportIntersection`, so it never takes the point-mass path.
 
 ## Fix approach
 

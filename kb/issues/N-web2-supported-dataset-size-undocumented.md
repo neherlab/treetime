@@ -1,6 +1,6 @@
 # The dataset size that web2 supports is not documented
 
-Each run of web2 computes in a job worker of its own, with its own instance of the WebAssembly module in a 32-bit address space ([kb/decisions/app-web2-wasm-worker-back-end.md](../decisions/app-web2-wasm-worker-back-end.md)). Each instance grows its memory up to 4 GiB (`-sMAXIMUM_MEMORY=4GB` in [.cargo/config.toml#L73](../../.cargo/config.toml#L73)), so each run has its own 4 GiB. Runs that compute at the same time share the memory that the browser gives the tab, and when they exceed it, the browser closes the tab with every run. The back-end worker holds the uploads and the outputs of every run of the page in its own instance. Neither the documentation nor the interface tells a user which datasets fit, how many large runs can compute at the same time, or when the CLI is faster.
+Each run of web2 computes in a job worker of its own, with its own instance of the WebAssembly module in a 32-bit address space ([kb/decisions/app-web2-wasm-worker-back-end.md](../decisions/app-web2-wasm-worker-back-end.md)). Each instance grows its memory up to 4 GiB (`-sMAXIMUM_MEMORY=4GB` in [.cargo/config.toml#L75](../../.cargo/config.toml#L75)), so each run has its own 4 GiB. Runs that compute at the same time share the memory that the browser gives the tab, and when they exceed it, the browser closes the tab with every run. The back-end worker holds the uploads and the outputs of every run of the page in its own instance. Neither the documentation nor the interface tells a user which datasets fit, how many large runs can compute at the same time, or when the CLI is faster.
 
 ## Evidence
 
@@ -30,6 +30,9 @@ Times and peak linear memory of the job module by the URL parameter `jobs` (`job
 
 - At 16 threads, `sc2/5100` timetree is 2.5 times as fast as on one thread, and `mpox/clade-ii/2000` ancestral is not faster. Threads do not change the peak linear memory of a run
 - In the threaded module every allocation takes the global lock of dlmalloc, the default allocator of Emscripten. The hot paths still allocate on every call: one `expQt` matrix per call and `.t().to_owned()` copies in [packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169](../../packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169), two `dot` results and a `GTR` clone per edge in [packages/treetime/src/partition/optimize/dense.rs#L10-L11](../../packages/treetime/src/partition/optimize/dense.rs#L10-L11), `Vec`s per edge in `packages/treetime/src/partition/optimize/sparse.rs`, and the `map_collect` of `divide_out` in `packages/treetime/src/partition/marginal/shared/normalize.rs`
+
+> [!WARNING]
+> **Needs review.** The allocation sites above are stale in part: `packages/treetime/src/partition/marginal/sparse/message.rs` holds no `expQt` computation and no `.t().to_owned()` copy any more (`fn propagate_raw()` takes `exp_qt` from the caller and multiplies in place through `general_mat_vec_mul`, L202-L239), and `packages/treetime/src/partition/optimize/dense.rs#L10-L11` passes `gtr` by reference to `PartitionContribution::new()`. Locate the current per-call allocations of the hot paths before the profile.
 
 > [!IMPORTANT]
 > **Investigation required.** Whether the allocations above, or another cause, limit the speed-up of threaded runs. Profile `mpox/clade-ii/2000` ancestral in the threaded module with 16 threads on a machine without other load.

@@ -15,6 +15,9 @@ v1 uses the parent node's child count for the per-edge multiplicity parameter in
 
 **v1 location**: `collect_coalescent_edges()` at `packages/treetime/src/coalescent/edge_data.rs`. Looks up the parent node via `graph.get_node(parent_node_key)` and uses `parent.outbound().len()` as the multiplicity.
 
+> [!WARNING]
+> **Needs review.** `packages/treetime/src/coalescent/edge_data.rs` and the functions `collect_coalescent_edges()`, `compute_coalescent_total_lh()`, `sum_coalescent_cost()`, and `TcCostFunction` no longer exist. The child count now enters in `node_contribution()` at `packages/treetime/src/coalescent/mean_field.rs#L116` (`n_children`) and at `packages/treetime/src/coalescent/mean_field.rs#L354` (`node.outbound().len()`). The locations below need an update to the current total-likelihood path.
+
 **v0 erratum**: `../v0-errata/coalescent-total-lh-fixed-multiplicity.md`.
 
 ## Background

@@ -1,5 +1,8 @@
 # Stochastic Simulation and Continuous-Time Markov Processes in TreeTime
 
+> [!WARNING]
+> **Needs review.** The cited files `packages/treetime/src/coalescent/{coalescent,edge_data,events,integration}.rs` and `packages/treetime/src/partition/{marginal_core,marginal_discrete}.rs` no longer exist. Coalescent code is now under `packages/treetime/src/timetree/` (`coalescent.rs`, `coalescent_timescale.rs`) and marginal code under `packages/treetime/src/partition/marginal/`. Links and line references need revalidation.
+
 ## Scope and reader orientation
 
 TreeTime is a phylogenetic **inference** tool, not a forward simulator. It does not evolve populations or sequences forward in time by drawing random events. Yet the same mathematical object that underlies exact stochastic simulation -- a continuous-time, pure-jump Markov process built from event rates and exponential holding times -- is the substrate for three things TreeTime does compute: the coalescent prior on node times, the substitution model on branches, and the marginal reconstruction of ancestral states.
@@ -132,7 +135,7 @@ $P(t)$ is obtained by eigendecomposition, reusing the reversibility structure. D
 
 $$P(t) = \Pi^{-1/2}\, V\, \mathrm{diag}\!\big(e^{\mu\,\lambda_i t}\big)\, V^{\top}\, \Pi^{1/2},$$
 
-where $\Pi=\mathrm{diag}(\pi)$ holds the equilibrium frequencies $\pi_i$, $\mu$ is the overall rate scale, and $\lambda_i$ are the eigenvalues (one is always $0$, the rest negative, guaranteeing convergence to $\pi$). The eigendecomposition is done once per model in `packages/treetime/src/gtr/gtr.rs` [packages/treetime/src/gtr/gtr.rs#L31-L113](../../packages/treetime/src/gtr/gtr.rs#L31-L113); each branch then costs $O(k^2)$ via `fn GTR::expQt()` [packages/treetime/src/gtr/gtr.rs#L181-L183](../../packages/treetime/src/gtr/gtr.rs#L181-L183). The model hierarchy (JC69 through GTR) is documented in [kb/algo/gtr.md](../algo/gtr.md).
+where $\Pi=\mathrm{diag}(\pi)$ holds the equilibrium frequencies $\pi_i$, $\mu$ is the overall rate scale, and $\lambda_i$ are the eigenvalues (one is always $0$, the rest negative, guaranteeing convergence to $\pi$). The eigendecomposition is done once per model in `packages/treetime/src/gtr/gtr.rs` [packages/treetime/src/gtr/gtr.rs#L30-L105](../../packages/treetime/src/gtr/gtr.rs#L30-L105); each branch then costs $O(k^2)$ via `fn GTR::expQt()` [packages/treetime/src/gtr/gtr.rs#L158-L160](../../packages/treetime/src/gtr/gtr.rs#L158-L160). The model hierarchy (JC69 through GTR) is documented in [kb/algo/gtr.md](../algo/gtr.md).
 
 ### 4.2 Substitution is computed, not simulated
 
@@ -180,7 +183,7 @@ The `mugration` command reconstructs discrete metadata -- sampling country, host
 
 ### 5.5 Method note: eigendecomposition, not uniformization
 
-For the endpoint problem, the stochastic-mapping literature often reaches for uniformization -- representing the CTMC as a Poisson-distributed number of steps of an embedded discrete-time chain -- because it samples conditioned paths without any matrix exponential (the methods of Section 5.2). TreeTime takes the complementary route: it forms $P(t)=e^{Qt}$ once per model by eigendecomposition of the symmetrized reversible generator (Section 4.1) and reuses that factorization across all branches, then obtains marginals by pruning. The choice follows from the target. TreeTime needs endpoint likelihoods and marginal distributions, for which an amortized per-model eigendecomposition is a direct fit; uniformization's advantages -- avoiding matrix exponentials and remaining robust for stiff or non-diagonalizable generators -- apply to the path-sampling problem TreeTime does not solve. The eigendecomposition and per-branch $P(t)$ live in `fn eig_single_site()` [packages/treetime/src/gtr/gtr.rs#L253-L274](../../packages/treetime/src/gtr/gtr.rs#L253-L274) and `fn GTR::expQt()` [packages/treetime/src/gtr/gtr.rs#L181-L183](../../packages/treetime/src/gtr/gtr.rs#L181-L183).
+For the endpoint problem, the stochastic-mapping literature often reaches for uniformization -- representing the CTMC as a Poisson-distributed number of steps of an embedded discrete-time chain -- because it samples conditioned paths without any matrix exponential (the methods of Section 5.2). TreeTime takes the complementary route: it forms $P(t)=e^{Qt}$ once per model by eigendecomposition of the symmetrized reversible generator (Section 4.1) and reuses that factorization across all branches, then obtains marginals by pruning. The choice follows from the target. TreeTime needs endpoint likelihoods and marginal distributions, for which an amortized per-model eigendecomposition is a direct fit; uniformization's advantages -- avoiding matrix exponentials and remaining robust for stiff or non-diagonalizable generators -- apply to the path-sampling problem TreeTime does not solve. The eigendecomposition and per-branch $P(t)$ live in `fn eig_single_site()` [packages/treetime/src/gtr/gtr.rs#L228-L249](../../packages/treetime/src/gtr/gtr.rs#L228-L249) and `fn GTR::expQt()` [packages/treetime/src/gtr/gtr.rs#L158-L160](../../packages/treetime/src/gtr/gtr.rs#L158-L160).
 
 ---
 

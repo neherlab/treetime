@@ -18,7 +18,7 @@ The estimated-rate rows are for the shrinking rate window ([kb/decisions/timetre
 
 ## Locations
 
-- The skyline $T_c(t)$ is refitted every round from the expected lineage counts of the current posteriors (`fn round_models()` calls `fn coalescent_timescale()`, [packages/treetime/src/timetree/refinement_loop.rs#L118](../../packages/treetime/src/timetree/refinement_loop.rs#L118); `fn optimize_skyline()` [packages/treetime/src/coalescent/skyline.rs#L15](../../packages/treetime/src/coalescent/skyline.rs#L15)), while the prior holds the expected lineage counts frozen after the first rebuild ([kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md))
+- The skyline $T_c(t)$ is refitted every round from the expected lineage counts of the current posteriors (`fn round_models()` calls `fn coalescent_timescale()`, [packages/treetime/src/timetree/refinement_loop.rs#L107](../../packages/treetime/src/timetree/refinement_loop.rs#L107); `fn optimize_skyline()` [packages/treetime/src/coalescent/skyline.rs#L15](../../packages/treetime/src/coalescent/skyline.rs#L15)), while the prior holds the expected lineage counts frozen after the first rebuild ([kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md))
 - The skyline segments are equal-width over the span of the expected lineage counts ([packages/treetime/src/coalescent/skyline.rs#L40-L41](../../packages/treetime/src/coalescent/skyline.rs#L40-L41)), so the segments move with the dates
 
 > [!IMPORTANT]

@@ -6,7 +6,7 @@ The bundled peptides differ from the Nextclade translation rules at 464 tip resi
 
 ## Fix direction
 
-Translate with the Nextclade rules ([translate.rs#L8-L188](https://github.com/nextstrain/nextclade/blob/6190424cf8014d999fccf59d049c2c78a8bc28bb/packages/nextclade/src/translate/translate.rs#L8)): an ambiguous codon whose resolutions all code one amino acid gives that amino acid; any other ambiguous or partly gapped codon gives `X`; `---` gives `-`. Regenerate the bundled peptide files, and update the tests and smoke snapshots that read them.
+Translate with the Nextclade rules ([translate.rs#L8-L188](https://github.com/nextstrain/nextclade/blob/6190424cf8014d999fccf59d049c2c78a8bc28bb/packages/nextclade/src/translate/translate.rs#L8-L188)): an ambiguous codon whose resolutions all code one amino acid gives that amino acid; any other ambiguous or partly gapped codon gives `X`; `---` gives `-`. Regenerate the bundled peptide files, and update the tests and smoke snapshots that read them.
 
 ## Validation
 

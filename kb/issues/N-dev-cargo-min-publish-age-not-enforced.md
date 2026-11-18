@@ -2,7 +2,7 @@
 
 ## Summary
 
-Cargo can refuse crate versions published less than seven days ago through `registry.global-min-publish-age`. The pinned toolchain, Rust 1.98.1, has this only as the unstable `-Zmin-publish-age` feature; it becomes stable in Rust 1.100, and a stable Cargo warns on every command when the key is set in `.cargo/config.toml`. A plain `cargo update`, `cargo add`, or `cargo generate-lockfile` therefore resolves to the newest compatible versions, including versions published minutes earlier.
+Cargo can refuse crate versions published less than seven days ago through `registry.global-min-publish-age`. The pinned toolchain, Rust 1.99.1, has this only as the unstable `-Zmin-publish-age` feature; it becomes stable in Rust 1.100, and a stable Cargo warns on every command when the key is set in `.cargo/config.toml`. A plain `cargo update`, `cargo add`, or `cargo generate-lockfile` therefore resolves to the newest compatible versions, including versions published minutes earlier.
 
 The JavaScript side is enforced: Bun reads `minimumReleaseAge` in `bunfig.toml` and refuses newer packages.
 

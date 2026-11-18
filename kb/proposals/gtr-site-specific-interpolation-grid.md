@@ -16,6 +16,9 @@ The expected substitution rate can correlate with this error, but neither its me
 
 ## Current behavior (v0 parity)
 
+> [!WARNING]
+> **Needs review.** v1 has no `gtr_site_specific.rs` and no `rate_scale` in `packages/`; the v1 snippet below is stale. Check whether v1 still has a site-specific GTR interpolation grid before planning this change.
+
 Both v0 and v1 use `mean(average_rate)` to set `rate_scale`:
 
 ```python

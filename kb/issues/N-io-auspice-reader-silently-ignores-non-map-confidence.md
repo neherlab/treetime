@@ -4,9 +4,9 @@ The app back end reads Auspice JSON into the typed structs of [packages/treetime
 
 ## Current behavior
 
-- `fn AuspiceTreeNodeAttrs::attr()` deserializes a named node attribute and returns an error with the attribute key when the value does not fit [packages/treetime-io/src/auspice_types.rs#L254-L271](../../packages/treetime-io/src/auspice_types.rs#L254-L271). An absent attribute gives `None`
-- `struct AuspiceTreeNodeAttr` holds `value` as a `String` [packages/treetime-io/src/auspice_types.rs#L274-L280](../../packages/treetime-io/src/auspice_types.rs#L274-L280). A numeric `value`, as Auspice uses for continuous attributes, fails with an error
-- `fn AuspiceTreeNodeAttr::state_confidence()` reads `confidence` only when it is a map of state probabilities [packages/treetime-io/src/auspice_types.rs#L294-L301](../../packages/treetime-io/src/auspice_types.rs#L294-L301). A map with non-numeric entries fails with an error. A `confidence` of any other JSON type gives `Ok(None)` without a message, so the mugration summary omits the ancestor probabilities of that node [packages/app-backend/src/results/mugration.rs#L55-L57](../../packages/app-backend/src/results/mugration.rs#L55-L57)
+- `fn AuspiceTreeNodeAttrs::attr()` deserializes a named node attribute and returns an error with the attribute key when the value does not fit [packages/treetime-io/src/auspice_types.rs#L265-L282](../../packages/treetime-io/src/auspice_types.rs#L265-L282). An absent attribute gives `None`
+- `struct AuspiceTreeNodeAttr` holds `value` as a `String` [packages/treetime-io/src/auspice_types.rs#L286-L291](../../packages/treetime-io/src/auspice_types.rs#L286-L291). A numeric `value`, as Auspice uses for continuous attributes, fails with an error
+- `fn AuspiceTreeNodeAttr::state_confidence()` reads `confidence` only when it is a map of state probabilities [packages/treetime-io/src/auspice_types.rs#L305-L312](../../packages/treetime-io/src/auspice_types.rs#L305-L312). A map with non-numeric entries fails with an error. A `confidence` of any other JSON type gives `Ok(None)` without a message, so the mugration summary omits the ancestor probabilities of that node [packages/app-backend/src/results/mugration.rs#L55-L58](../../packages/app-backend/src/results/mugration.rs#L55-L58)
 - `entropy` is not read. It stays in the untyped `other` map
 
 TreeTime writes `value` as a string and `confidence` as a map, so its own outputs do not reach the silent path.

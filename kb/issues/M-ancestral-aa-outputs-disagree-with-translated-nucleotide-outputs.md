@@ -1,6 +1,6 @@
 # Amino-acid outputs disagree with the translated nucleotide outputs
 
-`treetime ancestral --translations <peptides> --annotation <gff3>` reconstructs amino acids in one independent partition per CDS, from tip peptides, with its own GTR model and fitted rate per CDS (`fn reconstruct_aa()` [packages/treetime/src/ancestral/aa.rs#L25-L68](../../packages/treetime/src/ancestral/aa.rs#L25-L68)). The amino-acid output of a node can therefore differ from the translation of that node's nucleotide output:
+`treetime ancestral --translations <peptides> --annotation <gff3>` reconstructs amino acids in one independent partition per CDS, from tip peptides, with its own GTR model and fitted rate per CDS (`fn reconstruct_aa()` [packages/treetime/src/ancestral/aa.rs#L25-L92](../../packages/treetime/src/ancestral/aa.rs#L25-L92)). The amino-acid output of a node can therefore differ from the translation of that node's nucleotide output:
 
 - A node can carry an amino acid that its own codon does not code
 - A branch can carry an amino-acid mutation without any nucleotide change in that codon

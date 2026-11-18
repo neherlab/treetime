@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Decision required.** The default branch-length precision of the Newick exchange format is not approved. The tool survey and the options are in [kb/proposals/newick-branch-length-precision.md](../proposals/newick-branch-length-precision.md).
 
-The Newick and Nexus writers format branch lengths through `fn newick_write_options()` at [packages/treetime-io/src/nwk.rs#L222-L231](../../packages/treetime-io/src/nwk.rs#L222-L231), and the Graphviz DOT writer through `fn format_weight()` at [packages/treetime-io/src/nwk.rs#L233-L239](../../packages/treetime-io/src/nwk.rs#L233-L239). Both default to 3 significant digits:
+The Newick and Nexus writers format branch lengths through `fn newick_write_options()` at [packages/treetime-io/src/nwk.rs#L201-L210](../../packages/treetime-io/src/nwk.rs#L201-L210), and the Graphviz DOT writer through `fn format_weight()` at [packages/treetime-io/src/nwk.rs#L212-L218](../../packages/treetime-io/src/nwk.rs#L212-L218). Both default to 3 significant digits:
 
 ```rust
 significant_digits: options.weight_significant_digits.or(Some(3)),
@@ -23,9 +23,9 @@ A public mugration report describes small branch lengths being written as zero i
 
 ## Locations
 
-- `fn newick_write_options()` [packages/treetime-io/src/nwk.rs#L222-L231](../../packages/treetime-io/src/nwk.rs#L222-L231): used by the Newick writer and by the Nexus writer [packages/treetime-io/src/nex.rs#L35](../../packages/treetime-io/src/nex.rs#L35)
-- `fn format_weight()` [packages/treetime-io/src/nwk.rs#L233-L239](../../packages/treetime-io/src/nwk.rs#L233-L239): used by the DOT writer with `NwkWriteOptions::default()` [packages/treetime-io/src/graphviz.rs#L114](../../packages/treetime-io/src/graphviz.rs#L114)
+- `fn newick_write_options()` [packages/treetime-io/src/nwk.rs#L201-L210](../../packages/treetime-io/src/nwk.rs#L201-L210): used by the Newick writer and by the Nexus writer [packages/treetime-io/src/nex.rs#L34](../../packages/treetime-io/src/nex.rs#L34)
+- `fn format_weight()` [packages/treetime-io/src/nwk.rs#L212-L218](../../packages/treetime-io/src/nwk.rs#L212-L218): used by the DOT writer with `NwkWriteOptions::default()` [packages/treetime-io/src/graphviz.rs#L108](../../packages/treetime-io/src/graphviz.rs#L108)
 - `NwkWriteOptions.weight_significant_digits` defaults to `None`, and both sites replace `None` with `Some(3)`
-- `fn float_to_digits()` in [packages/treetime-utils/src/fmt/float.rs#L40-L42](../../packages/treetime-utils/src/fmt/float.rs#L40-L42) sets the same 3-digit default again when no limit is given
+- `fn float_to_digits()` in [packages/treetime-utils/src/fmt/float.rs#L41-L43](../../packages/treetime-utils/src/fmt/float.rs#L41-L43) sets the same 3-digit default again when no limit is given
 
 Implementation waits until the exchange-format default is approved.

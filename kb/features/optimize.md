@@ -106,3 +106,6 @@ The merge, hoist, and retire steps form one per-polytomy routine (`fn resolve_po
 
 - [ ] Automatic choice of the representation with `--representation auto` (the default): `infer_dense()` always returns false, so the default is sparse
 - [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency
+
+> [!WARNING]
+> **Needs review.** No function `collect_edge_contributions()` or `run_optimize_sparse()` exists in the v1 source; the optimize command entry point is `fn run_optimize` (`packages/app-commands/src/commands/optimize/run.rs#L27`). Check whether the zero-branch inconsistency still exists.

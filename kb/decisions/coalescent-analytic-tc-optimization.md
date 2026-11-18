@@ -12,10 +12,10 @@ log-likelihood with Brent's method.
 `cost(logTc) = -total_LH()` re-evaluates the whole-tree likelihood for each
 candidate $T_c$.
 
-**v1 location**: `optimize_tc()` at
-[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs).
-It is now a thin facade over the one-segment skyline — a constant $T_c$ is exactly
-an `n_points = 1` skyline — so the $I$/$M$ accumulation and likelihood reporting are
+**v1 location**: `optimize_skyline()` at
+[`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs)
+with one segment, because a constant $T_c$ is exactly
+an `n_points = 1` skyline. The $I$/$M$ accumulation and likelihood reporting are
 the shared skyline machinery (see
 [coalescent-skyline-convex-log-tc.md](coalescent-skyline-convex-log-tc.md)), not a
 separate integrator. For one segment the skyline's decoupled optimum is precisely

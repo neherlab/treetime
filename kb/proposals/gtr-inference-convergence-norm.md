@@ -20,6 +20,9 @@ RMS norm (`sqrt(mean(delta^2))`) makes the aggregate cutoff dimension-independen
 
 ## Design
 
+> [!WARNING]
+> **Needs review.** `InferGtrSiteSpecificOptions` does not exist. The iteration options (`dp`, `max_iter`, `pc`) are in `struct InferGtrOptions` in `packages/treetime/src/gtr/infer_gtr/common.rs`; check whether a site-specific inference path still exists before planning this change.
+
 ```rust
 #[derive(Clone, Debug, SmartDefault)]
 pub enum ConvergenceNorm {

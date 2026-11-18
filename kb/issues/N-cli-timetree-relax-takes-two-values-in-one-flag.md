@@ -1,6 +1,6 @@
 # `timetree --relax` takes two values in one flag
 
-`timetree --relax` reads two space-separated values, the slack and the coupling of the relaxed clock (`--relax 1.0 0.5`), through `num_args = 2` with the value names `SLACK` and `COUPLING` ([packages/app-commands/src/commands/timetree/args.rs#L712-L719](../../packages/app-commands/src/commands/timetree/args.rs#L712-L719)). The config key `relax` takes a list of two numbers.
+`timetree --relax` reads two space-separated values, the slack and the coupling of the relaxed clock (`--relax 1.0 0.5`), through `num_args = 2` with the value names `SLACK` and `COUPLING` ([packages/app-commands/src/commands/timetree/args.rs#L777-L778](../../packages/app-commands/src/commands/timetree/args.rs#L777-L778)). The config key `relax` takes a list of two numbers.
 
 Most command-line tools take one value per flag, or several values separated by commas. A flag with two space-separated values is easy to misread in a command line, and a workflow rule (Snakemake, Nextflow) that builds arguments from a map of flag to one value needs a special case for it.
 

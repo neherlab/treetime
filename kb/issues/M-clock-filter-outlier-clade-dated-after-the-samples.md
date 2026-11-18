@@ -1,7 +1,7 @@
 # Clock-filter outliers lose their date constraint, so outlier clades can be dated after the samples
 
 The clock filter marks tips whose root-to-tip divergence does not fit the clock as bad branches
-(`fn bad_leaves()` [packages/treetime/src/timetree/inference/bad_branches.rs#L7](../../packages/treetime/src/timetree/inference/bad_branches.rs#L7)).
+(`fn bad_leaves()` [packages/treetime/src/timetree/inference/bad_branches.rs#L11](../../packages/treetime/src/timetree/inference/bad_branches.rs#L11)).
 A bad branch sends no message to its parent in the backward pass, and neither time pass applies its input date, so
 the time inference dates a flagged tip and the ancestors above flagged tips from the clock alone. The clock places
 the flagged tips outside their input date ranges, and when a whole clade is flagged, the internal nodes of the clade

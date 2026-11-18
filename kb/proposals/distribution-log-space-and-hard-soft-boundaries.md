@@ -5,7 +5,7 @@
 
 Move timetree time distributions to a logarithmic y-axis and replace the current single-meaning support boundary with an explicit distinction between **hard** boundaries (a fact about the distribution: probability is zero beyond) and **soft** boundaries (a choice of representation: an analytic tail continues beyond). The explicit grid becomes a _sensible domain_ holding a target fraction of the probability mass, re-derived once per operation, rather than the distribution's support.
 
-**Type**: New v1 design. Supersedes part of [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) and amends [kb/decisions/distribution-intersection-grid-resolution.md](../decisions/distribution-intersection-grid-resolution.md).
+**Type**: New v1 design. Supersedes and amends parts of [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md), which merges the former boundary-tail and intersection-grid decisions.
 
 ## Motivating defect
 

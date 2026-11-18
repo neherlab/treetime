@@ -6,9 +6,9 @@ In `fn combine_messages()`, multiplying a zero fixed-state weight by a `NEG_INFI
 
 ## Details
 
-`fn combine_messages()` [`packages/treetime/src/partition/marginal/sparse/message.rs#L22-L104`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L22-L104):
+`fn combine_messages()` [`packages/treetime/src/partition/marginal/sparse/message.rs#L21-L126`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L21-L126):
 
-The line `seq_dis.log_lh += LogLh::new(weights[index] * log_norm)` [`packages/treetime/src/partition/marginal/sparse/message.rs#L100`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L100) is unguarded. `weights[index]` is the composition count of a canonical state minus the candidate sites of that state. When it is 0 and `log_norm` is `f64::NEG_INFINITY` (from a zero-sum profile), the result is `0.0 * NEG_INFINITY = NaN`, although a state with zero multiplicity contributes exactly zero to the summed log likelihood. This NaN propagates through `msg_to_child.log_lh` into branch-length optimization.
+The line `seq_dis.log_lh += LogLh::new(weights[index] * log_norm)` [`packages/treetime/src/partition/marginal/sparse/message.rs#L119`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L119) is unguarded. `weights[index]` is the composition count of a canonical state minus the candidate sites of that state. When it is 0 and `log_norm` is `f64::NEG_INFINITY` (from a zero-sum profile), the result is `0.0 * NEG_INFINITY = NaN`, although a state with zero multiplicity contributes exactly zero to the summed log likelihood. This NaN propagates through `msg_to_child.log_lh` into branch-length optimization.
 
 Zero multiplicities are ordinary because canonical composition states are initialized even when their counts are zero. The defective combination requires a zero multiplicity paired with an all-negative-infinity normalization.
 

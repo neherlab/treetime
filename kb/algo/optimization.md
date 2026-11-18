@@ -77,7 +77,10 @@ Standard treatment in <a id="cite-7"></a>[Burden and Faires 2010](https://doi.or
 
 O(log n) binary search interval lookup for non-uniformly spaced grids. Used for the skyline coalescent Tc(t) function where grid points are placed at coalescent event times rather than on a uniform grid.
 
-v1: [`packages/treetime-grid/src/interp_nonuniform.rs#L25-L56`](../../packages/treetime-grid/src/interp_nonuniform.rs#L25-L56).
+v1: `packages/treetime-grid/src/interp_nonuniform.rs` (deleted in commit `9a45a2576`).
+
+> [!WARNING]
+> **Needs review.** Commit `9a45a2576` deleted `interp_nonuniform.rs`. The skyline Tc(t) is now piecewise constant: `fn segment_index()` in [`packages/treetime/src/coalescent/skyline.rs#L310`](../../packages/treetime/src/coalescent/skyline.rs#L310) finds the segment by binary search (`partition_point`), and [`packages/treetime/src/coalescent/skyline.rs#L304`](../../packages/treetime/src/coalescent/skyline.rs#L304) returns the segment value with no interpolation. Confirm whether v1 still uses piecewise linear interpolation on a non-uniform grid anywhere; otherwise delete this section.
 
 ---
 

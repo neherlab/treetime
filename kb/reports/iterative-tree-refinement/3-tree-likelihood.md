@@ -83,6 +83,9 @@ v1 code:
 - Forward pass: `process_node_forward()` in the same file
 - The `update_marginal()` function in [`packages/treetime/src/ancestral/marginal.rs`](../../../packages/treetime/src/branch_lengths.rs) orchestrates both passes
 
+> [!WARNING]
+> **Needs review.** `process_node_backward()`, `update_marginal()`, and `softmax_with_log_norm()` no longer exist in `packages/treetime/src/`, and the files `partition/marginal_passes.rs`, `partition/marginal_helpers.rs`, and `ancestral/marginal.rs` are gone; the marginal passes now live under `packages/treetime/src/partition/marginal/` (`dense/`, `sparse/`, `shared/`)
+
 v0 code:
 
 - `_ml_anc_joint()` and `_ml_anc_marginal()` in [`packages/legacy/treetime/treetime/treeanc.py`](../../../packages/legacy/treetime/treetime/treeanc.py)
@@ -113,8 +116,8 @@ TreeTime supports two representations of sequence data on the tree:
 
 v1 code:
 
-- Dense: `PartitionMarginalDense` in [`packages/treetime/src/partition/marginal_dense.rs`](../../../packages/treetime/src/partition/marginal_dense.rs)
-- Sparse: `PartitionMarginalSparse` in [`packages/treetime/src/partition/marginal_sparse.rs`](../../../packages/treetime/src/partition/marginal_sparse.rs)
+- Dense: `PartitionMarginalDense` in [`packages/treetime/src/partition/marginal/dense/partition.rs`](../../../packages/treetime/src/partition/marginal/dense/partition.rs)
+- Sparse: `PartitionMarginalSparse` in [`packages/treetime/src/partition/marginal/sparse/partition.rs`](../../../packages/treetime/src/partition/marginal/sparse/partition.rs)
 
 ## The likelihood surface
 

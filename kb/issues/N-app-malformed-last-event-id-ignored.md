@@ -4,7 +4,7 @@ Both event streams, `GET /api/runs/{id}/events` and `GET /api/events`, resume af
 
 ## Evidence
 
-- `fn resume_from()` [packages/app-server/src/routes.rs#L523-L530](../../packages/app-server/src/routes.rs#L523-L530) reads the header with `value.to_str().ok()` and `value.parse::<u64>().ok()`, so a header that is not ASCII or not a number becomes `None`, and then takes `query.from`. The `result_defaulted` lint suppression on the function states this fallback as intended
+- `fn resume_from()` [packages/app-server/src/routes.rs#L512-L519](../../packages/app-server/src/routes.rs#L512-L519) reads the header with `value.to_str().ok()` and `value.parse::<u64>().ok()`, so a header that is not ASCII or not a number becomes `None`, and then takes `query.from`. The `result_defaulted` lint suppression on the function states this fallback as intended
 - `fn runs_events()` uses `resume_from(...).unwrap_or(0)`: the run stream restarts at its first event
 - `fn events()` passes `None` on: the app-wide stream sends only events from now on, without a `resync` event
 

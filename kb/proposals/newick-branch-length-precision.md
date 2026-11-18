@@ -119,7 +119,7 @@ Remove the fallback in both locations: the `.or(Some(3))` in `format_weight` and
 
 - Pro: consistent behavior -- `None` means "no limit" everywhere, matching the API contract implied by `Option<u8>`
 - Pro: the `float_to_digits` fallback is a contract violation: the caller passes `None` ("no constraint") but the function secretly applies a constraint. This is a bug regardless of the precision debate
-- Pro: zero blast radius -- every non-test caller of `float_to_digits` / `float_to_significant_digits` already passes an explicit digit count (verified: `run_loop.rs`, `clock_model.rs`, `rtt_chart_render.rs`, `console.rs`, `console_metrics.rs`, `console_tables.rs`, `domain_agreement.rs`)
+- Pro: zero blast radius -- every non-test caller of `float_to_digits` / `float_to_significant_digits` already passes an explicit digit count (verified: `nwk.rs`, `domain_agreement.rs`, `run_loop.rs`, `loop_history.rs`, `clock_model.rs`, `runner.rs`, `grid_request.rs`, `max_grid_points.rs`, `manager.rs`, `console.rs`, `console_metrics.rs`, `console_tables.rs`)
 - Con: changes `float_to_digits(x, None, None)` semantics for any future caller that relies on the implicit 3
 
 #### B. Fix only `format_weight`, leave `float_to_digits` fallback

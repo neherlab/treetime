@@ -22,10 +22,6 @@ Initial branch lengths are optimized by the ML branch-length pre-step before the
 
 Topology cleanup in the substitution-space M-step is consistent with EM algorithm theory <a id="cite-1"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[1](#ref-1)]: each M-step maximizes the expected complete-data log-likelihood under its own parameterization. The substitution-space M-step optimizes branch lengths freely and can detect zero-length branches. The time-space M-step optimizes node times under clock constraints, where zero time difference is a valid state.
 
-## Cross-references
-
-- [Command relationships](../reports/command-relationships/README.md): Documents the two sibling loops (optimize and timetree) sharing an E-step.
-
 ## References
 
 1. <a id="ref-1"></a> Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _Journal of the Royal Statistical Society: Series B (Methodological)_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-1)

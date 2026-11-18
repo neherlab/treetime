@@ -19,9 +19,9 @@ A reroot moves no event between nodes, so the sequence of X must stay `NCG`. The
 ## Cause
 
 - `fn derive_root_sequence()` [packages/treetime/src/partition/marginal/sparse/reroot.rs#L145](../../packages/treetime/src/partition/marginal/sparse/reroot.rs#L145) applies only the substitutions and indels of the inverted path edges (`fn apply_edge_to_sequence()`, same file) to the old root sequence. It never applies the unknown ranges of the new root's observation
-- `fn parsimony_seq()` [packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L12-L37](../../packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L12-L37), which builds every other node sequence in the forward pass, fills the node's unknown ranges with `N` after the edge events
-- The sparse forward pass seeds the root state from `root_sequence` [packages/treetime/src/partition/marginal/sparse/forward.rs#L97-L101](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L97-L101), so the marginal output of the new root inherits the missing `N`
-- A node split from an edge for the reroot takes its observation from the same root sequence [packages/treetime/src/partition/marginal/sparse/reroot.rs#L40-L46](../../packages/treetime/src/partition/marginal/sparse/reroot.rs#L40-L46)
+- `fn parsimony_seq()` [packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L23-L48](../../packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L23-L48), which builds every other node sequence in the forward pass, fills the node's unknown ranges with `N` after the edge events
+- The sparse sequence pass seeds the root sequence from `root_sequence` [packages/treetime/src/partition/marginal/sparse/sequences.rs#L38](../../packages/treetime/src/partition/marginal/sparse/sequences.rs#L38), so the marginal output of the new root inherits the missing `N`
+- A node split from an edge for the reroot takes its observation from the same root sequence [packages/treetime/src/partition/marginal/sparse/reroot.rs#L39-L45](../../packages/treetime/src/partition/marginal/sparse/reroot.rs#L39-L45)
 
 ## Fix direction
 

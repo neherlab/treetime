@@ -1,8 +1,8 @@
 # Command output ownership is scattered
 
-The shared output module owns selection, default sets, path resolution, and tree-format dispatch through `fn plan()` [`packages/app-output/src/output_plan.rs#L21`](../../packages/app-output/src/output_plan.rs#L21) and `fn write_run_tree_outputs()` [`packages/app-output/src/tree_output.rs#L19`](../../packages/app-output/src/tree_output.rs#L19). Each command runner still registers non-tree fields, checks data prerequisites, calls `output_unavailable()` [`packages/app-output/src/output_plan.rs#L528`](../../packages/app-output/src/output_plan.rs#L528) when data is missing, chooses projection inputs and comment providers, and writes non-tree outputs independently.
+The shared output module owns selection, default sets, path resolution, and tree-format dispatch through `fn plan()` [`packages/app-output/src/output_plan.rs#L21`](../../packages/app-output/src/output_plan.rs#L21) and `fn write_run_tree_outputs()` [`packages/app-output/src/tree_output.rs#L20`](../../packages/app-output/src/tree_output.rs#L20). Each command runner still registers non-tree fields, checks data prerequisites, calls `output_unavailable()` [`packages/app-output/src/output_plan.rs#L497`](../../packages/app-output/src/output_plan.rs#L497) when data is missing, chooses projection inputs and comment providers, and writes non-tree outputs independently.
 
-`OutputCoreArgs::resolve()` [`packages/app-commands/src/commands/shared/output_args.rs#L265`](../../packages/app-commands/src/commands/shared/output_args.rs#L265) is pure, and tree projection and writing are centralized. Ownership of a complete output plan and materialization contract remains distributed across command modules.
+`OutputCoreArgs::resolve()` [`packages/app-commands/src/commands/shared/output_args.rs#L281`](../../packages/app-commands/src/commands/shared/output_args.rs#L281) is pure, and tree projection and writing are centralized. Ownership of a complete output plan and materialization contract remains distributed across command modules.
 
 ## Impact
 

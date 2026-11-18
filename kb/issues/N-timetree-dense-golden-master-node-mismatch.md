@@ -8,7 +8,7 @@ The capture script [packages/treetime/src/timetree/inference/__tests__/__fixture
 
 ## Location
 
-- Test files: the ebola_20 case is commented out under a `// TODO:` line in [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35-L38](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35-L38) and in [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35-L38](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35-L38). The dense test is also `#[ignore]` for a separate dense-versus-v0 discrepancy on `flu_h3n2_20` ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md))
+- Test file: the ebola_20 case is commented out under a `// TODO:` line in [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L12-L15](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L12-L15). The test passes on `flu_h3n2_20` only at the tolerance `1e-1` for a separate dense-versus-v0 discrepancy ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md))
 - Golden master data: [packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json](../../packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json)
 
 ## Resolution options

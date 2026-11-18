@@ -14,5 +14,5 @@ The discrepancy is at most one day. `augur export v2` reads `numdate` for the ti
 
 The same conversion writes the other date strings of v1, which have the same one-day difference at these boundaries:
 
-- The `date` column of the dates table (`--output-dates`): `fn date_fields()` [packages/app-output/src/dates_table.rs#L58](../../packages/app-output/src/dates_table.rs#L58)
-- The calendar day of the dates in the app results: `fn YearDate::new()` [packages/app-backend/src/results/year_date.rs#L21](../../packages/app-backend/src/results/year_date.rs#L21)
+- The `date` column of the dates table (`--output-dates`): `fn date_fields()` [packages/app-output/src/dates_table.rs#L51](../../packages/app-output/src/dates_table.rs#L51)
+- The calendar day of the dates in the app results: `fn YearDate::new()` [packages/app-backend/src/results/year_date.rs#L18](../../packages/app-backend/src/results/year_date.rs#L18)

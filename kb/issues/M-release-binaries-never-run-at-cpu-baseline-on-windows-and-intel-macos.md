@@ -7,7 +7,7 @@ The Windows x86_64 binaries (UCRT and Windows 7), the Windows arm64 binaries, an
 ## Evidence
 
 - Baselines (`export_dist_flags` in `dev/lib/dist-flags.sh`): x86-64-v2 on every x86_64 target, Armv8.0 with LSE on Windows arm64, Armv8.0 on Linux arm64, and the Apple M1 on macOS arm64
-- Linux binaries run under QEMU on the oldest CPU of their baseline (Nehalem, Cortex-A53), and on x86_64 also on a CPU below it (`dev/cross/check-cpus`, CI job `cpu-baseline` in `.github/workflows/cli.yml`, and `dev/cross/all --run`)
+- Linux binaries run under QEMU on the oldest CPU of their baseline (Nehalem, Cortex-A53), and on x86_64 also on a CPU below it (`dev/cross/check-cpus`, CI job `cpu-baseline` in `.github/workflows/cli-compat.yml`, and `dev/cross/all --run`)
 - macOS arm64 binaries run on Apple Silicon runners (`compat-macos`), whose oldest model is the baseline, the M1
 - Windows binaries run on `windows-2022` and `windows-11-arm` (`compat-windows`), and macOS x86_64 binaries on `macos-15-intel` and `macos-26-intel` (`compat-macos`). These runners have CPUs far above x86-64-v2 and Armv8.0 with LSE
 - The Windows 7 binary (`x86_64-win7-windows-gnu`) is not in `dev/cross/targets` and runs in no CI job

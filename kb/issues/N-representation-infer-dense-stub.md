@@ -20,12 +20,12 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 ## Locations
 
 - Stub: `fn infer_dense()` [packages/treetime/src/partition/algo/infer_dense.rs#L1-L7](../../packages/treetime/src/partition/algo/infer_dense.rs#L1-L7)
-- Selector: `fn Representation::resolve()` [packages/treetime/src/partition/create.rs#L64-L70](../../packages/treetime/src/partition/create.rs#L64-L70)
+- Selector: `fn Representation::resolve()` [packages/treetime/src/partition/create.rs#L91-L97](../../packages/treetime/src/partition/create.rs#L91-L97)
 - Consumers:
-  - ancestral, nucleotide [packages/treetime/src/ancestral/plan.rs#L49](../../packages/treetime/src/ancestral/plan.rs#L49)
+  - ancestral, nucleotide [packages/treetime/src/ancestral/plan.rs#L42](../../packages/treetime/src/ancestral/plan.rs#L42)
   - ancestral, amino acid [packages/treetime/src/ancestral/aa.rs#L36](../../packages/treetime/src/ancestral/aa.rs#L36)
-  - optimize [packages/treetime/src/optimize/pipeline.rs#L173](../../packages/treetime/src/optimize/pipeline.rs#L173)
-  - timetree [packages/treetime/src/timetree/pipeline.rs#L326](../../packages/treetime/src/timetree/pipeline.rs#L326)
+  - optimize [packages/treetime/src/optimize/pipeline.rs#L152](../../packages/treetime/src/optimize/pipeline.rs#L152)
+  - timetree [packages/treetime/src/timetree/pipeline.rs#L452](../../packages/treetime/src/timetree/pipeline.rs#L452)
 
 ## Related decisions
 

@@ -4,7 +4,7 @@ Maintained Rust sources keep disabled parameterized test cases and an unused `Se
 
 - [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L12`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L12)
 - [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L15`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L15) and [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L95`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L95)
-- [`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs#L76`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs#L76)
+- [`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs#L77`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs#L77)
 - [`packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs#L33`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs#L33)
 - [`packages/treetime-primitives/src/seq.rs#L142`](../../packages/treetime-primitives/src/seq.rs#L142)
 

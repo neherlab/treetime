@@ -3,8 +3,8 @@
 Algorithm Markdown and the generated CLI reference write mathematical expressions as ASCII in code spans and code blocks, although the Markdown documents render KaTeX. Symbols in these expressions are often not declared. Examples:
 
 - [kb/algo/ancestral.md#L48-L52](../algo/ancestral.md#L48-L52): the partial likelihood `w_k(X) = [sum_Y P(X->Y|t_i) * w_i(Y)] * ...` in a code block
-- [kb/algo/timetree.md#L90-L92](../algo/timetree.md#L90-L92): the skyline cost in a code block; the confidence interval formulas at [kb/algo/timetree.md#L252-L257](../algo/timetree.md#L252-L257) and [kb/algo/timetree.md#L267-L270](../algo/timetree.md#L267-L270) as well
-- [packages/app-docs/src/generated/en/reference/cli.md#L389](../../packages/app-docs/src/generated/en/reference/cli.md#L389): the skyline stiffness help writes `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2` in a code span. The text comes from the doc comment of the `--skyline-stiffness` flag [packages/app-commands/src/commands/timetree/args.rs#L276](../../packages/app-commands/src/commands/timetree/args.rs#L276), which `--help` also prints in a terminal
+- [kb/algo/timetree.md#L102-L104](../algo/timetree.md#L102-L104): the skyline cost in a code block; the confidence interval formulas at [kb/algo/timetree.md#L264-L269](../algo/timetree.md#L264-L269) and [kb/algo/timetree.md#L279-L282](../algo/timetree.md#L279-L282) as well
+- [packages/app-docs/src/generated/en/reference/cli.md#L467](../../packages/app-docs/src/generated/en/reference/cli.md#L467): the skyline stiffness help writes `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2` in a code span. The text comes from the doc comment of the `--skyline-stiffness` flag [packages/app-commands/src/commands/timetree/args.rs#L875](../../packages/app-commands/src/commands/timetree/args.rs#L875), which `--help` also prints in a terminal
 
 ## Scope
 

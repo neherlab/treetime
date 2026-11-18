@@ -28,7 +28,7 @@ for i in 0..max_iter:
 
 ### Sparse representation
 
-The sparse E-step ([packages/treetime/src/partition/marginal_passes.rs](../../packages/treetime/src/partition/marginal_passes.rs)) propagates messages carrying:
+The sparse E-step ([packages/treetime/src/partition/marginal/sparse/](../../packages/treetime/src/partition/marginal/sparse/)) propagates messages carrying:
 
 - `variable: BTreeMap<usize, VarPos>` -- per-position posterior `dis: Array1<f64>` and reference state
 - `fixed: BTreeMap<AsciiChar, Array1<f64>>` -- one propagated profile per canonical state, shared by all same-state positions
@@ -36,11 +36,11 @@ The sparse E-step ([packages/treetime/src/partition/marginal_passes.rs](../../pa
 
 The variable set is rebuilt from scratch each iteration and can grow or shrink.
 
-The sparse M-step evaluator ([packages/treetime/src/partition/optimize_sparse.rs](../../packages/treetime/src/partition/optimize_sparse.rs)) computes eigendecomposition coefficients `parent.dot(V) * child.dot(V_inv.T)` from individual posteriors for variable positions and from bucketed canonical profiles for fixed positions. The coefficient computation uses soft distributions (not hard MAP states), but the variable/fixed classification boundary produces a discontinuity: the same position yields different coefficients depending on which path evaluates it.
+The sparse M-step evaluator ([packages/treetime/src/partition/optimize/sparse.rs](../../packages/treetime/src/partition/optimize/sparse.rs)) computes eigendecomposition coefficients `parent.dot(V) * child.dot(V_inv.T)` from individual posteriors for variable positions and from bucketed canonical profiles for fixed positions. The coefficient computation uses soft distributions (not hard MAP states), but the variable/fixed classification boundary produces a discontinuity: the same position yields different coefficients depending on which path evaluates it.
 
 ### Dense representation
 
-The dense E-step ([packages/treetime/src/partition/marginal_dense.rs](../../packages/treetime/src/partition/marginal_dense.rs)) stores full `Array2<f64>` probability matrices. The dense evaluator ([packages/treetime/src/partition/optimize_dense.rs](../../packages/treetime/src/partition/optimize_dense.rs)) computes coefficients from these matrices with multiplicity 1 per position. No variable/fixed classification. True soft-EM.
+The dense E-step ([packages/treetime/src/partition/marginal/dense/partition.rs](../../packages/treetime/src/partition/marginal/dense/partition.rs)) stores full `Array2<f64>` probability matrices. The dense evaluator ([packages/treetime/src/partition/optimize/dense.rs](../../packages/treetime/src/partition/optimize/dense.rs)) computes coefficients from these matrices with multiplicity 1 per position. No variable/fixed classification. True soft-EM.
 
 ### Indel contribution
 
@@ -60,9 +60,9 @@ Two methods via `--optimizer`: Brent and Newton in $\sqrt{t}$ space. Default `br
 | I2  | Two per-edge methods (`--optimizer`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
 | I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                         |
 | I4  | `--model` wired to GTR dispatch                       | [optimize/pipeline.rs](../../packages/treetime/src/optimize/pipeline.rs)                                                                                                          |
-| I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                     |
+| I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/marginal/reconstruction.rs](../../packages/treetime/src/partition/marginal/reconstruction.rs)                                                                     |
 | I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [optimize/zero_boundary.rs#L328](../../packages/treetime/src/optimize/zero_boundary.rs#L328)                                                          |
-| I7  | Eigenvalue-space coefficient caching                  | [partition/optimize_sparse.rs](../../packages/treetime/src/partition/optimize_sparse.rs), [partition/optimize_dense.rs](../../packages/treetime/src/partition/optimize_dense.rs) |
+| I7  | Eigenvalue-space coefficient caching                  | [partition/optimize/sparse.rs](../../packages/treetime/src/partition/optimize/sparse.rs), [partition/optimize/dense.rs](../../packages/treetime/src/partition/optimize/dense.rs) |
 | I8  | Poisson indel contribution                            | [optimize/indel.rs](../../packages/treetime/src/optimize/indel.rs)                                                                                                               |
 | I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [optimize/run_loop.rs#L291](../../packages/treetime/src/optimize/run_loop.rs#L291)                                                           |
 
@@ -74,7 +74,7 @@ Two methods via `--optimizer`: Brent and Newton in $\sqrt{t}$ space. Default `br
 
 - Addresses: the discrete variable/fixed reclassification that causes the likelihood 2-cycle
 - Evidence: variable count oscillates 35095/35109 on sc2/2844 in lockstep with the 2-cycle; stable at 1121 on flu/h3n2/20 where convergence is normal
-- Implementation: ~30 lines in [partition/marginal_passes.rs](../../packages/treetime/src/partition/marginal_passes.rs). Store previous variable keys per edge. Reinstate previously-variable positions with the canonical-state profile if absent from the new variable map.
+- Implementation: ~30 lines in [partition/marginal/sparse/](../../packages/treetime/src/partition/marginal/sparse/). Store previous variable keys per edge. Reinstate previously-variable positions with the canonical-state profile if absent from the new variable map.
 - Pros: eliminates the discrete jump at its source. Minimal performance cost (~14 extra positions out of ~35000).
 - Cons: makes the sparse approximation history-dependent -- which positions are treated individually depends on early iterations, not only on the current posterior. The ~14 oscillating positions are genuinely ambiguous (near-equal posterior for two states), so promoting them to individual evaluation is the more accurate classification. After 1-2 iterations the set stabilizes.
 - Note: this is a model change, not a neutral fix. The immediate bug fix in M-optimize-sparse-em-2-cycle (resolved) addresses convergence through loop robustness instead, without changing the sparse model.

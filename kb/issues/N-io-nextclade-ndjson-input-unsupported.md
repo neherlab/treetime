@@ -2,7 +2,7 @@
 
 Nextclade writes one result per sample with substitutions, deletion ranges and missing ranges relative to the dataset reference [[src](https://github.com/nextstrain/nextclade/blob/629ea8fb0cfe3165db13ddc75dab16d3c2292dbd/packages/nextclade/src/types/outputs.rs#L73-L86)]. Sparse partitions could take these lists directly, so a user who has run Nextclade would not need to write and read a full alignment.
 
-The alignment input of TreeTime reads FASTA only: `fn read_sequence_source()` passes every `--alignment` path to `fasta_read_file()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L92](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L92).
+The alignment input of TreeTime reads FASTA only: `fn read_sequence_source()` passes every `--alignment` path to `fasta_read_file()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L256-L264](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L256-L264).
 
 No tool is known to read Nextclade NDJSON as phylogenetic input, so this use is untested.
 

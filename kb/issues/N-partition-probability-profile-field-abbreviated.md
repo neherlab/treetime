@@ -3,12 +3,12 @@
 Three partition structures expose probability-profile arrays through the unexplained abbreviation `dis`:
 
 - `DenseSeqDistribution::dis` [`packages/treetime/src/partition/storage/dense.rs#L85`](../../packages/treetime/src/partition/storage/dense.rs#L85)
-- `FixedProfile::dis` [`packages/treetime/src/partition/storage/sparse.rs#L220`](../../packages/treetime/src/partition/storage/sparse.rs#L220), with the method `FixedProfiles::map_dis()` [`packages/treetime/src/partition/storage/sparse.rs#L189`](../../packages/treetime/src/partition/storage/sparse.rs#L189)
-- `VarPos::dis` [`packages/treetime/src/partition/storage/sparse.rs#L264`](../../packages/treetime/src/partition/storage/sparse.rs#L264)
+- `FixedProfile::dis` [`packages/treetime/src/partition/storage/sparse.rs#L256`](../../packages/treetime/src/partition/storage/sparse.rs#L256), with the method `FixedProfiles::map_dis()` [`packages/treetime/src/partition/storage/sparse.rs#L225`](../../packages/treetime/src/partition/storage/sparse.rs#L225)
+- `VarPos::dis` [`packages/treetime/src/partition/storage/sparse.rs#L300`](../../packages/treetime/src/partition/storage/sparse.rs#L300)
 
 ## Evidence
 
-Accesses to `.dis` occur in 24 files of `packages/treetime/src`. Call sites use forms such as `profile.dis`, `var_pos.dis`, `fixed.dis`, and `msg_to_parent.dis`. In the same modules, `profile` already names state-probability vectors and matrices. The abbreviation can also be read as distance, dissimilarity, or distribution, so its meaning depends on the surrounding type.
+Accesses to `.dis` occur in 32 files of `packages/treetime/src`. Call sites use forms such as `profile.dis`, `var_pos.dis`, `fixed.dis`, and `msg_to_parent.dis`. In the same modules, `profile` already names state-probability vectors and matrices. The abbreviation can also be read as distance, dissimilarity, or distribution, so its meaning depends on the surrounding type.
 
 The field is part of central dense and sparse partition structures. A local rename would leave two terms for the same scientific object and make conversions harder to audit.
 

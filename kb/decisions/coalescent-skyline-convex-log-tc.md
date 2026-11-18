@@ -125,8 +125,8 @@ $x=1/T_c$ parametrization before reliable smoothing, and does not recur.)
 
 ## Impact
 
-- **Constant $T_c$ is unified as the one-segment case of this solve.** `optimize_tc`
-  is a facade calling `optimize_skyline` with `n_points = 1`, where the smoothing is
+- **Constant $T_c$ is unified as the one-segment case of this solve.** A constant
+  $T_c$ is `optimize_skyline` with `n_points = 1`, where the smoothing is
   inert and the decoupled optimum is the closed form $T_c^{*}=I/M$. There is now a
   single coalescent optimizer. A whole-tree degeneracy guard (`m_tot > 0` and
   positive finite `i_tot`) lives in `optimize_skyline` and is shared by both cases:

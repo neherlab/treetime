@@ -268,7 +268,7 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 ### Tail policy
 
-- [packages/treetime-grid/src/boundary_behavior.rs](../../packages/treetime-grid/src/boundary_behavior.rs): `enum BoundaryBehavior` (`Error`/`Hard`/`HardApproach`/`Linear`, every variant a complete value), `fn BoundaryBehavior.is_soft()`/`is_hard()`, `const DEFAULT_TAIL_FIT_POINTS`
+- [packages/treetime-grid/src/boundary_behavior.rs](../../packages/treetime-grid/src/boundary_behavior.rs): `enum BoundaryBehavior` (`Error`/`Hard`/`HardApproach`/`Linear`, every variant a complete value), `fn BoundaryBehavior.is_soft()`, `fn BoundaryBehavior.soft_law()`, `const DEFAULT_TAIL_FIT_POINTS`
 - [packages/treetime-grid/src/soft_tail_law.rs](../../packages/treetime-grid/src/soft_tail_law.rs): `struct SoftTailLaw` (single neg-log slope), `fn SoftTailLaw::fit()`, `fn SoftTailLaw::mass()`, `fn SoftTailLaw::compose_multiply()`
 - [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): policy-free grid interpolation; `fn GridFn.interp_with_extrap()` and `fn GridFn.resample_with_extrap()` accept explicit policies for one operation
 - [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): `left_extrap`/`right_extrap` fields and getters; `ampl` with `fn DistributionFunction.amplitude()`, `fn DistributionFunction.with_amplitude()`, `fn DistributionFunction.values()`, `fn DistributionFunction.repeak()`, value-based `PartialEq`; `fn DistributionFunction.interp()` (values) and `fn DistributionFunction.interp_stored()`; policy builders; tail fitting; policy- and amplitude-preserving resampling, ordinate transforms, and argument negation

@@ -62,6 +62,9 @@ The natural mechanism is a preorder traversal carrying a single mutable buffer: 
 
 `PartitionBranchOps::node_sequence(&self, node_key) -> Seq` is called from about ten sites (`commands/shared/tree_output.rs`, `commands/ancestral/augur_node_data.rs`, `partition/io/augur.rs`, `partition/timetree/branch.rs`) in arbitrary key order. It is the central obstacle: a transient buffer cannot serve arbitrary-order queries.
 
+> [!WARNING]
+> **Needs review.** The trait `PartitionBranchOps` and the four cited files no longer exist. `fn node_sequence` is now defined in `packages/treetime/src/partition/marginal/reconstruction.rs`, `packages/treetime/src/partition/marginal/{dense,sparse}/partition.rs`, `packages/treetime/src/partition/fitch/partition.rs`, and `packages/treetime/src/partition/alignment_sequences.rs`; tree output is in `packages/app-output/src/tree_output.rs`. Recount the call sites and their query order.
+
 - **Option A - streaming visitor.** Replace the accessor with a traversal that hands each node its sequence in preorder. Matches how the output layer already walks the tree. Largest diff, cleanest end state.
 - **Option B - on-demand replay.** Keep the accessor and reconstruct by walking root-to-node applying diffs, `O(depth * muts)` per call. Small diff, but per-node queries across the whole tree make it quadratic-ish.
 - **Option C - per-node diff map.** Store `BTreeMap<usize, AsciiChar>` of the diff from the root per node. Preserves random access at `O(depth * 2.6)` entries per node instead of `L`. Still a large win, much smaller change than A.

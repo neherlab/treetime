@@ -1,5 +1,8 @@
 # Sparse substitution accessors
 
+> [!WARNING]
+> **Needs review.** The cited files `packages/treetime/src/partition/{sparse,marginal_passes,marginal_sparse,optimize_sparse}.rs` and `packages/treetime/src/payload/ancestral.rs` no longer exist. The code moved to `packages/treetime/src/partition/{storage,marginal,optimize}/` (for example `partition/storage/sparse.rs`, `partition/optimize/sparse.rs`); links and call sites need revalidation. Out-of-range anchors also remain for `optimize/dispatch.rs#L774` (`edge_subs()` is no longer called there), `ancestral/fitch.rs#L453`, `#L561`, `#L580`, and `app-commands/src/commands/prune/run.rs#L213`.
+
 Production call sites for `ml_subs` and `fitch_subs` on `SparseEdgePartition`, excluding tests.
 
 Definitions: [packages/treetime/src/partition/sparse.rs](../../packages/treetime/src/partition/sparse.rs)
@@ -34,7 +37,7 @@ After inverting fitch subs on edges along the old-root-to-new-root path, ML subs
 
 Count discrete substitutions per edge across all partitions to estimate initial branch lengths before the optimization loop. Called from `optimize` and `timetree` commands.
 
-- `guess_initial_branch_lengths()` [optimize/dispatch.rs#L729](../../packages/treetime/src/optimize/dispatch.rs#L729)
+- `guess_initial_branch_lengths()` [optimize/dispatch.rs#L176](../../packages/treetime/src/optimize/dispatch.rs#L176)
 - `partition.edge_subs()` [optimize/dispatch.rs#L774](../../packages/treetime/src/optimize/dispatch.rs#L774)
 - `edge.ml_subs()` [partition/marginal_sparse.rs#L269](../../packages/treetime/src/partition/marginal_sparse.rs#L269)
 

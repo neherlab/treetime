@@ -19,11 +19,11 @@ Names that differ only in whitespace or encoding are treated as distinct:
 
 ### Case sensitivity
 
-The name lookup of `fn pair_by_name()` [packages/treetime-graph/src/pair_by_name.rs#L28](../../packages/treetime-graph/src/pair_by_name.rs#L28), which every command uses to pair FASTA records, metadata dates, and trait values with nodes, is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
+The name lookup of `fn pair_by_name()` [packages/treetime-graph/src/pair_by_name.rs#L29](../../packages/treetime-graph/src/pair_by_name.rs#L29), which every command uses to pair FASTA records, metadata dates, and trait values with nodes, is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
 
 ## Current behavior
 
-Every sequence command reads each `--alignment` file through `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124). It pairs records with leaves by exact name, then `fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L14-L61](../../packages/treetime/src/ancestral/attach.rs#L14-L61) fills each leaf without a record with unknown characters. It writes one warning per such leaf (`No sequence found for leaf '<name>' in alignment '<path>'`) and one summary warning with the count. The run stops when more than a third of the leaves have no record. Every sequence command accepts `--allow-missing-sequences` to continue past this limit.
+Every sequence command reads each `--alignment` file through `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L256-L296](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L256-L296). It pairs records with leaves by exact name, then `fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L13-L55](../../packages/treetime/src/ancestral/attach.rs#L13-L55) fills each leaf without a record with unknown characters. It writes one warning per such leaf (`No sequence found for leaf '<name>' in alignment '<path>'`) and one summary warning with the count. The run stops when more than a third of the leaves have no record. Every sequence command accepts `--allow-missing-sequences` to continue past this limit.
 
 Records whose name matches no leaf get no message. They count for the alignment length check but not for the mask.
 

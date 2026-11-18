@@ -1,6 +1,6 @@
 # Grid numeric generic has only one supported type
 
-`InterpElem` has one implementation, `f64`, but its type parameter propagates through `Grid<T>`, `GridFn<T>`, and `DistributionFunction<T, Y>` [`packages/treetime-grid/src/lib.rs#L16`](../../packages/treetime-grid/src/lib.rs#L16) [`packages/treetime-grid/src/grid.rs#L26`](../../packages/treetime-grid/src/grid.rs#L26) [`packages/treetime-grid/src/grid_fn.rs#L20`](../../packages/treetime-grid/src/grid_fn.rs#L20) [`packages/treetime-distribution/src/distribution_core/function.rs#L13`](../../packages/treetime-distribution/src/distribution_core/function.rs#L13).
+`InterpElem` has one implementation, `f64`, but its type parameter propagates through `Grid<T>`, `GridFn<T>`, and `DistributionFunction<T, Y>` [`packages/treetime-grid/src/lib.rs#L18`](../../packages/treetime-grid/src/lib.rs#L18) [`packages/treetime-grid/src/grid.rs#L35`](../../packages/treetime-grid/src/grid.rs#L35) [`packages/treetime-grid/src/grid_fn.rs#L18`](../../packages/treetime-grid/src/grid_fn.rs#L18) [`packages/treetime-distribution/src/distribution_core/function.rs#L12`](../../packages/treetime-distribution/src/distribution_core/function.rs#L12).
 
 ## Cost in the current API
 

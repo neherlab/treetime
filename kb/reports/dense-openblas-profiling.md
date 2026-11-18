@@ -28,6 +28,9 @@ Two Cargo profiles used:
 - `profiling` -- inherits from `release` (LTO, opt-level 3) but keeps `debug = 1` and `strip = false`, so `perf` can resolve symbols. Used for profiling runs.
 - `release` -- production build. Used for wall-time benchmarks.
 
+> [!WARNING]
+> **Needs review.** `dev/dev` and `dev/docker/files/install-openblas` no longer exist; builds and tests now run through `./dev/docker/run just <recipe>` (`justfile`), so the commands in this report do not run as written
+
 The `bp` / `build-profiling` command in [`dev/dev`](../../dev/dev) builds the profiling profile via Docker (where OpenBLAS is available as a prebuilt static library):
 
 ```bash

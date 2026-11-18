@@ -5,7 +5,7 @@
 
 ## Symptom
 
-`homoplasy` sorts every change involving an ambiguous character into its own lists ([kb/decisions/homoplasy-mutation-mapping-and-counting.md](../decisions/homoplasy-mutation-mapping-and-counting.md)). Before reconstruction, `--gap-fill=only-terminal` (the default, matching the v0 overhang filling) replaces the leading and trailing gaps of each sequence with `N` (`fn read_nwk_fasta()` in [`packages/app-commands/src/commands/shared/sequence_inputs.rs`](../../packages/app-commands/src/commands/shared/sequence_inputs.rs)). Each filled column of a sample whose parent has a determined state is then a change to `N` on the terminal branch.
+`homoplasy` sorts every change involving an ambiguous character into its own lists ([kb/decisions/homoplasy-mutation-mapping-and-counting.md](../decisions/homoplasy-mutation-mapping-and-counting.md)). Before reconstruction, `--gap-fill=only-terminal` (the default, matching the v0 overhang filling) replaces the leading and trailing gaps of each sequence with `N` (`fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L265-L267](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L265-L267)). Each filled column of a sample whose parent has a determined state is then a change to `N` on the terminal branch.
 
 On `data/rsv/a/20`, 3028 ambiguous changes are counted. The 15 most frequent are `G1N`, `T2N`, `A3N`, and the following columns of the 5' end, each on 9 or 10 terminal branches, and the per-taxon table reports more than 1000 ambiguous changes for the samples `JF920067` and `KJ627697`:
 

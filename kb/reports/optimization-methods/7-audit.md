@@ -1,5 +1,8 @@
 # Chapter 7: Audit - inventory, inconsistencies, and proposals
 
+> [!WARNING]
+> **Needs review.** Row E4 cites `packages/treetime/src/coalescent/optimize_tc.rs`, which no longer exists; coalescent code moved to `packages/treetime/src/timetree/` (`coalescent.rs`, `coalescent_timescale.rs`), and neither file uses Brent. Rows H1 (`optimize/dispatch.rs#L272-L308`, the file has 268 lines; Newton now lives in `optimize/method_newton.rs`), H5 (`distribution.rs#L425-L491`), and H9 (`distribution.rs#L236-L293`, the file has 302 lines) also cite stale ranges.
+
 Previous: [Chapter 6: The argmin crate](6-argmin-crate.md) | Next: [Glossary](glossary.md)
 
 This chapter is the actionable output of the optimization methods audit. It inventories every optimization in v1, identifies inconsistencies across commands, and proposes prioritized refactoring.

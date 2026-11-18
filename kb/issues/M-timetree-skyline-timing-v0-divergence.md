@@ -9,7 +9,7 @@ v0 and v1 apply the skyline coalescent prior at different points of the refineme
 
 ## v1 behavior
 
-- The init phase fits the skyline to the expected lineage counts of the Gaussian node marginals (`fn initialize()` [packages/treetime/src/timetree/init.rs#L84](../../packages/treetime/src/timetree/init.rs#L84)), and every loop round re-fits it before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L47-L49](../../packages/treetime/src/timetree/refinement_loop.rs#L47-L49)), from the expected lineage counts of the posteriors of the previous round ([packages/treetime/src/timetree/refinement_loop.rs#L71](../../packages/treetime/src/timetree/refinement_loop.rs#L71)), so every round uses a skyline prior
+- The init phase fits the skyline to the expected lineage counts of the Gaussian node marginals (`fn initialize()` [packages/treetime/src/timetree/init.rs#L72](../../packages/treetime/src/timetree/init.rs#L72)), and every loop round re-fits it before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L44](../../packages/treetime/src/timetree/refinement_loop.rs#L44)), from the expected lineage counts of the posteriors of the previous round ([packages/treetime/src/timetree/refinement_loop.rs#L50](../../packages/treetime/src/timetree/refinement_loop.rs#L50)), so every round uses a skyline prior
 - No skyline step runs after the loop
 - The early convergence exit applies in skyline mode as in every other mode (`fn TimetreeOptimizer::next_iter()` [packages/treetime/src/timetree/convergence/optimizer.rs#L35](../../packages/treetime/src/timetree/convergence/optimizer.rs#L35)), so a skyline run can stop before `max_iter` with a skyline fitted to times that v0 would have refined further
 

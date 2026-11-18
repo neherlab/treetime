@@ -2,6 +2,9 @@
 
 ## Problem
 
+> [!WARNING]
+> **Needs review.** `enum BoundaryBehavior` in `packages/treetime-grid/src/boundary_behavior.rs` has no `Constant` variant; it has `Error`, `Hard`, `HardApproach`, `HardEdgeCell` and `Linear(SoftTailLaw)`, a soft tail of [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md). Check whether `Linear` already gives the log-linear tail that this proposal asks for; if it does, delete this proposal.
+
 Branch length distributions currently have hard grid boundaries (`Error` tails). The right side (long branches) physically decays exponentially, but the grid truncates it. After negation and convolution, this truncation limits the backward parent message's grid extent, making disjoint-support collisions more likely when child messages disagree temporally.
 
 The `Constant` tail on backward messages provides a crude workaround -- it declares the message evaluable beyond its grid at a flat boundary value. An exponential tail would be more physically accurate: the probability of long branches decays smoothly rather than holding flat.

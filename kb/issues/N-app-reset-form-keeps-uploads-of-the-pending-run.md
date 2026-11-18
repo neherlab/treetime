@@ -8,7 +8,7 @@ In the server and the desktop app, the files stay on disk until the run manager 
 
 - `reset()` of the draft store replaces the draft and clears the selections without releasing uploads [packages/app-ui/src/store/draft.ts#L84-L91](../../packages/app-ui/src/store/draft.ts#L84-L91)
 - The upload code releases an upload only while the draft still names its run: `releaseFromPendingRun()` returns when `upload_run_id` differs [packages/app-ui/src/analysis/useRunUploads.ts#L42-L49](../../packages/app-ui/src/analysis/useRunUploads.ts#L42-L49). An example config that is still loading when the user resets the form leaves its uploaded files in the old run for the same reason
-- `RunManager::open()` removes unstarted runs created more than `UNSTARTED_RUN_LIFETIME` (one day) before it opens [packages/app-backend/src/runs/manager.rs#L41](../../packages/app-backend/src/runs/manager.rs#L41), [#L56-L58](../../packages/app-backend/src/runs/manager.rs#L56-L58)
+- `RunManager::open()` removes unstarted runs created more than `UNSTARTED_RUN_LIFETIME` (one day) before it opens [packages/app-backend/src/runs/manager.rs#L41](../../packages/app-backend/src/runs/manager.rs#L41), [#L56-L58](../../packages/app-backend/src/runs/manager.rs#L52-L58)
 - web2 keeps runs in the memory of the tab: [kb/decisions/app-web2-wasm-worker-back-end.md](../decisions/app-web2-wasm-worker-back-end.md)
 
 > [!IMPORTANT]

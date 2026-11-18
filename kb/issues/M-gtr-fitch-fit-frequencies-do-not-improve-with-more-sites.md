@@ -11,7 +11,7 @@ With `--model infer`, the sequence commands fit the GTR once, from the Fitch cou
 
 An earlier measurement on the same simulation found the rate of the single fit at 1, the truth, and `pi` within about 0.02 of the true frequencies.
 
-The fit is `fn infer_gtr_fitch()` [packages/treetime/src/partition/fitch/gtr_inference.rs#L13-L24](../../packages/treetime/src/partition/fitch/gtr_inference.rs#L13-L24), which counts the Fitch transitions and dwell times and calls `fn infer_gtr_from_counts()` [packages/treetime/src/gtr/infer_gtr/common.rs#L14-L87](../../packages/treetime/src/gtr/infer_gtr/common.rs#L14-L87).
+The fit is `fn infer_gtr_fitch()` [packages/treetime/src/partition/fitch/gtr_inference.rs#L12-L23](../../packages/treetime/src/partition/fitch/gtr_inference.rs#L12-L23), which counts the Fitch transitions and dwell times and calls `fn infer_gtr_from_counts()` [packages/treetime/src/gtr/infer_gtr/common.rs#L16-L24](../../packages/treetime/src/gtr/infer_gtr/common.rs#L16-L24).
 
 > [!IMPORTANT]
 > **Investigation required.** Whether the error of `pi` has a bias that does not shrink with the number of sites (from the Fitch root states, from the dwell times, or from the pseudo-count), or whether the test needs more replicates to show the fall. Measure the mean signed error of each frequency against the true `pi` at 1000 and at 10000 sites, and compare the frequencies of the Fitch fit with the composition of the simulated root sequence.

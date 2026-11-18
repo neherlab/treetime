@@ -10,7 +10,7 @@
 
 ## Problem
 
-With `--coalescent opt` and the default width of 2 standard deviations of $\ln T_c$ [packages/app-commands/src/commands/timetree/args.rs#L283-L291](../../packages/app-commands/src/commands/timetree/args.rs#L283-L291), about 95% under the Gaussian approximation, the band covers the simulated coalescent time scale $T_c$ in 63% of the runs at alignment length $L = 1000$. The numbers come from the timetree suite of [validation/README.md](../../validation/README.md), with the root kept and the true clock rate (column `tc_coverage`).
+With `--coalescent opt` and the default width of 2 standard deviations of $\ln T_c$ [packages/app-commands/src/commands/timetree/args.rs#L885-L896](../../packages/app-commands/src/commands/timetree/args.rs#L885-L896), about 95% under the Gaussian approximation, the band covers the simulated coalescent time scale $T_c$ in 63% of the runs at alignment length $L = 1000$. The numbers come from the timetree suite of [validation/README.md](../../validation/README.md), with the root kept and the true clock rate (column `tc_coverage`).
 
 The 63% pools the `exp` and `piecewise` schedules, whose true $T_c(t)$ varies in time, so a constant-$T_c$ band cannot cover it there. Rerun on `rust` of 2026-10-24 (`keep-opt-fixed`, $L = 1000$, $\mu \in \{10^{-3}, 3 \cdot 10^{-3}\}$, rep00 to rep09, 60 runs): on the `const` schedule, where the model is right, the band covers in 18 of 20 runs (0.90 against about 0.95); on `exp` in none (log bias +0.56) and on `piecewise` in 0.6 to 0.9 (log bias +0.2 to +0.84). $\mu = 3 \cdot 10^{-4}$ is not rerun. The remaining question is the modest undercoverage on well-specified data and what the `--help` text states.
 

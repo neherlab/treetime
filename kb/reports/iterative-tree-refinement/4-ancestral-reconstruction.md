@@ -113,6 +113,9 @@ v1 code:
 - Dense edge substitutions: `edge_subs()` on `PartitionMarginalDense` compares MAP states at parent and child node posteriors
 - Sparse edge substitutions: `edge_subs()` on `PartitionMarginalSparse` returns marginal-reconstructed substitutions
 
+> [!WARNING]
+> **Needs review.** `process_node_backward()` and `update_marginal()` no longer exist in `packages/treetime/src/`, and the files `partition/marginal_passes.rs` and `ancestral/marginal.rs` are gone; the marginal passes now live under `packages/treetime/src/partition/marginal/` (`dense/`, `sparse/`, `shared/`)
+
 v0 code: `_ml_anc_marginal()` in [`packages/legacy/treetime/treetime/treeanc.py`](../../../packages/legacy/treetime/treetime/treeanc.py).
 
 ### Marginal vs joint reconstruction

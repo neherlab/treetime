@@ -2,7 +2,7 @@
 
 TreeTime cannot read tskit tree sequences (`.trees`). sc2ts stores an ancestral recombination graph of 2.48 million SARS-CoV-2 genomes in this format ([Zhan et al. 2023](https://doi.org/10.1101/2023.06.08.544212)). The TreeTime graph already supports networks ([kb/decisions/graph-based-phylogenetic-representation.md](../decisions/graph-based-phylogenetic-representation.md)), so reading the graph structure is possible in principle.
 
-The Newick reader rejects every node with more than one parent: `fn graph_from_newick()` calls `fn reject_network_nodes()`, which stops with "TreeTime reads trees only" [packages/treetime-io/src/nwk.rs#L48-L49](../../packages/treetime-io/src/nwk.rs#L48-L49), [packages/treetime-io/src/nwk.rs#L105-L118](../../packages/treetime-io/src/nwk.rs#L105-L118).
+The Newick reader rejects every node with more than one parent: `fn graph_from_newick()` calls `fn reject_network_nodes()`, which stops with "TreeTime reads trees only" [packages/treetime-io/src/nwk.rs#L48-L49](../../packages/treetime-io/src/nwk.rs#L48-L49), [packages/treetime-io/src/nwk.rs#L97-L110](../../packages/treetime-io/src/nwk.rs#L97-L110).
 
 ## Open questions
 

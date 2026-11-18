@@ -21,4 +21,4 @@ Dead code path within treetime's own codebase. External library consumers callin
 
 ## v1 status
 
-v1 uses `(0.05, 0.95)` correctly.
+v1 uses `(0.05, 0.95)` correctly: `CI_LOWER_QUANTILE` and `CI_UPPER_QUANTILE` [packages/treetime/src/timetree/confidence.rs#L22-L23](../../packages/treetime/src/timetree/confidence.rs#L22-L23) feed `date_uncertainty_due_to_rate()` [packages/treetime/src/timetree/confidence.rs#L171](../../packages/treetime/src/timetree/confidence.rs#L171).

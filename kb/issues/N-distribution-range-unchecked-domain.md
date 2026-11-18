@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Decision required.** The range construction contract is unapproved: fallible range construction with validated endpoints and amplitude, or a validated support type that separates positive-width intervals from points. See "Decision required" below.
 
-`Distribution::range()` is infallible and delegates to `DistributionRange::new()`. [`packages/treetime-distribution/src/distribution_core/distribution.rs#L42-L44`](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L42-L44)
+`Distribution::range()` is infallible and delegates to `DistributionRange::new()`. [`packages/treetime-distribution/src/distribution_core/distribution.rs#L41-L43`](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L41-L43)
 
 `DistributionRange::new()` stores arbitrary endpoints and amplitude without checking ordering, finiteness, or the `YAxisPolicy` validity rule. [`packages/treetime-distribution/src/distribution_core/range.rs#L15-L21`](../../packages/treetime-distribution/src/distribution_core/range.rs#L15-L21)
 

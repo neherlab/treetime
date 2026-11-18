@@ -452,9 +452,9 @@ Verify these against current source before relying on line numbers.
 <details>
 <summary>K11. Analytic convolutions drop operand tails 💻</summary>
 
-`convolution_point_function` and `convolution_range_function` build via `from_start_dx_values`, then `from_grid_array`, which **resets both boundary sides to `Error`** [packages/treetime-grid/src/grid_fn.rs#L62-L76](packages/treetime-grid/src/grid_fn.rs#L62-L76). The operand tails are lost.
+`convolution_point_function` and `convolution_range_function` build via `from_start_dx_values`, then `from_grid_array`, which **resets both boundary sides to `Error`** [packages/treetime-grid/src/grid_fn.rs#L62-L76](../../packages/treetime-grid/src/grid_fn.rs#L62-L76). The operand tails are lost.
 
-The backward and forward passes then fit fresh tails **after** each convolution [packages/treetime/src/timetree/inference/backward_pass.rs#L140-L143](packages/treetime/src/timetree/inference/backward_pass.rs#L140-L143), [packages/treetime/src/timetree/inference/forward_pass.rs#L233-L236](packages/treetime/src/timetree/inference/forward_pass.rs#L233-L236). That recovers a soft slope, but it cannot recover a dropped hard bound or truncated support.
+The backward and forward passes then fit fresh tails **after** each convolution [packages/treetime/src/timetree/inference/backward_pass.rs#L140-L143](../../packages/treetime/src/timetree/inference/backward_pass.rs#L140-L143), [packages/treetime/src/timetree/inference/forward_pass.rs#L233-L236](../../packages/treetime/src/timetree/inference/forward_pass.rs#L233-L236). That recovers a soft slope, but it cannot recover a dropped hard bound or truncated support.
 
 </details>
 
@@ -462,7 +462,7 @@ The backward and forward passes then fit fresh tails **after** each convolution 
 <summary>K12. convolution_range_function has three defects 💻🔬</summary>
 
 > [!WARNING]
-> **Needs review.** The mask that this item describes is gone. `fn convolution_range_function()` at [packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142](packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142) now widens the support by the range (`lo`, `hi`) and integrates the mass of the function through `MassProfile`, so the three defects below may be resolved
+> **Needs review.** The mask that this item describes is gone. `fn convolution_range_function()` at [packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L87-L142) now widens the support by the range (`lo`, `hi`) and integrates the mass of the function through `MassProfile`, so the three defects below may be resolved
 
 Main path at the time of this proposal (the mask was part of it):
 
@@ -475,7 +475,7 @@ Main path at the time of this proposal (the mask was part of it):
 <details>
 <summary>K13. Compact operands present `Error` sides, so range-clipped products lose mass sizing 💻🚩</summary>
 
-Point, range, and formula operands present `Error` on both sides for the multiplication support and composition rules [packages/treetime-distribution/src/distribution_ops/multiply.rs#L430-L451](packages/treetime-distribution/src/distribution_ops/multiply.rs#L430-L451). This is correct for the disjointness test, where `Error` and `Hard` both restrict the domain, but wrong for tail composition: `Error` dominates the lattice [packages/treetime-distribution/src/distribution_ops/multiply.rs#L351-L372](packages/treetime-distribution/src/distribution_ops/multiply.rs#L351-L372), so any product clipped by a date range or point inherits `Error` on that side and becomes non-mass-sizable, forcing `rewindow_to_mass` back to a shift-only normalize.
+Point, range, and formula operands present `Error` on both sides for the multiplication support and composition rules [packages/treetime-distribution/src/distribution_ops/multiply.rs#L430-L451](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L430-L451). This is correct for the disjointness test, where `Error` and `Hard` both restrict the domain, but wrong for tail composition: `Error` dominates the lattice [packages/treetime-distribution/src/distribution_ops/multiply.rs#L351-L372](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L351-L372), so any product clipped by a date range or point inherits `Error` on that side and becomes non-mass-sizable, forcing `rewindow_to_mass` back to a shift-only normalize.
 
 A compact operand carries zero density beyond its support, a hard fact, so it should present `Hard`, letting the clipped product stay mass-sizable. Same correction as the `range * range` and `point *` law declarations (C2, C3 emit `Hard`).
 
@@ -484,7 +484,7 @@ A compact operand carries zero density beyond its support, a hard fact, so it sh
 <details>
 <summary>K14. Branch factor is mass-sized at construction, against the intended design 💻🚩</summary>
 
-`compute_branch_length_distribution` currently **mass-sizes the freshly built factor** [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L66-L72](packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L66-L72). The intended design builds it analytically from its closed form, with no re-window at construction.
+`compute_branch_length_distribution` currently **mass-sizes the freshly built factor** [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L66-L72](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L66-L72). The intended design builds it analytically from its closed form, with no re-window at construction.
 
 This contradicts landed code and needs an explicit decision.
 
@@ -508,7 +508,7 @@ Its grid follows directly from the form:
 <details>
 <summary>K16. Mass machinery location 💻</summary>
 
-The mass functions live in [packages/treetime-distribution/src/distribution_ops/mass_domain.rs](packages/treetime-distribution/src/distribution_ops/mass_domain.rs): `total_mass`, `mass_bounded_domain`, `rewindow_to_mass`. `rewindow_to_mass` trims to $\ge 1 - 2\epsilon$ of the mass.
+The mass functions live in [packages/treetime-distribution/src/distribution_ops/mass_domain.rs](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs): `total_mass`, `mass_bounded_domain`, `rewindow_to_mass`. `rewindow_to_mass` trims to $\ge 1 - 2\epsilon$ of the mass.
 
 The **same functions** serve regridding and should serve HPD.
 
@@ -519,7 +519,7 @@ The **same functions** serve regridding and should serve HPD.
 <details>
 <summary>K17. Confidence integrals ignore tail mass 💻</summary>
 
-`max_posterior_region` integrates a **grid-only trapezoidal CDF** and ignores the boundary-law tail masses, as v0 does on its grid [packages/treetime/src/timetree/max_posterior_region.rs](packages/treetime/src/timetree/max_posterior_region.rs). Measured on `ebola/362` and `rsv/a/500`, the tails of the marginal time posteriors hold at most `2.3e-5` of the mass, because almost all posteriors have hard boundaries on both sides.
+`max_posterior_region` integrates a **grid-only trapezoidal CDF** and ignores the boundary-law tail masses, as v0 does on its grid [packages/treetime/src/timetree/max_posterior_region.rs](../../packages/treetime/src/timetree/max_posterior_region.rs). Measured on `ebola/362` and `rsv/a/500`, the tails of the marginal time posteriors hold at most `2.3e-5` of the mass, because almost all posteriors have hard boundaries on both sides.
 
 Re-window deliberately leaves up to $2\epsilon$ mass in the soft tails of the distributions it produces, so a grid-only integral of such a distribution normalizes against $1 - 2\epsilon$ of the true mass and **biases its intervals inward**. The marginal posteriors are products of such distributions and keep far less tail mass, as measured above.
 

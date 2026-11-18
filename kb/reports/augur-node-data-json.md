@@ -716,3 +716,6 @@ All augur links pinned to commit `024292af6daf` (2026-05-20).
 - treetime v1 ancestral command: `packages/app-commands/src/commands/ancestral/run.rs`
 - treetime v1 payloads: `packages/treetime/src/payload/ancestral.rs`, `packages/treetime/src/payload/timetree.rs`
 - workflow repos: [`nextstrain/seasonal-flu`](https://github.com/nextstrain/seasonal-flu), [`nextstrain/ncov`](https://github.com/nextstrain/ncov)
+
+> [!WARNING]
+> **Needs review.** `packages/treetime/src/partition/traits.rs`, `packages/treetime/src/payload/`, and `MutationCommentProvider` no longer exist in `packages/`; the v1 locations cited in this report (lines 649, 715, 717) are stale

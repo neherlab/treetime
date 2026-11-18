@@ -6,7 +6,7 @@ This is the internal-node counterpart of the tip corruption recorded in [Margina
 
 ## Background
 
-The sparse backend does not store a posterior at every position. `combine_messages` (`packages/treetime/src/partition/marginal/sparse/message.rs:17`) keeps an explicit distribution only for positions that stay genuinely uncertain; once a position's posterior concentrates on one state above `1 - EPS` (`EPS = 1e-4`, `message.rs:15`) and every incoming message agrees with the parsimony reference state, the position is dropped from `profile.variable` and represented by the shared per-character `fixed` vector instead.
+The sparse backend does not store a posterior at every position. `combine_messages` (`packages/treetime/src/partition/marginal/sparse/message.rs:21`) keeps an explicit distribution only for positions that stay genuinely uncertain; once a position's posterior concentrates on one state above `1 - EPS` (`EPS = 1e-4`, `message.rs:19`) and every incoming message agrees with the parsimony reference state, the position is dropped from `profile.variable` and represented by the shared per-character `fixed` vector instead.
 
 Reconstruction used to rebuild each node's sequence by cloning the parent's _reconstructed_ sequence, applying the parsimony substitutions and indels on the edge, and overwriting the positions the node still held in `profile.variable`. Positions absent from `variable` were taken from the parent unchanged.
 
