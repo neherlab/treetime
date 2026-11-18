@@ -29,13 +29,3 @@ Open: a collapse that keeps the date intervals calibrated.
 ## Validation
 
 `test_sim_timetree_date_intervals_cover_the_true_dates` passes with the collapse on.
-
-## Proposed implementation plan
-
-The cited locations are current (`fn collapse_short_internal_edges()`, its call in `pre_loop.rs`, `fn timetree_cell_params()` at [packages/treetime/src/test_utils/simulation.rs#L67](../../packages/treetime/src/test_utils/simulation.rs#L67) with `collapse_short_branches: false`, and the `--no-collapse-short-branches` flag in `packages/app-commands/src/commands/timetree/args.rs`).
-
-1. Collect the evidence of the Investigation required block: in `test_sim_timetree_date_intervals_cover_the_true_dates`, add a measurement mode with the collapse on that splits the coverage and the signed error of the surviving internal nodes by node depth and by the number of children the node gains. Run the same simulated cells through v0 with the true topology and its own collapse, and compare
-2. Locate the cause from the split: when the loss concentrates at nodes that gain children, the interval of a polytomy misses the time spread of the merged nodes; when it concentrates at their parents, the collapse moves the branch-length evidence of the removed edges
-3. Implement the fix at the located cause, in the owner of the interval (`packages/treetime/src/timetree/confidence.rs`) or of the collapse (`packages/treetime/src/optimize/topology/collapse.rs`). For the polytomy case, the candidate is the interval widening of [kb/issues/M-timetree-date-intervals-ignore-topology-uncertainty.md](M-timetree-date-intervals-ignore-topology-uncertainty.md#fix-direction); a scientific change of the intervals needs a user-approved entry in `kb/decisions/`
-4. Set `collapse_short_branches: true` in `fn timetree_cell_params()`, so the simulation tests cover the collapsed tree
-5. Validate: `just test-slow-rs` (on user request) with `test_sim_timetree_date_intervals_cover_the_true_dates` at $0.9 \pm 0.03$, the oracle being the simulated true dates, and the validation suite of the report on true and FastTree topologies, where the dates with the collapse must stay at least as accurate as without it

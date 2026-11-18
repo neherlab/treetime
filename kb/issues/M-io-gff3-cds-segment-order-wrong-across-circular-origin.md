@@ -24,16 +24,17 @@ Detect the wrap from the `Is_circular=true` attribute of the landmark or from a 
 
 ## Proposed implementation plan
 
-The investigation above decides between three reader behaviors. Steps 1 and 3 hold for each of them; step 2 has one variant per option.
+The investigation above decides between three reader behaviors, so it comes first. Steps 2 and 4 hold for each behavior; step 3 has one variant per behavior.
 
-1. Data: the reader already keeps `##sequence-region` directives (`GffSequenceRegion`, `fn parse_sequence_region()` in `packages/treetime-io/src/gff.rs`). Read `Is_circular=true` from the landmark `region` row as well, so that `fn assemble_feature()` knows the landmark length and circularity of `seqid`
-2. Ordering in `fn assemble_feature()` (`packages/treetime-io/src/gff.rs`), after the coordinate sort:
+1. Investigation: read a circular annotation (for example a RefSeq plasmid with a CDS across the origin) with `treetime ancestral --translations`, compare the translation of that CDS with the reference protein, and choose the reader behavior of step 3
+2. Data: the reader already keeps `##sequence-region` directives (`GffSequenceRegion`, `fn parse_sequence_region()` in `packages/treetime-io/src/gff.rs`). Read `Is_circular=true` from the landmark `region` row as well, so that `fn assemble_feature()` knows the landmark length and circularity of `seqid`
+3. Ordering in `fn assemble_feature()` (`packages/treetime-io/src/gff.rs`), after the coordinate sort:
    - Wrap detection: on a circular landmark, when a segment ends at the landmark end and another starts at site 1, rotate the sorted segments so that the segment after the largest gap comes first, then reverse for the minus strand. Split a one-row CDS with `end > landmark length` into two segments the same way
    - File order: keep rows in `line_no` order on the forward strand and reversed order on the minus strand (Nextclade behavior)
    - Reject: return a `make_error!` that names the CDS and the origin when a CDS on a circular landmark touches both ends, or ends past the landmark length
-3. Tests in `packages/treetime-io/src/__tests__/test_gff.rs`, inline GFF3 literals:
-   - Forward-strand CDS of two rows `91..100` and `1..5` on a 100-site circular landmark: expected segments `[91..100, 1..5]` (oracle: GFF3 specification, "Circular genomes")
-   - Same CDS on the minus strand: segments `[1..5, 91..100]`
-   - One-row CDS `91..105` on a 100-site landmark: two segments or the error, per the chosen option
-   - Linear landmark with the same rows keeps the coordinate order (no wrap without `Is_circular`)
-4. Validate: `just lint-rs`, `just test-rs -E 'package(treetime-io)'`, and `just smoke` on a dataset with an annotation to confirm that the CDSs of `data/` are unchanged
+4. Tests in `packages/treetime-io/src/__tests__/test_gff.rs`, inline GFF3 literals:
+   - Forward-strand CDS of two rows `91..100` and `1..5` on a 100-site circular landmark: expected segments `[91..100, 1..5]`, or the error of the reject behavior (oracle: GFF3 specification, "Circular genomes")
+   - Same CDS on the minus strand: segments `[1..5, 91..100]`, or the error of the reject behavior
+   - One-row CDS `91..105` on a 100-site landmark: two segments or the error, per the chosen behavior
+   - Linear landmark with the same rows: coordinate order under the wrap-detection behavior (no wrap without `Is_circular`)
+5. Validate: `just lint-rs`, `just test-rs -E 'package(treetime-io)'`, and `just smoke` on a dataset with an annotation to confirm that the CDSs of `data/` are unchanged

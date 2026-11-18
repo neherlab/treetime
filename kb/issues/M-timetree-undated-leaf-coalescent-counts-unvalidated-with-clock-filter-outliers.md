@@ -1,6 +1,6 @@
 # Undated-leaf lineage counts are not validated on runs with clock-filter outliers
 
-Under a coalescent prior, every bad branch enters the expected lineage counts by the survival function of its posterior, and a leaf among them carries its leaf factor ([kb/decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md](../decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md)). A tip that the clock filter flags is a bad branch, like a tip without a date. The validation of the decision ran with `--clock-filter 0` (`validation/run.py`), so it covers undated tips but no outliers.
+Under a coalescent prior, every bad branch enters the expected lineage counts by the survival function of its posterior, and a leaf among them carries its leaf factor ([kb/decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md](../decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md)). A tip that the clock filter flags is a bad branch, like a tip without a date (`fn bad_leaves()` in `packages/treetime/src/timetree/inference/bad_branches.rs`). The validation of the decision ran with `--clock-filter 0` (`validation/run.py`), so it covers undated tips but no outliers.
 
 ## Evidence
 
@@ -12,7 +12,7 @@ Under a coalescent prior, every bad branch enters the expected lineage counts by
 Whether counting a flagged tip by its posterior is closer to the truth than counting it as surviving at every time, as before, is not measured.
 
 > [!IMPORTANT]
-> **Investigation required.** Measure the effect against known truth: run the `opt-est` and `skyline-est` variants of the timetree suite on the messy validation data with the default clock filter (`--clock-filter 3`) instead of `--clock-filter 0`, before and after the decision, and compare the rate error, $\ln(T_c/T_c^\text{true})$ and the node date RMSE with the clean data. Record how many tips the filter flags per set.
+> **Investigation required.** Measure the effect against known truth: run the `keep-opt-est`, `reroot-opt-est`, `keep-skyline-est` and `reroot-skyline-est` variants of the timetree suite on the messy validation data with the default clock filter (`--clock-filter 3`) instead of `--clock-filter 0`, before and after the decision, and compare the rate error, $\ln(T_c/T_c^\text{true})$ and the node date RMSE with the clean data. Record how many tips the filter flags per set.
 
 ## Validation
 
@@ -20,7 +20,7 @@ With the default clock filter on the messy data, the rate error, the $T_c$ error
 
 ## Proposed implementation plan
 
-1. Add a clock filter option to the `timetree` runner of `validation/run.py`: the date arguments (the line that appends `--clock-filter 0`) take the threshold from a new command-line option, default `0`, so that the existing results stay comparable
-2. Run the `opt-est` and `skyline-est` variants on `data_messy/` (and `data_n100_messy/` for a larger tip count) with `--clock-filter 3`, once with the commit before the decision and once with the current `rust`, with separate `--results` directories
+1. Add a clock filter option to the `timetree` runner of `validation/run.py`: the date arguments (`validation/run.py`, line 92, appends `--clock-filter 0`) take the threshold from a new command-line option, default `0`, so that the existing results stay comparable
+2. Run these four variants on `data_messy/` (and `data_n100_messy/` for a larger tip count) with `--clock-filter 3`, once with the commit before the decision and once with the current `rust`, with separate `--results` directories
 3. Record per set the number of tips that the filter flags, the rate error, $\ln(T_c/T_c^\text{true})$ and the node date RMSE. Oracle: the simulated truth of the validation sets
 4. Compare with the clean data (`data/`, `--clock-filter 0`). When the counting by posterior is worse than before, report it to the user as a reopening of the decision; otherwise add the results to the validation section of the decision file and delete this issue

@@ -1,6 +1,6 @@
 # `data/translate` maps every ambiguous codon to `X`
 
-The script `data/translate`, which made the bundled peptide files (`data/*/translations/`), translates with Biopython's `forward_table.get(codon, "X")` (`data/translate`, line 105). The forward table holds only unambiguous codons, so every ambiguous codon becomes `X`, also when all its resolutions code one amino acid: `GCN` codes Ala, `ACN` codes Thr, `YTR` codes Leu.
+The script `data/translate`, which made the bundled peptide files (`data/*/translations/`), translates with Biopython's `forward_table.get(codon, "X")` (`data/translate`, line 105). The forward table holds only unambiguous codons, so every ambiguous codon becomes `X`, also when all its resolutions code one amino acid: `GCN` codes Ala, `ACN` codes Thr, `YTR` codes Leu. `fn _translate_codon()` (lines 100-105) maps `---` to `-`, the unambiguous stop codons to `*`, and every other codon through the forward table, so the ambiguous stop codon `TAR` also gives `X`.
 
 The bundled peptides differ from the Nextclade translation rules at 464 tip residues of `rsv/a/2000` and 7,161 of `mpox/clade-ii/2000`. In every case the peptide file has `X` and the Nextclade rule gives an amino acid. Runs and tests that read these files see less tip information than a Nextclade translation of the same alignment gives.
 
@@ -11,8 +11,6 @@ Translate with the Nextclade rules ([translate.rs#L8-L188](https://github.com/ne
 ## Validation
 
 `GCN`, `ACN`, `YTR` and `TAR` translate to `A`, `T`, `L` and `*`; `RAY` and `NNN` translate to `X`.
-
-The code is unchanged: `fn _translate_codon()` in `data/translate` (lines 100-105) maps `---` to `-`, the unambiguous stop codons to `*`, and every other codon through `forward_table.get(codon, "X")`, so `TAR` also gives `X`.
 
 > [!IMPORTANT]
 > **Investigation required.** The residue counts above (464 for `rsv/a/2000`, 7,161 for `mpox/clade-ii/2000`) were not reproduced. Recount them with the fixed script before and after regeneration.

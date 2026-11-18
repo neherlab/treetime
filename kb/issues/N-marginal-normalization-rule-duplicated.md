@@ -13,11 +13,7 @@ Both apply the same rule to one vector: when its sum is positive and finite, div
 
 - Sparse `compute_msg_to_child` passes each site and each fixed state separately, so a degenerate vector drops only its own term
 - Dense `msg_to_child` (`pass.rs#L402-L405`) passes the sum over all rows, so one degenerate row turns the sum into negative infinity and drops the log norms of every row of the message
-- Dense node profiles (`pass.rs#L243`, `#L410`) add the sum directly, so one degenerate row makes the node log-likelihood negative infinity
-
-> [!WARNING]
-> **Needs review.** `pass.rs#L243` calls `normalize_sites_inplace` and keeps per-site root log norms (`root_log_norms`), so the claim above holds for `#L410` only unless the root path sums them later.
-
+- Dense node profiles (`pass.rs#L243`, `#L410`) add the sum directly, so one degenerate row makes the node log-likelihood negative infinity. The root stores its per-site log norms (`root_log_norms`) in the site log norms and also adds their sum to the root log-likelihood (`pass.rs#L244`, `#L251`)
 
 On input with a degenerate position, `msg_to_child.log_lh` therefore differs between dense and sparse mode. Which result is correct is the open question of [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md).
 
@@ -36,7 +32,8 @@ The merge keeps outputs byte-identical when the summation order of each vector s
 
 ## Proposed implementation plan
 
-1. Move the one-vector rule into `packages/treetime/src/partition/marginal/shared/normalize.rs` as one function on `ArrayViewMut1<f64>` with a weight; call it per row from `fn normalize_sites_inplace()` and per site from the sparse callers in `packages/treetime/src/partition/marginal/sparse/forward.rs#L264` and `#L312`; delete `fn normalize_1d_inplace()` from `packages/treetime/src/partition/marginal/sparse/message.rs`
-2. Keep the degenerate-vector result of each mode until [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md) is decided
-3. Tests in `packages/treetime/src/partition/marginal/shared/__tests__/test_marginal_shared.rs`: a positive vector, an all-zero vector, and a vector with an infinite entry, each with weight 1 and weight 3 (oracle: hand calculation of the sum and `ln` of the sum); a row-major `(L, K)` profile normalized per row equals the per-vector results bit for bit (oracle: the one-vector function)
-4. Validate with `just lint-rs`, `just test-rs`, and `just smoke` byte-identical against `rust` in dense and sparse mode, as the Investigation block above requires
+1. Check the layout first (the Investigation required block): every dense profile that reaches `fn normalize_inplace()` and `fn normalize_sites_inplace()` at `pass.rs#L243`, `#L403` and `#L410` is row-major (`dis.is_standard_layout()`). If one is not, keep its current summation order in the merged function or make its producer row-major
+2. Move the one-vector rule into `packages/treetime/src/partition/marginal/shared/normalize.rs` as one function on `ArrayViewMut1<f64>` with a weight; call it per row from `fn normalize_sites_inplace()` and per site from the sparse callers in `packages/treetime/src/partition/marginal/sparse/forward.rs#L264` and `#L312`; delete `fn normalize_1d_inplace()` from `packages/treetime/src/partition/marginal/sparse/message.rs`
+3. Keep the degenerate-vector result of each mode until [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md) is decided
+4. Tests in `packages/treetime/src/partition/marginal/shared/__tests__/test_marginal_shared.rs`: a positive vector, an all-zero vector, and a vector with an infinite entry, each with weight 1 and weight 3 (oracle: hand calculation of the sum and `ln` of the sum); a row-major `(L, K)` profile normalized per row equals the per-vector results bit for bit (oracle: the one-vector function)
+5. Validate with `just lint-rs`, `just test-rs`, and `just smoke` byte-identical against `rust` in dense and sparse mode, as the Investigation block above requires

@@ -27,13 +27,3 @@ The estimated-rate rows are for the shrinking rate window ([kb/decisions/timetre
 ## Validation
 
 `keep-skyline-fixed` and `keep-skyline-est` at $L=10^3$, $\mu \in \{3\cdot10^{-4}, 10^{-3}\}$ with `--max-iter 6`: the date RMSE and $T_c$ bias after six rounds no larger than after two.
-
-## Proposed implementation plan
-
-The locations are current (`refinement_loop.rs` L107 refits the timescale each round when `mode.is_optimized()`; `fn optimize_skyline()` at `skyline.rs` L15, equal-width boundaries at L40-L41). The fix depends on the mechanism of the Investigation required block, so the plan starts with it.
-
-1. Trace per round, on 3 `const` replicates at $L=10^3$, $\mu=3\cdot10^{-4}$ with `--clock-rate 3e-4 --max-iter 6`: the segment boundaries, $T_c(t)$ per segment, the expected lineage counts that the fit reads, and the root date (temporary `debug!` output in `fn round_models()`, removed after the trace)
-2. Repeat with the segment boundaries fixed after the first round (temporary change in `fn optimize_skyline()`), and with the lineage counts of the fit frozen as the prior's are, to tell which feedback drives the drift
-3. Fix the mechanism that the trace shows. Candidates: fix the segment boundaries after the first fit; fit the skyline on the same frozen lineage counts as the prior (`kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md`). A change of the skyline estimator is a scientific choice and needs user approval and a `kb/decisions/` entry
-4. Tests: a regression test in `packages/treetime/src/coalescent/__tests__/` on a small simulated tree from `treetime-simulation` (constant $T_c$, low signal, fixed seed) asserting that $T_c$ after six rounds lies no further from the true value than after two (oracle: the known simulated $T_c$); add it to the slow tier (`test_sim_`) when it needs replicates
-5. Validation: the Validation section above, plus `just check` and `just test-rs`

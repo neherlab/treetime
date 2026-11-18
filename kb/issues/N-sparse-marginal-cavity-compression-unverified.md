@@ -15,19 +15,10 @@ Let $\varepsilon$ denote a proposed probability threshold. A near-deterministic 
 
 ## Investigation required
 
+- Count, on the example datasets, the cavity profiles whose MAP state equals the fixed-row state and whose MAP probability exceeds `1 - 1e-6`, `1 - 1e-9` and `1 - 1e-12`, and the share of `msg_to_child.variable` entries that they make. Without a material share, compression gives no benefit.
 - Define a lossless equivalence criterion under the complete fixed-row representation, or derive an accumulated likelihood-error bound for approximate compression.
 - Compare every affected sparse message and branch-likelihood contribution with the dense representation.
 - Determine whether any approximate threshold can satisfy the project's numerical contract across repeated inference passes.
 - Obtain explicit approval before introducing a lossy threshold.
 
 Implementation waits until the representation criterion and numerical contract are decided.
-
-## Proposed implementation plan
-
-The cited location is current (`fn compute_msg_to_child()` at `forward.rs#L219`). The plan stops at the approval of a threshold.
-
-1. Measure first: count, on the example datasets, the cavity profiles whose MAP state equals the fixed-row state and whose MAP probability exceeds `1 - 1e-6`, `1 - 1e-9`, `1 - 1e-12`, and the share of `msg_to_child.variable` entries they make. Without a material share, close the issue
-2. Lossless option: demote a profile only when it equals the fixed row in every component within the round-off of its normalization (a few ulps). This needs no approval and keeps dense and sparse equal within `1e-10`
-3. Lossy option: derive the per-edge log-likelihood error of a demotion at threshold ε and its sum over sites and passes, and present it to the user for approval as a `kb/decisions/` entry before any code change
-
-Tests: dense versus sparse log-likelihood and posteriors on small trees, equal within `1e-10` for the lossless option. Oracle: dense inference. Validation: `just test-rs`, `just lint-rs`.

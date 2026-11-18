@@ -19,6 +19,6 @@ The cost grows with the number of candidate sites times the number of ranges. On
 ## Proposed implementation plan
 
 1. Check the producers of `gaps`, `non_char` and `child_no_data` (the Fitch compression and the sparse backward pass) for sorted, disjoint, half-open ranges; if a producer does not guarantee it, normalize there (the owner of the data), not in the lookup
-2. Replace the scan of `fn range_contains()` in `packages/treetime-utils/src/interval/range.rs` with a binary search (`partition_point` on the range starts, then a check of the end) on the sorted form, and keep `range_contains_iter()` only if a caller still needs an unsorted iterator
+2. Replace the scan of `fn range_contains()` in `packages/treetime-utils/src/interval/range.rs` with a binary search (`partition_point` on the range starts, then a check of the end) on the sorted form, and delete `range_contains_iter()`, whose only caller is `range_contains()`
 3. Tests in `packages/treetime-utils/src/interval/__tests__/`: an `rstest` table with positions before, at the start, inside, at the end (excluded) and after each range, and between ranges; a property test that the binary search matches the linear scan on random sorted disjoint ranges (oracle: the linear scan, an independent formula of membership)
 4. Validate: `just test-rs`; optimize outputs on `mpox/clade-ii/100` and `/500` with and without `--gamma-categories 4` are byte-identical before and after (`just smoke` cases or `just r`), and the host profile (`dev/profile`) no longer shows the lookup

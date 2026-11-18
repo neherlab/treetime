@@ -25,10 +25,8 @@ The `rust` branch has no root README and no user-facing page that says how to in
 
 ## Proposed implementation plan
 
-Step 2 waits for the investigation above (Electron 44 floors).
-
-1. **Installation page.** Add `docs/en/guide/install.md` and list it first in `docs/en/guide/meta.json`. One section per channel: web app (first, no installation, its limits: 4 GiB of WebAssembly memory, one browser tab), CLI download (asset per platform, checksum check, `PATH`), desktop app. Take the CPU baselines from `docs/en/development/releases.md` (lines 22-25) and the oldest operating systems from the target configuration of `dev/cross/targets` and `dev/lib/dist-flags.sh`; link to the developer guide as the source instead of copying the reasoning
-2. **Desktop floors.** After the investigation, state the macOS, Windows, and glibc minimums of Electron 44 with links to the Electron release notes and the Chromium platform support page
+1. **Desktop floors.** Resolve the investigation above: read the macOS, Windows, and glibc minimums of Electron 44 from the Electron release notes and the Chromium platform support pages
+2. **Installation page.** Add `docs/en/guide/install.md` and list it first in `docs/en/guide/meta.json`. One section per channel: web app (first, no installation, its limits: 4 GiB of WebAssembly memory, one browser tab), CLI download (asset per platform, checksum check, `PATH`), desktop app with the floors of step 1 and links to their sources. Take the CPU baselines from `docs/en/development/releases.md` (lines 22-25) and the oldest operating systems from the same page (lines 12-16: glibc 2.17, Windows 10, Windows 7 for the CLI only, macOS 10.12 x86_64 and 11.0 arm64), which `dev/cross/check` enforces; link to the developer guide as the source instead of copying the reasoning
 3. **Root README.** Add `README.md` with one paragraph about TreeTime v1, links to the web app, the installation page, and the docs site, and the license
 4. **German page.** Run the translation workflow for `docs/de/guide/install.md` (`just docs-i18n-status` shows the missing page)
 5. **Validate.** `just build-docs` (search index, page manifest, content security policy check) and `deslop` on the new pages. Oracle for each stated floor: the cited source file or upstream page

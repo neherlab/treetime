@@ -24,7 +24,7 @@ Release the uploads of the pending run when the form resets (or delete the unsta
 
 ## Proposed implementation plan
 
-All cited lines are current. `load()` of the draft store ([packages/app-ui/src/store/draft.ts#L31-L33](../../packages/app-ui/src/store/draft.ts#L31-L33)) also replaces the draft without a release, so a loaded config has the same gap.
+`load()` of the draft store ([packages/app-ui/src/store/draft.ts#L31-L33](../../packages/app-ui/src/store/draft.ts#L31-L33)) also replaces the draft without a release, so a loaded config has the same gap.
 
 1. Move the release of a pending run into the owner of the draft: give `reset()` and `load()` of `useDraftStore` (or one store action that both call) the old `upload_run_id`, and release every upload of that run through the same request that `release` in [packages/app-ui/src/analysis/useRunUploads.ts#L33](../../packages/app-ui/src/analysis/useRunUploads.ts#L33) sends, after the draft is replaced. Removing the whole unstarted run in one request is the better unit, if the API has such an operation; the implementer checks `packages/app-contracts/src/client.ts` and the routes of `packages/app-api` first
 2. Leave `releaseFromPendingRun()` unchanged: a late example-config upload to the old run then needs the same release, so the store records the released run id and releases a late upload to it at once
