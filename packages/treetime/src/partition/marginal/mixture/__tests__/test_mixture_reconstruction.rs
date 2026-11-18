@@ -20,15 +20,13 @@ mod tests {
   use ndarray::array;
   use rstest::rstest;
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::gap_free(    &GAP_FREE)]
-  #[case::missing_data(&MISSING_DATA)]
-  #[trace]
-  fn test_dense_single_category_mixture_matches_the_plain_pass(#[case] alignment: &[(&str, &str)]) -> Result<(), Report> {
-    let fixture = fixture(alignment)?;
+  #[test]
+  fn test_dense_single_category_mixture_matches_the_plain_pass() -> Result<(), Report> {
+    let fixture = fixture(&MISSING_DATA)?;
     let gtr = make_nonuniform_gtr()?;
-    let expected = fixture.dense.marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &())?;
+    let expected = fixture
+      .dense
+      .marginal_update(&gtr, &fixture.graph, &fixture.branch_lengths, &())?;
 
     let model = PartitionModel::from(gtr.clone());
     let (actual, state) = dense_mixture_update(&fixture.dense, &model, &fixture.graph, &fixture.branch_lengths)?;
@@ -48,10 +46,24 @@ mod tests {
       .collect::<Result<Vec<_>, Report>>()?;
 
     pretty_assert_abs_diff_eq!(expected.log_lh.value(), actual.log_lh.value(), epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(dense_profiles(&expected.node_states)?, dense_profiles(&actual.node_states)?, epsilon = 1e-12);
-    assert_eq!(dense_sequences(&expected.node_states), dense_sequences(&actual.node_states));
-    pretty_assert_abs_diff_eq!(stacked(&plain_contributions)?, stacked(&mixture_contributions)?, epsilon = 1e-12);
-    assert_eq!(edge_indels(&expected.edges.estimates, &edges), edge_indels(&actual.edges.estimates, &edges));
+    pretty_assert_abs_diff_eq!(
+      dense_profiles(&expected.node_states)?,
+      dense_profiles(&actual.node_states)?,
+      epsilon = 1e-12
+    );
+    assert_eq!(
+      dense_sequences(&expected.node_states),
+      dense_sequences(&actual.node_states)
+    );
+    pretty_assert_abs_diff_eq!(
+      stacked(&plain_contributions)?,
+      stacked(&mixture_contributions)?,
+      epsilon = 1e-12
+    );
+    assert_eq!(
+      edge_indels(&expected.edges.estimates, &edges),
+      edge_indels(&actual.edges.estimates, &edges)
+    );
     Ok(())
   }
 

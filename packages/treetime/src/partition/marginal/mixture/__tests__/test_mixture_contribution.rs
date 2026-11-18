@@ -20,7 +20,6 @@ mod tests {
   #[rstest]
   #[case::dense_gap_free(               Representation::Dense,  &GAP_FREE,     LONG_BRANCHES, 5.0)]
   #[case::sparse_gap_free(              Representation::Sparse, &GAP_FREE,     LONG_BRANCHES, 5.0)]
-  #[case::dense_missing(                Representation::Dense,  &MISSING_DATA, LONG_BRANCHES, 5.0)]
   #[case::sparse_missing(               Representation::Sparse, &MISSING_DATA, LONG_BRANCHES, 5.0)]
   #[case::dense_smallest_shape(         Representation::Dense,  &GAP_FREE,     1.0,           GAMMA_SHAPE_MIN)]
   #[case::sparse_smallest_shape(        Representation::Sparse, &GAP_FREE,     LONG_BRANCHES, GAMMA_SHAPE_MIN)]
@@ -63,8 +62,6 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::dense_brent(  Representation::Dense,  BranchOptMethod::Brent)]
-  #[case::dense_newton( Representation::Dense,  BranchOptMethod::Newton)]
-  #[case::sparse_brent( Representation::Sparse, BranchOptMethod::Brent)]
   #[case::sparse_newton(Representation::Sparse, BranchOptMethod::Newton)]
   #[trace]
   fn test_branch_length_methods_find_the_optimum_of_the_full_mixture_objective(

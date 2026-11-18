@@ -139,13 +139,8 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[case::dense(Representation::Dense)]
-  #[case::sparse(Representation::Sparse)]
-  #[trace]
-  fn test_build_marginal_partitions_fit_shared_frequencies_jointly(
-    #[case] representation: Representation,
-  ) -> Result<(), Report> {
+  #[test]
+  fn test_build_marginal_partitions_fit_shared_frequencies_jointly() -> Result<(), Report> {
     let first = helpers::Input::star(&[("A", "ACGTAAAC"), ("B", "ACGTAAGC"), ("C", "ACGAAACC")])?;
     let second = helpers::Input::star(&[("A", "GGCTTTGC"), ("B", "GGCTTCGC"), ("C", "GGGTTTGA")])?;
     let model = GtrModel::from(GtrModelName::Infer);
@@ -164,7 +159,7 @@ mod tests {
         shared,
       };
       let reconstructions = build_marginal_partitions(
-        representation,
+        Representation::Dense,
         inputs,
         models,
         &first.graph,

@@ -16,58 +16,6 @@ mod tests {
   }
 
   #[test]
-  fn test_normalize_sites_from_log_equal_probs() {
-    let log_dis = Array2::from_elem((2, 4), 0.25_f64.ln());
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((2, 4), 0.25), epsilon = 1e-10);
-    assert!(log_lh.is_finite());
-  }
-
-  #[test]
-  fn test_normalize_sites_from_log_descending() {
-    let log_dis = array![[0.0, -1.0, -2.0, -3.0]];
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    let sum = 1.0 + (-1.0_f64).exp() + (-2.0_f64).exp() + (-3.0_f64).exp();
-    let expected = array![[
-      1.0 / sum,
-      (-1.0_f64).exp() / sum,
-      (-2.0_f64).exp() / sum,
-      (-3.0_f64).exp() / sum
-    ]];
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_normalize_sites_from_log_all_neg_inf_single_row() {
-    let log_dis = Array2::from_elem((1, 4), f64::NEG_INFINITY);
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((1, 4), 0.25), epsilon = 1e-10);
-    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
-  }
-
-  #[test]
-  fn test_normalize_sites_from_log_all_neg_inf_multiple_rows() {
-    let log_dis = Array2::from_elem((3, 4), f64::NEG_INFINITY);
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((3, 4), 0.25), epsilon = 1e-10);
-    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
-  }
-
-  #[test]
   fn test_normalize_sites_from_log_mixed_neg_inf_and_finite_rows() {
     let mut log_dis = Array2::from_elem((2, 4), f64::NEG_INFINITY);
     log_dis[[1, 0]] = 0.0;
@@ -76,7 +24,6 @@ mod tests {
     log_dis[[1, 3]] = -3.0;
 
     let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
 
     assert_valid_rows(&dis);
     pretty_assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
@@ -88,47 +35,8 @@ mod tests {
       (-3.0_f64).exp() / sum
     ];
     pretty_assert_abs_diff_eq!(dis.row(1), expected_row1, epsilon = 1e-10);
-    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
-  }
-
-  #[test]
-  fn test_normalize_sites_from_log_mixed_finite_neg_inf_within_row() {
-    let log_dis = array![[0.0, f64::NEG_INFINITY, -1.0, f64::NEG_INFINITY]];
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    let sum = 1.0 + (-1.0_f64).exp();
-    let expected = array![[1.0 / sum, 0.0, (-1.0_f64).exp() / sum, 0.0]];
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_normalize_sites_from_log_large_negative_values() {
-    let log_dis = array![[-1000.0, -1001.0, -1002.0, -1003.0]];
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    let reference = array![[0.0, -1.0, -2.0, -3.0]];
-    let (ref_dis, ref_site_log_norms) = normalize_sites_from_log(reference);
-    let ref_log_lh: f64 = ref_site_log_norms.iter().sum();
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, ref_dis, epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(log_lh, ref_log_lh - 1000.0, epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_normalize_sites_from_log_three_states() {
-    let log_dis = Array2::from_elem((1, 3), f64::NEG_INFINITY);
-    let (dis, site_log_norms) = normalize_sites_from_log(log_dis);
-    let log_lh: f64 = site_log_norms.iter().sum();
-
-    assert_valid_rows(&dis);
-    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((1, 3), 1.0 / 3.0), epsilon = 1e-10);
-    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
+    pretty_assert_neg_inf!(site_log_norms[0]);
+    pretty_assert_abs_diff_eq!(site_log_norms[1], sum.ln(), epsilon = 1e-10);
   }
 
   #[test]

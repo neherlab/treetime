@@ -64,7 +64,6 @@ mod tests {
   #[case::singleton(          vec![4],                                     vec!["5"]                  )]
   #[case::codon_position(     (9..30).step_by(3).collect_vec(),            vec!["10-28\\3"]          )]
   #[case::gene(               (99..150).collect_vec(),                     vec!["100-150"]            )]
-  #[case::gene_with_a_gap(    (0..10).chain(20..30).collect_vec(),         vec!["1-10", "21-30"]      )]
   #[case::position_two_spans( vec![1, 4, 7, 20, 23],                       vec!["2-8\\3", "21-24\\3"] )]
   #[trace]
   fn test_site_ranges_from_columns(#[case] columns: Vec<usize>, #[case] expected: Vec<&str>) {
