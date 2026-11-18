@@ -22,6 +22,7 @@ use std::sync::Arc;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::{AsciiChar, AsciiTable, LogLh};
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -35,7 +36,7 @@ pub(crate) fn sparse_mixture_update(
   input: &NodeMap<SparseNodeState>,
 ) -> Result<(SparseMixtureUpdate, SparseMixtureState), Report> {
   require_site_scales(partition)?;
-  let root_key = graph.root_key()?;
+  let root_key = partition.inheritance.root(&GraphSchedule::new(graph)?)?;
   let mut categories = vec![];
   let mut site_log_lh = vec![];
   for gtr in model.category_gtrs()? {
@@ -101,7 +102,7 @@ pub(crate) fn sparse_mixture_log_lh(
   input: &NodeMap<SparseNodeState>,
 ) -> Result<LogLh, Report> {
   require_site_scales(partition)?;
-  let root_key = graph.root_key()?;
+  let root_key = partition.inheritance.root(&GraphSchedule::new(graph)?)?;
   let input = PartitionMarginalSparse::fresh_backward_input(input);
   let site_log_lh = model
     .category_gtrs()?
