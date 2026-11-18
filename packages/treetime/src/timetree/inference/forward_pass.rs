@@ -93,10 +93,10 @@ pub(crate) fn propagate_distributions_forward_on_graph<S: Send + Sync>(
   if !disjoint.is_empty() {
     progress_warn!(
       log,
-      "Timetree forward pass: {} node(s) with several parents received parent messages that leave no \
-       time with any probability together with their subtree, so each was dated from its subtree alone. \
-       The parents of such a node place it at incompatible times, for example a reassortant whose \
-       segment trees disagree on its age: {}",
+      "Timetree forward pass: {} node(s) with several parents received messages from their parents and \
+       their subtree that leave no time with any probability, so each took its time from its subtree alone, \
+       or stayed undated when nothing below it is dated. The parents place such a node at incompatible \
+       times, for example a reassortant whose segment trees disagree on its age: {}",
       disjoint.len(),
       disjoint.iter().join(", ")
     );
@@ -285,7 +285,7 @@ where
     };
     let empty = matches!(product, Distribution::Empty);
     let contradicted = empty && date_constraint.is_some();
-    let parents_disjoint = empty && !contradicted && !exact && !from_parents.is_empty();
+    let parents_disjoint = empty && date_constraint.is_none() && !from_parents.is_empty();
     let distribution = if empty {
       subtree
         .as_deref()

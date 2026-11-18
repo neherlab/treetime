@@ -1,25 +1,32 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::date_constraints::DateConstraints;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::optimize::indel::IndelTerm;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
-  use crate::test_utils::{full_posterior, point_date_constraints};
+  use crate::test_utils::{
+    RecordingLog, find_node_key_by_name, full_posterior, point_date_constraints, unknown_branches,
+  };
   use crate::timetree::inference::backward_pass::{BackwardInputs, ParentMessages};
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
-  use crate::timetree::inference::forward_pass::ForwardPassInputs;
-  use crate::timetree::inference::result::BranchLikelihood;
+  use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+  use crate::timetree::inference::grid_request::GridOrigin;
+  use crate::timetree::inference::result::{BranchLikelihood, NodeBackward};
   use crate::timetree::inference::runner::{GRID_POINTS, sweep_time_passes};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::Array2;
+  use pretty_assertions::assert_eq;
+  use smallvec::smallvec;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
   use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
-  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::key_map::{EdgeMap, NodeMap};
   use treetime_graph::merge_by_name::{MergedGraph, NamedTree, merge_trees_by_name};
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::TREE_DIALECT_DEFAULT;
@@ -83,6 +90,60 @@ mod tests {
       children[1] > 3.0 * all[1] && children[2] > 3.0 * all[2],
       "the parents without each other's message: {children:?} against {all:?}"
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_reassortment_passes_date_a_node_from_its_subtree_when_its_parents_leave_no_common_time() -> Result<(), Report>
+  {
+    let MergedGraph { graph, names, .. } = merge(&POLYTREE)?;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+    let mut backward: NodeMap<NodeBackward> = graph
+      .get_nodes()
+      .map(|node| (node.key(), NodeBackward::default()))
+      .collect();
+    for (name, time) in [("P1", 2000.0), ("P2", 2010.0), ("C", 2015.0)] {
+      backward.entry(key(name)).or_default().subtree = Some(Arc::new(Distribution::point(time, 0.0)));
+    }
+    let child = backward.entry(key("C")).or_default();
+    child.to_parents = smallvec![None, None];
+    child.to_parent_origins = smallvec![GridOrigin::default(), GridOrigin::default()];
+    let mut branches = unknown_branches(&graph);
+    for edge in graph.get_edges().filter(|edge| &names[edge.target()] == "C") {
+      let branch = BranchLikelihood {
+        distribution: Some(Arc::new(Distribution::point(1.0, 0.0))),
+        time_length: Some(1.0),
+      };
+      branches.insert(edge.key(), branch);
+    }
+    let constraints = DateConstraints::default();
+    let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
+    let fft_plans = FftPlans::new();
+    let inputs = ForwardPassInputs {
+      constraints: &constraints,
+      coalescent: None,
+      bad_branches: &bad_branches,
+      names: &names,
+      branches: &branches,
+      max_points: MaxGridPoints::default(),
+      fft_plans: &fft_plans,
+    };
+    let log = RecordingLog::default();
+
+    let posterior = propagate_distributions_forward(&graph, &inputs, backward, full_posterior, &log)?;
+
+    let expected_warnings = vec![
+      "Timetree forward pass: 1 node(s) with several parents received messages from their parents and their \
+       subtree that leave no time with any probability, so each took its time from its subtree alone, or stayed \
+       undated when nothing below it is dated. The parents place such a node at incompatible times, for example a \
+       reassortant whose segment trees disagree on its age: C"
+        .to_owned(),
+    ];
+    assert_eq!(expected_warnings, log.warnings());
+    let time = posterior[&key("C")]
+      .time
+      .ok_or_else(|| make_report!("node C has no time"))?;
+    pretty_assert_ulps_eq!(2015.0, time, max_ulps = 4);
     Ok(())
   }
 
@@ -231,8 +292,7 @@ mod tests {
         coefficients[[site, j]] = gtr.v()[[0, j]] * gtr.v_inv()[[j, child]];
       }
     }
-    let contribution =
-      OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let one_mutation = 1.0 / SITES.to_f64_exact();
     compute_branch_length_distribution(
       &[contribution],
