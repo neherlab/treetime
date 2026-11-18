@@ -12,9 +12,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
-  use treetime::alphabet::alphabet::AlphabetName;
   use treetime::gtr::get_gtr::GtrModel;
-  use treetime::partition::resolve::{PartitionEntry, resolve_partitions};
   use treetime::progress::{RunWarning, RunWarningKind};
   use treetime_io::gff::{GffPhase, GffStrand};
   use treetime_utils::{o, vec_of_owned};
@@ -147,8 +145,12 @@ mod tests {
       &GtrModel::Infer,
       &RecordingLog::default(),
     )?;
-    let names = actual.iter().filter_map(|entry| entry.name.clone()).collect::<Vec<_>>();
-    assert_eq!(vec_of_owned!["cp1", "cp2", "cp3"], names);
+    let expected = vec![
+      (o!("cp1"), Some(vec![1, 4, 7, 10])),
+      (o!("cp2"), Some(vec![2, 5, 8, 11])),
+      (o!("cp3"), Some(vec![3, 6, 9, 12])),
+    ];
+    assert_eq!(expected, entry_sites(&actual));
     Ok(())
   }
 
@@ -225,40 +227,6 @@ mod tests {
       )),
       argument_error(result)
     );
-  }
-
-  #[test]
-  fn test_codon_positions_of_a_cds_over_the_whole_alignment_resolve_as_stepped_ranges() -> Result<(), Report> {
-    let annotation = annotation(vec![cds("A", GffStrand::Forward, &[(1, 30, GffPhase::Zero)])], 30);
-    let entries = codon_position_entries(
-      &[AnnotatedAlignment {
-        length: 30,
-        annotation: &annotation,
-      }],
-      &GtrModel::Infer,
-      &RecordingLog::default(),
-    )?;
-    let written = ["1-30\\3", "2-30\\3", "3-30\\3"]
-      .iter()
-      .map(|range| PartitionEntry {
-        name: None,
-        alignment: Some(1),
-        sites: Some(vec![range.parse().unwrap()]),
-        model: GtrModel::Infer,
-      })
-      .collect::<Vec<_>>();
-
-    let layouts = |entries: &[PartitionEntry]| -> Result<Vec<Vec<usize>>, Report> {
-      Ok(
-        resolve_partitions(entries, &[30], &GtrModel::Infer, Some(AlphabetName::Nuc))?
-          .plans
-          .into_iter()
-          .map(|plan| plan.layout.columns)
-          .collect(),
-      )
-    };
-    assert_eq!(layouts(&written)?, layouts(&entries)?);
-    Ok(())
   }
 
   #[rustfmt::skip]

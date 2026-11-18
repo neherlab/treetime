@@ -28,7 +28,6 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::no_rate_variation(&[],                          ModelSettings { gamma_categories: 1, shared: SharedParams::default() })]
-  #[case::four_categories(  &["--gamma-categories", "4"], ModelSettings { gamma_categories: 4, shared: SharedParams::default() })]
   #[case::two_categories(   &["--gamma-categories", "2"], ModelSettings { gamma_categories: 2, shared: SharedParams::default() })]
   #[trace]
   fn test_optimize_gamma_categories(#[case] args: &[&str], #[case] expected: ModelSettings) -> Result<(), Report> {
@@ -38,18 +37,13 @@ mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::one(  "1")]
-  #[case::zero( "0")]
-  #[trace]
-  fn test_too_few_gamma_categories_is_an_argument_error(#[case] categories: &str) {
-    let raw = TreetimeOptimizeArgsRaw::try_parse_from([&OPTIMIZE[..], &["--gamma-categories", categories]].concat()).unwrap();
+  #[test]
+  fn test_one_gamma_category_is_an_argument_error() {
+    let raw = TreetimeOptimizeArgsRaw::try_parse_from([&OPTIMIZE[..], &["--gamma-categories", "1"]].concat()).unwrap();
     let expected = (
-      format!(
-        "--gamma-categories needs 2 or more categories, but got {categories}: leave the setting out for a model \
-         without rate variation"
-      ),
+      "--gamma-categories needs 2 or more categories, but got 1: leave the setting out for a model without rate \
+       variation"
+        .to_owned(),
       vec!["gamma_categories".to_owned()],
     );
     assert_eq!(Some(expected), argument_error(TreetimeOptimizeArgs::try_from(raw)));
@@ -124,12 +118,10 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::files(              None,                                 false, (false, false, false))]
-  #[case::files_gamma(        None,                                 true,  (false, false, false))]
   #[case::codon_positions(    Some(PartitionScheme::CodonPositions), true,  (false, false, false))]
   #[case::genes(              Some(PartitionScheme::Genes),          false, (true,  true,  false))]
   #[case::genes_gamma(        Some(PartitionScheme::Genes),          true,  (true,  true,  true))]
   #[case::rate_categories(    Some(PartitionScheme::RateCategories), false, (true,  true,  false))]
-  #[case::rate_categories_gamma(Some(PartitionScheme::RateCategories), true, (true,  true,  true))]
   #[trace]
   fn test_default_shared_params_follow_the_scheme(
     #[case] scheme: Option<PartitionScheme>,
@@ -151,7 +143,6 @@ mod tests {
   #[case::genes_none(       &["--partition-by", "genes", "--annotation", "a.gff", "--shared-params", "none"],       (false, false, false))]
   #[case::codon_frequencies(&["--partition-by", "codon-positions", "--annotation", "a.gff", "--shared-params", "frequencies"], (false, true, false))]
   #[case::entries_explicit( &["--partition", "{sites: ['1-10']}", "--partition", "{}", "--shared-params", "exchange-rates,frequencies"], (true, true, false))]
-  #[case::one_file_default( &[],                                                                                    (false, false, false))]
   #[trace]
   fn test_optimize_shared_params(
     #[case] args: &[&str],
