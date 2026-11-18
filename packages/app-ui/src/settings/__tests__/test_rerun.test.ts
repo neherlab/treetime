@@ -1,10 +1,6 @@
 import type { RunRecord } from "@neherlab/app-contracts";
 
-import { commandSettings } from "../catalog";
-import { defaultConfig } from "../config";
 import { rerunDraft } from "../rerun";
-
-const DEFAULT_CLOCK_CONFIG = defaultConfig(commandSettings("clock").settings);
 
 const RECORD: RunRecord = {
   id: "r1",
@@ -59,7 +55,7 @@ describe("edit and run again", () => {
   test("leaves a setting that the run left at its default to the default of the new draft", () => {
     const draft = rerunDraft({ ...RECORD, config: { ...RECORD.config, allow_negative_rate: true } });
 
-    expect(draft.config["allow_negative_rate"]).toStrictEqual(DEFAULT_CLOCK_CONFIG["allow_negative_rate"]);
+    expect(draft.config["allow_negative_rate"]).toBe(false);
   });
 
   test("the original record is not changed", () => {
