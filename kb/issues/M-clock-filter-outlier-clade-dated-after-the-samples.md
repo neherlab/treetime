@@ -63,3 +63,33 @@ the issue.
 On `data/sc2/4500` with `data/sc2/4500/timetree.yaml`, on `data/ebola/362` with default flags, and on
 `data/mpox/clade-ii/1000` with `--clock-rate=5.7e-05`, no tip lies outside its input date range and no internal node
 lies after the latest sample, both with `--prune-filtered-tips` and with the default flags.
+
+> [!IMPORTANT]
+> **Decision required.** The default run follows v0, which ignores the date constraint of a bad branch. Any change of
+> the default dates differs from v0 and needs user approval. Options: (a) keep the v0 behavior and keep only the
+> `dates-outside-input-dates` warning; (b) make `--prune-filtered-tips` the default for `timetree` and `clock`, as augur
+> refine does; (c) keep the flagged tips but apply their input date as a soft constraint (a date range widened by the
+> clock-filter residual) in both time passes, so no flagged node is dated from the clock alone.
+
+## Proposed implementation plan
+
+The current code matches the description: `fn bad_leaves()` and `fn applied_date_constraint()` in
+`packages/treetime/src/timetree/inference/bad_branches.rs`, used by `forward_pass.rs` and `backward_pass.rs` of the same
+directory; `fn dates_outside_input_dates()` in `packages/treetime/src/timetree/dates_outside_input.rs`; pruning in
+`fn prune_tips()` of `packages/treetime/src/timetree/pipeline.rs` and `packages/treetime/src/clock/prune_tips.rs`,
+behind `prune_filtered_tips` of `packages/app-commands/src/commands/shared/clock_filter.rs` (default off).
+
+1. Get the user's choice of the decision above, and record an approved divergence from v0 in `kb/decisions/`
+2. Option (a): no code change; delete this issue after a note in the `--help` text of `--clock-filter` that flagged tips
+   keep only clock dates unless `--prune-filtered-tips` is given
+3. Option (b): change the default of `prune_filtered_tips` (with a negation flag, per the clap rules) in
+   `clock_filter.rs`, update `packages/app-cli/src/cli/v0_args.rs` only if a v0 spelling changes meaning, run
+   `just gen` for the schemas, and update `test_dependent_settings.rs` and `test_pipeline_prune.rs`
+4. Option (c): extend `fn applied_date_constraint()` to return a widened constraint for a bad branch instead of none,
+   with the width taken from the clock-filter residual; both passes read it unchanged
+5. Tests: a unit test in `packages/treetime/src/timetree/inference/__tests__/` on a small hand-made tree with one
+   flagged clade, asserting that no internal node is dated after the latest sample (oracle: the definition of the
+   input date range); for option (c) also an exact-date flagged tip whose posterior lies within the widened range
+   (oracle: manual calculation of the constrained posterior on the small tree)
+6. Validation: the runs of the Validation section above with `just r treetime ...`, checking that the
+   `dates-outside-input-dates` warning is absent; `just check`, `just test-rs`, and `just generated-check` for option (b)

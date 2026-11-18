@@ -35,3 +35,13 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 ## Related issues
 
 - [N-coalescent-time-scale-coordinate-not-type-enforced.md](N-coalescent-time-scale-coordinate-not-type-enforced.md)
+
+## Proposed implementation plan
+
+The cited signatures are current (`clock_deviation()` is a trait method with two implementations at `clock_model.rs` L185 and L208; `GTR::evolve()` is `pub(crate)`), and no unit newtype exists in the workspace.
+
+1. Audit: list every function in `packages/treetime/src/{clock,timetree,coalescent,optimize,gtr}` and `packages/app-commands/src/commands/` that takes or returns two or more `f64` values of different units, and every point where branch lengths change from subs/site to years. Record the list in this issue
+2. Add newtypes with `derive_more` (`From`, `Into`, arithmetic derives where the unit allows it) in `packages/treetime-primitives`: `SubsPerSite`, `NumericDate` (the glossary term for calendar dates as `YYYY.F`), `Years` (durations), and `SubsPerSitePerYear`. Give them `serde(transparent)` so no output format changes
+3. Apply them first at the high-risk boundaries the audit finds, starting with `ClockLine::clock_deviation(date: NumericDate, div: SubsPerSite)` and the subs/site-to-years conversion of the clock model, then the Tc coordinate of [N-coalescent-time-scale-coordinate-not-type-enforced.md](N-coalescent-time-scale-coordinate-not-type-enforced.md). Keep `ndarray` hot loops on `f64`, and convert at function entry
+4. Tests: none for the newtypes themselves (the type checker covers them); existing tests must pass unchanged, which proves the change keeps behavior
+5. Validate: `just lint-rs`, `just test-rs`, `just smoke` (no output may change)

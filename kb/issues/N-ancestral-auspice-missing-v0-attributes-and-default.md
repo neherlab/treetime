@@ -43,3 +43,19 @@ O1 adds the `bad_branch` filter, which then becomes the default coloring in plac
 
 - [N-io-auspice-output-missing-augur-golden-master.md](N-io-auspice-output-missing-augur-golden-master.md) - golden master of the whole Auspice document
 - [kb/reports/augur-node-data-json.md](../reports/augur-node-data-json.md) - node data JSON shares the same data sources (partition mutations, annotations)
+
+## Proposed implementation plan
+
+The payload (A2) stays open; the default-output step needs no payload answer.
+
+1. **Default output** (both options): change the `ancestral` entry of `OutputSelection::Auspice` in `fn CommandKind.outputs()` [packages/app-output/src/command_outputs.rs#L47](../../packages/app-output/src/command_outputs.rs#L47) from `DefaultRule::OnRequest` to `DefaultRule::Default`, as v0 always writes `auspice_tree.json`. Update the `--help` text and docs that list the default outputs, then `just gen`
+2. **O1**:
+   - `confidence`: compute the v0 pseudo-bootstrap value from the number of mutations per branch, with the formula of `def create_auspice_json()` [packages/legacy/treetime/treetime/CLI_io.py#L277-L341](../../packages/legacy/treetime/treetime/CLI_io.py#L277-L341), as a new node attribute in `fn auspice_tree()` [packages/app-output/src/auspice.rs#L32](../../packages/app-output/src/auspice.rs#L32). The field must not collide with the date `confidence` of `num_date` (line 252) or the trait confidence (line 344)
+   - `bad_branch`: write `No` for every node when the graph has no dates ([packages/app-output/src/auspice.rs#L254-L257](../../packages/app-output/src/auspice.rs#L254-L257)), and check the coloring order of `fn genotype_color_by()` (line 148) against v0
+3. **O2**: write a `kb/decisions/` entry after approval and keep the code
+
+Tests (oracle: v0 `treetime ancestral` output on the same input):
+
+- Unit test in `packages/app-output/src/__tests__/` for the confidence value on a small tree with known mutation counts, expected values computed by hand from the v0 formula
+- Default-output test: `CommandKind::Ancestral.default_outputs()` contains `OutputSelection::Auspice`
+- Validation run: Fitch, sparse marginal, and dense marginal `just r treetime ancestral --output-all` on `flu/h3n2/20`; compare `div`, mutations, `confidence`, and `bad_branch` with the v0 file. Then `just check`, `just test-rs`, `just generated-check`

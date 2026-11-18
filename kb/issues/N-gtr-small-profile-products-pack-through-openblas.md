@@ -34,3 +34,18 @@ Compute products with a small s without OpenBLAS, so that no packing copy, buffe
 > - Change the dispatch rule of ndarray upstream, for example to use BLAS only when the smallest dimension is above the cutoff
 >
 > Measure the chosen option before and after on the three runs above, at 1 and 20 threads, on the same host.
+
+## Proposed implementation plan
+
+The cited products are at the cited lines, and the workspace pins `ndarray = "=0.17.2"` with the `blas` feature. The measurements come from earlier runs and were not measured again on the current code. The plan stops at the open decision; one short plan per option:
+
+1. Measure the baseline first: `just profile` (host, `dev/profile`) on the three runs of the table, at 1 and 20 threads, same host and quiet window.
+2. Per option, change only the four call sites (`fn GTR.evolve()`, `fn GTR.propagate_profile()`, `fn in_eigenbasis()`, `fn get_coefficients()`), through one shared helper in `treetime-utils` (for example `fn small_dot()`) so the choice has one owner:
+   - **matrixmultiply**: add it as a direct workspace dependency (`dependencies.instructions.md`, `supply-chain` vetting), add it to the "Tech stack" rule, and call `matrixmultiply::dgemm` on the raw views in the helper
+   - **Fixed-s kernel**: an ndarray-view kernel for the profile-by-s-by-s product, with s from the matrix shape
+   - **Upstream ndarray**: propose the dispatch change to ndarray; the code here changes only after a release and a version bump
+3. Measure again on the same runs and record before and after in the commit message.
+
+Tests: property test of the helper against `Array2::dot` for random L-by-s and s-by-s inputs (s in 4, 5, 20, 21), within 4 ulps per entry relative to the row scale (oracle: ndarray `dot` on OpenBLAS). The existing GTR and marginal tests cover the call sites.
+
+Validation: `just lint-rs`, `just test-rs`, and the profile comparison of step 3.

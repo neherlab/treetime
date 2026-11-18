@@ -23,3 +23,10 @@ A source build outside the project containers links the OpenBLAS of the system t
 ## Potential solutions
 
 - Run the source build once on each of these systems, correct the install commands of `packages/treetime-openblas/build.rs` and the section "Host" of `docs/en/development/setup.md` where they fail, and record the result here
+
+## Proposed implementation plan
+
+1. **CI job.** Add a workflow job `source-build` (in `.github/workflows/cli-compat.yml` or its own file) that builds `app-cli` with `cargo build --locked -p app-cli` outside the project container, with the install commands that `packages/treetime-openblas/build.rs` prints: `macos-15` (Homebrew `openblas pkgconf protobuf`, `PKG_CONFIG_PATH` as printed), `windows-2022` with MSYS2 UCRT64 (`msys2/setup-msys2`, the printed `pacman` packages and `protobuf`), `windows-2022` with conda-forge (`openblas pkg-config libprotobuf`), and FreeBSD in a VM action (`vmactions/freebsd-vm`, `pkg install openblas pkgconf protobuf rust`). Each job then runs `treetime debug` (must report the system OpenBLAS), `treetime --version`, and `treetime ancestral` on `data/flu/h3n2/20`
+2. **Record and fix.** For each system that fails, correct the install command in `packages/treetime-openblas/build.rs` and the section "Host" of `docs/en/development/setup.md` (line 31); for a link failure (LAPACK symbols, Fortran runtime, link name `openblas` vs `libopenblas`), fix the link logic in the build script. Replace the investigation block above with the result per system
+3. **Oracle.** The output of `ancestral` on `data/flu/h3n2/20` must equal the output of the Linux container build of the same commit (`dev/smoke` comparison rules of `cli-verification.instructions.md`)
+4. **Validate.** `just lint-workflows`; `just lint-rs` if `build.rs` changes

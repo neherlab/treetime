@@ -26,3 +26,11 @@ The Windows package of the desktop app (`treetime-desktop-x86_64-pc-windows-gnul
 
 - [packages/app-desktop/electron-builder.config.ts#L31-L33](../../packages/app-desktop/electron-builder.config.ts#L31-L33): `win.target`
 - `dev/desktop/package`, `dev/desktop/start-test`: the `zip` extension and the extraction of the Windows package
+
+## Proposed implementation plan
+
+The locations are current (`win.target: "zip"` at L31-L33; `ext="zip"` in `dev/desktop/package` L35-L36; `unzip` in `dev/desktop/start-test` L58). The Wine findings under Evidence were not rechecked. The plan stops at the open decision.
+
+- Wine toolset: when an electron-builder release ships a Linux Wine archive with the Windows DLLs, raise `toolsets.wine`, set `win.target: "nsis"` with `nsis.oneClick` and `perMachine: false`, change `ext` to `exe` in `dev/desktop/package`, and change `dev/desktop/start-test` to run the installer silently (`/S`) before it starts the app. Validate with a local Windows cross build and the start test
+- Windows runner: add a Windows CI job that builds the `nsis` target, keep `zip` for local builds, and make `dev/desktop/package` choose the target per host
+- Keep the zip: delete this issue and state the zip package in the desktop install page of `docs/en/`

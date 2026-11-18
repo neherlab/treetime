@@ -26,3 +26,13 @@ Raise `rust-toolchain.toml` to Rust 1.100 or later once it is at least seven day
 
 - Cargo added the setting as the unstable `-Zmin-publish-age` flag in [rust-lang/cargo#17012](https://github.com/rust-lang/cargo/pull/17012) and stabilized it for Rust 1.100 in [rust-lang/cargo#17335](https://github.com/rust-lang/cargo/pull/17335)
 - Cargo treats `RUSTC_BOOTSTRAP=1` as a development channel that allows unstable features (`src/cargo/core/features.rs`, `channel()`)
+
+## Proposed implementation plan
+
+The state is current: `rust-toolchain.toml` pins `1.99.1`, `.cargo/config.toml` has no `global-min-publish-age`, and `cargo_min_age` is defined at `justfile` L90 and used at L721 and L729. Whether Rust 1.100 is released and at least seven days old was not checked.
+
+1. When Rust 1.100 is at least seven days old, raise `channel` in `rust-toolchain.toml`, and update the toolchain of the container image and `.config/mise.toml` if they pin it separately
+2. Add `[registry] global-min-publish-age = "7 days"` to `.cargo/config.toml`
+3. Delete `cargo_min_age` from `justfile` and call plain `cargo update` in `deps-update` and `deps-upgrade`
+4. Keep `just deps-age` and `dev/crate-age` unchanged, because Cargo does not recheck versions already in `Cargo.lock`
+5. Validate: `just check`, `just test-rs`, and by hand a `just deps-update` that leaves `Cargo.lock` unchanged and prints no warning about the key; then reduce this issue to the gaps that remain (`cargo install` of mise tools, git patches) or delete it if they are accepted

@@ -21,3 +21,22 @@ v1 `timetree` accepts `--allow-negative-rate` and relaxes the positive-rate requ
 > - **Keep the flag** and record the deviation in a decision file: state the effect on the root searches and on the outlier filter of timetree, and why the relaxed root search serves timetree when the final check still rejects a non-positive rate
 >
 > Evidence: the v0 parser and calls above; the v1 calls above; the decision file, whose section "`--allow-negative-rate` in timetree" describes the v1 flag
+
+## Proposed implementation plan
+
+The work waits for the decision above. One plan per option:
+
+**Option: remove the flag from timetree**
+
+1. Split `allow_negative_rate` out of the shared clock filter arguments in `packages/app-commands/src/commands/shared/clock_filter.rs#L40-L48` into the `clock` command arguments only, so `timetree --help` no longer lists it.
+2. Remove `allow_negative_rate` from the timetree parameters and pass `true` as the positive-rate requirement in `fn estimate_initial_clock()` (`packages/treetime/src/timetree/pipeline.rs#L406`) and `fn reroot()` (`packages/treetime/src/timetree/pre_loop.rs#L248`); delete code that only served the relaxed path.
+3. Remove the section "`--allow-negative-rate` in timetree" from `kb/decisions/timetree-runs-no-time-inference-on-a-non-positive-clock-rate.md` (needs user consent, as it is a decision file), and add the spelling to `packages/app-cli/src/cli/v0_args.rs` only if v0 timetree accepted it (it did not, so no entry).
+4. Tests: a CLI parse test that `treetime timetree --allow-negative-rate` fails with clap's unknown-argument error (oracle: v0 timetree parser, `packages/legacy/treetime/treetime/argument_parser.py`); a timetree test on a dataset where the best root has a negative rate (the `data/dengue/100` scenario of `test_clock_dengue100.rs`) that asserts the same root as v0 (oracle: v0 `treetime` run on that dataset).
+5. Validate with `just check`, `just test-rs`, `just generated-check` (CLI arguments and schemas change), and `just smoke`.
+
+**Option: keep the flag**
+
+1. With user approval, write the deviation into a decision file: the effect on the initial clock estimate, on the pre-loop reroots, and on the outlier filter of timetree (`packages/treetime/src/timetree/pre_loop.rs#L44-L50`), and the reason.
+2. Update the `--help` text of the flag in `clock_filter.rs` to name the timetree effect on root search and outlier filter.
+3. Tests: a timetree test on the dengue/100 scenario that asserts that the flag changes the chosen root and that the final check still rejects a non-positive rate (oracle: the `clock` command with `--allow-negative-rate` on the same tree, which chooses the same root).
+4. Validate with `just check`, `just test-rs`, and `just generated-check`.

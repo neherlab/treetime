@@ -24,3 +24,12 @@ The reader has no stated contract for Auspice JSON that TreeTime did not write: 
 ## Validation
 
 - Whole-document tests of the reader with a non-map `confidence` and a numeric `value`, with the outcome that the decision selects
+
+## Proposed implementation plan
+
+`value` is a `String`, and `fn AuspiceTreeNodeAttr::state_confidence()` returns `Ok(None)` for a non-map `confidence`, at the cited lines. The plan stops at the open decision; one short plan per option:
+
+- **TreeTime outputs only**: in `fn state_confidence()`, return an error that names the JSON type for a present `confidence` that is not a map; keep `Ok(None)` only when the key is absent. Add a doc comment on the reader only if it feeds a schema (project comment rules). Tests in `packages/treetime-io/src/__tests__/`: rstest cases for absent, map, number, and string `confidence` with `assert_err!` messages (oracle: the stated contract).
+- **Foreign Auspice JSON**: read the shapes of `value`, `confidence`, and `entropy` from the Auspice v2 schema in `packages/app-output/src/__tests__/schemas/auspice/schema-export-v2.json`, change `value` to an enum of string and number, and type `confidence` (map for discrete, two-number interval for continuous) and `entropy`. Tests: whole-document reader tests on a small Auspice JSON written by Augur (oracle: the schema and the Augur output).
+
+Validation: `just lint-rs`, `just test-rs`.

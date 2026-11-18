@@ -30,3 +30,13 @@ Consolidate onto the canonical types:
 - Keep `numdate` / `num_date` only as external field names in the augur/Auspice JSON schema, which is an external contract and is not renamed.
 
 Nothing is shipped, so the renames and field changes are free.
+
+## Proposed implementation plan
+
+All four inconsistencies are current: neither `DateNumeric` nor `DateRangeNumeric` exists, and `TimeRange` (`branch_length_likelihood.rs` L317) and `SegmentInterval` (`coalescent.rs` L145) are still local.
+
+1. Add `DateNumeric` and `DateRangeNumeric` in a new file of `packages/treetime-utils/src/datetime/`, with `derive_more` for the newtype and `serde(transparent)` so serialized output stays a bare number; list them in `docs/en/development/utilities.md`
+2. Replace `DateExact` and the `f64` `DateRange` of `packages/treetime-primitives/src/date.rs` with the new types, then `TimeRange` and `SegmentInterval`; rename the whole-value functions of `year_fraction.rs` to numeric-date names and keep only fraction-part functions under the fraction name
+3. Rename the fields of the timestamp `DateRange` from `begin` to `start`
+4. Keep `numdate` / `num_date` as external field names in `packages/app-output` and `packages/treetime-io`
+5. Tests: no new behavior, so no new tests; existing tests must pass unchanged. Validate with `just lint-rs`, `just test-rs`, `just generated-check` (schemas may name the types), and `just smoke` (no output may change)

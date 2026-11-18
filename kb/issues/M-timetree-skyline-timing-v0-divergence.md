@@ -9,7 +9,7 @@ v0 and v1 apply the skyline coalescent prior at different points of the refineme
 
 ## v1 behavior
 
-- The init phase fits the skyline to the expected lineage counts of the Gaussian node marginals (`fn initialize()` [packages/treetime/src/timetree/init.rs#L72](../../packages/treetime/src/timetree/init.rs#L72)), and every loop round re-fits it before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L44](../../packages/treetime/src/timetree/refinement_loop.rs#L44)), from the expected lineage counts of the posteriors of the previous round ([packages/treetime/src/timetree/refinement_loop.rs#L50](../../packages/treetime/src/timetree/refinement_loop.rs#L50)), so every round uses a skyline prior
+- The init phase fits the skyline to the expected lineage counts of the Gaussian node marginals (`fn initialize()` [packages/treetime/src/timetree/init.rs#L27](../../packages/treetime/src/timetree/init.rs#L27), fit at [packages/treetime/src/timetree/init.rs#L72](../../packages/treetime/src/timetree/init.rs#L72)), and every loop round re-fits it before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L44](../../packages/treetime/src/timetree/refinement_loop.rs#L44)), from the expected lineage counts of the posteriors of the previous round ([packages/treetime/src/timetree/refinement_loop.rs#L50](../../packages/treetime/src/timetree/refinement_loop.rs#L50)), so every round uses a skyline prior
 - No skyline step runs after the loop
 - The early convergence exit applies in skyline mode as in every other mode (`fn TimetreeOptimizer::next_iter()` [packages/treetime/src/timetree/convergence/optimizer.rs#L35](../../packages/treetime/src/timetree/convergence/optimizer.rs#L35)), so a skyline run can stop before `max_iter` with a skyline fitted to times that v0 would have refined further
 
@@ -31,3 +31,13 @@ For datasets where the skyline shape deviates from a constant $T_c$, the interme
 - `kb/decisions/coalescent-skyline-convex-log-tc.md`
 - `kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md`
 - `kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md`
+
+## Proposed implementation plan
+
+The cited v1 locations are current: the skyline is fitted in `fn round_models()` before each round ([packages/treetime/src/timetree/refinement_loop.rs#L43-L44](../../packages/treetime/src/timetree/refinement_loop.rs#L43-L44)), and `fn TimetreeOptimizer::next_iter()` has no skyline case.
+
+1. Measure, as listed under Investigation needed: v0 and v1 on `data/flu/h3n2/200` and one more dataset with a varying population size (`data/dengue/500`), `--coalescent skyline`, same `--max-iter`; compare node times, the fitted skyline, and the iteration count. Repeat v1 with the early exit off to separate the two schedule effects
+2. Measure the stiffness factor alone: v1 with stiffness 4 against v0 with stiffness 2 on the same input, which removes the factor 2 of the penalty
+3. Present the measured differences to the team; each of the three differences (schedule, early exit, penalty factor) needs a user decision: match v0, or record an intentional change in [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md)
+4. For each "match v0" outcome: use a constant $T_c$ prior in `fn round_models()` for all rounds but the last; skip the early exit in `fn TimetreeOptimizer::next_iter()` in skyline mode; use $s \sum_i (z_{i+1} - z_i)^2$ in `fn skyline_cost()` with its gradient and Hessian in `solve_log_tc()`
+5. Tests: a unit test of `fn skyline_cost()` against a hand-computed penalty on three segments; a test that a skyline run performs `max_iter` rounds when the early exit is off; validate node times against v0 on the datasets of step 1 within the parity tolerance of the project

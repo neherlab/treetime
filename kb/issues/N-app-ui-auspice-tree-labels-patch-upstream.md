@@ -24,3 +24,10 @@ TreeTime fixes these in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`.
 ## Fix
 
 Contribute the changes to [nextstrain/auspice](https://github.com/nextstrain/auspice), then remove them from the patch after upgrading to an Auspice release that contains them. [N-app-ui-auspice-tree-unmount-patch-upstream.md](N-app-ui-auspice-tree-unmount-patch-upstream.md) describes how to edit the patch.
+
+## Proposed implementation plan
+
+1. Split the label hunks of `patches/auspice@3.2.0.patch` (in `layouts.ts`, `labels.js`, `grid.js`, `renderers.ts`, `change.ts`, `phyloTree.ts`, `types.ts`) into one pull request per problem on `nextstrain/auspice`: branch labels near the root, tip label margin, grid and axis labels, clock regression text. Auspice 3.2.0 (tag `v3.2.0`, commit `db211cc6`), the release that the patch targets, has all four problems, because the patch changes that code. Check each problem against upstream `master` before opening its pull request.
+2. Upstream tests per pull request: lay out a small tree with a fixed font measurement stub, and assert that the left margin covers the widest visible branch label (at most a quarter of the tree width), that the tip side margin equals the measured width of the widest visible tip label, and that each x-axis label lies inside the SVG width. Oracle: the label box must lie inside the SVG box.
+3. After an Auspice release contains a fix, upgrade `auspice` in `package.json`, regenerate the Bun patch without its hunks (procedure in [N-app-ui-auspice-tree-unmount-patch-upstream.md](N-app-ui-auspice-tree-unmount-patch-upstream.md)), and remove the problem from this issue; delete the issue after the last one.
+4. Validate: `just typecheck`, `just test-ts`, and the tree view in the rectangular, clock and scatter layouts at two widths, with a zoomed clade and filters: no label is cut at the edge of the SVG.

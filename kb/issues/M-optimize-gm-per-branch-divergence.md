@@ -6,7 +6,7 @@ The optimize golden-master fixture `packages/treetime/src/optimize/__tests__/__f
 
 ## Evidence
 
-`test_gm_optimize_per_branch` in [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L91](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L91) is `#[ignore]`'d with this issue path in the ignore reason. It runs Brent with `IndelPolicy::Include`. `./dev/docker/run just test-rs --run-ignored only test_gm_optimize_per_branch` reproduces the divergence. The test stops at the first divergent branch, so the full list of divergent branches is not known. CI checks only the summed length within 5% (`test_gm_optimize`, [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48)).
+`test_gm_optimize_per_branch` in [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L100](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L100) is `#[ignore]`'d with this issue path in the ignore reason. It runs Brent with `IndelPolicy::Include`. `./dev/docker/run just test-rs --run-ignored only test_gm_optimize_per_branch` reproduces the divergence. The test stops at the first divergent branch, so the full list of divergent branches is not known. CI checks only the summed length within 5% (`test_gm_optimize`, [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48)).
 
 ## Likely contributors
 
@@ -29,5 +29,5 @@ Measure the divergence again with the post-loop collapse in place. If branches s
 
 - [kb/decisions/command-prune-standalone.md](../decisions/command-prune-standalone.md) (v1 prune as a standalone command, not in the optimize loop)
 - [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs) (shared `collapse_edge()`)
-- `fn find_zero_optimal_internal_edges()` and `fn prune_and_merge_in_loop()` [packages/treetime/src/optimize/run_loop.rs#L312-L385](../../packages/treetime/src/optimize/run_loop.rs#L312-L385)
+- `fn find_zero_optimal_internal_edges()` and `fn prune_and_merge_in_loop()` [packages/treetime/src/optimize/run_loop.rs#L286-L302](../../packages/treetime/src/optimize/run_loop.rs#L286-L302)
 - `def prune_short_branches()` [packages/legacy/treetime/treetime/treeanc.py#L1475-L1495](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1495)

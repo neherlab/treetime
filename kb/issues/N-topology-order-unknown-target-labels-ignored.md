@@ -19,3 +19,13 @@ For the input order, unmatched keys are expected, because they belong to pruned 
 ## Related issues
 
 - [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md)
+
+## Proposed implementation plan
+
+The plan depends on the open decision. Common step: let `fn target_positions()` in `packages/app-commands/src/commands/shared/topology_order_args.rs` return the whole `NamePairing` (or `by_node` with `unmatched` and `duplicate_entry_names`) for the tree and list sources only; the input-order source keeps its node keys and needs no check.
+
+- **Ignore**: keep the behavior; add the command-level tests of "Test coverage gap" that assert it
+- **Warn**: emit one `RunWarning` per source that names the unmatched and the repeated names, in the style of `warn_duplicate_names()`. Tests: a list file and a reference tree with one unknown name and one repeated name; oracle: the hand-written input (the names it contains), and the run completes with the warning
+- **Reject**: return an input error that names the unmatched names; replace `topology_order_target_order_ignores_absent_ranking_labels` with a test of the error. Oracle: the hand-written input
+
+Validate with `just test-rs -E 'package(app-commands)'` and `-E 'package(treetime-graph)'`.

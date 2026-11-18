@@ -8,7 +8,7 @@ In the server and the desktop app, the files stay on disk until the run manager 
 
 - `reset()` of the draft store replaces the draft and clears the selections without releasing uploads [packages/app-ui/src/store/draft.ts#L84-L91](../../packages/app-ui/src/store/draft.ts#L84-L91)
 - The upload code releases an upload only while the draft still names its run: `releaseFromPendingRun()` returns when `upload_run_id` differs [packages/app-ui/src/analysis/useRunUploads.ts#L42-L49](../../packages/app-ui/src/analysis/useRunUploads.ts#L42-L49). An example config that is still loading when the user resets the form leaves its uploaded files in the old run for the same reason
-- `RunManager::open()` removes unstarted runs created more than `UNSTARTED_RUN_LIFETIME` (one day) before it opens [packages/app-backend/src/runs/manager.rs#L41](../../packages/app-backend/src/runs/manager.rs#L41), [#L56-L58](../../packages/app-backend/src/runs/manager.rs#L52-L58)
+- `RunManager::open()` removes unstarted runs created more than `UNSTARTED_RUN_LIFETIME` (one day) before it opens [packages/app-backend/src/runs/manager.rs#L41](../../packages/app-backend/src/runs/manager.rs#L41), [#L58](../../packages/app-backend/src/runs/manager.rs#L58)
 - web2 keeps runs in the memory of the tab: [kb/decisions/app-web2-wasm-worker-back-end.md](../decisions/app-web2-wasm-worker-back-end.md)
 
 > [!IMPORTANT]
@@ -21,3 +21,16 @@ Release the uploads of the pending run when the form resets (or delete the unsta
 ## Validation
 
 - A UI test resets a draft that holds uploads and checks that the back end receives a release of each upload of the old run
+
+## Proposed implementation plan
+
+All cited lines are current. `load()` of the draft store ([packages/app-ui/src/store/draft.ts#L31-L33](../../packages/app-ui/src/store/draft.ts#L31-L33)) also replaces the draft without a release, so a loaded config has the same gap.
+
+1. Move the release of a pending run into the owner of the draft: give `reset()` and `load()` of `useDraftStore` (or one store action that both call) the old `upload_run_id`, and release every upload of that run through the same request that `release` in [packages/app-ui/src/analysis/useRunUploads.ts#L33](../../packages/app-ui/src/analysis/useRunUploads.ts#L33) sends, after the draft is replaced. Removing the whole unstarted run in one request is the better unit, if the API has such an operation; the implementer checks `packages/app-contracts/src/client.ts` and the routes of `packages/app-api` first
+2. Leave `releaseFromPendingRun()` unchanged: a late example-config upload to the old run then needs the same release, so the store records the released run id and releases a late upload to it at once
+3. Tests: a store test in Node (`packages/app-ui/src/store/__tests__/`) with the back end mocked at the network boundary (MSW): reset and load of a draft with uploads each send one release of every upload of the old run. Oracle: the contract of the fix direction. See red: remove the release call
+4. The open investigation of the web2 memory stays separate; the fix frees the memory either way
+
+### Plan validation
+
+- `just typecheck`, `just lint-ts`, `just test-ts` pass

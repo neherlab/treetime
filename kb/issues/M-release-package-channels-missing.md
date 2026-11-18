@@ -19,3 +19,12 @@ TreeTime v1 ships as downloads from the nightly releases and as the nightly Dock
 ## Impact
 
 - Pipelines keep v0 until a channel they use carries v1.
+
+## Proposed implementation plan
+
+Each channel depends on the open decision above; the options are independent, so each gets its own short plan.
+
+- **bioconda**: after the source build works on macOS ([M-release-source-build-untested-outside-linux.md](M-release-source-build-untested-outside-linux.md)), write a `meta.yaml` recipe that builds the `treetime` binary from a release tarball with `cargo install` and the conda compilers, and submit it to `bioconda-recipes`. Name: a new package or the next major version of `treetime`, which belongs to the open decision. Validate with `bioconda-utils build` and a run of `treetime --version` in the test section
+- **PyPI wheel**: build platform wheels that carry the binary with `maturin` in `bin` mode (as `ruff` does), one per target of `dev/cross/targets`, and publish them from the release workflow with trusted publishing. Settle the `phylo-treetime` name first (new major version of the same project or a new project). Validate with `pip install` of the built wheel in a clean virtual environment on each runner of `compat-*` and a run of one command
+- **Homebrew and winget**: a tap formula that downloads the release asset and its checksum, updated by the release workflow; a winget manifest per release, submitted with `wingetcreate`. Validate with `brew install` and `brew test` of the formula, and `winget validate` of the manifest
+- **Docs**: list each new channel on the installation page ([M-release-install-docs-and-system-requirements-missing.md](M-release-install-docs-and-system-requirements-missing.md))

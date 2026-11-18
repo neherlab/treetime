@@ -17,3 +17,10 @@ Negligible. Interior optima are tested analytically for min-dev, and endpoint ha
 - Fixtures whose minimum-variance root lies on an existing node, with the expected node derived analytically
 - Fixtures with tied optima on several edges, with an explicit deterministic expectation
 - Any v0 comparison is labeled as regression coverage for [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md), not as a correctness oracle
+
+## Proposed implementation plan
+
+1. **Endpoint fixture.** In `packages/treetime/src/reroot/__tests__/test_date_free.rs`, add a tree whose minimum-variance root lies on an existing internal node (for example a balanced tree $((A{:}1,B{:}1){:}1,(C{:}1,D{:}1){:}1)$ with the root moved to a tip edge in the input); run `fn reroot_date_free()` with `RerootMethod::MinDev`, with and without edge split, and compare the whole rooted graph (clades and branch lengths). Oracle: the variance of the root-to-tip distances as a function of the root position, minimized by hand
+2. **Tie fixture.** A symmetric tree with equal optima on two edges; assert the root that the deterministic tie rule of the edge search selects, and state that rule in the test name. If the edge search has no deterministic tie rule, stop and report it as a defect
+3. **Helpers.** Reuse `setup_tip_past_optimum_graph()` and `reroot_at_fixed_rate()` of `test_driver.rs` (lines 394 and 403) as the pattern, at `RootObjective::FixedRate(0.0)`
+4. **Validate.** `just lint-rs`, `just test-rs`; see red by changing one expected branch length

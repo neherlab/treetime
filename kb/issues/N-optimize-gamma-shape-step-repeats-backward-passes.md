@@ -7,3 +7,13 @@ On `data/mpox/clade-ii/100` with K = 4, the sparse backward passes take 53% of t
 ## Validation
 
 - Optimize with `--gamma-categories 4` gives the same outputs, and the number of backward passes per iteration drops by K when the shape stays at a bound
+
+## Proposed implementation plan
+
+The shape step still discards its passes: the objective closure of `fn PartitionSet::estimate_gamma_shapes()` calls `mixture_log_lh()` and keeps only the log-likelihood, and `fn compute_iteration()` [packages/treetime/src/optimize/run_loop.rs#L244](../../packages/treetime/src/optimize/run_loop.rs#L244) then calls `PartitionSet::marginal_update()` [packages/treetime/src/partition/set.rs#L133](../../packages/treetime/src/partition/set.rs#L133), which runs the K backward passes again.
+
+1. Profile first (`just profile` on `data/mpox/clade-ii/100` with `--gamma-categories 4`) to confirm the 53% and 15% figures on the current code.
+2. Let the shape objective return the backward-pass state of each category together with its log-likelihood, and keep the state of the selected shape (the evaluation at the returned shape) in the result of `optimize_gamma_shape()`.
+3. Pass that state into the marginal update of the same iteration as a typed value that carries the shape, the branch-length map, and a topology identity, and let `marginal_update()` run the backward passes only when the key differs. A key mismatch must fall back to a full pass, never reuse the state.
+4. Tests: (a) the marginal update with the reused state gives the same profiles and log-likelihood as a fresh update, compared with `assert_ulps_eq!` (oracle: the fresh update on the same inputs, an independent code path for the forward results only when the reuse is a separate path); (b) a changed branch length or shape invalidates the state (the update result equals the fresh one).
+5. Validate with `just test-rs`, and compare `just r treetime optimize --gamma-categories 4` outputs on `data/zika/86` before and after (byte-equal outputs), plus a new profile that shows K fewer backward passes per iteration.

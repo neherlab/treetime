@@ -28,3 +28,13 @@ Adopt multiplicity-aware aggregation if it can be represented explicitly in both
 
 - [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md)
 - [M-sparse-marginal-zero-multiplicity-nan.md](M-sparse-marginal-zero-multiplicity-nan.md)
+
+## Proposed implementation plan
+
+The locations above are current. The plan forks at the open decision.
+
+1. Regression test first, in `packages/treetime/src/partition/marginal/shared/__tests__/test_marginal_shared.rs`: a node with two impossible child factors and one finite factor; removing one impossible child must stay `LogLh::IMPOSSIBLE` (oracle: hand calculation, the product of the remaining factors contains a zero). The existing case `test_marginal_shared_forward_log_lh_remove_child_cancels_matching_neg_infinity` asserts the single-factor cancel and stays valid only under O2 with count one
+2. O1: in the dense forward pass (`packages/treetime/src/partition/marginal/shared/pass.rs#L404`) and the sparse forward pass (`packages/treetime/src/partition/marginal/sparse/forward.rs#L247`), compute the cavity log likelihood as the sum of the other children's message log likelihoods plus the parent's incoming message, and delete `fn forward_log_lh_remove_child()`
+3. O2: replace the scalar `LogLh` of the node aggregate with a type that holds the finite sum and the count of impossible factors, built where the backward pass combines child messages; `fn forward_log_lh_remove_child()` decrements the count and returns `IMPOSSIBLE` while it stays positive. Use this type in both dense and sparse passes
+4. Under O2, add a property test on random factor lists with random impossible entries: removal of any factor equals the recomputation without it (oracle: O1 recomputation)
+5. Validate with `just lint-rs` and `just test-rs`; the marginal golden masters against v0 must not change, because no real input with positive branch lengths reaches the case

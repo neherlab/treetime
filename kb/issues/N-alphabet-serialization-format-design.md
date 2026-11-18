@@ -57,3 +57,27 @@ Format considerations:
 ## Impact
 
 Low priority. No alphabet is read from or written to a file. Blocking factor for any feature that reports alphabet information back to the user.
+
+## Proposed implementation plan
+
+The internal representation and the format stay open (Decision required above). Common steps first, then one short plan per representation option.
+
+Common steps:
+
+1. Define the user-facing schema: `canonical` as a list of one-character strings, `ambiguous` as a map from one character to a list of characters, `gap` and `unknown` as one character each. Derive `Serialize`, `Deserialize`, and `JsonSchema` on the schema type, so `just gen` writes its JSON schema into `packages/schemas`
+2. Validate at the boundary: every character is one ASCII byte, `gap` and `unknown` are not canonical, every ambiguity code maps to canonical characters only. The checks of `fn Alphabet::with_config()` (`packages/treetime/src/alphabet/alphabet.rs`) and `fn AlphabetConfig.create_profile_map()` (`packages/treetime/src/alphabet/alphabet_config.rs`) stay the single owner; the reader calls them and returns their errors with the file path in context
+3. Output: add the schema value of the alphabet in use to the structured output that the first consumer needs (run report or node-data JSON), at the place that writes that output
+4. Input: when a command needs custom alphabets, extend `--alphabet` in `packages/app-commands/src/commands/shared/alphabet.rs` to accept a file path besides the named alphabets (`nuc`, `aa`, `aa-no-stop`)
+
+Option plans:
+
+- **Keep `u8`, add adapters**: field-level `#[serde(with = ...)]` helpers on `struct AlphabetConfig` that read and write characters. Smallest change; the byte fields stay
+- **Change fields to `AsciiChar`**: change `canonical`, `ambiguous`, `unknown`, `gap` to `AsciiChar` types and update `fn Alphabet::with_config()` and `fn AlphabetConfig.create_profile_map()`. Serialization of `AsciiChar` as a one-character string then serves the schema directly
+- **Separate schema type**: a public schema struct with `String`/`char` fields and a parsing conversion into `AlphabetConfig`; `AlphabetConfig` stays internal
+
+Tests (in `packages/treetime/src/alphabet/__tests__/`):
+
+- Round-trip property test: schema value of each named alphabet, written and read again, builds an `Alphabet` equal to `Alphabet::new(name)` (oracle: the fixed configs in `fn Alphabet::new()`)
+- Unit tests with `indoc!` JSON for the `nuc` alphabet (oracle: the IUPAC nucleotide code table), and one `assert_err!` case per validation rule of step 2
+
+Validation: `just check`, `just test-rs`, `just generated-check` after `just gen`.

@@ -17,3 +17,14 @@
 
 - [kb/proposals/io-format-coverage.md](../proposals/io-format-coverage.md): ranking of format work
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md): PhyloXML background
+
+## Proposed implementation plan
+
+Wire or remove is open (Decision required above). One short plan per option.
+
+- Option "remove the crate": delete `packages/util-phyloxml`, its member line in `Cargo.toml`, and its workspace dependencies that no other crate uses; edit the PhyloXML paragraph of [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) and the row of [kb/proposals/io-format-coverage.md](../proposals/io-format-coverage.md); delete this issue. Validate: `just lint-rs`, `just test-rs`
+- Option "wire PhyloXML":
+  1. Add a converter between `Phyloxml` and the graph, names, and branch lengths in `packages/treetime-io/src/` beside `nwk.rs`, and select it by the `.xml`/`.phyloxml` extension in the tree input and tree output paths (`packages/app-output/src/tree_output.rs`)
+  2. Apply the two requirements above to the property reader
+  3. Tests: read a PhyloXML literal with `bad_branch` set to each of `true`, `false`, `1`, `0` and assert the whole parsed result; an invalid value gives an error that names the property `ref` (oracle: XML Schema `xs:boolean`); write and read back a tree and compare with the Newick result of the same tree
+  4. Validate: `just lint-rs`, `just test-rs`, `just generated-check`

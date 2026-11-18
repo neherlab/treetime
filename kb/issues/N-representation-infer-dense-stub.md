@@ -20,7 +20,7 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 ## Locations
 
 - Stub: `fn infer_dense()` [packages/treetime/src/partition/algo/infer_dense.rs#L1-L7](../../packages/treetime/src/partition/algo/infer_dense.rs#L1-L7)
-- Selector: `fn Representation::resolve()` [packages/treetime/src/partition/create.rs#L91-L97](../../packages/treetime/src/partition/create.rs#L91-L97)
+- Selector: `fn Representation::resolve()` [packages/treetime/src/partition/create.rs#L90-L96](../../packages/treetime/src/partition/create.rs#L90-L96)
 - Consumers:
   - ancestral, nucleotide [packages/treetime/src/ancestral/plan.rs#L42](../../packages/treetime/src/ancestral/plan.rs#L42)
   - ancestral, amino acid [packages/treetime/src/ancestral/aa.rs#L36](../../packages/treetime/src/ancestral/aa.rs#L36)
@@ -30,3 +30,13 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 ## Related decisions
 
 - [kb/decisions/sequence-representation-dense-sparse.md](../decisions/sequence-representation-dense-sparse.md)
+
+## Proposed implementation plan
+
+The plan depends on the open decision above; one short plan per option. `fn infer_dense()` also appears in `packages/treetime/src/ancestral/__tests__/test_plan.rs`.
+
+- **Option A, heuristic**: give `fn infer_dense()` the inputs it needs (sequence length per partition, the branch lengths of the input tree, or a Fitch mutation count per branch) and return dense when the expected mutations per branch relative to the sequence length exceed a threshold. The threshold is a scientific default and needs user approval and an update of `kb/decisions/sequence-representation-dense-sparse.md`. Change `fn Representation::resolve()` to take these inputs and update the four consumers. Tests: an `rstest` table in `packages/treetime/src/partition/algo/__tests__/` with trees just below, at, and above the threshold; oracle: the hand calculation of the criterion from the approved threshold
+- **Option B, remove the selector**: delete `infer_dense.rs` and its declaration in `packages/treetime/src/partition/algo/mod.rs`, replace `Option<bool>` with the `Representation` enum in the CLI params (default `Sparse` through `#[default]`), drop `auto` from `--representation`, and update the consumers and `test_plan.rs`. Run `just gen` for the schemas
+- **Option C, dense for small inputs**: as option A, with the criterion "number of sites times number of nodes below a limit"; the limit needs approval like the threshold of option A
+
+Validate with `just lint-rs`, `just test-rs`, `just generated-check` when CLI arguments change, and `just smoke` because the default representation changes outputs.

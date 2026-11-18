@@ -16,3 +16,15 @@ The per-sample difference lists map directly onto sparse partitions, so a reader
 
 - [kb/proposals/io-format-coverage.md](../proposals/io-format-coverage.md): ranking of format work
 - [N-io-large-dataset-memory-constraint.md](N-io-large-dataset-memory-constraint.md): dense alignments increase peak memory
+
+## Proposed implementation plan
+
+The two scope choices above are open. Steps 1, 2, and 4 hold for every option; step 3 has one variant per dense-mode option.
+
+1. Reader: add `packages/treetime-io/src/maple.rs` with a function that parses the `>REF` block and the per-sample difference lines (type, 1-based position, optional length) into a reference sequence plus a per-sample list of differences, with errors that name the line. Grammar oracle: CMAPLE `alignment/alignment.h` and its reader at the pinned revision above, cloned into `.repos/cmaple/`
+2. Format selection: let `fn read_sequence_source()` (`packages/app-commands/src/commands/shared/sequence_inputs.rs`) pick the MAPLE reader by content (a first record named `REF` followed by difference lines) or by extension, beside `fasta_read_file`
+3. Dense mode:
+   - Expand: rebuild each sample's full sequence from the reference and its differences, then reuse the FASTA path unchanged
+   - Reject: return an error that names sparse mode when a MAPLE file reaches a dense partition
+4. Tests in `packages/treetime-io/src/__tests__/test_maple.rs`: a small MAPLE literal and the FASTA it encodes; the expanded sequences equal the FASTA records (oracle: the hand-written FASTA, cross-checked with IQ-TREE 3 conversion of the same file). Command-level check: sparse ancestral on a MAPLE file and on the equivalent FASTA give the same output
+5. Validate: `just lint-rs`, `just test-rs`, and `just generated-check` when a CLI flag or schema changes

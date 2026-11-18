@@ -15,3 +15,16 @@ Use Rust casing for public identifiers: `Gtr...` for types and snake case for fu
 - Semantic rename covers imports, trait methods, generated documentation, tests, and CLI/schema references.
 - Search confirms the old identifier family is absent outside citations to v0 or external formulas.
 - Numerical GTR tests prove the change is behavior-preserving.
+
+## Proposed implementation plan
+
+All cited identifiers exist at the cited lines. `expQt` and `expQt_with_rate` are `pub(crate)`, the other identifiers are `pub`. `struct GTR` appears in 82 Rust files; the `*Params` family in `packages/treetime/src/gtr/get_gtr.rs` is `JC69Params`, `K80Params`, `F81Params`, `HKY85Params`, `T92Params`, `Jtt92Params`, `TN93Params`.
+
+1. Rename `struct GTR` to `Gtr` in `packages/treetime/src/gtr/gtr.rs` and every use (rust-analyzer rename or `rg -l '\bGTR\b' packages --type rust` plus `sed -i 's/\bGTR\b/Gtr/g'`, then review the diff for string literals and doc text that name the model, which keep `GTR`).
+2. Rename `fn GTR.expQt()` to `exp_qt()` and `fn GTR.expQt_with_rate()` to `exp_qt_with_rate()`. The workspace sets `non_snake_case = "allow"` in `Cargo.toml`, so the compiler does not flag the old names; keep or tighten that setting in a separate change.
+3. Rename the parameter structs to `Jc69Params`, `K80Params`, `F81Params`, `Hky85Params`, `T92Params`, `Jtt92Params`, `Tn93Params`. Keep the serialized names (`jc69`, `hky85`, `tn93`) unchanged: check the `#[deser(rename = ...)]` and `#[schemars(...)]` attributes, so that config files and `packages/schemas` stay the same.
+4. Search for the old family in docs and generated files: `rg '\bGTR\b|expQt|JC69Params|HKY85Params|TN93Params' packages docs dev`. Keep `GTR` in prose, CLI help text, and citations of v0.
+
+Tests: no new tests (behavior-preserving rename). Oracle: the existing GTR unit and golden master tests in `packages/treetime/src/gtr/__tests__/`.
+
+Validation: `just lint-rs`, `just test-rs`, `just generated-check` (schema text must not change), and the search of step 4 returns only prose and v0 citations.

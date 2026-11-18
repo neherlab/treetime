@@ -13,7 +13,7 @@ v0 `timetree` samples the root sequence from its posterior in every ancestral re
 
 ## What v1 does
 
-v1 `timetree` writes the sequences and mutations of the marginal reconstruction with the most likely state at every node (`fn final_partition_results()` [packages/treetime/src/timetree/pipeline.rs#L765](../../packages/treetime/src/timetree/pipeline.rs#L765) calls `fn stream_alignment_sequences()`, which reaches `fn stream_sequences()` of `enum ReconstructionRef` [packages/treetime/src/partition/marginal/reconstruction.rs#L116](../../packages/treetime/src/partition/marginal/reconstruction.rs#L116)). Sampling from the posterior exists only in the `ancestral` command (`--sample-from-profile`). [kb/decisions/ancestral-sample-mode-default-argmax.md](../decisions/ancestral-sample-mode-default-argmax.md) approves the most-likely-state default for `ancestral` only.
+v1 `timetree` writes the sequences and mutations of the marginal reconstruction with the most likely state at every node (`fn final_partition_results()` [packages/treetime/src/timetree/pipeline.rs#L708](../../packages/treetime/src/timetree/pipeline.rs#L708) calls `fn stream_alignment_sequences()` [packages/treetime/src/partition/alignment_sequences.rs#L18](../../packages/treetime/src/partition/alignment_sequences.rs#L18), which reaches `fn stream_sequences()` of `enum ReconstructionRef` [packages/treetime/src/partition/marginal/reconstruction.rs#L116](../../packages/treetime/src/partition/marginal/reconstruction.rs#L116)). Sampling from the posterior exists only in the `ancestral` command (`--sample-from-profile`). [kb/decisions/ancestral-sample-mode-default-argmax.md](../decisions/ancestral-sample-mode-default-argmax.md) approves the most-likely-state default for `ancestral` only.
 
 ## Impact
 
@@ -30,3 +30,16 @@ v1 `timetree` writes the sequences and mutations of the marginal reconstruction 
 ## Related issues
 
 - v0 `clock` reaches the same root sampling through `TreeTime.run()` when it uses the alignment; v1 `clock` reads no alignment
+
+> [!IMPORTANT]
+> **Decision required.** The team must choose one of the potential solutions above: approve the most likely root state for `timetree`, match v0 by sampling the root, or add an option with the most likely state as the default.
+
+## Proposed implementation plan
+
+- **Approve the most likely root state**: extend [kb/decisions/ancestral-sample-mode-default-argmax.md](../decisions/ancestral-sample-mode-default-argmax.md) to cover `timetree` and `clock`, with user approval; no code change
+- **Sample the root (default or option)**:
+  1. Add a root-sampling mode to the marginal reconstruction in `packages/treetime/src/partition/marginal/reconstruction.rs` that draws the root state of each column by inverse CDF from the root profile, and reuse the sampling of the `ancestral` command (`--sample-from-profile`, `packages/treetime/src/ancestral/`) instead of a second implementation
+  2. Pass the generator from `get_random_number_generator()` with the seed of `SeedArgs::resolve()` into every reconstruction of the `timetree` run, and make `SeedArgs::resolve()` count root sampling as a random step when an alignment is present
+  3. For the option variant, add the flag to the `timetree` arguments and run `just gen` for the schemas
+  4. Tests: a unit test on a two-leaf tree with an analytical root posterior (product of the two branch propagators and the root frequencies) that checks the frequency of each sampled root state over many seeds against the posterior with a binomial bound; a test that two runs with the same `--seed` write the same sequences
+  5. Validate against v0 with `--rng-seed` only by distribution: the share of runs per root state at a column with no dominant state, because the generators differ

@@ -16,3 +16,12 @@ The runtime behavior is therefore explicit. What remains unresolved is whether c
 ## Recommendation
 
 Use O1 for inference and require an explicit, separately approved extrapolation policy for presentation or downstream prediction.
+
+## Proposed implementation plan
+
+The locations are current: `fn build_tc_distribution()` at `skyline.rs` L298, `fn segment_index()` at L310 (clamps to the first or last segment), and the `PiecewiseConstantFn` schedule at L63-L66. The plan depends on the open decision; record the approved option in `kb/decisions/coalescent-skyline-convex-log-tc.md` or a new decision file.
+
+- **O1**: make `fn segment_index()` return an error for $t$ outside the segment span, and propagate it through the $T_c$ formula and the `PiecewiseConstantFn` schedule. First list every caller that evaluates $T_c$ outside the span (the survival tails of the lineage expectation, see `M-coalescent-lineage-grid-extends-past-the-latest-sample-with-undated-tips.md`), because each must then clip to the span or fail. Tests: evaluation at a time before the first and after the last boundary returns the exact error (`assert_err!`); evaluation inside returns the segment value (oracle: the fitted segment values)
+- **O2**: keep the clamping; add a field to the coalescent output (`--output-coalescent`) that states the inferred span and that values outside it are constant extrapolations; run `just gen` for the schemas. Tests: a snapshot of the coalescent output on a small tree that shows the span field (oracle: the segment boundaries of the fit)
+- **O3**: extrapolate $\log T_c$ with the slope of the terminal segment pair, bounded by a limit that the decision sets. Tests: values at times outside the span follow the line through the two terminal segment midpoints (oracle: manual calculation)
+- Validation for every option: `just check`, `just test-rs`, and `just generated-check` when the output schema changes

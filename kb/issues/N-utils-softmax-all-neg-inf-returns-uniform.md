@@ -18,3 +18,13 @@ v0 `normalize_profile()` with `log=True` subtracts the row maximum and exponenti
 > - **Keep the uniform fallback**: record it as intended behavior and rely on the $-\infty$ log-likelihood to signal the condition
 > - **Return an error**: report the site as impossible under the model, so the caller can name the site and the partition
 > - **Return NaN probabilities**: match v0 and propagate the undefined distribution, as the function already does for NaN input
+
+## Proposed implementation plan
+
+The plan depends on the open decision. Callers: `packages/treetime/src/partition/marginal/shared/normalize.rs#L29` and `packages/treetime/src/partition/marginal/sparse/message.rs#L61` and `#L94`.
+
+- **Keep the uniform fallback**: keep the branch at `softmax_with_log_norm.rs#L25-L28`; add a test in the marginal crate that a site with zero likelihood for every state gives a summed log-likelihood of $-\infty$ (oracle: hand calculation, $\ln 0$)
+- **Return an error**: change the return type to `Result<f64, Report>` with an error type for an impossible row; the callers add the site position and the partition name. Tests: an all-$-\infty$ row gives the error (`assert_err!`), and a marginal run on a hand-made alignment with an impossible site names that site
+- **Return NaN probabilities**: replace the branch with NaN in the profile and in the log norm; replace `test_softmax_with_log_norm_degenerate` with a NaN assertion (oracle: v0 `normalize_profile()`, `seq_utils.py#L296-L306`)
+
+Validate with `just test-rs` and, for the dense path, a v0 comparison on a dataset with an impossible site.

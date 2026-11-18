@@ -13,3 +13,12 @@
 
 - With the lock removed locally, the new test fails on every run
 - With the lock in place, it passes
+
+## Proposed implementation plan
+
+`fn RunManager.upload_input()` takes `inputs.lock` at [packages/app-backend/src/runs/manager.rs#L235](../../packages/app-backend/src/runs/manager.rs#L235) and holds it through `fn store_upload()`; the test still releases the first upload right after it spawns the second ([packages/app-backend/src/runs/__tests__/test_manager.rs#L405-L406](../../packages/app-backend/src/runs/__tests__/test_manager.rs#L405-L406)). The plan stops at the open investigation above; one short plan per candidate:
+
+- **`loom` model check**: add `loom` through "Adding a dependency" as a dev-dependency of `app-backend`; extract the budget check and the write of `fn store_upload()` behind a small store trait, so a loom test runs two uploads against an in-memory store under `loom::model` and asserts that the total never exceeds the limit. Oracle: the limit contract (sum of stored sizes ≤ `max_total_size`). See red: remove the `inputs.lock.lock()` line and confirm that loom reports the interleaving
+- **Testable budget function**: move the budget computation into a pure function of (stored sizes, in-flight size, limit), and test it with both uploads in flight by an `rstest` table. This tests the arithmetic only; the lock itself then stays covered only by the current timing-dependent test, so this option does not meet the validation below on its own
+
+The candidate needs the user's choice after the investigation.

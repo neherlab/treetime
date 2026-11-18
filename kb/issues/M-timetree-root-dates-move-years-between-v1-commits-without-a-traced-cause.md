@@ -24,3 +24,15 @@ The median internal-node date difference against v0 stays at 0.13 to 0.14 years 
 ## Reproduction
 
 Each build runs from the data package of the pipelandia comparison with `just treetime1_external=path:<binary> check <pipeline> --profile production` in the pipelandia repository; the command line of each `refine` step is in its check log.
+
+## Proposed implementation plan
+
+The fix depends on the cause, so the plan first locates it, then fixes the mechanism it finds.
+
+1. Bisect the 53 commits of `b92574e3e..0e522d97e` (`git log --oneline b92574e3e..0e522d97e`) per build: build a v1 binary of each bisection step and run the `refine` command line of the replay for yellow-fever genome, dengue all/genome, measles genome/global, and rubella E1. Record the root date and the root split of each step.
+2. For the commit that moves the root of a build, dump the root posterior of the binaries before and after it: number of peaks, width of the 95% interval, and the resolved polytomies near the root.
+3. Classify the cause:
+   - a numerical error in one of the two results (a convolution, FFT length, or tail defect): fix it in the owning operation of `packages/treetime-distribution/src/distribution_ops/`, and add a unit test at that layer that compares the operation with an independent oracle (direct quadrature of the convolution integral) within `1e-6` nats
+   - a flat or multimodal root posterior: document the width in the comparison and report a date interval for the root, and move the root summary question to [H-timetree-deep-node-dates-differ-from-v0-by-decades.md](H-timetree-deep-node-dates-differ-from-v0-by-decades.md)
+   - a topology change from polytomy resolution: continue in [N-timetree-polytomy-resolution-flips-on-round-off-of-node-times.md](N-timetree-polytomy-resolution-flips-on-round-off-of-node-times.md)
+4. Validate: rerun the four builds with the fixed binary and with the binary of `0e522d97e`, and confirm that the root dates agree with the result of the numerically correct side of the moving commit.

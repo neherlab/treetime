@@ -22,7 +22,7 @@ For internal node date constraints (rare in practice), the argument is weaker. A
 
 ### A1. Cap at today (v0 parity)
 
-Cap the upper bound at today in [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L176-L182) (`#read_date`) after parsing an uncertain date. Straightforward v0 parity. Introduces a non-determinism source (output depends on execution date).
+Cap the upper bound at today in [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L141-L189) (`#read_date`) after parsing an uncertain date. Straightforward v0 parity. Introduces a non-determinism source (output depends on execution date).
 
 ### A2. Cap at today with warning
 
@@ -42,4 +42,14 @@ Add a flag (e.g. `--cap-uncertain-dates`) controlling behavior. Adds complexity 
 
 ## Recommendation
 
-A2 (cap with warning) matches v0 behavior, is scientifically defensible for leaf dates, and the warning makes the non-obvious behavior visible. The implementation point is [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L176-L182) in `dates_csv.rs`, where the `DateValue::Uncertain` values from uncertain parsing can be clamped before returning.
+A2 (cap with warning) matches v0 behavior, is scientifically defensible for leaf dates, and the warning makes the non-obvious behavior visible. The implementation point is [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L141-L189) in `dates_csv.rs`, where the `DateValue::Uncertain` values from uncertain parsing can be clamped before returning.
+
+## Proposed implementation plan
+
+All locations are current (`read_date()` now spans `dates_csv.rs` L141-L189). The plan stops at the open decision; implement the approved approach.
+
+1. A1, A2, A3: pass the reference date into parsing instead of reading the clock inside it: add a `today: NaiveDate` field to `DateParserOptions`, set once from the system clock in the command layer (`packages/app-commands`), so tests set a fixed date. In `read_date()`, after `DateValue::Uncertain` is built, cap `end` at `today` (A1), cap and log a warning with the sample name and the original range (A2), or return an error that names the sample, the range, and today (A3). Leave exact dates unchanged; check in v0 whether explicit `[a:b]` ranges (`DateValue::Range`) are capped before choosing whether to cap them
+2. A4: delete this issue's decision block, write the difference from v0 into `kb/decisions/` with user approval, and delete the issue
+3. A5: as A1 or A2 behind a `bool` flag in the shared date arguments, with the help text that names the dependence on the run date
+4. Tests (A1-A3), `rstest` table in `packages/treetime-io/src/__tests__/` with a fixed `today` of 2026-03-15: `2026-XX-XX` gives `[2026-01-01, 2026-03-15]`, `2025-XX-XX` is unchanged, `2026-03-XX` gives `[2026-03-01, 2026-03-15]`, and an uncertain date entirely after today (`2027-XX-XX`) gives the behavior of the chosen approach (oracle: v0 `ambiguous_date_to_date_range()`, `packages/legacy/treetime/treetime/utils.py` line 396)
+5. Validate: `just test-rs`, `just lint-rs`, `just generated-check` for A5, and `just smoke` (outputs on the bundled datasets must not change, because their dates are in the past)

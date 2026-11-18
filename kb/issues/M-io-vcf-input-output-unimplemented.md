@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Decision required.** The parser and compression support, internal representation, output contract, and multi-contig semantics are undecided, and they determine incompatible APIs and data models. See "Scope axes requiring decisions".
 
-TreeTime v1 has no VCF reader or writer, and no command has a VCF flag (v0: `--vcf-reference`) until they exist. VCF input, compressed VCF input, and VCF output remain unchecked in [kb/features/io.md](../features/io.md).
+TreeTime v1 has no VCF reader or writer, and no command has a VCF flag. The 0.x flag `--vcf-reference` stops with a message that it is unavailable (`packages/app-cli/src/cli/v0_args.rs`). VCF input, compressed VCF input, and VCF output remain unchecked in [kb/features/io.md](../features/io.md).
 
 ## User-facing impact
 
@@ -41,3 +41,14 @@ The parser, compression, internal representation, output contract, and multi-con
 - [kb/features/io.md](../features/io.md) - VCF input, compressed VCF input, and VCF output inventory
 - [N-io-large-dataset-memory-constraint.md](N-io-large-dataset-memory-constraint.md) - dense alignment materialization increases peak memory
 - [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md) - partition semantics for segmented genomes
+
+## Proposed implementation plan
+
+The steps stop at the open decision above; each step uses the choice of its axis.
+
+1. Parser: vet the chosen parser crate with the `supply-chain` skill and add it through "Adding a dependency"; add a reader in a new `packages/treetime-io/src/vcf.rs` for plain and gzip streams that takes `PathBuf` input
+2. Representation: convert records into the chosen form (sparse partition from reference plus per-sample variants, or aligned sequences), with missing calls, ambiguous calls, and indels kept as decided
+3. CLI: add the VCF and reference inputs to the commands that read alignments, and change the `--vcf-reference` entry in `packages/app-cli/src/cli/v0_args.rs` from unavailable to the v1 replacement; regenerate with `just gen`
+4. Output: add a VCF writer for reconstructed states per the output contract
+5. Tests: reader unit tests on small hand-written VCF text (oracle: the VCF specification); sparse result of VCF plus reference equals the result of the equivalent FASTA alignment (oracle: dense vs sparse comparison); ancestral VCF output on the v0 VCF example data compared with v0 output (oracle: v0, dense)
+6. Validate with `just lint-rs`, `just test-rs`, `just generated-check`, and `just r treetime ancestral` on a VCF dataset

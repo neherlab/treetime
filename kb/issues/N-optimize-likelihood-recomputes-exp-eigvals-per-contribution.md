@@ -17,3 +17,10 @@ Negligible with one partition per run: each edge then has one contribution, and 
 ## Proposed solution
 
 Compute $\exp(\lambda t)$ once per distinct GTR model and branch length in each evaluation, and pass it to the per-contribution evaluation.
+
+## Proposed implementation plan
+
+1. Profile first on a multi-partition run (`--partition` entries that share one model) to confirm that the per-contribution `exp_ev` in `fn evaluate_site_contributions()` (`eval.rs#L23`) shows in the profile; close the issue as negligible if it does not.
+2. Split `evaluate_site_contributions()` into a step that builds `exp_ev` and `ev_exp_ev` from `rate_eigvals` and $t$, and a step that consumes them; in `fn sum_partition_metrics()` (`likelihood.rs#L42`) group the contributions by equal `rate_eigvals` and build the vectors once per group.
+3. Test: an `rstest` that evaluates two contributions with equal eigenvalues through the grouped path and one by one, and asserts equal `OptimizationMetrics` with `assert_ulps_eq!` (oracle: the per-contribution evaluation, which computes the same terms independently per contribution).
+4. Validate with `just lint-rs` and `just test-rs`; outputs are unchanged by construction.

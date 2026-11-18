@@ -37,3 +37,20 @@ The same separation affects an insertion followed by a substitution at its site 
 ## Fix direction
 
 Compose the events of a merged edge site by site over all event kinds (substitutions, indels and the unknown ranges of the removed node), so that the merged edge holds the net change from its parent to its child. The fix belongs to one composition that every sparse topology operation (collapse, trivial root merge, reroot inversion, reversion hoist) uses; see also [N-sparse-inverted-indel-pair-rebuilds-wrong-state.md](N-sparse-inverted-indel-pair-rebuilds-wrong-state.md).
+
+## Proposed implementation plan
+
+The cited locations are current (checked against `rust`): `collapse_edge()` chains with `chain_fitch_subs()` and composes indels with `composed_edge_pieces()` in separate steps, `merge_edge_pair()` does the same (`alignment_indels.rs#L55`, `#L61`), and `parsimony_seq()` applies all substitutions before all indels.
+
+1. Add one site-wise composition of two sparse edges, for example `fn compose_edge_events(parent: &SparseEdgeObs, child: &SparseEdgeObs, parent_seq_at, ...) -> SparseEdgeObs` beside `compose_indels()` in `packages/treetime/src/seq/`: for each site touched by either edge, compute the state of the parent of the merged edge and the state of its child, and emit one net event (none, a substitution, a deletion with the parent's character, or an insertion with the child's character), together with the unknown ranges of the removed node
+2. Use it in `fn collapse_edge()` (`packages/treetime/src/optimize/topology/collapse.rs`) and in `fn merge_edge_pair()` (`packages/treetime/src/partition/marginal/sparse/alignment_indels.rs`), in place of the pair `chain_fitch_subs()` + `composed_edge_pieces()`, so that every sparse topology operation (collapse, trivial root merge, reconcile, reversion hoist) shares it
+3. Keep `parsimony_seq()` and `apply_edge_to_sequence()` as they are; after step 1 a site carries at most one event, so their order no longer matters. Optionally assert this invariant in debug builds
+4. The marginal estimates (`compose_substitutions()` on `reconstruction.edges.estimates`) need the same rule when an estimate site meets an indel of the other edge; check this in the same change
+
+Tests (in `packages/treetime/src/optimize/topology/__tests__/` and `packages/treetime/src/partition/marginal/sparse/__tests__/`):
+
+- Regression test of the reproduction above: after `collapse_edge()` and `apply_root_at_edge()`, the sequences of root, W and V stay `ACG`, `ACG`, `ACT`. Oracle: the input sequences (a reroot moves nodes, it does not change them)
+- Unit cases of the composition (rstest table): substitution then deletion, insertion then substitution, deletion then insertion, substitution then substitution back to the parent state. Oracle: hand-derived net change from parent to child
+- Property test: for random sparse trees, merging an edge and then rebuilding with `parsimony_seq()` gives the same child sequence as the two edges applied in order, and the inverted merged edge rebuilds the parent. Oracle: the unmerged path
+
+Validation: `just test-rs`, `just lint-rs`, then `just smoke` on `prune --collapse-short` and `optimize` per `cli-verification.instructions.md`. The open investigation (how often the pairs occur) does not block the fix.

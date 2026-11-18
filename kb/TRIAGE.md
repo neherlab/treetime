@@ -98,6 +98,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-utils-mean-by-key-empty-and-integer-semantics.md](issues/N-utils-mean-by-key-empty-and-integer-semantics.md)**: return `Option<U>`, restrict the function to floating-point keys, or keep the current contract and document it
 - **[kb/issues/N-utils-softmax-all-neg-inf-returns-uniform.md](issues/N-utils-softmax-all-neg-inf-returns-uniform.md)**: keep the uniform profile for an all-impossible row, return an error that names the site, or return NaN as v0 does
 - **[kb/issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md](issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md)**: keep wasm-bindgen and upgrade it with Emscripten under a CI check, or replace it with C exports of the module
+- **[kb/issues/M-timetree-root-sequence-not-sampled.md](issues/M-timetree-root-sequence-not-sampled.md)**: approve the most likely root state for `timetree`, sample the root state as v0 does, or add an option whose default is the most likely state
 
 ### Research
 
@@ -154,6 +155,8 @@ Each line names the issue and the measurement or analysis that must come first.
 - **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the memory of the tab in the browsers with runs computing at the same time and after several large runs in one page session
 - **[kb/issues/H-timetree-deep-node-dates-differ-from-v0-by-decades.md](issues/H-timetree-deep-node-dates-differ-from-v0-by-decades.md)**: decide which engine dates the deepest nodes correctly (v1 older by up to 90 years on 14 Nextstrain trees, younger by up to 175 years on others): first equal inputs in both engines, then an independent numerical oracle, a simulation that reproduces the clock conflicts of the real data, and tip-date cross-validation; locate the 53 years of lassa l that remain without the coalescent prior
 - **[kb/issues/M-timetree-root-dates-move-years-between-v1-commits-without-a-traced-cause.md](issues/M-timetree-root-dates-move-years-between-v1-commits-without-a-traced-cause.md)**: find the v1 commits that moved the roots of yellow-fever genome, dengue all/genome, and measles genome/global, and the changed root pairing of rubella E1, with binaries of single commits
+- **[kb/issues/N-data-translate-maps-ambiguous-codons-to-x.md](issues/N-data-translate-maps-ambiguous-codons-to-x.md)**: recount the residues that ambiguous codons turn into `X` in `rsv/a/2000` and `mpox/clade-ii/2000`, before and after the regeneration
+- **[kb/issues/N-optimize-dense-iteration-slow.md](issues/N-optimize-dense-iteration-slow.md)**: profile a dense `treetime optimize` run on `data/mpox/clade-ii/2000` and measure the share of the marginal passes against the branch-length optimization
 
 ## Fix now
 
@@ -205,7 +208,6 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/N-timetree-test-lineage-expectation-from-leaf-dates-has-non-positive-counts.md](issues/N-timetree-test-lineage-expectation-from-leaf-dates-has-non-positive-counts.md)**: build the lineage expectation of the test helper from a complete set of node times, such as the Gaussian timetree of the constraints
 - **[kb/issues/N-app-commands-cds-selection-read-in-two-places.md](issues/N-app-commands-cds-selection-read-in-two-places.md)**: keep one reader of the CDS selection of the run settings
 - **[kb/issues/N-grid-point-limit-tests-assume-a-64-bit-usize.md](issues/N-grid-point-limit-tests-assume-a-64-bit-usize.md)**: derive the expected values of the grid point limit tests from `MaxGridPoints::MAX`
-- **[kb/issues/N-smoke-config-cases-report-snapshot-paths-as-changed.md](issues/N-smoke-config-cases-report-snapshot-paths-as-changed.md)**: replace the snapshot directory in compared output bytes, as in stderr
 - **[kb/issues/N-smoke-wall-time-comparison-mixes-concurrent-load.md](issues/N-smoke-wall-time-comparison-mixes-concurrent-load.md)**: compare CPU time, or time the cases without concurrent neighbors, instead of comparing wall times of snapshots that ran under different loads
 - **[kb/issues/N-timetree-polytomy-resolution-flips-on-round-off-of-node-times.md](issues/N-timetree-polytomy-resolution-flips-on-round-off-of-node-times.md)**: give each polytomy its own random stream from the run seed and a stable key, so that a flip in one polytomy leaves the others alike
 - **[kb/issues/M-release-install-docs-and-system-requirements-missing.md](issues/M-release-install-docs-and-system-requirements-missing.md)**: write the installation page with the CPU and operating system requirements and point first-time users to the web app

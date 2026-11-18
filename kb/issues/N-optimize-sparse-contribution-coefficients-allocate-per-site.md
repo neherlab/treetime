@@ -7,7 +7,3 @@ On `rsv/a/500`, sparse `timetree` with one thread, these allocations are 0.82 M 
 ## Fix direction
 
 Keep the coefficients inline, as the sparse marginal messages keep their profiles (`type SiteProfile` in [packages/treetime/src/partition/storage/sparse.rs](../../packages/treetime/src/partition/storage/sparse.rs)), and write both products into inline buffers with `ndarray::linalg::general_mat_vec_mul`. Keep the evaluation order of each coefficient (one BLAS matrix-vector product per factor, then the elementwise product), so branch lengths stay byte-identical.
-
-## Related issues
-
-- [N-optimize-edge-contribution-copies-gtr.md](N-optimize-edge-contribution-copies-gtr.md): the same function copies the GTR model for every edge

@@ -26,3 +26,15 @@ The numerical method must define an observable error contract for these integral
 ## Recommendation
 
 Prefer O3 when the selected interpolation has a stable analytic integral; otherwise use O2. Validate convergence against an independent high-precision integral before implementation starts.
+
+## Proposed implementation plan
+
+The locations are current (`EXPECTATION_GRID_POINTS` at `mean_field.rs` L22, `CoalescentPrior::new` at L42, `LineageExpectation::segment_statistics` at L494). The plan depends on the open decision.
+
+1. Before the choice: measure the error of the current rule against an independent high-precision integral (`mpmath` quadrature of the same $\bar k(t)$, $V(t)$ and $T_c(t)$, exported from a small tree) for each segment, on a tree with point dates and on one with wide date ranges; report the error per segment and its scaling with the grid size
+2. **O1**: refine grid cells where the difference between the trapezoid and the midpoint estimates of a cell exceeds the declared tolerance, in `segment_statistics` and `CoalescentPrior::new`
+3. **O2**: replace the trapezoid sums with a maintained adaptive quadrature (vetted through `dependencies.instructions.md`) over each skyline segment, with the step times of $\bar k$ as breakpoints
+4. **O3**: integrate each cell exactly for the piecewise-constant $T_c$ of the skyline (`kb/decisions/coalescent-skyline-convex-log-tc.md`) and the selected interpolation of $\bar k$
+5. Record the chosen method and its parity disposition against v0 in `kb/decisions/`
+6. Tests in `packages/treetime/src/coalescent/__tests__/`: per-segment integrals on a small tree within the declared error criterion (oracle: the `mpmath` reference values of step 1, cited at the expected-value declaration); a pure step function $\bar k$ with constant $T_c$ integrates exactly (oracle: manual calculation)
+7. Validation: `just check`, `just test-rs`

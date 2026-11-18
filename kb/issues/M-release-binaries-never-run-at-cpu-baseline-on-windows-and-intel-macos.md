@@ -37,3 +37,15 @@ Neither safeguard sees code that a dependency compiles with its own flags for a 
 
 - https://www.intel.com/content/www/us/en/developer/articles/tool/software-development-emulator.html
 - https://github.com/jvdd/argminmax/pull/87 (SDE in a Rust CI job)
+
+## Proposed implementation plan
+
+Steps 2 to 4 wait for the investigation above (SDE license, pinned download, macOS support, run time).
+
+1. **Investigate SDE.** Read the Intel SDE license for CI use, pick a release with a published checksum, test whether the current series starts on `macos-15-intel`, and time the `dev/cross/check-cpus` workload under `sde64 -nhm` on one runner. Record the outcome in this issue
+2. **Windows x86_64.** Add a job (or a step of `compat-windows` in `.github/workflows/cli-compat.yml`) on `windows-2022` that downloads the pinned SDE, checks its checksum, and runs the UCRT binary with the workload of `dev/cross/check-cpus` under `sde64 -nhm -chip_check_exe_only --`. Move the workload commands into a script that both `dev/cross/check-cpus` and the new step call, so the two stay one workload
+3. **Windows 7 binary.** Add `x86_64-win7-windows-gnu` to the matrix of the same job, so the binary runs at all, and under SDE at the baseline
+4. **macOS x86_64.** If SDE runs on macOS, add the same step to the `x86_64` rows of `compat-macos`; else record in this issue that Intel macOS has no baseline emulator
+5. **Desktop addons.** Run the `app-napi` addon under the same SDE step on Windows x86_64 (load it in Node and call one command), and under QEMU at the Linux baselines in `cpu-baseline`
+6. **Windows arm64.** Leave open; no user-mode emulator exists for Armv8.0 with LSE on Windows
+7. **Validate.** `just lint-workflows`. Oracle for the new jobs: inject a fault in a branch (build one binary with `-C target-cpu=x86-64-v3`) and confirm that the SDE step fails with an illegal instruction, then revert

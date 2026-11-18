@@ -17,3 +17,10 @@ TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`, 
 ## Fix
 
 Contribute the change to [nextstrain/auspice](https://github.com/nextstrain/auspice), then remove it from the patch after upgrading to an Auspice release that contains it. [N-app-ui-auspice-tree-unmount-patch-upstream.md](N-app-ui-auspice-tree-unmount-patch-upstream.md) describes how to edit the patch.
+
+## Proposed implementation plan
+
+1. Open a pull request on `nextstrain/auspice` with the clip ID hunks of `patches/auspice@3.2.0.patch`: `renderers.ts` (clip area creation and the `tips`, `branchTee`, `branchStem`, and `regression` groups), `labels.js` (`branchLabels`), `grid.js` (`majorGrid`, `minorGrid`) use `treeClip-${id}`, and `legend.tsx` gives each legend instance its own first-column clip ID from an instance counter. Auspice 3.2.0 (tag `v3.2.0`, commit `db211cc6`), the release that the patch targets, still uses the fixed IDs `treeClip` and `legendFirstColumnClip`. Check first whether upstream `master` changed them after that release.
+2. Upstream test: render two `PhyloTree` objects with the IDs `LEFT` and `RIGHT` into one document, and assert that the document holds two `<clipPath>` elements with distinct IDs and that each tree's groups reference the clip path of their own tree. Oracle: the SVG rule that an element ID is unique in a document.
+3. After an Auspice release contains the fix, upgrade `auspice` in `package.json`, regenerate the Bun patch without these hunks (procedure in [N-app-ui-auspice-tree-unmount-patch-upstream.md](N-app-ui-auspice-tree-unmount-patch-upstream.md)), and delete this issue.
+4. Validate: `just typecheck`, `just test-ts`, and the compare page with two runs: each tree clips to its own area, and the downloaded SVG holds unique clip IDs.

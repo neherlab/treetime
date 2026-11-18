@@ -35,3 +35,11 @@ On synthetic fixtures designed to stress the optimizer, and on multi-modal surfa
 
 - `fn grid_search_branch_lengths()`, `fn search_upper_bound()`, `const MIN_SEARCH_UPPER_BOUND` [packages/treetime/src/optimize/zero_boundary.rs](../../packages/treetime/src/optimize/zero_boundary.rs)
 - `fn brent_bracket()` [packages/treetime/src/optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)
+
+## Proposed implementation plan
+
+The locations above are current. The plan stops at the open decision and gives one short plan per option.
+
+- **Option A (accept the cap, actions 1 and 2):** add a test in `packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs` that runs `reconcile_zero_boundary()` on `make_dinh_matsen_k80_contribution()` from $t_0 = 2$ and asserts the returned point lies at or below the grid upper end $3.01$ (oracle: the analytic upper end $1.5 t_0 + \text{one\_mutation}$), with a test name and assertion message that state the boundary of applicability. Optionally let the grid search report `Convergence::SearchBound` when its best point is the last grid point, so it joins the `branch-lengths-not-converged` warning like the solvers.
+- **Option B (extend the grid, action 3):** first compare v0 and v1 branch lengths on saturated edges (a simulated alignment from `treetime-simulation` with branch lengths above 1) to measure the change; then extend the grid of the reconcile path only up to the equilibrium cutoff, and assert that the K80 fixture from $t_0 = 2$ returns $t \approx 6.37$ within `1e-6` (oracle: the stationary point of $P(x)$ derived above). Needs user approval as a divergence from the v0 search range.
+- Validate either option with `just test-rs`; option B also with `just smoke` on the datasets of `cli-verification.instructions.md`.

@@ -27,5 +27,11 @@ Use concrete view types at borrowing boundaries. Accept `ArrayView2` in `propaga
 - Unit cases for owned, transposed-view, and non-contiguous sliced-view inputs.
 - Exact output equivalence and allocation regression tests.
 
-## Related
 
+## Proposed implementation plan
+
+1. Change `fn propagate_raw()` in `packages/treetime/src/partition/marginal/sparse/message.rs` (line 202) to take `exp_qt: ArrayView2<f64>`, and keep its body unchanged apart from the type, because it reads `exp_qt` only.
+2. Update both callers: `packages/treetime/src/partition/marginal/sparse/backward.rs` line 93 passes `gtr.expQt(branch_length).t()` without `.to_owned()`, and `packages/treetime/src/partition/marginal/sparse/forward.rs` line 216 passes `gtr.expQt(branch_length).view()`. Bind the owned `expQt` result to a local first where the borrow of a temporary does not live long enough.
+3. Search the other read-only propagation boundaries (`rg '&Array2<f64>' packages/treetime/src/partition/marginal`) and convert the ones where a caller builds a copy only to pass it; leave signatures whose callers already hold owned matrices.
+4. Tests: an `rstest` case table in `packages/treetime/src/partition/marginal/sparse/__tests__/` that calls `propagate_raw()` with a small non-symmetric matrix as an owned view, as `.t()` of its transpose, and as a non-contiguous slice of a larger matrix, and asserts exact equality of the resulting `SparseSeqDistribution`. Oracle: the owned contiguous input; a transpose of a transpose and a slice hold the same values, so the results must be bit-identical.
+5. Validate: `just lint-rs`, `just test-rs`; the sparse marginal tests must stay unchanged.

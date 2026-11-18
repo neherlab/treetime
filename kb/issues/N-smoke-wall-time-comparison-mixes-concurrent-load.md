@@ -21,3 +21,13 @@ Make the timing comparison independent of the neighbors of a case, for example b
 ## Validation
 
 Two smoke runs of the same binary against each other report no wall-time change above the run-to-run noise for the short cases, also when the selected case sets differ.
+
+## Proposed implementation plan
+
+Current locations: `def default_jobs()` at [dev/smoke#L1079](../../dev/smoke#L1079) sets the case concurrency; the "Slowest cases" block at [dev/smoke#L1665-L1670](../../dev/smoke#L1665-L1670) compares `wall_s` with `baseline_wall_s`; `result.json` records `cpu_s` ([dev/smoke#L1114](../../dev/smoke#L1114)). The fix direction lists three options; each plan below is independent.
+
+- **CPU time**: add `cpu_s` and `baseline_cpu_s` to the case report (beside `wall_s`, read from the baseline `result.json`), and print the CPU-time change in "Slowest cases" in place of, or beside, the wall-time change. Threads of one case also compete with each other, so CPU time of a multi-threaded case still grows under load; note this in the report header
+- **Fixed thread budget**: pass `--jobs=<k>` to every case of a command that takes `--jobs` (`case.takes_jobs`, as the determinism rerun at [dev/smoke#L1118](../../dev/smoke#L1118) does), and run at most `default_jobs() // k` cases at the same time
+- **Not comparable mark**: record the selected case set (or its hash) in `snapshot.json`, and print the wall-time change only when the baseline ran the same case set with the same `jobs`
+
+Validation: run `./dev/smoke` twice on the same binary with different `--only` selections and compare; no short case reports a wall-time or CPU-time change above the run-to-run noise. `dev/smoke` has no unit tests; check the report output by hand.

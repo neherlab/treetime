@@ -56,3 +56,15 @@ Model differences at confident codons cause most both-determined differences; th
 - [M-ancestral-node-data-annotation-drops-cds-phase.md](M-ancestral-node-data-annotation-drops-cds-phase.md), [M-io-gff3-cds-segment-order-wrong-across-circular-origin.md](M-io-gff3-cds-segment-order-wrong-across-circular-origin.md), [M-ancestral-translation-annotation-not-checked-against-alignment.md](M-ancestral-translation-annotation-not-checked-against-alignment.md): the annotation reader that the coding view needs
 - [M-ancestral-sample-from-profile-draws-nodes-independently.md](M-ancestral-sample-from-profile-draws-nodes-independently.md): sampled sequences
 - [M-ancestral-codon-substitution-models-unimplemented.md](M-ancestral-codon-substitution-models-unimplemented.md): the optional codon model, which this fix does not need
+
+## Proposed implementation plan
+
+The steps below need no answer of the Decision required block above; the decoder and writer steps wait for it.
+
+1. **Coding view** (no decision needed): a type in `packages/treetime` that maps each CDS of the GFF3 annotation (read by `packages/treetime-io/src/gff.rs`) to its ordered alignment columns, with strand, segments, phase, overlaps and frameshift junctions. Depends on the annotation-reader issues under "Related"
+2. **Translator** (needs the "Translator" answer): a pure function from a codon of three `AsciiChar` to an amino acid, with the standard genetic code as a static table. No translator exists in v1 yet (only `packages/util-newick/src/nexus/read.rs` has an unrelated Nexus `translate`)
+3. **Decoder** (needs the "Decoding rule", "Stop codons" and "Overlapping frames" answers): a pure function from the per-site posteriors of the nucleotide partition and the coding view to decoded codons and amino acids, one decoding step before every writer of `treetime ancestral`
+4. **Route change** (needs the "Source of amino acids" answer): replace or check `fn reconstruct_aa()` [packages/treetime/src/ancestral/aa.rs#L25-L92](../../packages/treetime/src/ancestral/aa.rs#L25-L92) for CDS that also have nucleotides, and reject `--translations` for such CDS when the answer is "translate own codons"
+5. **Decision file**: record the approved rules in `kb/decisions/`, because the decoder changes scientific outputs
+
+Tests: the tests listed under "Validation" above, in `packages/treetime/src/ancestral/__tests__/` (translator unit table with the standard genetic code as oracle; decoder property tests and brute-force oracles). Validate with `just check`, `just test-rs`, and the route comparison of [kb/reports/codon-aware-ancestral-reconstruction.md](../reports/codon-aware-ancestral-reconstruction.md#measured-disagreement-of-the-two-routes) on `rsv/a/20`, `rsv/a/2000` and `mpox/clade-ii/2000` (target: zero differences).

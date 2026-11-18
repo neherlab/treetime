@@ -6,9 +6,10 @@
 > [!IMPORTANT]
 > **Decision required.** The floor matches v0, which raises every marginal branch length to `MIN_BRANCH_LENGTH * one_mutation` with `MIN_BRANCH_LENGTH = 1e-3` [packages/legacy/treetime/treetime/treeanc.py#L752-L760](../../packages/legacy/treetime/treetime/treeanc.py#L752-L760). Keeping the clamp preserves v0 parity. Exact-zero handling ($e^{Q \cdot 0} = I$ through a log-safe path) or rejection of zero-length branches would diverge from v0 and needs approval with parity and numerical validation.
 
-The marginal passes raise every branch below `MIN_BRANCH_LENGTH_FRACTION / sequence_length` to that threshold before message propagation. The same floor is implemented in three places:
+The marginal passes raise every branch below `MIN_BRANCH_LENGTH_FRACTION / sequence_length` to that threshold before message propagation. The same floor is implemented in four places:
 
-- `fn fix_branch_length()` [packages/treetime/src/hacks/fix_branch_length.rs#L9-L12](../../packages/treetime/src/hacks/fix_branch_length.rs#L9-L12), called only by the sparse passes [packages/treetime/src/partition/marginal/sparse/forward.rs#L163](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L163) [packages/treetime/src/partition/marginal/sparse/backward.rs#L92](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L92)
+- `fn fix_branch_length()` [packages/treetime/src/hacks/fix_branch_length.rs#L9-L12](../../packages/treetime/src/hacks/fix_branch_length.rs#L9-L12), called by the sparse passes [packages/treetime/src/partition/marginal/sparse/forward.rs#L163](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L163) [packages/treetime/src/partition/marginal/sparse/backward.rs#L92](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L92) and by the sparse rate-mixture contribution [packages/treetime/src/partition/marginal/mixture/contribution.rs#L82](../../packages/treetime/src/partition/marginal/mixture/contribution.rs#L82)
+- the dense rate-mixture contribution, inline through `partition.inputs.min_branch_length` [packages/treetime/src/partition/marginal/mixture/contribution.rs#L33](../../packages/treetime/src/partition/marginal/mixture/contribution.rs#L33)
 - the dense and discrete passes, through `DenseInputs::min_branch_length`, set in [packages/treetime/src/partition/marginal/dense/partition.rs#L57](../../packages/treetime/src/partition/marginal/dense/partition.rs#L57) and [packages/treetime/src/partition/marginal/dense/partition.rs#L70](../../packages/treetime/src/partition/marginal/dense/partition.rs#L70), applied inline in [packages/treetime/src/partition/marginal/shared/pass.rs#L233](../../packages/treetime/src/partition/marginal/shared/pass.rs#L233) and [packages/treetime/src/partition/marginal/shared/pass.rs#L407](../../packages/treetime/src/partition/marginal/shared/pass.rs#L407)
 - dense transition counting, through `DenseInputs::effective_branch_length()` [packages/treetime/src/partition/marginal/shared/data.rs#L63-L65](../../packages/treetime/src/partition/marginal/shared/data.rs#L63-L65), called by `fn count_transitions_dense()` [packages/treetime/src/partition/marginal/shared/data.rs#L13](../../packages/treetime/src/partition/marginal/shared/data.rs#L13)
 
@@ -18,3 +19,13 @@ The name `fix_branch_length` does not reveal that it clamps, and the `hacks` nam
 
 - Preserve behavior while giving the floor one owner beside marginal inference: a private operation whose name states the floor policy, used by the dense, discrete, and sparse passes. Delete the `hacks` module afterwards
 - Decide clamping, exact-zero handling, or rejection only with parity and numerical validation (see the decision block above)
+
+## Proposed implementation plan
+
+Behavior-preserving part only; the clamp policy waits for the decision above.
+
+1. Add one private operation beside marginal inference, for example `fn floor_branch_length(branch_length, min_branch_length)` in `packages/treetime/src/partition/marginal/shared/`, and a constructor of the floor from the sequence length (`MIN_BRANCH_LENGTH_FRACTION / length`). Check first that `MIN_BRANCH_LENGTH_FRACTION * one_mutation(n)` and `MIN_BRANCH_LENGTH_FRACTION / n` give the same `f64` for all `n` (`one_mutation()` in `packages/treetime/src/branch_lengths`), and keep the formula of the dense path if they differ in the last bit
+2. Replace the four sites: `pass.rs` L233 and L407, `DenseInputs::effective_branch_length()` in `shared/data.rs`, both lines of `mixture/contribution.rs`, and both sparse passes. Store the floor in the sparse partition inputs the same way `DenseInputs::min_branch_length` stores it, so no pass computes it again
+3. Delete `packages/treetime/src/hacks/` and its `mod` line in `packages/treetime/src/lib.rs`; move the `HACK` note's open question into the decision block of this issue only, because the code no longer holds it
+4. Tests: a unit test of the floor operation (below, at, and above the floor; oracle: the definition `max(t, f / n)`), and one sparse versus dense test on a tree with a zero-length branch that asserts equal marginal log-likelihoods within `1e-10` (oracle: dense vs sparse comparison, an independent oracle of the project)
+5. Validate: `just test-rs`, `just lint-rs`, and `just smoke` on a dataset with zero-length branches, because the change must not move any output

@@ -27,3 +27,16 @@ The section "Pitfalls found in an unmerged prototype" of [kb/reports/codon-aware
 - Enumeration over all internal codon assignments on a tree with 2 or 3 internal nodes
 - Matrix properties: rows sum to 0, stationarity, detailed balance, one expected nucleotide change per site per unit time; CF3x4 reproduces the observed per-position frequencies
 - Dense against sparse codon runs on small datasets
+
+## Proposed implementation plan
+
+Model family and tip observation model stay open (Decision required above); the plan covers the steps that do not depend on them, then the model step per option.
+
+1. **Measure first** (Investigation required above): estimate the memory and time of a 61-state sparse run from a 20-state amino-acid run scaled by state count, on `mpox/clade-ii/2000` and `rsv/a/2000`, before writing model code
+2. **State-count scaling**: make the per-state profiles of the messages and the transition counting of `fn get_branch_mutation_matrix()` [packages/treetime/src/gtr/infer_gtr/common.rs#L250](../../packages/treetime/src/gtr/infer_gtr/common.rs#L250) fit 61 states (no L by n by n array per edge)
+3. **Codon alphabet and observations**: a 61 sense-codon alphabet with ambiguous triplets as indicator rows over compatible sense codons
+4. **Partition kind**: a `cds` key in `--partition` entries that declares a codon partition, with each coding column in one model only
+5. **Model** per option: MG94xREV with CF3x4 and one global ω; GY94 with F61; or both behind one generator type. Units as listed under "Fix direction"
+6. **Decision file** in `kb/decisions/` after approval, because the model changes scientific outputs
+
+Tests: the four items under "Validation" above, in `packages/treetime/src/gtr/__tests__/` and `packages/treetime/src/ancestral/__tests__/`; the oracles are the reduction to three position partitions at ω = 1 and brute-force enumeration over internal codon assignments. Validate with `just check` and `just test-rs`.

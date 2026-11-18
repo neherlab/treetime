@@ -6,7 +6,10 @@ Dense marginal reconstruction computes full probability profiles at every node f
 
 ## Current behavior
 
-Each optimize iteration calls `PartitionSet::marginal_update()` [packages/treetime/src/partition/set.rs#L104-L121](../../packages/treetime/src/partition/set.rs#L104-L121), which runs `MarginalPasses::marginal_update()` [packages/treetime/src/partition/marginal/shared/update.rs#L48-L71](../../packages/treetime/src/partition/marginal/shared/update.rs#L48-L71) (backward and forward pass over the full dense profile matrix) for each partition, followed by `optimize_edge_lengths()` (per-edge Brent or Newton optimization). Dense partitions run every alignment column through these passes, because dense mode has no site pattern compression. The marginal passes dominate wall time.
+Each optimize iteration calls `PartitionSet::marginal_update()` [packages/treetime/src/partition/set.rs#L133](../../packages/treetime/src/partition/set.rs#L133), which runs `MarginalPasses::marginal_update()` [packages/treetime/src/partition/marginal/shared/update.rs#L37](../../packages/treetime/src/partition/marginal/shared/update.rs#L37) (backward and forward pass over the full dense profile matrix) for each partition, followed by `optimize_edge_lengths()` (per-edge Brent or Newton optimization). Dense partitions run every alignment column through these passes, because dense mode has no site pattern compression. The marginal passes are expected to dominate wall time.
+
+> [!IMPORTANT]
+> **Investigation required.** No profile of a dense optimize run supports the claim that the marginal passes dominate wall time. Collect a `just profile` run of `treetime optimize` in dense mode on a large dataset (for example `data/mpox/clade-ii/2000`) and record the share of `indexed_backward()` and `indexed_forward()` against `optimize_edge_lengths()`.
 
 ## Potential optimizations
 
@@ -20,7 +23,7 @@ v0 always uses dense representation. v0 mitigates the cost through column compre
 
 ## Implementation pointers
 
-Start with profiling (`just profile` on the host: it builds the binary in the container and runs `perf` on the host, because `perf` cannot read the kernel counters inside Docker) on the mpox dataset in dense mode to confirm where time is spent. The expected hotspots are the dense kernels `fn indexed_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L88](../../packages/treetime/src/partition/marginal/shared/pass.rs#L88) and `fn indexed_forward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L256](../../packages/treetime/src/partition/marginal/shared/pass.rs#L256).
+Start with profiling (`just profile` on the host: it builds the binary in the container and runs `perf` on the host, because `perf` cannot read the kernel counters inside Docker) on the mpox dataset in dense mode to confirm where time is spent. The expected hotspots are the dense kernels `fn indexed_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L90](../../packages/treetime/src/partition/marginal/shared/pass.rs#L90) and `fn indexed_forward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L306](../../packages/treetime/src/partition/marginal/shared/pass.rs#L306).
 
 Open questions for the implementer:
 

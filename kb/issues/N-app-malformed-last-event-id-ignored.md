@@ -26,3 +26,16 @@ Both event streams, `GET /api/runs/{id}/events` and `GET /api/events`, resume af
 ## Related
 
 - [kb/decisions/app-request-contract-full-command-config.md](../decisions/app-request-contract-full-command-config.md): event streams, stale paths and the UI data layer
+
+## Proposed implementation plan
+
+The cited lines of `fn resume_from()` and its callers (`fn runs_events()` at [packages/app-server/src/routes.rs#L494](../../packages/app-server/src/routes.rs#L494), `fn events()` at [packages/app-server/src/routes.rs#L502](../../packages/app-server/src/routes.rs#L502)) are current. The plan stops at the open decision above; one short plan per option:
+
+- **Reject**: make `fn resume_from()` return a `Result` with the error that a malformed `from` query parameter already produces (find its producer from the `invalid_request` cases of `packages/app-server/src/__tests__/test_routes.rs`), map a header that is not ASCII or not a `u64` to `400` `invalid_request`, propagate with `?` in both handlers, and delete the `result_defaulted` expectation, because nothing is defaulted then
+- **Keep the fallback**: no code change; keep the expectation and its reason
+
+For both options: document `Last-Event-ID` on both operations (the route doc comments that feed `packages/app-contracts/openapi.json`, then `just gen`), and add `rstest` route tests in `packages/app-server/src/__tests__/` for a malformed header (`abc`) and a valid one on both streams, asserting the whole response (status and `ErrorResponse`) or the first event `seq`. Oracle: the chosen contract. See red with a wrong expected status.
+
+### Plan validation
+
+- `just lint-rs`, `just test-rs -E 'package(app-server)'`, and `just generated-check` pass

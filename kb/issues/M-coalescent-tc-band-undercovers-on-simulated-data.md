@@ -19,3 +19,11 @@ The band is computed from the curvature of the coalescent likelihood in $\ln T_c
 ## Validation
 
 Depends on the decision: the documented limit, or coverage close to the nominal level on the validation suite.
+
+## Proposed implementation plan
+
+The locations are current (`coalescent_confidence` with its `--help` text at `args.rs` L885-L896, `fn skyline_confidence_band()` at `skyline.rs` L254). The help text still does not state that node-time uncertainty is left out. The plan depends on the open decision.
+
+- **Keep the band**: extend the doc comment of `coalescent_confidence` in `packages/app-commands/src/commands/timetree/args.rs` (and of the `clock` command if it shares the flag) to state that the band holds the node times fixed and so under-covers; run `just gen` and `just generated-check`; no test, because the change is help text only
+- **Include node-time uncertainty**: record the approved method in `kb/decisions/coalescent-skyline-hessian-confidence-bands.md`; sample node times from their marginal posteriors with a seeded `StdRng`, refit $\ln T_c$ per sample, and combine the curvature variance with the variance across samples; tests on a simulated `const` tree from `treetime-simulation` in the slow tier (`test_sim_`) asserting coverage near 0.95 over many seeded replicates, with the sample size and false-fail rate stated (oracle: the simulated $T_c$)
+- Validation for both: `just check`, `just test-rs`; for the second option, the `keep-opt-fixed` rerun of the validation suite at $L = 1000$

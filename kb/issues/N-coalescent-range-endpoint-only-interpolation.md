@@ -6,7 +6,7 @@ For any nonlinear weight function -- the coalescent prior's `node_contribution` 
 
 ## Affected code
 
-- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L24-L33`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L24-L33): the Range/Point branch extracts the 2-element grid via `distribution.t()` and `distribution.y()` and evaluates the weight on it
+- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L25-L33`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L25-L33): the Range/Point branch extracts the 2-element grid via `distribution.t()` and `distribution.y()` and evaluates the weight on it
 - [`packages/treetime/src/coalescent/mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs): `CoalescentPrior::node_contribution` is nonlinear in the time through the integrals of $\bar k/T_c$ and $\ln T_c$
 
 ## Impact
@@ -22,3 +22,12 @@ A fix must define a concrete interior grid for nonlinear range weighting without
 ## Related issues
 
 - [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md): approved uniform-grid resolution contract for distribution arithmetic
+
+## Proposed implementation plan
+
+The locations are current: the Range branch of `fn distribution_multiply_by_fn()` is at `multiply_by_fn.rs` L25-L33, and `fn apply_leaf_coalescent_factor()` grids a Range at `coalescent_factor.rs` L38-L50 before the call.
+
+1. Make `fn distribution_multiply_by_fn()` reject `Distribution::Range` with `make_error!`, as it already rejects `Distribution::Formula`, because only the caller knows the grid resolution (`time_resolution()` of the coalescent prior). `Distribution::Point` stays accepted: a point has one abscissa, so the evaluation there is exact
+2. Keep the gridding in `fn apply_leaf_coalescent_factor()` as the one owner; no other caller passes a Range (`fn apply_coalescent_prior()` receives the product of child messages)
+3. Tests in `packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply_by_fn.rs`: a Range input returns the exact error message (`assert_err!`); a Point input returns the weight at the point (oracle: direct evaluation of the weight function). In `packages/treetime/src/timetree/inference/__tests__/`: a leaf with a Range date and the example $k = 2$, $T_c = 2$, $H(t) = 2.5 - 0.25t$ on $[0, 10]$ gives a normalized midpoint of about $0.2865$ within the interpolation bound of the grid step (oracle: the analytical density above)
+4. Validation: `just check`, `just test-rs`

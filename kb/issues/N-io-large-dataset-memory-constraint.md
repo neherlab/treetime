@@ -78,3 +78,13 @@ Adds external dependency and I/O overhead.
 ## Related documentation
 
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) - UShER MAT format stores mutations, not full sequences
+
+## Proposed implementation plan
+
+The approach under "Possible approaches" needs a measurement first and then a choice by the team; the plan stops at that choice.
+
+1. Measure: build the release binary through `./dev/docker/run just`, then run `/usr/bin/time -v` (or `dev/profile`) on the host for `treetime ancestral` and `treetime timetree` on `data/sc2/5100` and `data/mpox/clade-ii/2000`, dense and sparse. Record the maximum resident set size against the size of the decompressed alignment. This resolves the Investigation required block above and replaces the "2x estimate" column of the scale table with measured ratios
+2. Locate the peak: run a heap profiler (for example `heaptrack` on the host binary) on the same runs and name the allocations at the peak: `Vec<FastaRecord>` from `fn read_sequence_source()` (`packages/app-commands/src/commands/shared/sequence_inputs.rs`), the paired sequences, or the partition structures
+3. Cheap fix when the FASTA records and the partition copies overlap at the peak: drop or move each file's records into its partition before the next `--alignment` file is read, so that the peak holds one copy. Test: an existing ancestral run on a multi-file input gives the same output (oracle: output of the run before the change, compared byte for byte with `just smoke`)
+4. Choice of a streaming approach (indexed FASTA, memory-mapped FASTA, sparse representation throughout, external storage): write the options with the measured numbers into a `> [!IMPORTANT]` **Decision required.** block of this issue, because each option changes the input architecture
+5. Validate: repeat step 1 and report the peak before and after

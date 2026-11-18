@@ -21,3 +21,16 @@
 - [kb/proposals/io-format-coverage.md](../proposals/io-format-coverage.md): ranking of format work
 - [kb/proposals/unified-input-format-support.md](../proposals/unified-input-format-support.md): input paths that build partitions from formats with embedded data
 - [kb/decisions/io-usher-mat-gaps-as-missing-data.md](../decisions/io-usher-mat-gaps-as-missing-data.md): how the MAT writers handle gaps
+
+## Proposed implementation plan
+
+The steps below stop at the open decision above; steps 2 to 4 need its answers.
+
+1. Restore a MAT-to-graph reader in `packages/treetime-io/src/usher_mat.rs` (the writer lives there; commit `b944399c` removed the old reader from this file and from `packages/treetime/src/commands/timetree/initialization.rs`). Parse the embedded Newick with the project Newick reader so that an absent branch length stays `None`, and attach the per-node mutations of `UsherTree` (`usher_mat_pb_read()` in `packages/util-usher-mat/src/lib.rs`) to the graph edges
+2. Build sparse partitions from the per-node mutations and the reference sequence input chosen in the decision, with the chosen representation of masked sites and missing data (see `kb/decisions/io-usher-mat-gaps-as-missing-data.md` for the writer side)
+3. Add a MAT input option to the commands chosen in the decision, through the shared input path described in `kb/proposals/unified-input-format-support.md`; regenerate schemas with `just gen` and check with `just generated-check`
+4. Tests in `packages/treetime-io/src/__tests__/test_usher_mat.rs`:
+   - Round trip: write a small graph with sparse partitions through the MAT writer, read it back, compare the whole graph and the mutation sets (oracle: the input graph)
+   - Branch lengths: a Newick string with one absent length and one explicit `0.0` keeps `None` and `Some(0.0)` (oracle: the Newick text)
+   - Sparse equivalence: a small hand-written MAT plus reference gives the same leaf sequences as the equivalent FASTA alignment through the dense path (oracle: dense vs sparse comparison)
+5. Validate with `just lint-rs`, `just test-rs`, and `just r treetime timetree` on a MAT made from a `data/` dataset, compared with the Newick and FASTA run of the same data

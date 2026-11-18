@@ -40,3 +40,13 @@ No correction is ready until the reachable zero patterns and the intended cavity
 - [M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md](M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md)
 - [M-sparse-marginal-zero-multiplicity-nan.md](M-sparse-marginal-zero-multiplicity-nan.md)
 - [N-distribution-plain-division-fixed-floor.md](N-distribution-plain-division-fixed-floor.md)
+
+## Proposed implementation plan
+
+All cited locations are current. The plan starts with the investigation, because no correction is ready before it.
+
+1. Investigation tests in `packages/treetime/src/partition/marginal/shared/__tests__/test_marginal_shared.rs`: a three-leaf tree with one leaf state that makes a child message exactly zero for some states, and one with a subnormal message entry from an extreme branch length; record numerator and divisor pairs at `fn divide_out_value()`
+2. Oracle: the cavity message computed directly as the product of the parent's incoming message and the other children's messages (exclusion recomputation in log space), and v0's log-space preorder for dense cases
+3. If a reachable pattern gives a positive numerator over a zero divisor, or a forward profile differs from the oracle by more than 1e-6, replace the division in `fn divide_out()` and `fn divide_out_site()` with exclusion recomputation in log space, shared by dense and sparse, and coordinate with [M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md](M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md), which changes the same cavity step
+4. If no reachable pattern differs, delete this issue and keep the investigation tests as unit tests of the zero patterns
+5. Validate with `just lint-rs` and `just test-rs`; the v0 golden masters of dense marginal reconstruction must keep their tolerances

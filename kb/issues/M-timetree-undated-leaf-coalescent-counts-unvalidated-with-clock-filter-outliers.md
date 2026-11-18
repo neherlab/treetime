@@ -17,3 +17,10 @@ Whether counting a flagged tip by its posterior is closer to the truth than coun
 ## Validation
 
 With the default clock filter on the messy data, the rate error, the $T_c$ error and the node date RMSE after the decision are no worse than before it, and close to those of the clean data.
+
+## Proposed implementation plan
+
+1. Add a clock filter option to the `timetree` runner of `validation/run.py`: the date arguments (the line that appends `--clock-filter 0`) take the threshold from a new command-line option, default `0`, so that the existing results stay comparable
+2. Run the `opt-est` and `skyline-est` variants on `data_messy/` (and `data_n100_messy/` for a larger tip count) with `--clock-filter 3`, once with the commit before the decision and once with the current `rust`, with separate `--results` directories
+3. Record per set the number of tips that the filter flags, the rate error, $\ln(T_c/T_c^\text{true})$ and the node date RMSE. Oracle: the simulated truth of the validation sets
+4. Compare with the clean data (`data/`, `--clock-filter 0`). When the counting by posterior is worse than before, report it to the user as a reopening of the decision; otherwise add the results to the validation section of the decision file and delete this issue

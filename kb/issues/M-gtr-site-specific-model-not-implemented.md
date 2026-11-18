@@ -47,3 +47,19 @@ Study v0's `treeanc.infer_gtr(site_specific=True)` path for the inference-to-tra
 
 1. <a id="ref-1"></a> Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-1)
 2. <a id="ref-2"></a> Siepel, Adam, and David Haussler. 2004. "Phylogenetic Estimation of Context-Dependent Substitution Rates by Maximum Likelihood." _Molecular Biology and Evolution_ 21(3):468-488. https://doi.org/10.1093/molbev/msh039 [↩](#cite-2)
+
+## Proposed implementation plan
+
+No Rust source mentions a site-specific model or flag; [`packages/treetime/src/partition/create.rs#L121`](../../packages/treetime/src/partition/create.rs#L121) returns `Vec<GTR>` and [`packages/treetime/src/partition/optimize/dense.rs#L8`](../../packages/treetime/src/partition/optimize/dense.rs#L8) takes `&GTR`. The plan stops at the two open decisions above.
+
+1. Get the user's choice of model abstraction (O1 or O2) and of the sparse policy, and record them in a new `kb/decisions/` file with approval.
+2. Model: add `GtrSiteSpecific` in `packages/treetime/src/gtr/` with per-site `pi` (`Array2<f64>` `[n_states, seq_len]`), `mu` (`Array1<f64>`), shared `W`, per-site eigendecomposition, and `exp_qt` returning `Array3<f64>` `[n_states, n_states, seq_len]`, following `gtr_site_specific.py`.
+   - O1: an enum `SubstitutionModel { Scalar(GTR), SiteSpecific(GtrSiteSpecific) }` replaces `GTR` in partitions, reconstructions, and the branch length objective.
+   - O2: traits for propagation, likelihood, and rate refinement, implemented by both models; the stored type becomes generic or boxed per role.
+3. Inference: port `GTR_site_specific.infer` (iterative per-site `pi`, `mu`) from per-site counts that `accumulate_mutation_counts` extends with a site axis.
+4. Propagation: update dense marginal backward and forward passes to apply a per-site matrix; apply the sparse policy chosen in step 1.
+5. CLI: add `--site-specific-gtr` to `ancestral` and `homoplasy`, regenerate schemas (`just gen`), and remove the 0.x message for it from `packages/app-cli/src/cli/v0_args.rs` if it exists.
+
+Tests: golden master `test_gm_infer_gtr_site_specific` against v0 `treeanc.infer_gtr(site_specific=True)` (capture script imports v0) on `data/flu/h3n2/20` and `data/ebola/20` at 1e-6; unit test that a site-specific model with equal per-site `pi` and `mu` gives the same likelihood as the scalar `GTR` (oracle: the scalar model); dense marginal ancestral output vs v0 `ancestral --site-specific-gtr`.
+
+Validation: `just lint-rs`, `just test-rs`, `just generated-check`, `just smoke` on the affected commands.

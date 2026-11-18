@@ -8,3 +8,14 @@ v0 decides per node from the node's own branch length and does not add the remov
 
 > [!IMPORTANT]
 > **Investigation required.** No wrong output has been shown. Find a tree where a selected child edge becomes longer than `--collapse-short` or gains mutations after its parent edge collapses, and compare the output branch lengths with v0. Decide from that comparison whether the length merge in `fn collapse_edge()` is correct for `prune`, or whether the selection must use the merged values.
+
+## Proposed implementation plan
+
+The plan stops at the open question above. Do the investigation first, then do one of the two fix options that the investigation selects.
+
+1. **Reproduce.** Build a small tree by hand: an internal edge `p -> a` of length 0.004, an internal child edge `a -> b` of length 0.003, and leaves below `b`. Run `treetime prune --collapse-short 0.005` with and without `--alignment`. Expected v1 output: `a` and `b` both collapsed, and the leaf edges below `b` carry 0.007 plus their own length. Run v0 `prune_short_branches()` on the same tree for comparison: v0 drops the 0.004 and 0.003 and keeps the leaf lengths
+2. **Decide.** Report the comparison to the user. The choice between "merge lengths, then select from merged values" and "drop the removed length as v0 does" changes output branch lengths, so it is a scientific choice that needs user approval and a `kb/decisions/` entry if v1 keeps a difference from v0
+3. **Option A, select from merged values.** In `fn prune_internal_nodes()` (`packages/treetime/src/prune/prune.rs`), replace the up-front collection with a preorder walk that tests each internal edge with the current `branch_lengths` and the current mutation count (`fn get_edge_num_muts()`) just before it calls `fn collapse_edge()`. Named nodes (`node_keys`) keep their unconditional collapse
+4. **Option B, v0 behavior.** Keep the up-front selection and make `prune` drop the removed length: add a parameter or a separate function next to `fn collapse_edge()` (`packages/treetime/src/optimize/topology/collapse.rs`) that skips the `bl1 + bl2` merge. Keep the merge for `fn collapse_short_internal_edges()` unless the decision covers optimize too
+5. **Tests.** Add a unit test in `packages/treetime/src/prune/__tests__/` on the hand-built tree of step 1 that compares the whole output graph (topology and branch lengths). Oracle: the hand calculation of step 1 for the chosen option; for option B, also v0 `prune_short_branches()` on the same tree. Add a case with `--collapse-empty` where the parent edge carries one mutation and the child edge none, to cover the mutation chain
+6. **Validate.** `just lint-rs`, `just test-rs`, and `just smoke` when the output of `prune` changes on a dataset

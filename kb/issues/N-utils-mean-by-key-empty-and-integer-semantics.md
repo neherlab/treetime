@@ -20,3 +20,13 @@ The only production callers are in `packages/treetime-validation/src/testing/con
 > - **Return `Option<U>`**: `None` for empty input, and an error or `None` when the count does not fit `U`
 > - **Restrict to floating-point keys**: remove integer support, so truncation cannot occur
 > - **Keep the current contract**: document zero for empty input and integer truncation as intended behavior
+
+## Proposed implementation plan
+
+The plan depends on the open decision; each option changes `MeanByKey::mean_by_key()` in `packages/treetime-utils/src/iterator/mean_by_key.rs`, its tests in `packages/treetime-utils/src/iterator/__tests__/test_mean_by_key.rs`, and the callers in `packages/treetime-validation/src/testing/console/console_metrics.rs`.
+
+- **Return `Option<U>`**: return `None` for empty input and for a count that `U::from_usize()` cannot represent; callers unwrap with a message where the group is non-empty by construction. Tests: empty -> `None`, `[1.0, 2.0]` -> `Some(1.5)`; oracle: hand calculation
+- **Restrict to floating-point keys**: bound `U: Float` (`num_traits`), convert the count with `NumCast` and propagate a failure; tests over `f64` only, `1..=1000` as `f64` -> `500.5` (oracle: (1 + 1000) / 2)
+- **Keep the current contract**: replace `unwrap_or_else(U::zero)` with an error or a documented panic-free path, and keep the tests
+
+Validate with `just test-rs -E 'package(treetime-utils)'` and `-E 'package(treetime-validation)'`.

@@ -30,3 +30,14 @@ Two Auspice gaps have their own issues: branch support ([M-io-branch-support-dro
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)
 - [kb/proposals/output-format-selection.md](../proposals/output-format-selection.md)
 - [kb/reports/augur-node-data-json.md](../reports/augur-node-data-json.md)
+
+## Proposed implementation plan
+
+`fn format_number()` starts at [packages/app-output/src/auspice.rs#L381](../../packages/app-output/src/auspice.rs#L381), `fn float_to_significant_digits()` at [packages/treetime-utils/src/fmt/float.rs#L30](../../packages/treetime-utils/src/fmt/float.rs#L30), and no `test_gm_` file for Auspice output exists in `packages/app-output`.
+
+1. Clone Augur into `.repos/augur` at a pinned revision. Write `packages/app-output/src/__tests__/__fixtures__/gm_auspice_capture` that imports `augur.export_v2.format_number` and writes `gm_auspice_inputs.json` (the boundary values of Validation, with precisions 3 and 6) and `gm_auspice_outputs.json` (the `repr` text and the float). Run it in the trusted reference environment of the container.
+2. Rewrite `fn format_number()` on top of `float_to_significant_digits()` as the Recommendation states, and remove its own digit logic.
+3. Add `test_gm_auspice_format_number.rs` (rstest over the captured cases, exact text and exact `f64` equality; oracle: pinned Augur).
+4. Whole document: extend the capture to run `augur ancestral`, `augur refine`, and `augur export v2` on `data/zika/20` with the same tree and alignment as a TreeTime run, and add `test_gm_auspice_document.rs` that compares the TreeTime Auspice JSON with Augur's after a documented normalization (key order, `meta.updated`, version strings). Scope cases with and without genome annotations.
+
+Validation: `just lint-rs`, `just test-rs`; see red by changing one captured digit.

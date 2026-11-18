@@ -23,3 +23,13 @@ FASTA records, metadata dates, and mugration traits pair with tree nodes through
 
 - [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) -- user-facing name-matching defects
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) (current state of the pairing, suggestions, normalization)
+
+## Proposed implementation plan
+
+The target policy is open (Decision required above). One short plan per option; both share step 1.
+
+1. Shared report: add one function beside `fn warn_leaves_without_data()` (`packages/treetime/src/ancestral/attach.rs`) that reports unmatched entries and nodes without data in one form (count plus up to 10 names), and call it from `fn pair_alignment()` (`packages/app-commands/src/commands/shared/alignment.rs`), `fn read_input_dates()` (`packages/app-commands/src/commands/shared/dates_input.rs`), and `fn pair_traits()` (`packages/app-commands/src/commands/mugration/run.rs`). The FASTA path then also reports entries without a node
+2. Option "one policy for every subsystem": move the one-third limit and its override flag into the shared function, rename `--allow-missing-sequences` to a flag that every command with named inputs accepts, and apply it to dates and traits. Update `packages/app-cli/src/cli/v0_args.rs` only if a 0.x spelling is affected, then `just gen`
+3. Option "subsystem-specific handling": keep the limit in the FASTA path and the three-dated-leaves rule in the dates path; only step 1 changes behavior
+4. Tests: one case per subsystem in the `__tests__/` directory of each call site, with a tree of four leaves and inputs that miss one leaf and add one unknown name; assert the whole returned result and the error text with `assert_err!` where the policy stops the run (oracle: the approved policy text)
+5. Validate: `just lint-rs`, `just test-rs`, `just generated-check` when a flag changes

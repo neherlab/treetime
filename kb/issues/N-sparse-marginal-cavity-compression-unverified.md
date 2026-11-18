@@ -9,7 +9,7 @@
 
 ## Details
 
-`fn compute_msg_to_child()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L207-L266`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L207-L266) divides and normalizes cavity profiles, then inserts them into `msg_to_child.variable` and subtracts them from the fixed counts of their states.
+`fn compute_msg_to_child()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L219-L321`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L219-L321) divides and normalizes cavity profiles, then inserts them into `msg_to_child.variable` and subtracts them from the fixed counts of their states.
 
 Let $\varepsilon$ denote a proposed probability threshold. A near-deterministic profile can retain nonzero probability outside its MAP state, so it is not identical to a fixed row. Demoting it under an $\varepsilon$ threshold would discard uncertainty and can change likelihood evaluation. The current explicit representation preserves the complete normalized profile.
 
@@ -21,3 +21,13 @@ Let $\varepsilon$ denote a proposed probability threshold. A near-deterministic 
 - Obtain explicit approval before introducing a lossy threshold.
 
 Implementation waits until the representation criterion and numerical contract are decided.
+
+## Proposed implementation plan
+
+The cited location is current (`fn compute_msg_to_child()` at `forward.rs#L219`). The plan stops at the approval of a threshold.
+
+1. Measure first: count, on the example datasets, the cavity profiles whose MAP state equals the fixed-row state and whose MAP probability exceeds `1 - 1e-6`, `1 - 1e-9`, `1 - 1e-12`, and the share of `msg_to_child.variable` entries they make. Without a material share, close the issue
+2. Lossless option: demote a profile only when it equals the fixed row in every component within the round-off of its normalization (a few ulps). This needs no approval and keeps dense and sparse equal within `1e-10`
+3. Lossy option: derive the per-edge log-likelihood error of a demotion at threshold ε and its sum over sites and passes, and present it to the user for approval as a `kb/decisions/` entry before any code change
+
+Tests: dense versus sparse log-likelihood and posteriors on small trees, equal within `1e-10` for the lossless option. Oracle: dense inference. Validation: `just test-rs`, `just lint-rs`.

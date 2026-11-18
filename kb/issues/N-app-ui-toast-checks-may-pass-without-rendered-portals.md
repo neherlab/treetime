@@ -16,3 +16,10 @@ Load Base UI after the DOM in every test that renders Base UI components: regist
 ## Validation
 
 - Each toast absence check fails when the toast is forced to appear
+
+## Proposed implementation plan
+
+1. Make happy-dom exist before Base UI loads in the upload tests: move `registerDom()` of `packages/app-ui/src/analysis/__tests__/test_input_upload.test.tsx` (now in `beforeAll`, line 39) into a setup module that the test imports first, or load `Toaster` and `InputsSection` with dynamic imports after `registerDom()`, as `packages/app-ui/src/auspice/__tests__/test_notifications.test.tsx` (lines 11, 70-71) does. Prefer one shared setup module in `packages/app-ui/src/__tests__/` (beside `dom.ts`) so that every Base UI test gets the same order.
+2. Add a positive sibling case for each absence check at lines 150 and 208: a server fake whose release fails, and an assertion that the toast "An earlier upload cannot be removed" appears. Oracle: the error path of the upload code that shows this toast.
+3. Add a test that opens the "Example files" dialog with `userEvent`, picks an example, and asserts the resulting upload entry by role or label.
+4. Validate: `just test-ts`; see red by forcing the toast to always appear and confirming that the checks at lines 150 and 208 fail, then revert.

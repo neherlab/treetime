@@ -15,3 +15,17 @@ The web apps download the archive of a run's outputs through `GET /api/runs/{id}
 ## Validation
 
 - The saved archive of a run matches the chosen compression, and the route test checks the chosen method
+
+## Proposed implementation plan
+
+Every cited location is current (`fn stream_run_zip()` sets `CompressionMethod::Stored` at [packages/app-backend/src/runs/files.rs#L155](../../packages/app-backend/src/runs/files.rs#L155)). The 158 MB size of the `sc2/5100` archive was not measured again. The plan stops at the open decision above; one short plan per option:
+
+- **Deflate the streamed archive**: set `CompressionMethod::Deflated` in `fn stream_run_zip()` as `fn write_run_zip()` does, and add `application/zip` to `fn compress_predicate()` in `packages/app-server/src/web.rs` as a content type that the wire layer skips, so the server does not compress twice. Update the expected method in `packages/app-server/src/__tests__/test_downloads.rs#L98`
+- **Keep stored entries**: no code change; delete this issue after the decision
+- **Deflate only in web2**: pass the compression method as a parameter of `fn stream_run_zip()` from its callers (the server route keeps `Stored`, the WebAssembly back end passes `Deflated`), and add a test of the method in the wasm back end tests
+
+For a deflate option, a backend test in `packages/app-backend/src/runs/__tests__/` streams a run with a repetitive output file and asserts that every entry's method is `Deflated` and that the unpacked bytes equal the file. Oracle: the zip format (entry method field) and the input file.
+
+### Plan validation
+
+- `just lint-rs`, `just test-rs`, and for the web2 option `just test-wasm` pass

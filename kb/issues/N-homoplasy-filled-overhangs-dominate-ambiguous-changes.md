@@ -20,3 +20,13 @@ The substitution statistics are not affected: changes to `N` never enter them.
 - O1. Keep counting every change to `N`. The lists show the coverage of each sample, and the per-taxon count of a sample with short reads is large by construction
 - O2. Count only ambiguous characters that the input sequences contain, and leave out the columns that gap filling created. The pipeline would need to tell filled columns from observed `N`, for example from the gap-fill mask of each sample
 - O3. Count changes to partial ambiguity codes (such as `R` or `Y`) only, and leave out every `N`. Observed `N` in the middle of a sequence then disappears from the lists as well
+
+## Proposed implementation plan
+
+`fn read_sequence_source()` applies `apply_gap_fill()` at the cited lines, and the homoplasy ambiguous lists live in `packages/app-commands/src/commands/homoplasy/` (`summary.rs`, `report.rs`, `result.rs`). The counts on `data/rsv/a/20` come from earlier runs and were not measured again on the current code. The plan stops at the open decision; one short plan per option:
+
+- **O1**: delete this issue; optionally document the coverage meaning of the lists in the `--help` text of `homoplasy`.
+- **O2**: make `apply_gap_fill()` return the filled ranges per sample, carry them with the alignment source to the homoplasy count, and skip changes to `N` inside a filled range. Test: a 3-tip alignment with one leading-gap sample and one observed `N`; the ambiguous list holds only the observed `N` (oracle: manual count).
+- **O3**: in the homoplasy ambiguous filter, skip changes whose target is `N`. Test: same alignment with an `R` and an `N`; the list holds only the `R` change (oracle: manual count).
+
+For O2 and O3, update [kb/decisions/homoplasy-mutation-mapping-and-counting.md](../decisions/homoplasy-mutation-mapping-and-counting.md) with approval. Validation: `just lint-rs`, `just test-rs`, and the command above, whose top 15 ambiguous changes then contain no 5' end columns.

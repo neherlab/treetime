@@ -13,3 +13,12 @@ TreeTime fixes this in the Bun patch of Auspice, `patches/auspice@3.2.0.patch`: 
 ## Fix
 
 Contribute the change to [nextstrain/auspice](https://github.com/nextstrain/auspice), then remove it from the patch after upgrading to an Auspice release that contains it. [N-app-ui-auspice-tree-unmount-patch-upstream.md](N-app-ui-auspice-tree-unmount-patch-upstream.md) describes how to edit the patch.
+
+## Proposed implementation plan
+
+1. Check upstream state: on the current default branch of nextstrain/auspice (clone in `.repos/auspice`), check whether `findAvailableDistanceMeasures()` in `src/util/computeDistanceMetric.ts` still offers `num_date` from the root node alone (`numDateAtRoot`)
+2. Take the `src/util/computeDistanceMetric.ts` hunk of `patches/auspice@3.2.0.patch` (`allNodesHaveNumDate = nodes.every(...)`) as the upstream change
+3. Open a pull request at nextstrain/auspice with a unit test in its Jest suite: a tree whose root and some tips have `num_date` and one tip lacks it yields no `num_date` among the available measures, and a fully dated tree still yields it. Oracle: the time axis needs a numeric date for every drawn node, so a node without `num_date` has no position on it
+4. After an Auspice release contains the change: bump `auspice` in `packages/app-ui/package.json` and the `patchedDependencies` key in the root `package.json`, regenerate the patch without this hunk (procedure in [N-app-ui-auspice-tree-unmount-patch-upstream.md](N-app-ui-auspice-tree-unmount-patch-upstream.md)), and delete this issue
+
+Validation: `just typecheck`, `just test-ts`, and a manual check in the web2 dev server that a tree with an undated tip opens by divergence and offers no time controls.

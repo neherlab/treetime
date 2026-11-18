@@ -23,3 +23,15 @@ No tool is known to read Nextclade NDJSON as phylogenetic input, so this use is 
 
 - [kb/proposals/io-format-coverage.md](../proposals/io-format-coverage.md): ranking of format work
 - [N-io-maple-alignment-input-unsupported.md](N-io-maple-alignment-input-unsupported.md): another sparse alignment input
+
+## Proposed implementation plan
+
+Scope, reference source, and insertion handling are open (Decision required above). One short plan per scope option.
+
+- Option "only MAPLE or VCF": delete this issue and keep the use case in [N-io-maple-alignment-input-unsupported.md](N-io-maple-alignment-input-unsupported.md) and the VCF issue
+- Option "support Nextclade NDJSON":
+  1. Reader: add `packages/treetime-io/src/nextclade_ndjson.rs` that reads `seqName`, `substitutions`, `deletions`, and `missing` per line with serde (field oracle: `outputs.rs` of Nextclade at the pinned revision above, cloned into `.repos/nextclade/`), with errors that name the line
+  2. Reference: read the reference FASTA from the chosen source, then turn each sample into the sparse difference list that the sparse partitions take; insertions per the chosen rule
+  3. Format selection in `fn read_sequence_source()` (`packages/app-commands/src/commands/shared/sequence_inputs.rs`) by extension `.ndjson`, beside `fasta_read_file()`
+  4. Tests: a two-sample NDJSON literal and the FASTA that Nextclade aligned for the same samples; sparse ancestral gives the same output for both inputs (oracle: Nextclade's own aligned FASTA output)
+  5. Validate: `just lint-rs`, `just test-rs`, `just generated-check` when a flag changes

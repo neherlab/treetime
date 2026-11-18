@@ -37,3 +37,16 @@ The web server sends a weak `ETag` with the results, the Auspice document, and t
 
 > [!IMPORTANT]
 > **Decision required.** The choice between the in-memory cache and stored answers is open. A cache keeps the answers consistent with changes to the result-building code but is lost on restart; stored answers survive a restart but go stale when that code changes. Evidence: the measurements above, and the `ETag` mitigation, which covers repeated requests of one browser only.
+
+## Proposed implementation plan
+
+Every cited function exists at its cited file, and `AppService` still has no cache. The measurements were not repeated. The plan stops at the open decision above; one short plan per option:
+
+- **In-memory cache**: add a bounded cache of `RunResults` and `AuspiceDocument` keyed by run id to `RunManager` (the owner of run lifetimes), filled by `fn run_results()` and `fn run_auspice()` for finished runs only, and evicted inside the delete and purge operations of `RunManager`, so no caller must remember it. A title change edits the record, so the cache keys on the record and the output files or drops the entry on every record write. Reuse a maintained LRU crate through "Adding a dependency"
+- **Stored answers**: write `results.json` and `auspice-document.json` next to the outputs when a run ends (in the run's end path of `packages/app-backend/src/job.rs`), serve them when present, and rebuild them when absent; record the build version of the result code in the stored file so a changed builder rebuilds instead of serving stale JSON
+
+For both options: a backend test in `packages/app-backend/src/results/__tests__/` asserts that the second answer equals the first (whole value) and that a delete of the run removes the cached or stored answer. Oracle: the answer built from the files. Validate the speedup by repeating the measurement of the table above on `dengue/2000` with the release N-API addon.
+
+### Plan validation
+
+- `just lint-rs` and `just test-rs -E 'package(app-backend)'` pass

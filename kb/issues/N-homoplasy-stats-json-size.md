@@ -22,3 +22,13 @@ The web and desktop apps read the file with `json_read_file()` into `struct Homo
 - O1. Keep the file as it is. It is complete, and the apps skip the large list
 - O2. Drop the branch names from the entries of `ambiguous.all.ranked`, keeping the mutation and its multiplicity
 - O3. List only ambiguous changes that occur on two or more branches, as the substitution report focuses on recurrent changes
+
+## Proposed implementation plan
+
+The cited lines in `packages/app-backend/src/results/homoplasy.rs` and `packages/app-backend/src/results/outputs.rs` are current, and `struct AmbiguousStats` has no `ranked` field. The file sizes and read times come from earlier runs and were not measured again on the current code. The plan stops at the open decision, and the outcome of [N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md](N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md) changes the sizes, so decide that issue first:
+
+- **O1**: delete this issue.
+- **O2**: remove the branch-name field from the ranked ambiguous entry type in `packages/app-commands/src/commands/homoplasy/` (`summary.rs` or `result.rs`), regenerate schemas (`just gen`), and update the snapshot or unit test of the statistics output (oracle: manual count on a small tree).
+- **O3**: filter the ranked ambiguous list to multiplicity ≥ 2 where it is built, with a unit test on a tree with one single and one recurrent ambiguous change (oracle: manual count).
+
+Validation: `just lint-rs`, `just test-rs`, `just generated-check`, and a size measurement of `homoplasy.stats.json` on `data/sc2/5100` and `data/mpox/clade-ii/2000` before and after.

@@ -26,3 +26,17 @@ Skip the likelihood term only when its multiplicity is zero. Preserve existing p
 ## v0 comparison
 
 v0 uses dense arrays and numpy operations that naturally handle zero multiplication without NaN (numpy's `0 * -inf = nan` but v0's flow avoids the zero-count case by construction since composition is always derived from a full sequence).
+
+## Proposed implementation plan
+
+The cited line is current: [packages/treetime/src/partition/marginal/sparse/message.rs#L119](../../packages/treetime/src/partition/marginal/sparse/message.rs#L119) still adds `weights[index] * log_norm` without a guard; `weights[index]` is decremented per candidate site at `message.rs#L99`.
+
+1. In `fn combine_messages()`, skip the term when `weights[index] == 0.0` (for example `filter` on the `izip!` iterator at `message.rs#L118`), and keep the product for positive weights
+2. Optionally add a debug assertion that `weights[index] >= 0.0`, because a negative weight means more candidate sites than the composition count
+
+Tests (`packages/treetime/src/partition/marginal/sparse/__tests__/`):
+
+- Unit test of `combine_messages()` with a canonical state of zero multiplicity whose shared profile sums to zero: `log_lh` is finite and equals the sum of the other states' terms. Oracle: hand-computed sum (a zero-multiplicity term is the additive identity)
+- Regression test on a rerooted sparse tree that leaves a canonical state with zero count: the branch log-likelihoods are finite and equal to dense within `1e-10`. Oracle: dense inference
+
+Validation: `just test-rs`, `just lint-rs`.

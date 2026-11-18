@@ -15,3 +15,15 @@ Dense partitions always filter: `DenseInputs` is built with `filter_uninformativ
 ## Fix direction
 
 Add an unfiltered v0-parity case: capture from true v0 (`tt.infer_gtr()` with unfiltered `root_state`) and compare with v1 counts computed with `filter_uninformative_root = false`. Keep the current filtered capture as the test of the filtered path.
+
+## Proposed implementation plan
+
+The capture script, `fn is_profile_informative()`, the root-state loop in `shared/data.rs`, the hard-coded `filter_uninformative_root: true` in `dense/partition.rs`, and the mugration flag are at the cited lines.
+
+1. Extend `gm_infer_gtr_dense_capture` with a second output per case: call v0 `tt.infer_gtr(pc=1.0, ...)` directly, so v0 computes its own unfiltered `root_state`, and store the inferred `W`, `pi`, `mu` under a separate key (for example `unfiltered`) in `gm_infer_gtr_dense_outputs.json`. Keep the current filtered output as it is. Import v0 code only; do not reimplement the accumulation for this key.
+2. Add a test-only way to build the dense inputs with `filter_uninformative_root: false` (for example a constructor argument or a builder on `DenseInputs` reachable from `__tests__`), without a CLI flag, because dense partitions always filter in production.
+3. In `test_gm_infer_gtr_dense.rs`, add `test_gm_infer_gtr_dense_unfiltered_synthetic` and `..._real` (rstest cases equal to the existing ones) that run `fn setup_dense_partition()` with the filter off and compare `W`, `pi`, `mu` with the `unfiltered` outputs at 1e-6 (project limit). Oracle: v0 `TreeAnc.infer_gtr()` output, captured by the script.
+4. Rerun the capture in the container (v0 Python CLI per `cli-verification.instructions.md`) and review the new outputs before commit.
+5. Update [kb/decisions/gtr-uninformative-root-state-filtering.md](../decisions/gtr-uninformative-root-state-filtering.md) only with the measured divergence of filtered vs unfiltered output, with user approval (decision files change only with consent).
+
+Validation: `just test-rs -E 'package(treetime)'`, then `just test-rs`; see red by setting the unfiltered inputs to filter and confirming the new test fails on a dataset with ambiguous root columns (for example `lassa_L_50`).

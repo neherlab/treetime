@@ -18,3 +18,10 @@ Add `build-web` and `test-wasm-mt` to a check group, so the production build of 
 ## Validation
 
 - A pull request that breaks the production build of the web app, or a run of the threaded module, fails a CI check
+
+## Proposed implementation plan
+
+1. Add `test-wasm-mt` to `checks_tests` in `justfile` (line 126), so the `tests` job of `.github/workflows/cli.yml` runs the threaded module under Node on every pull request. Confirm that the image of that job holds the nightly toolchain, Emscripten, and the threaded OpenBLAS archive that `build-wasm-mt` needs; if it does not, run `test-wasm-mt` in the `Web app` workflow (`.github/workflows/web.yml`), which already uses the image of the WebAssembly target.
+2. Add `build-web` to `checks_typescript` (line 128), or as a step of the `Web app` workflow beside `just build-web2`, so the production build of `app-web` runs on every pull request.
+3. `check_full` (line 131) concatenates the group variables, so `just check-all` then also runs both recipes without a further edit.
+4. No unit test applies; this is CI configuration. Validate with `just check-group tests` and `just check-group typescript` on the branch, then see red: on a scratch branch, make a Vite config of `app-web` import an extensionless workspace entry and confirm that the CI job fails, then drop the branch.

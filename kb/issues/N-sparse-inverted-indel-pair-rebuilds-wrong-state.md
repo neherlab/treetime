@@ -22,3 +22,17 @@ Function-level, with the production functions (`compose_indels()`, `InDel::inver
 ## Fix direction
 
 The fix belongs to the composition of all event kinds that [M-sparse-edge-merge-composes-substitutions-and-indels-separately.md](M-sparse-edge-merge-composes-substitutions-and-indels-separately.md) describes: a composed edge that holds the net change over each range (here a substitution `A->G` instead of a deletion and an insertion) inverts without depending on list order.
+
+## Proposed implementation plan
+
+The cited locations are current (`invert_edge()` at `reroot.rs#L83`, in-place `indel.invert()` at `reroot.rs#L98` and `#L116`, `apply_edge_to_sequence()` at `reroot.rs#L154`).
+
+1. Fix through the site-wise composition of the plan in [M-sparse-edge-merge-composes-substitutions-and-indels-separately.md](M-sparse-edge-merge-composes-substitutions-and-indels-separately.md): when a deletion of the parent edge meets an insertion of the child edge over one range with different characters, the composition emits the substitutions of the net change (here `A1G`), and drops the pair when the characters are equal
+2. Until then, or in addition, make `compose_indels()` in `packages/treetime/src/seq/indel.rs` never return two events over one range, so that `invert_edge()` and `remove_stem_root()` stay order-independent
+
+Tests (`packages/treetime/src/seq/__tests__/`):
+
+- Unit case of the reproduction above: the composed edge from `AC` to `GC` rebuilds `GC` forward and `AC` after inversion. Oracle: the parent and child sequences
+- Property test: for random parent and child indel lists, the composed edge applied forward gives the child, and its inversion applied to the child gives the parent (round trip). Oracle: the sequential application of the two edges
+
+Validation: `just test-rs`, `just lint-rs`. The open investigation decides only the severity, not the fix.

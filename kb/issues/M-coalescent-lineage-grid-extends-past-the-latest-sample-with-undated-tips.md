@@ -22,3 +22,17 @@ Clock-filter outliers extend the span the same way. A tip that the clock filter 
 
 > [!IMPORTANT]
 > **Decision required.** Options: (a) end the span at the latest dated leaf, or at the latest time where $\bar k \ge 1$, and let the survival tails beyond it fall in the last segment; (b) bound the posterior of an undated leaf by a sampling window, such as the range of the observed dates, in the forward pass only, so $\log Z$ stays free of a sampling-date prior. Option (a) changes the segments only; option (b) also changes the dates of undated leaves, and leaves the span of clock-filter outliers unbounded unless it bounds their posterior too. For option (a) the latest dated leaf is the latest leaf whose date the clock model keeps.
+
+## Proposed implementation plan
+
+The locations above are current: `fn LineageExpectation::span()` takes `t_max` from the last grid point (`mean_field.rs` L465), and `fn optimize_skyline()` builds equal-width boundaries over that span (`skyline.rs` L40-L41). The plan depends on the open decision.
+
+- **Option (a)**:
+  1. Pass the latest kept dated leaf (the latest leaf whose date the clock model keeps) into `LineageExpectation`, and end `span()` at it, or at the latest grid time with $\bar k \ge 1$
+  2. In `fn optimize_skyline()`, let the last segment take the survival mass beyond `t_max`, so the pair integral and the merger counts of the tails stay in the fit
+  3. Tests in `packages/treetime/src/coalescent/__tests__/`: a small tree with one undated leaf whose posterior reaches past the latest sample; assert that the span ends at the latest dated leaf and that the sum of the segment mergers equals the total of the unbounded grid (oracle: conservation of the expected merger count)
+- **Option (b)**:
+  1. Record the approved choice in `kb/decisions/` next to `timetree-undated-leaves-enter-lineage-counts-by-posterior.md`
+  2. In the forward pass, multiply the posterior of an undated leaf (and of a clock-filter outlier, if approved) by an indicator of the range of the observed dates, and keep the backward messages and $\log Z$ unchanged
+  3. Tests: an undated leaf on a small tree whose posterior support ends at the latest observed date (oracle: the definition of the sampling window), and an unchanged $\log Z$ against the current code (oracle: $\log Z$ comes from the backward pass, which the option does not change)
+- **Validation for both**: `just check`, `just test-rs`; rerun `validation/data_n100_messy` (`keep-opt-fixed`, $L=10^3$, $\mu=3\cdot10^{-4}$, `const`) and `data/ebola/362` with `--coalescent skyline --n-skyline 50 --clock-filter 4`, and check that no segment ends after the latest kept sample and that `tc_log_bias` is finite. This also answers the Investigation required block above

@@ -1,6 +1,6 @@
 # Segments with different trees cannot share a run
 
-Segmented genomes such as influenza can have one tree per segment, because reassortment gives the segments different histories. TreeTime takes one `--tree` per run (for example [packages/app-commands/src/commands/shared/tree_input.rs#L49](../../packages/app-commands/src/commands/shared/tree_input.rs#L49)), and every partition of the `--alignment` files lies on that tree ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Segments that share one tree run together today; segments with different trees need one run per segment.
+Segmented genomes such as influenza can have one tree per segment, because reassortment gives the segments different histories. TreeTime takes one `--tree` per run (for example [packages/app-commands/src/commands/shared/tree_input.rs#L58](../../packages/app-commands/src/commands/shared/tree_input.rs#L58)), and every partition of the `--alignment` files lies on that tree ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Segments that share one tree run together today; segments with different trees need one run per segment.
 
 ## Current state
 
@@ -35,3 +35,13 @@ Run TreeTime once per segment with the tree of that segment.
 
 - [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md) -- configuration file format that would subsume per-segment CLI flags
 - [kb/proposals/unified-input-format-support.md](../proposals/unified-input-format-support.md) -- alternative input via formats with embedded sequences
+
+## Proposed implementation plan
+
+The sharing rule is open (Decision required above). The plan stops at that rule.
+
+1. Decide per parameter (clock rate, `Tc` or skyline, substitution model) whether the trees of one run share it. When every parameter is separate, close this issue as "one run per segment" and document the workaround in `docs/en/`, because a run with several trees then adds nothing over a batch of runs
+2. When at least one parameter is shared: let `struct TreeArgs` (`packages/app-commands/src/commands/shared/tree_input.rs`) take one tree per segment group, map each `--alignment` file or `--partition` to one tree (config file design in [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md)), and build one graph per group
+3. Fit the shared parameters jointly: sum the log-likelihoods of the groups in the objective of each shared parameter (for example the clock regression and the coalescent `Tc` optimization of timetree), and keep the separate parameters per graph. This step is a scientific change and needs a `kb/decisions/` entry with user approval
+4. Tests: simulated data from `treetime-simulation` with two trees that share one clock rate; the joint fit recovers the true rate within the interval of the fit, and with separate parameters the run equals two single-tree runs (oracle: the simulation truth, and the single-tree runs)
+5. Validate: `just lint-rs`, `just test-rs`, `just generated-check`

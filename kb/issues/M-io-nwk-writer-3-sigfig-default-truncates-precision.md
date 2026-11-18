@@ -29,3 +29,12 @@ A public mugration report describes small branch lengths being written as zero i
 - `fn float_to_digits()` in [packages/treetime-utils/src/fmt/float.rs#L41-L43](../../packages/treetime-utils/src/fmt/float.rs#L41-L43) sets the same 3-digit default again when no limit is given
 
 Implementation waits until the exchange-format default is approved.
+
+## Proposed implementation plan
+
+The default precision is open (Decision required above). The plan holds for any approved default `D` (full round-trip precision, or a fixed count of significant or decimal digits).
+
+1. One default in one place: set `D` as the `#[default]` of `NwkWriteOptions.weight_significant_digits` / `weight_decimal_digits` (`packages/treetime-io/src/nwk.rs`), and remove the `.or(Some(3))` fallbacks in `fn newick_write_options()` and `fn format_weight()`. For full precision, make the `None` path of `fn float_to_digits()` (`packages/treetime-utils/src/fmt/float.rs`) write the shortest round-trip representation instead of 3 digits, after checking its other callers
+2. Land [N-io-graphviz-dot-branch-length-precision.md](N-io-graphviz-dot-branch-length-precision.md) first or in the same change, so that DOT labels keep a display precision
+3. Tests in `packages/treetime-io/src/__tests__/`: write and read back a tree with branch lengths `0.123456789012345` and `1e-9`; with full precision the parsed values equal the input exactly, with a fixed `D` the written text equals the hand-rounded value (oracle: decimal rounding by hand, Biopython `%1.5f` for v0 parity if `D` is 5 decimals). Nexus writer: same case through `packages/treetime-io/src/nex.rs`
+4. Validate: `just lint-rs`, `just test-rs`, and `just smoke`, which shows the expected change in every Newick and Nexus output; update the golden outputs only after checking that branch lengths are the only change
