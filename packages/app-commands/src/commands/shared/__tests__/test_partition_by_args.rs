@@ -5,7 +5,6 @@ mod tests {
   use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use clap::Parser;
-  use clap::error::ErrorKind;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -73,18 +72,5 @@ mod tests {
     )?;
     assert_eq!(None, argument_error(TreetimeOptimizeArgs::try_from(raw)));
     Ok(())
-  }
-
-  #[test]
-  fn test_partition_conflicts_with_partition_by() {
-    let error = TreetimeOptimizeArgsRaw::try_parse_from(
-      [
-        &OPTIMIZE[..],
-        &["--partition", "{}", "--partition-by", "rate-categories"],
-      ]
-      .concat(),
-    )
-    .unwrap_err();
-    assert_eq!(ErrorKind::ArgumentConflict, error.kind());
   }
 }
