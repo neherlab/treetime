@@ -94,6 +94,7 @@ pub(crate) fn run_segment_timetree_command(
     sequences: SequenceInput {
       alignments: sources.into_iter().map(|source| source.source).collect(),
       partitions,
+      models: args.sequences.models,
     },
     dates,
     branch_lengths,
@@ -104,7 +105,12 @@ pub(crate) fn run_segment_timetree_command(
   stages.report("Writing output", 0.95, "");
   write_gtr_output(
     &resolved,
-    &partition_models(&output.partitions, &output.alignments, Some(clock_rate))?,
+    &partition_models(
+      &output.partitions,
+      &output.alignments,
+      Some(clock_rate),
+      args.sequences.models.shared,
+    )?,
     "no GTR model was fitted",
     log,
   )?;

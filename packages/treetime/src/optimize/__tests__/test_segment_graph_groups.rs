@@ -86,6 +86,7 @@ mod tests {
       &merged.graph,
       split.partitions,
       inheritances,
+      split.models,
       &lengths,
       &NoopProgress,
     )

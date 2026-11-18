@@ -232,7 +232,7 @@ mod tests {
       }
     }
     let contribution =
-      OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr.clone()));
+      OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let one_mutation = 1.0 / SITES.to_f64_exact();
     compute_branch_length_distribution(
       &[contribution],

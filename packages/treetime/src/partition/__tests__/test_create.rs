@@ -16,6 +16,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use pretty_assertions::assert_ne;
   use rstest::rstest;
+  use treetime_graph::scope::Inheritance;
   use treetime_utils::assert_error;
 
   #[rustfmt::skip]
@@ -150,6 +151,7 @@ mod tests {
         .map(|input| PartitionInput {
           model: &model,
           rate: InferredRate::Fitted,
+          inheritance: Inheritance::ALL,
           alphabet: Alphabet::default(),
           nodes: input.node_inputs.clone(),
         })
