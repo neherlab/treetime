@@ -6,7 +6,6 @@ use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
 use ndarray_linalg::layout::MatrixLayout;
 use ndarray_linalg::{SolveTridiagonal, Tridiagonal};
-use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
@@ -59,7 +58,6 @@ pub(crate) fn optimize_skyline(
 
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
   let confidence = skyline_confidence_band(&hessian, params.n_std, &tc_values)?;
-  let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
   let tc_schedule = PiecewiseConstantFn::new(
     Array1::from(boundaries[1..boundaries.len() - 1].to_vec()),
     tc_values.clone(),
@@ -84,7 +82,6 @@ pub(crate) fn optimize_skyline(
   }
 
   Ok(SkylineResult {
-    tc_distribution,
     tc_schedule,
     segment_boundaries: Array1::from(boundaries),
     tc_lower_bounds: confidence.tc_lower_bounds,
@@ -127,7 +124,6 @@ impl Default for SkylineParams {
 
 #[derive(Debug, Clone)]
 pub struct SkylineResult {
-  pub(crate) tc_distribution: Distribution,
   pub(crate) tc_schedule: PiecewiseConstantFn,
   pub(crate) segment_boundaries: Array1<f64>,
   pub(crate) tc_lower_bounds: Array1<f64>,
@@ -293,22 +289,4 @@ fn skyline_cost(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> f64 
   let data: f64 = (0..z.len()).map(|i| i_seg[i] * (-z[i]).exp() + m_seg[i] * z[i]).sum();
   let penalty: f64 = z.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>() * 0.5 * stiffness;
   data + penalty
-}
-
-fn build_tc_distribution(boundaries: &[f64], tc_values: &Array1<f64>) -> Distribution {
-  let t_min = boundaries[0];
-  let t_max = boundaries[boundaries.len() - 1];
-  let boundaries = boundaries.to_vec();
-  let values = tc_values.to_vec();
-  Distribution::Formula(DistributionFormula::new(
-    move |t| Ok(values[segment_index(&boundaries, t)]),
-    t_min,
-    t_max,
-  ))
-}
-
-fn segment_index(boundaries: &[f64], t: f64) -> usize {
-  let n_seg = boundaries.len() - 1;
-  let above = boundaries.partition_point(|&b| b <= t);
-  above.saturating_sub(1).min(n_seg - 1)
 }

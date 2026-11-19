@@ -109,9 +109,9 @@ fn round_models(
   drop(previous);
   let merger_rate = lineages
     .expectation
-    .merger_rate_schedule(&lineages.timescale.distribution)?;
+    .merger_rate_schedule(&lineages.timescale.schedule)?;
   let prior = prior_wanted
-    .then(|| CoalescentPrior::new(&lineages.expectation, &lineages.timescale.distribution))
+    .then(|| CoalescentPrior::new(&lineages.expectation, &lineages.timescale.schedule))
     .transpose()?;
   Ok(RoundModels {
     merger_rate: Some(merger_rate),

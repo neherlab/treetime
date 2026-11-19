@@ -19,7 +19,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::DateConstraint;
@@ -96,7 +95,6 @@ mod tests {
       ..SkylineParams::default()
     };
     let timescale = CoalescentTimescale {
-      distribution: Distribution::constant(3.0),
       schedule: PiecewiseConstantFn::new(array![], array![3.0]),
       report: Some(CoalescentTcReport {
         segment_boundaries: array![2000.0, 2020.0],
@@ -140,7 +138,6 @@ mod tests {
       ..SkylineParams::default()
     };
     let timescale = CoalescentTimescale {
-      distribution: Distribution::constant(3.0),
       schedule: PiecewiseConstantFn::new(array![2010.0], array![3.0, 5.0]),
       report: Some(CoalescentTcReport {
         segment_boundaries: array![2000.0, 2010.0, 2020.0],

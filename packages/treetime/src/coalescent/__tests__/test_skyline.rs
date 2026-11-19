@@ -7,9 +7,10 @@ mod tests {
   use crate::progress::NoopProgress;
   use eyre::Report;
   use maplit::btreemap;
+  use ndarray::array;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_distribution::Distribution;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_relative_eq;
@@ -104,27 +105,6 @@ mod tests {
   }
 
   #[test]
-  fn test_optimize_skyline_tc_distribution_evaluates() -> Result<(), Report> {
-    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
-    let params = SkylineParams {
-      n_points: 5,
-      ..SkylineParams::default()
-    };
-
-    let result = optimize_skyline(&params, &expectation(&graph, &constraints), &NoopProgress)?;
-
-    let t_min = result.segment_boundaries[0];
-    let t_max = result.segment_boundaries[result.segment_boundaries.len() - 1];
-    let t_mid = f64::midpoint(t_min, t_max);
-
-    assert!(result.tc_distribution.eval(t_min)? > 0.0);
-    assert!(result.tc_distribution.eval(t_mid)? > 0.0);
-    assert!(result.tc_distribution.eval(t_max)? > 0.0);
-
-    Ok(())
-  }
-
-  #[test]
   fn test_optimize_skyline_larger_tree() -> Result<(), Report> {
     const TREE_NWK: &str = "(((a:1,b:1)ab:1,(c:1,d:1)cd:1)abcd:1,((e:1,f:1)ef:1,(g:1,h:1)gh:1)efgh:1)root:1;";
     let dates = btreemap! {
@@ -180,7 +160,7 @@ mod tests {
     let expectation = expectation(&graph, &constraints);
     let tc = 2.0;
 
-    let rate = expectation.merger_rate_schedule(&Distribution::constant(tc))?;
+    let rate = expectation.merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![tc]))?;
 
     assert_eq!(
       TimeSpan {

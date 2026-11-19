@@ -13,6 +13,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
 
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_grid::{Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
@@ -280,11 +281,7 @@ mod tests {
     let step = 0.5;
     let expectation = helpers::expectation(&graph, &names, &[("A", step), ("B", 3.0)], &[("root", root)])?;
     let (tc_before, tc_after) = (2.0, 0.5);
-    let tc_grid = Array1::linspace(-1.0, 5.0, 6 * 2_usize.pow(14) + 1);
-    let tc = Distribution::function(
-      tc_grid.clone(),
-      tc_grid.mapv(|t| if t < step { tc_before } else { tc_after }),
-    )?;
+    let tc = PiecewiseConstantFn::new(array![step], array![tc_before, tc_after]);
     let prior = CoalescentPrior::new(&expectation, &tc)?;
     let key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
 
@@ -404,7 +401,7 @@ mod tests {
     let full: NodeMap<NodePosterior> = times.iter().map(|(n, t)| (key(n), point(*t))).collect();
     let mut without_n = full.clone();
     without_n.remove(key("N"));
-    let tc = Distribution::constant(3.0);
+    let tc = PiecewiseConstantFn::new(array![], array![3.0]);
 
     let extended = LineageExpectation::from_posterior(&graph, &without_n)?
       .with_topology(&graph, &NodeMap::from([(key("N"), 2005.0)]))?;
@@ -498,24 +495,6 @@ mod tests {
       result,
       "The time inference holds no survival functions, so it cannot give expected lineage counts. This is an \
        internal error. Please report it to developers."
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_mean_field_prior_reports_a_tc_that_cannot_be_evaluated_at_the_lineage_grid_edge() -> Result<(), Report> {
-    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names.clone();
-    let graph = parsed.graph;
-    let flat_root = Distribution::function(Array1::linspace(2000.0, 2004.0, 401), Array1::zeros(401))?;
-    let expectation = helpers::expectation(&graph, &names, &[("A", 2010.0), ("B", 2010.0)], &[("root", flat_root)])?;
-    let tc = Distribution::function(Array1::linspace(2000.001, 2011.0, 11), Array1::from_elem(11, 2.0))?;
-
-    let result = CoalescentPrior::new(&expectation, &tc);
-
-    assert_error!(
-      result,
-      "When evaluating coalescent Tc at calendar time 2.000000e3: GridFn evaluated at 2000.000000004, below the support boundary 2000.001, but no extrapolation policy is set for that side"
     );
     Ok(())
   }

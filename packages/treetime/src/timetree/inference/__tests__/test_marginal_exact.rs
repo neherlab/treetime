@@ -16,12 +16,13 @@ mod tests {
   use crate::timetree::inference::runner::GRID_POINTS;
   use eyre::Report;
   use itertools::{Itertools, izip};
-  use ndarray::Array2;
+  use ndarray::{Array2, array};
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
   use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read;
   use treetime_ops::FftPlans;
   use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
@@ -289,7 +290,7 @@ mod tests {
     impl MeanFieldTree {
       pub(super) fn new(gtr: &GTR, counts: [usize; 6], tc: f64) -> Result<Self, Report> {
         let tree = FourTipTree::new(counts)?;
-        let tc = Distribution::constant(tc);
+        let tc = PiecewiseConstantFn::new(array![], array![tc]);
         let branches = tree.branches(gtr, GRID_POINTS)?;
         let prior_free = tree.passes(&branches, None, survival_summary)?;
         let seed = CoalescentPrior::new(&LineageExpectation::from_posterior(&tree.graph, &prior_free)?, &tc)?;

@@ -132,7 +132,7 @@ fn infer_initial_lineages(
   let (time_inference, expectation) = if let Some(time_inference) = prior_free.filter(|_| !mode.wants_prior()) {
     (time_inference, seed_expectation)
   } else {
-    let prior = CoalescentPrior::new(&seed_expectation, &timescale.distribution)?;
+    let prior = CoalescentPrior::new(&seed_expectation, &timescale.schedule)?;
     let time_inference = run(Some(&prior))?;
     let expectation = LineageExpectation::of_inference(&state.graph, &time_inference)?;
     (time_inference, expectation)

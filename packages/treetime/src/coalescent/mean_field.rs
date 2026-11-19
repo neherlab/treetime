@@ -28,7 +28,7 @@ const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 #[derive(Clone, Debug)]
 pub(crate) struct CoalescentPrior {
   pub(crate) expectation: Arc<LineageExpectation>,
-  tc: Distribution,
+  tc: PiecewiseConstantFn,
   cell_rate: Vec<f64>,
   inverse_tc_integral: Vec<f64>,
   expected_integral: Vec<f64>,
@@ -39,12 +39,10 @@ pub(crate) struct CoalescentPrior {
 }
 
 impl CoalescentPrior {
-  pub(crate) fn new(expectation: &Arc<LineageExpectation>, tc: &Distribution) -> Result<Self, Report> {
+  pub(crate) fn new(expectation: &Arc<LineageExpectation>, tc: &PiecewiseConstantFn) -> Result<Self, Report> {
     let grid = &expectation.grid;
     let inverse_tc = |t: f64| -> Result<f64, Report> {
-      let value = tc
-        .eval(t)
-        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {t:.6e}"))?;
+      let value = tc.eval(t);
       if !value.is_finite() || value <= 0.0 {
         return make_error!("Coalescent Tc must be finite and positive at calendar time {t:.6e}, got {value:.6e}");
       }
@@ -119,11 +117,7 @@ impl CoalescentPrior {
     let own = self.own_integral_at(key, x);
     let own_weight = self.expectation.nodes.get(key).map_or(0.0, |node| node.weight);
     let merger = if n_mergers > 0.0 {
-      let tc = self
-        .tc
-        .eval(x)
-        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {x:.6e}"))?;
-      n_mergers * tc.ln()
+      n_mergers * self.tc.eval(x).ln()
     } else {
       0.0
     };
@@ -466,11 +460,9 @@ impl LineageExpectation {
     }
   }
 
-  pub(crate) fn merger_rate_schedule(&self, tc: &Distribution) -> Result<PiecewiseConstantFn, Report> {
+  pub(crate) fn merger_rate_schedule(&self, tc: &PiecewiseConstantFn) -> Result<PiecewiseConstantFn, Report> {
     let rate = |k: f64, t: f64| -> Result<f64, Report> {
-      let tc = tc
-        .eval(t)
-        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {t:.6e}"))?;
+      let tc = tc.eval(t);
       if !tc.is_finite() || tc <= 0.0 {
         return make_error!("Coalescent Tc must be finite and positive at calendar time {t:.6e}, got {tc:.6e}");
       }

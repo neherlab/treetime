@@ -16,6 +16,7 @@ use crate::timetree::inference::result::{
 use crate::timetree::params::{BranchLengthMode, TimetreeParams};
 use crate::timetree::pipeline::TimetreeSequences;
 use eyre::Report;
+use ndarray::array;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
@@ -24,6 +25,7 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::MaxGridPoints;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) const JC69_NUCLEOTIDE_SATURATED_DIFFERENCE: f64 = 0.75;
 
@@ -187,5 +189,5 @@ pub(crate) fn point_coalescent_prior_by_key(
     })
     .collect();
   let expectation = LineageExpectation::from_posterior(graph, &posterior)?;
-  CoalescentPrior::new(&expectation, &Distribution::constant(tc))
+  CoalescentPrior::new(&expectation, &PiecewiseConstantFn::new(array![], array![tc]))
 }

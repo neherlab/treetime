@@ -31,17 +31,18 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
+  use ndarray::array;
   use treetime_graph::key_map::EdgeMap;
   use treetime_ops::FftPlans;
 
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
-  use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::schedule::GraphSchedule;
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::fasta::fasta_read;
@@ -84,7 +85,7 @@ mod tests {
   #[test]
   fn test_round_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
     let (state, context) = helpers::create_polytomy_state()?;
-    let tc = Distribution::constant(10.0);
+    let tc = PiecewiseConstantFn::new(array![], array![10.0]);
 
     let (state, outcome) = helpers::refine(&context, state, Some(&tc))?;
 
@@ -117,7 +118,7 @@ mod tests {
       .time = None;
 
     assert_error!(
-      helpers::refine(&context, state, Some(&Distribution::constant(10.0))),
+      helpers::refine(&context, state, Some(&PiecewiseConstantFn::new(array![], array![10.0]))),
       format!(
         "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {root_key}, but it has none"
       )
@@ -138,7 +139,7 @@ mod tests {
       .time = Some(f64::NAN);
 
     assert_error!(
-      helpers::refine(&context, state, Some(&Distribution::constant(10.0))),
+      helpers::refine(&context, state, Some(&PiecewiseConstantFn::new(array![], array![10.0]))),
       format!(
         "Polytomy resolution failed: Polytomy resolution requires a finite inferred time for node {root_key}, but it has NaN"
       )
@@ -150,7 +151,7 @@ mod tests {
   #[test]
   fn test_round_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
     let (state, context) = helpers::create_polytomy_state()?;
-    let tc = Distribution::constant(10.0);
+    let tc = PiecewiseConstantFn::new(array![], array![10.0]);
     let (mut state, _) = helpers::refine(&context, state, Some(&tc))?;
     let root_key = state.graph.get_exactly_one_root()?.key();
     state
@@ -411,7 +412,7 @@ mod tests {
     )?;
     let reference_rate = state.clock_model.clock_rate();
     let expectation = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
-    let prior = CoalescentPrior::new(&expectation, &Distribution::constant(ROUND_TEST_TC))?;
+    let prior = CoalescentPrior::new(&expectation, &PiecewiseConstantFn::new(array![], array![ROUND_TEST_TC]))?;
     let params = TimetreeParams {
       clock_rate: None,
       ..helpers::round_params(true, vec![])
@@ -703,7 +704,7 @@ mod tests {
     pub(super) fn refine(
       context: &TimetreeContext,
       state: RoundState,
-      coalescent_tc: Option<&Distribution>,
+      coalescent_tc: Option<&PiecewiseConstantFn>,
     ) -> Result<(RoundState, RoundOutcome), Report> {
       refine_with(context, state, coalescent_tc, &round_params(true, vec![]))
     }
@@ -721,7 +722,7 @@ mod tests {
     pub(super) fn refine_with(
       context: &TimetreeContext,
       state: RoundState,
-      coalescent_tc: Option<&Distribution>,
+      coalescent_tc: Option<&PiecewiseConstantFn>,
       params: &TimetreeParams,
     ) -> Result<(RoundState, RoundOutcome), Report> {
       let expectation = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
@@ -738,7 +739,7 @@ mod tests {
       params: &TimetreeParams,
     ) -> Result<(RoundState, RoundOutcome), Report> {
       let expectation = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
-      let merger_rate = expectation.merger_rate_schedule(&Distribution::constant(ROUND_TEST_TC))?;
+      let merger_rate = expectation.merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![ROUND_TEST_TC]))?;
       let leaf_bad_branches = bad_leaves(&state.graph, &context.date_constraints, &BTreeSet::new());
       let outliers = BTreeSet::new();
       let inputs = RoundInputs {

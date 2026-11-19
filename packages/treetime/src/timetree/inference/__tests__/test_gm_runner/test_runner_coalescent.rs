@@ -5,9 +5,10 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::timetree::inference::result::PosteriorSummaries;
   use eyre::Report;
+  use ndarray::array;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_distribution::Distribution;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
   #[rustfmt::skip]
   #[rstest]
@@ -23,7 +24,7 @@ mod tests {
     };
     let prior_free = setup.run(IndelPolicy::Include, None, survival)?;
     let expectation = LineageExpectation::of_inference(&setup.graph, &prior_free)?;
-    let coalescent = CoalescentPrior::new(&expectation, &Distribution::constant(tc))?;
+    let coalescent = CoalescentPrior::new(&expectation, &PiecewiseConstantFn::new(array![], array![tc]))?;
 
     let inference = setup.run(IndelPolicy::Include, Some(&coalescent), PosteriorSummaries::default())?;
 

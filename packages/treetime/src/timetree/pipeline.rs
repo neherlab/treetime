@@ -597,7 +597,7 @@ fn refine_final_times(
   let final_model = match &coalescent.lineages {
     Some(lineages) if coalescent.prior_wanted() => Some(CoalescentPrior::new(
       &lineages.expectation,
-      &lineages.timescale.distribution,
+      &lineages.timescale.schedule,
     )?),
     _ => None,
   };

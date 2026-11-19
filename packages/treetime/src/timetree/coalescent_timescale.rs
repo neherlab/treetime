@@ -7,7 +7,6 @@ use crate::timetree::coalescent::{
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, array};
 use std::sync::Arc;
-use treetime_distribution::Distribution;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::make_report;
@@ -34,7 +33,6 @@ pub(crate) fn coalescent_timescale(
   )
   .wrap_err("Failed to estimate the coalescent timescale")?;
   Ok(CoalescentTimescale {
-    distribution: result.tc_distribution,
     schedule: result.tc_schedule,
     report: Some(CoalescentTcReport {
       segment_boundaries: result.segment_boundaries,
@@ -109,7 +107,6 @@ pub(crate) fn build_coalescent_output(
 }
 
 pub(crate) struct CoalescentTimescale {
-  pub distribution: Distribution,
   pub schedule: PiecewiseConstantFn,
   pub report: Option<CoalescentTcReport>,
 }
@@ -132,7 +129,6 @@ impl CoalescentTimescale {
 
   pub(crate) fn constant(tc: f64) -> Self {
     Self {
-      distribution: Distribution::constant(tc),
       schedule: PiecewiseConstantFn::new(array![], array![tc]),
       report: None,
     }
