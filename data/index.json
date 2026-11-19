@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "README.md",
-      "size": 25259
+      "size": 48671
     },
     {
       "path": "dengue/100/README.md",
@@ -347,6 +347,178 @@
     {
       "path": "flu/h3n2/500/tree.nwk",
       "size": 39599
+    },
+    {
+      "path": "flu/h3n2/segments/100/aln_ha.fasta.xz",
+      "size": 3752
+    },
+    {
+      "path": "flu/h3n2/segments/100/aln_na.fasta.xz",
+      "size": 3088
+    },
+    {
+      "path": "flu/h3n2/segments/100/aln_pb1.fasta.xz",
+      "size": 4008
+    },
+    {
+      "path": "flu/h3n2/segments/100/aln_pb2.fasta.xz",
+      "size": 4036
+    },
+    {
+      "path": "flu/h3n2/segments/100/ancestral-parsimony.yaml",
+      "size": 1238
+    },
+    {
+      "path": "flu/h3n2/segments/100/ancestral.yaml",
+      "size": 1227
+    },
+    {
+      "path": "flu/h3n2/segments/100/metadata.tsv",
+      "size": 24427
+    },
+    {
+      "path": "flu/h3n2/segments/100/optimize.yaml",
+      "size": 1304
+    },
+    {
+      "path": "flu/h3n2/segments/100/pipeline-nextstrain.yaml",
+      "size": 5093
+    },
+    {
+      "path": "flu/h3n2/segments/100/timetree-confidence.yaml",
+      "size": 2031
+    },
+    {
+      "path": "flu/h3n2/segments/100/timetree-ha-na.yaml",
+      "size": 1549
+    },
+    {
+      "path": "flu/h3n2/segments/100/tree_ha.nwk",
+      "size": 5345
+    },
+    {
+      "path": "flu/h3n2/segments/100/tree_na.nwk",
+      "size": 5079
+    },
+    {
+      "path": "flu/h3n2/segments/100/tree_pb1.nwk",
+      "size": 5137
+    },
+    {
+      "path": "flu/h3n2/segments/100/tree_pb2.nwk",
+      "size": 5327
+    },
+    {
+      "path": "flu/h3n2/segments/1564/aln_ha.fasta.xz",
+      "size": 27988
+    },
+    {
+      "path": "flu/h3n2/segments/1564/aln_na.fasta.xz",
+      "size": 24280
+    },
+    {
+      "path": "flu/h3n2/segments/1564/aln_pb1.fasta.xz",
+      "size": 30288
+    },
+    {
+      "path": "flu/h3n2/segments/1564/aln_pb2.fasta.xz",
+      "size": 30228
+    },
+    {
+      "path": "flu/h3n2/segments/1564/ancestral-parsimony.yaml",
+      "size": 1241
+    },
+    {
+      "path": "flu/h3n2/segments/1564/ancestral.yaml",
+      "size": 1230
+    },
+    {
+      "path": "flu/h3n2/segments/1564/metadata.tsv",
+      "size": 388932
+    },
+    {
+      "path": "flu/h3n2/segments/1564/optimize.yaml",
+      "size": 1307
+    },
+    {
+      "path": "flu/h3n2/segments/1564/pipeline-nextstrain.yaml",
+      "size": 5222
+    },
+    {
+      "path": "flu/h3n2/segments/1564/timetree-confidence.yaml",
+      "size": 2034
+    },
+    {
+      "path": "flu/h3n2/segments/1564/timetree-ha-na.yaml",
+      "size": 1552
+    },
+    {
+      "path": "flu/h3n2/segments/1564/tree_ha.nwk",
+      "size": 80229
+    },
+    {
+      "path": "flu/h3n2/segments/1564/tree_na.nwk",
+      "size": 79659
+    },
+    {
+      "path": "flu/h3n2/segments/1564/tree_pb1.nwk",
+      "size": 80065
+    },
+    {
+      "path": "flu/h3n2/segments/1564/tree_pb2.nwk",
+      "size": 80339
+    },
+    {
+      "path": "flu/h3n2/segments/500/aln_ha.fasta.xz",
+      "size": 11288
+    },
+    {
+      "path": "flu/h3n2/segments/500/aln_na.fasta.xz",
+      "size": 9680
+    },
+    {
+      "path": "flu/h3n2/segments/500/aln_pb1.fasta.xz",
+      "size": 12152
+    },
+    {
+      "path": "flu/h3n2/segments/500/aln_pb2.fasta.xz",
+      "size": 12248
+    },
+    {
+      "path": "flu/h3n2/segments/500/metadata.tsv",
+      "size": 124099
+    },
+    {
+      "path": "flu/h3n2/segments/500/pipeline-nextstrain.yaml",
+      "size": 5093
+    },
+    {
+      "path": "flu/h3n2/segments/500/timetree-confidence.yaml",
+      "size": 2031
+    },
+    {
+      "path": "flu/h3n2/segments/500/tree_ha.nwk",
+      "size": 25984
+    },
+    {
+      "path": "flu/h3n2/segments/500/tree_na.nwk",
+      "size": 25604
+    },
+    {
+      "path": "flu/h3n2/segments/500/tree_pb1.nwk",
+      "size": 25857
+    },
+    {
+      "path": "flu/h3n2/segments/500/tree_pb2.nwk",
+      "size": 25942
+    },
+    {
+      "path": "flu/h3n2/segments/README.md",
+      "size": 12076
+    },
+    {
+      "path": "flu/h3n2/segments/build",
+      "size": 10310
     },
     {
       "path": "flu/treeknit/MCCs.json",
@@ -1725,6 +1897,78 @@
       "size": 262532
     },
     {
+      "path": "simulated/reassortment/80/README.md",
+      "size": 4652
+    },
+    {
+      "path": "simulated/reassortment/80/aln_s1.fasta.xz",
+      "size": 2952
+    },
+    {
+      "path": "simulated/reassortment/80/aln_s2.fasta.xz",
+      "size": 2216
+    },
+    {
+      "path": "simulated/reassortment/80/aln_s3.fasta.xz",
+      "size": 1644
+    },
+    {
+      "path": "simulated/reassortment/80/aln_s4.fasta.xz",
+      "size": 1148
+    },
+    {
+      "path": "simulated/reassortment/80/ancestral-parsimony.yaml",
+      "size": 1821
+    },
+    {
+      "path": "simulated/reassortment/80/ancestral.yaml",
+      "size": 1860
+    },
+    {
+      "path": "simulated/reassortment/80/metadata.tsv",
+      "size": 1530
+    },
+    {
+      "path": "simulated/reassortment/80/optimize.yaml",
+      "size": 1880
+    },
+    {
+      "path": "simulated/reassortment/80/pipeline-optimized-graph.yaml",
+      "size": 3408
+    },
+    {
+      "path": "simulated/reassortment/80/timetree-cross-parent-messages.yaml",
+      "size": 2361
+    },
+    {
+      "path": "simulated/reassortment/80/timetree.yaml",
+      "size": 2213
+    },
+    {
+      "path": "simulated/reassortment/80/tree_s1.nwk",
+      "size": 3996
+    },
+    {
+      "path": "simulated/reassortment/80/tree_s2.nwk",
+      "size": 4000
+    },
+    {
+      "path": "simulated/reassortment/80/tree_s3.nwk",
+      "size": 4017
+    },
+    {
+      "path": "simulated/reassortment/80/tree_s4.nwk",
+      "size": 4061
+    },
+    {
+      "path": "simulated/reassortment/80/truth_model.json",
+      "size": 2344
+    },
+    {
+      "path": "simulated/reassortment/80/truth_nodes.tsv",
+      "size": 4290
+    },
+    {
       "path": "smoke/README.md",
       "size": 3187
     },
@@ -1858,7 +2102,7 @@
     },
     {
       "path": "toy/reassortment/README.md",
-      "size": 3173
+      "size": 4122
     },
     {
       "path": "toy/reassortment/aln_seg1.fasta",
@@ -1873,6 +2117,14 @@
       "size": 4040
     },
     {
+      "path": "toy/reassortment/ancestral-parsimony.yaml",
+      "size": 1836
+    },
+    {
+      "path": "toy/reassortment/ancestral.yaml",
+      "size": 1875
+    },
+    {
       "path": "toy/reassortment/graph.tsv",
       "size": 646
     },
@@ -1883,6 +2135,22 @@
     {
       "path": "toy/reassortment/nodes.tsv",
       "size": 434
+    },
+    {
+      "path": "toy/reassortment/optimize.yaml",
+      "size": 1895
+    },
+    {
+      "path": "toy/reassortment/pipeline-optimized-graph.yaml",
+      "size": 3304
+    },
+    {
+      "path": "toy/reassortment/timetree-cross-parent-messages.yaml",
+      "size": 2388
+    },
+    {
+      "path": "toy/reassortment/timetree.yaml",
+      "size": 2240
     },
     {
       "path": "toy/reassortment/tree_seg1.nwk",
@@ -3191,6 +3459,244 @@
       }
     },
     {
+      "path": "flu/h3n2/segments/100/ancestral-parsimony.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences of four influenza segments by Fitch parsimony on a graph of segment trees (flu/h3n2/segments/100).",
+      "folder": "flu/h3n2/segments/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences of four influenza segments by Fitch parsimony on a graph of segment trees (flu/h3n2/segments/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/flu/h3n2/segments/100/ancestral-parsimony.yaml --output-all tmp/examples/flu/h3n2/segments/100/ancestral-parsimony\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# Each segment's sequences pass only along the edges of its own tree, so the\n# reconstruction of a segment equals a run on that segment's tree alone.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\n\n# Fitch parsimony: fast, model-free ancestral states and mutations.\nmethod_anc: \"parsimony\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "flu/h3n2/segments/100/aln_ha.fasta.xz",
+          "flu/h3n2/segments/100/aln_na.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/100/tree_ha.nwk",
+          "flu/h3n2/segments/100/tree_na.nwk",
+          "flu/h3n2/segments/100/tree_pb1.nwk",
+          "flu/h3n2/segments/100/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/100/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Marginal ancestral sequences of four influenza segments on a graph of segment trees (flu/h3n2/segments/100).",
+      "folder": "flu/h3n2/segments/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral sequences of four influenza segments on a graph of segment trees (flu/h3n2/segments/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/flu/h3n2/segments/100/ancestral.yaml --output-all tmp/examples/flu/h3n2/segments/100/ancestral\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# Each segment has its own inferred GTR model, and its sequences pass only along the\n# edges of its own tree. The run writes the sequences, the mutations and the augur\n# node data of each segment as `ancestral.<i>.*`, numbered in the order of\n# `segment_trees`.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "flu/h3n2/segments/100/aln_ha.fasta.xz",
+          "flu/h3n2/segments/100/aln_na.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/100/tree_ha.nwk",
+          "flu/h3n2/segments/100/tree_na.nwk",
+          "flu/h3n2/segments/100/tree_pb1.nwk",
+          "flu/h3n2/segments/100/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/100/optimize.yaml",
+      "command": "optimize",
+      "title": "Joint branch-length optimization of four influenza segments on a graph of segment trees (flu/h3n2/segments/100).",
+      "folder": "flu/h3n2/segments/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Joint branch-length optimization of four influenza segments on a graph of segment trees (flu/h3n2/segments/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/segments/100/optimize.yaml --output-all tmp/examples/flu/h3n2/segments/100/optimize\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# An edge that several segments share gets one length, fitted to the mutations of\n# all of them. Each segment has its own inferred GTR model and relative rate, so a\n# branch length is in substitutions per site averaged over all sites. The run writes\n# one Nexus tree per segment, `optimize.<i>.nexus`, with the names of the input\n# nodes.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "flu/h3n2/segments/100/aln_ha.fasta.xz",
+          "flu/h3n2/segments/100/aln_na.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/100/tree_ha.nwk",
+          "flu/h3n2/segments/100/tree_na.nwk",
+          "flu/h3n2/segments/100/tree_pb1.nwk",
+          "flu/h3n2/segments/100/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/100/timetree-confidence.yaml",
+      "command": "timetree",
+      "title": "Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/100).",
+      "folder": "flu/h3n2/segments/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/segments/100/timetree-confidence.yaml --output-all tmp/examples/flu/h3n2/segments/100/timetree-confidence\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# A node that several segments share gets one date from the mutations of all of\n# them. A graph of segment trees runs at a fixed clock rate, keeps its roots and\n# polytomies, and runs without a coalescent prior, a clock filter and a rate\n# uncertainty (`clock_std_dev`). The node dates table covers every node of the\n# graph; Nexus and Auspice JSON are written once per segment.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\n# Clock rate in substitutions per site per year, averaged over the sites of the\n# four segments. Each segment gets a relative rate, scaled to a mean of 1 over all\n# sites, so a branch length of the graph is in substitutions per site averaged over\n# all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2\n# builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:\n# HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment\n# widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.\nclock_rate: 0.0024\n\n# 90% date intervals of every node, in the node dates table.\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/segments/100/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "flu/h3n2/segments/100/aln_ha.fasta.xz",
+          "flu/h3n2/segments/100/aln_na.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/100/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/100/tree_ha.nwk",
+          "flu/h3n2/segments/100/tree_na.nwk",
+          "flu/h3n2/segments/100/tree_pb1.nwk",
+          "flu/h3n2/segments/100/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/100/timetree-ha-na.yaml",
+      "command": "timetree",
+      "title": "Dated graph of the HA and NA trees, the segments of the public Nextstrain H3N2 builds (flu/h3n2/segments/100).",
+      "folder": "flu/h3n2/segments/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of the HA and NA trees, the segments of the public Nextstrain H3N2 builds (flu/h3n2/segments/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/segments/100/timetree-ha-na.yaml --output-all tmp/examples/flu/h3n2/segments/100/timetree-ha-na\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# Two of the four trees form a graph of their own: the names stay valid for any\n# subset of the segments. Compare the dates with `timetree-confidence.yaml`, which\n# adds the polymerase segments PB1 and PB2.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\n# Clock rate in substitutions per site per year, averaged over the sites of HA and\n# NA: the mean of the Nextstrain H3N2 rates of the two segments\n# (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:198-199: HA\n# 0.00382, NA 0.00267), weighted by the alignment widths 1737 and 1436:\n# 10.469 / 3173 = 0.0033.\nclock_rate: 0.0033\n\n# 90% date intervals of every node, in the node dates table.\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/segments/100/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "flu/h3n2/segments/100/aln_ha.fasta.xz",
+          "flu/h3n2/segments/100/aln_na.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/100/tree_ha.nwk",
+          "flu/h3n2/segments/100/tree_na.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/1564/ancestral-parsimony.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences of four influenza segments by Fitch parsimony on a graph of segment trees (flu/h3n2/segments/1564).",
+      "folder": "flu/h3n2/segments/1564",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences of four influenza segments by Fitch parsimony on a graph of segment trees (flu/h3n2/segments/1564).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/flu/h3n2/segments/1564/ancestral-parsimony.yaml --output-all tmp/examples/flu/h3n2/segments/1564/ancestral-parsimony\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# Each segment's sequences pass only along the edges of its own tree, so the\n# reconstruction of a segment equals a run on that segment's tree alone.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\n\n# Fitch parsimony: fast, model-free ancestral states and mutations.\nmethod_anc: \"parsimony\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "flu/h3n2/segments/1564/aln_ha.fasta.xz",
+          "flu/h3n2/segments/1564/aln_na.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/1564/tree_ha.nwk",
+          "flu/h3n2/segments/1564/tree_na.nwk",
+          "flu/h3n2/segments/1564/tree_pb1.nwk",
+          "flu/h3n2/segments/1564/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/1564/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Marginal ancestral sequences of four influenza segments on a graph of segment trees (flu/h3n2/segments/1564).",
+      "folder": "flu/h3n2/segments/1564",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral sequences of four influenza segments on a graph of segment trees (flu/h3n2/segments/1564).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/flu/h3n2/segments/1564/ancestral.yaml --output-all tmp/examples/flu/h3n2/segments/1564/ancestral\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# Each segment has its own inferred GTR model, and its sequences pass only along the\n# edges of its own tree. The run writes the sequences, the mutations and the augur\n# node data of each segment as `ancestral.<i>.*`, numbered in the order of\n# `segment_trees`.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "flu/h3n2/segments/1564/aln_ha.fasta.xz",
+          "flu/h3n2/segments/1564/aln_na.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/1564/tree_ha.nwk",
+          "flu/h3n2/segments/1564/tree_na.nwk",
+          "flu/h3n2/segments/1564/tree_pb1.nwk",
+          "flu/h3n2/segments/1564/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/1564/optimize.yaml",
+      "command": "optimize",
+      "title": "Joint branch-length optimization of four influenza segments on a graph of segment trees (flu/h3n2/segments/1564).",
+      "folder": "flu/h3n2/segments/1564",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Joint branch-length optimization of four influenza segments on a graph of segment trees (flu/h3n2/segments/1564).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/segments/1564/optimize.yaml --output-all tmp/examples/flu/h3n2/segments/1564/optimize\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# An edge that several segments share gets one length, fitted to the mutations of\n# all of them. Each segment has its own inferred GTR model and relative rate, so a\n# branch length is in substitutions per site averaged over all sites. The run writes\n# one Nexus tree per segment, `optimize.<i>.nexus`, with the names of the input\n# nodes.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "flu/h3n2/segments/1564/aln_ha.fasta.xz",
+          "flu/h3n2/segments/1564/aln_na.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/1564/tree_ha.nwk",
+          "flu/h3n2/segments/1564/tree_na.nwk",
+          "flu/h3n2/segments/1564/tree_pb1.nwk",
+          "flu/h3n2/segments/1564/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/1564/timetree-confidence.yaml",
+      "command": "timetree",
+      "title": "Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/1564).",
+      "folder": "flu/h3n2/segments/1564",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/1564).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/segments/1564/timetree-confidence.yaml --output-all tmp/examples/flu/h3n2/segments/1564/timetree-confidence\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# A node that several segments share gets one date from the mutations of all of\n# them. A graph of segment trees runs at a fixed clock rate, keeps its roots and\n# polytomies, and runs without a coalescent prior, a clock filter and a rate\n# uncertainty (`clock_std_dev`). The node dates table covers every node of the\n# graph; Nexus and Auspice JSON are written once per segment.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\n# Clock rate in substitutions per site per year, averaged over the sites of the\n# four segments. Each segment gets a relative rate, scaled to a mean of 1 over all\n# sites, so a branch length of the graph is in substitutions per site averaged over\n# all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2\n# builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:\n# HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment\n# widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.\nclock_rate: 0.0024\n\n# 90% date intervals of every node, in the node dates table.\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/segments/1564/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "flu/h3n2/segments/1564/aln_ha.fasta.xz",
+          "flu/h3n2/segments/1564/aln_na.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/1564/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/1564/tree_ha.nwk",
+          "flu/h3n2/segments/1564/tree_na.nwk",
+          "flu/h3n2/segments/1564/tree_pb1.nwk",
+          "flu/h3n2/segments/1564/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/1564/timetree-ha-na.yaml",
+      "command": "timetree",
+      "title": "Dated graph of the HA and NA trees, the segments of the public Nextstrain H3N2 builds (flu/h3n2/segments/1564).",
+      "folder": "flu/h3n2/segments/1564",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of the HA and NA trees, the segments of the public Nextstrain H3N2 builds (flu/h3n2/segments/1564).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/segments/1564/timetree-ha-na.yaml --output-all tmp/examples/flu/h3n2/segments/1564/timetree-ha-na\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# Two of the four trees form a graph of their own: the names stay valid for any\n# subset of the segments. Compare the dates with `timetree-confidence.yaml`, which\n# adds the polymerase segments PB1 and PB2.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\n# Clock rate in substitutions per site per year, averaged over the sites of HA and\n# NA: the mean of the Nextstrain H3N2 rates of the two segments\n# (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:198-199: HA\n# 0.00382, NA 0.00267), weighted by the alignment widths 1737 and 1436:\n# 10.469 / 3173 = 0.0033.\nclock_rate: 0.0033\n\n# 90% date intervals of every node, in the node dates table.\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/segments/1564/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "flu/h3n2/segments/1564/aln_ha.fasta.xz",
+          "flu/h3n2/segments/1564/aln_na.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/1564/tree_ha.nwk",
+          "flu/h3n2/segments/1564/tree_na.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/segments/500/timetree-confidence.yaml",
+      "command": "timetree",
+      "title": "Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/500).",
+      "folder": "flu/h3n2/segments/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/segments/500/timetree-confidence.yaml --output-all tmp/examples/flu/h3n2/segments/500/timetree-confidence\n#\n# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments\n# reassorted. TreeTime merges them into one graph by node name: an ancestor that\n# several segments share has one name in every tree (../README.md).\n#\n# A node that several segments share gets one date from the mutations of all of\n# them. A graph of segment trees runs at a fixed clock rate, keeps its roots and\n# polytomies, and runs without a coalescent prior, a clock filter and a rate\n# uncertainty (`clock_std_dev`). The node dates table covers every node of the\n# graph; Nexus and Auspice JSON are written once per segment.\n\nsegment_trees:\n  - \"tree_ha.nwk\"\n  - \"tree_na.nwk\"\n  - \"tree_pb1.nwk\"\n  - \"tree_pb2.nwk\"\nsegment_alignments:\n  - \"aln_ha.fasta.xz\"\n  - \"aln_na.fasta.xz\"\n  - \"aln_pb1.fasta.xz\"\n  - \"aln_pb2.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\n# Clock rate in substitutions per site per year, averaged over the sites of the\n# four segments. Each segment gets a relative rate, scaled to a mean of 1 over all\n# sites, so a branch length of the graph is in substitutions per site averaged over\n# all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2\n# builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:\n# HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment\n# widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.\nclock_rate: 0.0024\n\n# 90% date intervals of every node, in the node dates table.\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/segments/500/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "flu/h3n2/segments/500/aln_ha.fasta.xz",
+          "flu/h3n2/segments/500/aln_na.fasta.xz",
+          "flu/h3n2/segments/500/aln_pb1.fasta.xz",
+          "flu/h3n2/segments/500/aln_pb2.fasta.xz"
+        ],
+        "segment_trees": [
+          "flu/h3n2/segments/500/tree_ha.nwk",
+          "flu/h3n2/segments/500/tree_na.nwk",
+          "flu/h3n2/segments/500/tree_pb1.nwk",
+          "flu/h3n2/segments/500/tree_pb2.nwk"
+        ]
+      }
+    },
+    {
       "path": "lassa/L/20/timetree.yaml",
       "command": "timetree",
       "title": "Lassa virus time tree with the default settings (lassa/L/20).",
@@ -3903,6 +4409,117 @@
       }
     },
     {
+      "path": "simulated/reassortment/80/ancestral-parsimony.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences of four genome segments by Fitch parsimony on a graph with reassortments (simulated/reassortment/80).",
+      "folder": "simulated/reassortment/80",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences of four genome segments by Fitch parsimony on a graph with reassortments (simulated/reassortment/80).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/simulated/reassortment/80/ancestral-parsimony.yaml --output-all tmp/examples/simulated/reassortment/80/ancestral-parsimony\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is a simulated reassortment graph with a known truth (README.md): 80\n# samples, four segments with their own rate and GTR model, and 27\n# reassortments. The trees are the collapsed segment trees with the true node\n# names, as tree inference followed by an ideal matching of the nodes across the\n# trees would give them.\n#\n# Fitch parsimony reconstructs each segment on its own tree of the graph, without\n# a substitution model; it needs no branch lengths.\n#\n# Plain Newick holds one tree, so the outputs are the files written once per\n# segment, numbered in the order of the lists, and the whole graph (`graph-json`).\n\nsegment_trees:\n  - \"tree_s1.nwk\"\n  - \"tree_s2.nwk\"\n  - \"tree_s3.nwk\"\n  - \"tree_s4.nwk\"\nsegment_alignments:\n  - \"aln_s1.fasta.xz\"\n  - \"aln_s2.fasta.xz\"\n  - \"aln_s3.fasta.xz\"\n  - \"aln_s4.fasta.xz\"\n\nmethod_anc: \"parsimony\"\n\noutput_selection:\n  - \"nexus\"\n  - \"node-data\"\n  - \"sequences\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "simulated/reassortment/80/aln_s1.fasta.xz",
+          "simulated/reassortment/80/aln_s2.fasta.xz",
+          "simulated/reassortment/80/aln_s3.fasta.xz",
+          "simulated/reassortment/80/aln_s4.fasta.xz"
+        ],
+        "segment_trees": [
+          "simulated/reassortment/80/tree_s1.nwk",
+          "simulated/reassortment/80/tree_s2.nwk",
+          "simulated/reassortment/80/tree_s3.nwk",
+          "simulated/reassortment/80/tree_s4.nwk"
+        ]
+      }
+    },
+    {
+      "path": "simulated/reassortment/80/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Marginal ancestral sequences of four genome segments on a graph with reassortments (simulated/reassortment/80).",
+      "folder": "simulated/reassortment/80",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral sequences of four genome segments on a graph with reassortments (simulated/reassortment/80).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/simulated/reassortment/80/ancestral.yaml --output-all tmp/examples/simulated/reassortment/80/ancestral\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is a simulated reassortment graph with a known truth (README.md): 80\n# samples, four segments with their own rate and GTR model, and 27\n# reassortments. The trees are the collapsed segment trees with the true node\n# names, as tree inference followed by an ideal matching of the nodes across the\n# trees would give them.\n#\n# Each segment is reconstructed on its own tree of the graph, with its own GTR\n# model fitted from the data. An edge that several segments share gets the mean\n# of their input branch lengths.\n#\n# Plain Newick holds one tree, so the outputs are the files written once per\n# segment, numbered in the order of the lists, and the whole graph (`graph-json`).\n\nsegment_trees:\n  - \"tree_s1.nwk\"\n  - \"tree_s2.nwk\"\n  - \"tree_s3.nwk\"\n  - \"tree_s4.nwk\"\nsegment_alignments:\n  - \"aln_s1.fasta.xz\"\n  - \"aln_s2.fasta.xz\"\n  - \"aln_s3.fasta.xz\"\n  - \"aln_s4.fasta.xz\"\n\nmethod_anc: \"marginal\"\n\noutput_selection:\n  - \"nexus\"\n  - \"node-data\"\n  - \"sequences\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "simulated/reassortment/80/aln_s1.fasta.xz",
+          "simulated/reassortment/80/aln_s2.fasta.xz",
+          "simulated/reassortment/80/aln_s3.fasta.xz",
+          "simulated/reassortment/80/aln_s4.fasta.xz"
+        ],
+        "segment_trees": [
+          "simulated/reassortment/80/tree_s1.nwk",
+          "simulated/reassortment/80/tree_s2.nwk",
+          "simulated/reassortment/80/tree_s3.nwk",
+          "simulated/reassortment/80/tree_s4.nwk"
+        ]
+      }
+    },
+    {
+      "path": "simulated/reassortment/80/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch lengths of a graph of four segment trees with reassortments (simulated/reassortment/80).",
+      "folder": "simulated/reassortment/80",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths of a graph of four segment trees with reassortments (simulated/reassortment/80).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/simulated/reassortment/80/optimize.yaml --output-all tmp/examples/simulated/reassortment/80/optimize\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is a simulated reassortment graph with a known truth (README.md): 80\n# samples, four segments with their own rate and GTR model, and 27\n# reassortments. The trees are the collapsed segment trees with the true node\n# names, as tree inference followed by an ideal matching of the nodes across the\n# trees would give them.\n#\n# `optimize` fits one length per edge of the graph from the segments that pass\n# along it, with one GTR model and one relative rate per segment. The topology\n# stays as given: zero-length collapse, merging of shared mutations and reversion\n# hoisting are off on a graph of segment trees.\n#\n# Plain Newick holds one tree, so the outputs are the files written once per\n# segment, numbered in the order of the lists, and the whole graph (`graph-json`).\n\nsegment_trees:\n  - \"tree_s1.nwk\"\n  - \"tree_s2.nwk\"\n  - \"tree_s3.nwk\"\n  - \"tree_s4.nwk\"\nsegment_alignments:\n  - \"aln_s1.fasta.xz\"\n  - \"aln_s2.fasta.xz\"\n  - \"aln_s3.fasta.xz\"\n  - \"aln_s4.fasta.xz\"\n\noutput_selection:\n  - \"nexus\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "simulated/reassortment/80/aln_s1.fasta.xz",
+          "simulated/reassortment/80/aln_s2.fasta.xz",
+          "simulated/reassortment/80/aln_s3.fasta.xz",
+          "simulated/reassortment/80/aln_s4.fasta.xz"
+        ],
+        "segment_trees": [
+          "simulated/reassortment/80/tree_s1.nwk",
+          "simulated/reassortment/80/tree_s2.nwk",
+          "simulated/reassortment/80/tree_s3.nwk",
+          "simulated/reassortment/80/tree_s4.nwk"
+        ]
+      }
+    },
+    {
+      "path": "simulated/reassortment/80/timetree-cross-parent-messages.yaml",
+      "command": "timetree",
+      "title": "Dated graph of four segment trees with messages between the parents of a node (simulated/reassortment/80).",
+      "folder": "simulated/reassortment/80",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of four segment trees with messages between the parents of a node (simulated/reassortment/80).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/simulated/reassortment/80/timetree-cross-parent-messages.yaml --output-all tmp/examples/simulated/reassortment/80/timetree-cross-parent-messages\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is a simulated reassortment graph with a known truth (README.md): 80\n# samples, four segments with their own rate and GTR model, and 27\n# reassortments. The trees are the collapsed segment trees with the true node\n# names, as tree inference followed by an ideal matching of the nodes across the\n# trees would give them.\n#\n# With `cross_parent_messages`, the message that a node sends to one of its\n# parents also carries the messages of its other parents, so the time passes\n# iterate on the loops of the graph until the dates converge. Without it (the\n# default, `timetree.yaml`), the message to a parent carries the subtree alone.\n# Compare the two dates tables to see how much the loops of this graph matter.\n#\n# The clock rate is the true rate of the simulation: the mean of the four segment\n# rates weighted by segment length (README.md, `truth_model.json`).\n#\n# Every node date, with its region, is in the dates table (`dates`); the\n# reconstructed sequences of a dated graph are not written yet.\n\nsegment_trees:\n  - \"tree_s1.nwk\"\n  - \"tree_s2.nwk\"\n  - \"tree_s3.nwk\"\n  - \"tree_s4.nwk\"\nsegment_alignments:\n  - \"aln_s1.fasta.xz\"\n  - \"aln_s2.fasta.xz\"\n  - \"aln_s3.fasta.xz\"\n  - \"aln_s4.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\nclock_rate: 0.00275556\nconfidence: true\ncross_parent_messages: true\n\n# A fixed seed makes the random steps of the run repeat exactly.\nseed: 42\n\noutput_selection:\n  - \"nexus\"\n  - \"auspice\"\n  - \"dates\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "metadata": [
+          "simulated/reassortment/80/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "simulated/reassortment/80/aln_s1.fasta.xz",
+          "simulated/reassortment/80/aln_s2.fasta.xz",
+          "simulated/reassortment/80/aln_s3.fasta.xz",
+          "simulated/reassortment/80/aln_s4.fasta.xz"
+        ],
+        "segment_trees": [
+          "simulated/reassortment/80/tree_s1.nwk",
+          "simulated/reassortment/80/tree_s2.nwk",
+          "simulated/reassortment/80/tree_s3.nwk",
+          "simulated/reassortment/80/tree_s4.nwk"
+        ]
+      }
+    },
+    {
+      "path": "simulated/reassortment/80/timetree.yaml",
+      "command": "timetree",
+      "title": "Dated graph of four segment trees with reassortments at the true clock rate (simulated/reassortment/80).",
+      "folder": "simulated/reassortment/80",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of four segment trees with reassortments at the true clock rate (simulated/reassortment/80).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/simulated/reassortment/80/timetree.yaml --output-all tmp/examples/simulated/reassortment/80/timetree\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is a simulated reassortment graph with a known truth (README.md): 80\n# samples, four segments with their own rate and GTR model, and 27\n# reassortments. The trees are the collapsed segment trees with the true node\n# names, as tree inference followed by an ideal matching of the nodes across the\n# trees would give them.\n#\n# `timetree` optimizes the branch lengths of the graph, then dates every node,\n# also the nodes with several parents. A graph of segment trees needs a fixed\n# clock rate (`clock_rate`) and keeps its roots; it runs without a coalescent\n# prior. `confidence` adds the 90% region of every node date to the dates table.\n#\n# The clock rate is the true rate of the simulation: the mean of the four segment\n# rates weighted by segment length (README.md, `truth_model.json`).\n#\n# Every node date, with its region, is in the dates table (`dates`); the\n# reconstructed sequences of a dated graph are not written yet.\n\nsegment_trees:\n  - \"tree_s1.nwk\"\n  - \"tree_s2.nwk\"\n  - \"tree_s3.nwk\"\n  - \"tree_s4.nwk\"\nsegment_alignments:\n  - \"aln_s1.fasta.xz\"\n  - \"aln_s2.fasta.xz\"\n  - \"aln_s3.fasta.xz\"\n  - \"aln_s4.fasta.xz\"\nmetadata: \"metadata.tsv\"\n\nclock_rate: 0.00275556\nconfidence: true\n\n# A fixed seed makes the random steps of the run repeat exactly.\nseed: 42\n\noutput_selection:\n  - \"nexus\"\n  - \"auspice\"\n  - \"dates\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "metadata": [
+          "simulated/reassortment/80/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "simulated/reassortment/80/aln_s1.fasta.xz",
+          "simulated/reassortment/80/aln_s2.fasta.xz",
+          "simulated/reassortment/80/aln_s3.fasta.xz",
+          "simulated/reassortment/80/aln_s4.fasta.xz"
+        ],
+        "segment_trees": [
+          "simulated/reassortment/80/tree_s1.nwk",
+          "simulated/reassortment/80/tree_s2.nwk",
+          "simulated/reassortment/80/tree_s3.nwk",
+          "simulated/reassortment/80/tree_s4.nwk"
+        ]
+      }
+    },
+    {
       "path": "tb/149/ancestral-vcf.yaml",
       "command": "ancestral",
       "title": "Ancestral reconstruction from the VCF of the Lee 2015 TB isolates (tb/149).",
@@ -4037,6 +4654,107 @@
         ],
         "tree": [
           "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "toy/reassortment/ancestral-parsimony.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences of three genome segments by Fitch parsimony on a graph with reassortments (toy/reassortment).",
+      "folder": "toy/reassortment",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences of three genome segments by Fitch parsimony on a graph with reassortments (toy/reassortment).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/toy/reassortment/ancestral-parsimony.yaml --output-all tmp/examples/toy/reassortment/ancestral-parsimony\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is the hand-made graph of README.md: 10 samples, three segments, two\n# reassortants with segments from different parents. The trees are the collapsed\n# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they\n# leave out the nodes that a segment only passes through, and the merge inserts\n# these nodes again where the other segments place them.\n#\n# Fitch parsimony reconstructs each segment on its own tree of the graph, without\n# a substitution model; it needs no branch lengths.\n#\n# Plain Newick holds one tree, so the outputs are the files written once per\n# segment, numbered in the order of the lists, and the whole graph (`graph-json`).\n\nsegment_trees:\n  - \"tree_seg1_collapsed.nwk\"\n  - \"tree_seg2_collapsed.nwk\"\n  - \"tree_seg3_collapsed.nwk\"\nsegment_alignments:\n  - \"aln_seg1.fasta\"\n  - \"aln_seg2.fasta\"\n  - \"aln_seg3.fasta\"\n\nmethod_anc: \"parsimony\"\n\noutput_selection:\n  - \"nexus\"\n  - \"node-data\"\n  - \"sequences\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "toy/reassortment/aln_seg1.fasta",
+          "toy/reassortment/aln_seg2.fasta",
+          "toy/reassortment/aln_seg3.fasta"
+        ],
+        "segment_trees": [
+          "toy/reassortment/tree_seg1_collapsed.nwk",
+          "toy/reassortment/tree_seg2_collapsed.nwk",
+          "toy/reassortment/tree_seg3_collapsed.nwk"
+        ]
+      }
+    },
+    {
+      "path": "toy/reassortment/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Marginal ancestral sequences of three genome segments on a graph with reassortments (toy/reassortment).",
+      "folder": "toy/reassortment",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral sequences of three genome segments on a graph with reassortments (toy/reassortment).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/toy/reassortment/ancestral.yaml --output-all tmp/examples/toy/reassortment/ancestral\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is the hand-made graph of README.md: 10 samples, three segments, two\n# reassortants with segments from different parents. The trees are the collapsed\n# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they\n# leave out the nodes that a segment only passes through, and the merge inserts\n# these nodes again where the other segments place them.\n#\n# Each segment is reconstructed on its own tree of the graph, with its own GTR\n# model fitted from the data. An edge that several segments share gets the mean\n# of their input branch lengths.\n#\n# Plain Newick holds one tree, so the outputs are the files written once per\n# segment, numbered in the order of the lists, and the whole graph (`graph-json`).\n\nsegment_trees:\n  - \"tree_seg1_collapsed.nwk\"\n  - \"tree_seg2_collapsed.nwk\"\n  - \"tree_seg3_collapsed.nwk\"\nsegment_alignments:\n  - \"aln_seg1.fasta\"\n  - \"aln_seg2.fasta\"\n  - \"aln_seg3.fasta\"\n\nmethod_anc: \"marginal\"\n\noutput_selection:\n  - \"nexus\"\n  - \"node-data\"\n  - \"sequences\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "toy/reassortment/aln_seg1.fasta",
+          "toy/reassortment/aln_seg2.fasta",
+          "toy/reassortment/aln_seg3.fasta"
+        ],
+        "segment_trees": [
+          "toy/reassortment/tree_seg1_collapsed.nwk",
+          "toy/reassortment/tree_seg2_collapsed.nwk",
+          "toy/reassortment/tree_seg3_collapsed.nwk"
+        ]
+      }
+    },
+    {
+      "path": "toy/reassortment/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch lengths of a graph of three segment trees with reassortments (toy/reassortment).",
+      "folder": "toy/reassortment",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths of a graph of three segment trees with reassortments (toy/reassortment).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/toy/reassortment/optimize.yaml --output-all tmp/examples/toy/reassortment/optimize\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is the hand-made graph of README.md: 10 samples, three segments, two\n# reassortants with segments from different parents. The trees are the collapsed\n# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they\n# leave out the nodes that a segment only passes through, and the merge inserts\n# these nodes again where the other segments place them.\n#\n# `optimize` fits one length per edge of the graph from the segments that pass\n# along it, with one GTR model and one relative rate per segment. The topology\n# stays as given: zero-length collapse, merging of shared mutations and reversion\n# hoisting are off on a graph of segment trees.\n#\n# Plain Newick holds one tree, so the outputs are the files written once per\n# segment, numbered in the order of the lists, and the whole graph (`graph-json`).\n\nsegment_trees:\n  - \"tree_seg1_collapsed.nwk\"\n  - \"tree_seg2_collapsed.nwk\"\n  - \"tree_seg3_collapsed.nwk\"\nsegment_alignments:\n  - \"aln_seg1.fasta\"\n  - \"aln_seg2.fasta\"\n  - \"aln_seg3.fasta\"\n\noutput_selection:\n  - \"nexus\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "segment_alignments": [
+          "toy/reassortment/aln_seg1.fasta",
+          "toy/reassortment/aln_seg2.fasta",
+          "toy/reassortment/aln_seg3.fasta"
+        ],
+        "segment_trees": [
+          "toy/reassortment/tree_seg1_collapsed.nwk",
+          "toy/reassortment/tree_seg2_collapsed.nwk",
+          "toy/reassortment/tree_seg3_collapsed.nwk"
+        ]
+      }
+    },
+    {
+      "path": "toy/reassortment/timetree-cross-parent-messages.yaml",
+      "command": "timetree",
+      "title": "Dated graph of three segment trees with messages between the parents of a node (toy/reassortment).",
+      "folder": "toy/reassortment",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of three segment trees with messages between the parents of a node (toy/reassortment).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/toy/reassortment/timetree-cross-parent-messages.yaml --output-all tmp/examples/toy/reassortment/timetree-cross-parent-messages\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is the hand-made graph of README.md: 10 samples, three segments, two\n# reassortants with segments from different parents. The trees are the collapsed\n# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they\n# leave out the nodes that a segment only passes through, and the merge inserts\n# these nodes again where the other segments place them.\n#\n# With `cross_parent_messages`, the message that a node sends to one of its\n# parents also carries the messages of its other parents, so the time passes\n# iterate on the loops of the graph until the dates converge. Without it (the\n# default, `timetree.yaml`), the message to a parent carries the subtree alone.\n# Compare the two dates tables to see how much the loops of this graph matter.\n#\n# The clock rate is that of the toy graph: its node dates are 2000 + 200 times\n# the divergence from the root (README.md), so 0.005 substitutions per site and\n# year.\n#\n# Every node date, with its region, is in the dates table (`dates`); the\n# reconstructed sequences of a dated graph are not written yet.\n\nsegment_trees:\n  - \"tree_seg1_collapsed.nwk\"\n  - \"tree_seg2_collapsed.nwk\"\n  - \"tree_seg3_collapsed.nwk\"\nsegment_alignments:\n  - \"aln_seg1.fasta\"\n  - \"aln_seg2.fasta\"\n  - \"aln_seg3.fasta\"\nmetadata: \"metadata.tsv\"\n\nclock_rate: 0.005\nconfidence: true\ncross_parent_messages: true\n\n# A fixed seed makes the random steps of the run repeat exactly.\nseed: 42\n\noutput_selection:\n  - \"nexus\"\n  - \"auspice\"\n  - \"dates\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "metadata": [
+          "toy/reassortment/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "toy/reassortment/aln_seg1.fasta",
+          "toy/reassortment/aln_seg2.fasta",
+          "toy/reassortment/aln_seg3.fasta"
+        ],
+        "segment_trees": [
+          "toy/reassortment/tree_seg1_collapsed.nwk",
+          "toy/reassortment/tree_seg2_collapsed.nwk",
+          "toy/reassortment/tree_seg3_collapsed.nwk"
+        ]
+      }
+    },
+    {
+      "path": "toy/reassortment/timetree.yaml",
+      "command": "timetree",
+      "title": "Dated graph of three segment trees with reassortments at the true clock rate (toy/reassortment).",
+      "folder": "toy/reassortment",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dated graph of three segment trees with reassortments at the true clock rate (toy/reassortment).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/toy/reassortment/timetree.yaml --output-all tmp/examples/toy/reassortment/timetree\n#\n# `segment_trees` lists one tree per genome segment and `segment_alignments` the\n# alignment of each segment in the same order. TreeTime merges the trees into one\n# graph by node name: a node named in several trees is one node, and a node whose\n# segments descend from different parents has several parents.\n#\n# The input is the hand-made graph of README.md: 10 samples, three segments, two\n# reassortants with segments from different parents. The trees are the collapsed\n# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they\n# leave out the nodes that a segment only passes through, and the merge inserts\n# these nodes again where the other segments place them.\n#\n# `timetree` optimizes the branch lengths of the graph, then dates every node,\n# also the nodes with several parents. A graph of segment trees needs a fixed\n# clock rate (`clock_rate`) and keeps its roots; it runs without a coalescent\n# prior. `confidence` adds the 90% region of every node date to the dates table.\n#\n# The clock rate is that of the toy graph: its node dates are 2000 + 200 times\n# the divergence from the root (README.md), so 0.005 substitutions per site and\n# year.\n#\n# Every node date, with its region, is in the dates table (`dates`); the\n# reconstructed sequences of a dated graph are not written yet.\n\nsegment_trees:\n  - \"tree_seg1_collapsed.nwk\"\n  - \"tree_seg2_collapsed.nwk\"\n  - \"tree_seg3_collapsed.nwk\"\nsegment_alignments:\n  - \"aln_seg1.fasta\"\n  - \"aln_seg2.fasta\"\n  - \"aln_seg3.fasta\"\nmetadata: \"metadata.tsv\"\n\nclock_rate: 0.005\nconfidence: true\n\n# A fixed seed makes the random steps of the run repeat exactly.\nseed: 42\n\noutput_selection:\n  - \"nexus\"\n  - \"auspice\"\n  - \"dates\"\n  - \"model\"\n  - \"graph-json\"\n",
+      "inputs": {
+        "metadata": [
+          "toy/reassortment/metadata.tsv"
+        ],
+        "segment_alignments": [
+          "toy/reassortment/aln_seg1.fasta",
+          "toy/reassortment/aln_seg2.fasta",
+          "toy/reassortment/aln_seg3.fasta"
+        ],
+        "segment_trees": [
+          "toy/reassortment/tree_seg1_collapsed.nwk",
+          "toy/reassortment/tree_seg2_collapsed.nwk",
+          "toy/reassortment/tree_seg3_collapsed.nwk"
         ]
       }
     },
@@ -4320,6 +5038,84 @@
       ]
     },
     {
+      "path": "flu/h3n2/segments/100/pipeline-nextstrain.yaml",
+      "title": "Nextstrain seasonal-flu H3N2 build on a graph of four segment trees, TreeTime part (flu/h3n2/segments/100).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-region-ha",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-region-na",
+          "command": "mugration"
+        }
+      ]
+    },
+    {
+      "path": "flu/h3n2/segments/1564/pipeline-nextstrain.yaml",
+      "title": "Nextstrain seasonal-flu H3N2 build on a graph of four segment trees, TreeTime part (flu/h3n2/segments/1564).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-region-ha",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-region-na",
+          "command": "mugration"
+        }
+      ]
+    },
+    {
+      "path": "flu/h3n2/segments/500/pipeline-nextstrain.yaml",
+      "title": "Nextstrain seasonal-flu H3N2 build on a graph of four segment trees, TreeTime part (flu/h3n2/segments/500).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-region-ha",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-region-na",
+          "command": "mugration"
+        }
+      ]
+    },
+    {
       "path": "lassa/L/500/pipeline-nextstrain.yaml",
       "title": "Nextstrain lassa L segment build, TreeTime part (lassa/L/500).",
       "steps": [
@@ -4446,6 +5242,24 @@
       ]
     },
     {
+      "path": "simulated/reassortment/80/pipeline-optimized-graph.yaml",
+      "title": "Optimize the branch lengths of a graph of segment trees, then reconstruct and date it (simulated/reassortment/80).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        }
+      ]
+    },
+    {
       "path": "tb/149/pipeline-nextstrain.yaml",
       "title": "Nextstrain tuberculosis build, TreeTime part (tb/149).",
       "steps": [
@@ -4456,6 +5270,24 @@
         {
           "name": "ancestral",
           "command": "ancestral"
+        }
+      ]
+    },
+    {
+      "path": "toy/reassortment/pipeline-optimized-graph.yaml",
+      "title": "Optimize the branch lengths of a graph of segment trees, then reconstruct and date it (toy/reassortment).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
         }
       ]
     },
