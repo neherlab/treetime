@@ -122,6 +122,6 @@ Commit `c4c2b5e9a` also let the edge continue through nodes with one child in th
 
 ## Open
 
-- **Merge of trees with pass-through nodes**: the merge moves an edge of a segment below a node that the other segments put on its path and that the segment does not hold, also where a reassortment separates them; in the simulation this changes one edge per form over 6 replicates (section Hidden nodes)
+- **Merge of trees with pass-through nodes**: the merge moves an edge of a segment below a node that the other segments put on its path and that the segment does not hold, also where a reassortment separates them; in the simulation this changes one edge per form over 6 replicates (section Hidden nodes): [kb/issues/N-graph-merge-reroutes-segment-edges-past-reassortments-in-complete-trees.md](../issues/N-graph-merge-reroutes-segment-edges-past-reassortments-in-complete-trees.md)
 - **Sweep tolerance** (with `--cross-parent-messages`): the flu graph needs more than 20 sweeps in one round to reach 10^-4 of the date span
 - Clock rate estimation, coalescent prior, rooting and polytomy resolution on segment graphs: [kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md)

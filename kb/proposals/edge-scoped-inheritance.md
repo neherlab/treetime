@@ -58,16 +58,7 @@ An edge has one branch length, shared by all partitions it carries, as on a tree
 
 A node has one time, shared by all its sites. A reassortant node with two older parents closes an undirected cycle, so the time inference on the graph is no longer a tree problem: two passes of message passing give exact marginals on a tree, but on a graph with undirected cycles they become loopy belief propagation, which is approximate <a id="cite-1"></a>[Koller and Friedman 2009](https://mitpress.mit.edu/9780262013192/probabilistic-graphical-models/) [[1](#ref-1)]. Sequence inference is not affected, because each site sees a tree.
 
-> [!IMPORTANT]
-> **Decision required.** Time inference on a graph with reassortment needs one of:
->
-> - Loopy message passing on the time graph, iterated to a fixed point. Reassortment nodes are few compared to all nodes, so the cycles are few, but convergence and calibration need checking
-> - Conditioning on one parent edge per reassortant node in turn, as v0 does with its focal trees, and combining the results
-> - Exact treatment of the cycles, for example by grouping the nodes of each cycle (junction tree), with a cost that grows with the size of the cycles
->
-> The choice also settles which timetree parameters the segments share (clock rate, coalescent model), the open question of [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md).
-
-Decided: loopy message passing, node-local ([kb/decisions/timetree-segment-graph-loopy-message-passing.md](../decisions/timetree-segment-graph-loopy-message-passing.md)). The backward and forward passes run unchanged at nodes with one parent; a node with several parents sends each parent its subtree (optionally combined, from the second sweep on, with the messages of its other parents), and multiplies the messages of all parents into its posterior. Sweeps repeat until the node times settle ([kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)). The segments share one clock rate, given with `--clock-rate`.
+Time inference on the graph uses loopy message passing, node-local ([kb/decisions/timetree-segment-graph-loopy-message-passing.md](../decisions/timetree-segment-graph-loopy-message-passing.md)), over conditioning on one parent edge per reassortant node in turn (as v0 does with its focal trees) and over an exact treatment of the cycles (junction tree), whose cost grows with the size of the cycles. The backward and forward passes run unchanged at nodes with one parent; a node with several parents sends each parent its subtree (optionally combined, from the second sweep on, with the messages of its other parents), and multiplies the messages of all parents into its posterior. Sweeps repeat until the node times settle ([kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)). The segments share one clock rate, given with `--clock-rate`.
 
 ### Topology operations
 
@@ -99,6 +90,10 @@ Rerooting, polytomy resolution, and edge contraction change edges, and the scope
 - Scope-aware Fitch and marginal passes: [kb/issues/M-partition-passes-crossover-scopes-and-discrete-traits.md](../issues/M-partition-passes-crossover-scopes-and-discrete-traits.md)
 - Branch-length optimization on graphs of segment trees: [kb/issues/M-optimize-segment-graphs-topology-fixed.md](../issues/M-optimize-segment-graphs-topology-fixed.md)
 - Time inference on graphs with reassortment: [kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md)
+- Node identities from TreeKnit output: [kb/issues/M-io-treeknit-output-reaches-segment-graphs-only-through-a-python-prototype.md](../issues/M-io-treeknit-output-reaches-segment-graphs-only-through-a-python-prototype.md)
+- Pass-through insertion on trees that hold every pass-through node: [kb/issues/N-graph-merge-reroutes-segment-edges-past-reassortments-in-complete-trees.md](../issues/N-graph-merge-reroutes-segment-edges-past-reassortments-in-complete-trees.md)
+- Length of the edge above an inserted node: [kb/issues/N-graph-merge-length-above-an-inserted-node-depends-on-child-order.md](../issues/N-graph-merge-length-above-an-inserted-node-depends-on-child-order.md)
+- Dates of hidden nodes: [kb/issues/M-timetree-dates-of-hidden-segment-graph-nodes-miscalibrated.md](../issues/M-timetree-dates-of-hidden-segment-graph-nodes-miscalibrated.md)
 
 ## Glossary
 

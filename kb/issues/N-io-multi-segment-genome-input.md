@@ -1,6 +1,6 @@
-# Segments with different trees cannot share a run
+# Runs over several segment trees cover three commands and lack a rule for shared parameters
 
-Segmented genomes such as influenza can have one tree per segment, because reassortment gives the segments different histories. TreeTime takes one `--tree` per run (for example [packages/app-commands/src/commands/shared/tree_input.rs#L58](../../packages/app-commands/src/commands/shared/tree_input.rs#L58)), and every partition of the `--alignment` files lies on that tree ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Segments that share one tree run together today; segments with different trees need one run per segment.
+Segmented genomes such as influenza can have one tree per segment, because reassortment gives the segments different histories. TreeTime takes one `--tree` per run (for example [packages/app-commands/src/commands/shared/tree_input.rs#L58](../../packages/app-commands/src/commands/shared/tree_input.rs#L58)), and every partition of the `--alignment` files lies on that tree ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). `--segment-trees` runs `ancestral`, `optimize` and `timetree` on all segment trees at once (current state below). The other commands, `--translations`, and the rule for the parameters that the segments share are open.
 
 ## Current state
 
@@ -12,15 +12,13 @@ Outputs: the per-alignment outputs (reconstructed sequences, Nexus, Auspice JSON
 - Graph JSON holds topology only: node names and edge scopes are not in it
 - The other commands, and one interface with `--tree`, `--alignment`, and the YAML configuration
 
-Toy input for this reader is in [data/toy/reassortment/](../../data/toy/reassortment/). Converting TreeKnit output (local internal names, pairwise MCCs) into named trees is a further step described in the proposal.
+Toy input for this reader is in [data/toy/reassortment/](../../data/toy/reassortment/). Converting TreeKnit output (local internal names, pairwise MCCs) into named trees needs a prototype script: [M-io-treeknit-output-reaches-segment-graphs-only-through-a-python-prototype.md](M-io-treeknit-output-reaches-segment-graphs-only-through-a-python-prototype.md).
 
 > [!IMPORTANT]
-> **Decision required.** No rule defines which parameters the trees of one run share. Examples in timetree are the clock rate and the coalescent model (the merger rate `Tc` or the skyline). Options per parameter:
+> **Decision required.** A segment graph shares its edges and node dates by design ([kb/decisions/segment-graph-replaces-v0-arg-masks.md](../decisions/segment-graph-replaces-v0-arg-masks.md)), `timetree` takes one clock rate for all segments, and each segment has its own substitution model and relative rate. No rule defines the other parameters of timetree: an estimated clock rate and the coalescent model (the merger rate `Tc` or the skyline). Options per parameter:
 >
-> - Shared: one value fitted jointly over all trees of the run
-> - Separate: one value per tree, as in one run per segment today
->
-> The choice also decides whether a run with several trees is more than a batch of independent runs.
+> - Shared: one value fitted jointly over all segments of the run
+> - Separate: one value per segment
 
 The public alignment-input design discussion proposes separate nucleotide and amino-acid alignment partitions [[issue](https://github.com/neherlab/treetime/issues/306)]. A maintainer response identifies sequence alphabets, discrete traits, sparse/dense storage, and configuration-based partition specifications as parts of the same partition abstraction [[comment](https://github.com/neherlab/treetime/issues/306#issuecomment-2565383822)].
 
@@ -30,7 +28,7 @@ v0 accepts one tree and one alignment file. Users run each segment on its own tr
 
 ## Workaround
 
-Run TreeTime once per segment with the tree of that segment.
+For the other commands and for `--translations`: run TreeTime once per segment with the tree of that segment.
 
 ## Related
 
@@ -48,8 +46,7 @@ Run TreeTime once per segment with the tree of that segment.
 
 The sharing rule is open (Decision required above). The plan stops at that rule.
 
-1. Decide per parameter (clock rate, `Tc` or skyline, substitution model) whether the trees of one run share it. When every parameter is separate, close this issue as "one run per segment" and document the workaround in `docs/en/`, because a run with several trees then adds nothing over a batch of runs
-2. When at least one parameter is shared: let `struct TreeArgs` (`packages/app-commands/src/commands/shared/tree_input.rs`) take one tree per segment group, map each `--alignment` file or `--partition` to one tree (config file design in [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md)), and build one graph per group
-3. Fit the shared parameters jointly: sum the log-likelihoods of the groups in the objective of each shared parameter (for example the clock regression and the coalescent `Tc` optimization of timetree), and keep the separate parameters per graph. This step is a scientific change and needs a `kb/decisions/` entry with user approval
-4. Tests: simulated data from `treetime-simulation` with two trees that share one clock rate; the joint fit recovers the true rate within the interval of the fit, and with separate parameters the run equals two single-tree runs (oracle: the simulation truth, and the single-tree runs)
-5. Validate: `just lint-rs`, `just test-rs`, `just generated-check`
+1. Decide per parameter (estimated clock rate, `Tc` or skyline) whether the segments of one run share it
+2. Fit each parameter on the segment graph, in the clock rate estimation and the coalescent prior of `timetree` on segment graphs ([M-timetree-segment-graphs-fixed-clock-only.md](M-timetree-segment-graphs-fixed-clock-only.md)): a shared parameter sums the log-likelihoods of the segments in its objective, a separate one is fitted per segment. This step is a scientific change and needs a `kb/decisions/` entry with user approval
+3. Tests: simulated segment graphs from `treetime-simulation` whose segments share one clock rate; the joint fit recovers the true rate within the interval of the fit (oracle: the simulation truth)
+4. Validate: `just lint-rs`, `just test-rs`, `just generated-check`
