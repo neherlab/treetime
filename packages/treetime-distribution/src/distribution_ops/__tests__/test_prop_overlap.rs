@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{assert_intersection, linear_function, linear_function_n_points};
   use crate::Distribution;
   use crate::{distribution_division, distribution_multiplication};
-  use ndarray::{Array1, array};
-  use proptest::prelude::{TestCaseError, prop_assert_eq, proptest};
+  use ndarray::Array1;
+  use proptest::prelude::{prop_assert_eq, proptest};
   use treetime_grid::MaxGridPoints;
-  use treetime_utils::{prop_assert_array_ulps_eq, prop_assert_ulps_eq};
+  use treetime_utils::prop_assert_array_ulps_eq;
 
   proptest! {
     #[test]
@@ -70,36 +71,43 @@ mod tests {
     }
   }
 
-  #[expect(clippy::float_cmp, reason = "an exact tie of interval bounds selects the point case")]
-  fn assert_intersection(actual: &Distribution, (start, end): (f64, f64)) -> Result<(), TestCaseError> {
-    if start > end {
-      prop_assert_eq!(&Distribution::Empty, actual);
-    } else if start == end {
-      let Distribution::Point(point) = actual else {
-        return Err(TestCaseError::fail(format!(
-          "expected Point at {start}, got {actual:?}"
-        )));
-      };
-      prop_assert_ulps_eq!(start, point.t(), max_ulps = 4);
-    } else {
-      let Distribution::Function(function) = actual else {
-        return Err(TestCaseError::fail(format!(
-          "expected Function on [{start}, {end}], got {actual:?}"
-        )));
-      };
-      prop_assert_ulps_eq!(start, function.x_min(), max_ulps = 4);
-      prop_assert_ulps_eq!(end, function.x_max(), max_ulps = 4);
+  mod helpers {
+    use crate::Distribution;
+    use ndarray::{Array1, array};
+    use proptest::prelude::{TestCaseError, prop_assert_eq};
+    use treetime_utils::prop_assert_ulps_eq;
+
+    #[expect(clippy::float_cmp, reason = "an exact tie of interval bounds selects the point case")]
+    pub(super) fn assert_intersection(actual: &Distribution, (start, end): (f64, f64)) -> Result<(), TestCaseError> {
+      if start > end {
+        prop_assert_eq!(&Distribution::Empty, actual);
+      } else if start == end {
+        let Distribution::Point(point) = actual else {
+          return Err(TestCaseError::fail(format!(
+            "expected Point at {start}, got {actual:?}"
+          )));
+        };
+        prop_assert_ulps_eq!(start, point.t(), max_ulps = 4);
+      } else {
+        let Distribution::Function(function) = actual else {
+          return Err(TestCaseError::fail(format!(
+            "expected Function on [{start}, {end}], got {actual:?}"
+          )));
+        };
+        prop_assert_ulps_eq!(start, function.x_min(), max_ulps = 4);
+        prop_assert_ulps_eq!(end, function.x_max(), max_ulps = 4);
+      }
+      Ok(())
     }
-    Ok(())
-  }
 
-  fn linear_function() -> Distribution {
-    Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap()
-  }
+    pub(super) fn linear_function() -> Distribution {
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap()
+    }
 
-  fn linear_function_n_points(n_points: usize, width: f64) -> Distribution {
-    let x = Array1::linspace(0.0, width, n_points);
-    let y = x.mapv(|value| value + 1.0);
-    Distribution::function(x, y).unwrap()
+    pub(super) fn linear_function_n_points(n_points: usize, width: f64) -> Distribution {
+      let x = Array1::linspace(0.0, width, n_points);
+      let y = x.mapv(|value| value + 1.0);
+      Distribution::function(x, y).unwrap()
+    }
   }
 }
