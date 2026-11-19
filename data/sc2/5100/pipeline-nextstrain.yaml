@@ -6,17 +6,40 @@
 # `--output-all` chooses the output folder. From the repository root:
 #   treetime pipeline --config data/sc2/5100/pipeline-nextstrain.yaml --output-all tmp/examples/sc2/5100/pipeline-nextstrain
 #
-# nextstrain/ncov@8e16d94: `augur refine --root Wuhan-Hu-1/2019 --timetree
+# nextstrain/ncov@8e16d94, profile nextstrain-open, builds global_6m, global_all-time
+# and the other global builds: `augur refine --root Wuhan-Hu-1/2019 --timetree
 # --stochastic-resolve --clock-rate 0.0008 --clock-std-dev 0.0004 --coalescent opt
-# --divergence-unit mutations --date-confidence --clock-filter-iqd 8`, `augur ancestral
-# --inference joint --infer-ambiguous`, `augur traits --columns region
-# --sampling-bias-correction 2.5` (global builds; regional builds use `country`).
+# --date-inference marginal --divergence-unit mutations --date-confidence
+# --no-covariance --clock-filter-iqd 8`, `augur ancestral --inference joint
+# --infer-ambiguous`, `augur traits --columns region --confidence
+# --sampling-bias-correction 2.5`. Sources: rules refine, ancestral and traits of
+# `workflow/snakemake_rules/main_workflow.smk` (lines 769-949), `refine`, `ancestral`
+# and `traits` of `defaults/parameters.yaml` (lines 122-132, 176-179), the root of
+# `nextstrain_profiles/nextstrain-open/builds.yaml` (line 340) and its traits
+# (lines 392-479). All builds of the workflow use this clock rate and its standard
+# deviation; the regional builds reconstruct `country`, or `division` for North
+# America and Oceania, in place of `region`.
 #
 # Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
 # augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
-# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
-# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
-# polytomy resolution where the run resolves polytomies.
+# branch lengths as TreeTime 0.x does, and `clock_filter` takes the value of the
+# build (TreeTime filters at 4 by default). `augur refine` removes the tips that the
+# clock filter flags and the tips without a usable date, so the timetree step sets
+# `prune_filtered_tips` and `prune_undated_tips`, and the later steps read the pruned
+# tree. The build filters with the slope of the root-to-tip regression although it
+# fixes the clock rate, while v1 filters with the fixed rate, so the removed tips can
+# differ: kb/issues/M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md.
+# v1 dates nodes by marginal inference only (`--date-inference marginal`), fits the
+# clock by ordinary least squares (`--no-covariance`), and has one stochastic
+# polytomy resolution (`--stochastic-resolve`), whose random order `seed` fixes.
+#
+# The build runs refine on an alignment that `scripts/mask-alignment.py` masks first:
+# 100 sites at the start and 200 at the end, which are hard to sequence, sites 21987
+# (an ARTIC V3 primer site) and 21846 (often reverted by error in Delta), and the
+# terminal gaps (`mask` of `defaults/parameters.yaml`, lines 99-109). Its ancestral
+# step reads the unmasked alignment. The alignment of this dataset is unmasked, and
+# TreeTime has no site mask, so the timetree step reads these sites too; it turns the
+# leading and trailing gaps into missing data (`gap_fill: only-terminal`, the default).
 
 steps:
   - name: "timetree"
@@ -33,6 +56,8 @@ steps:
       confidence: true
       divergence_units: "mutations"
       clock_filter: 8.0
+      prune_filtered_tips: true
+      prune_undated_tips: true
       no_indels: true
       seed: 42
 
