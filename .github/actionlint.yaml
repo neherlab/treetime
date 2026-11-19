@@ -1,0 +1,5 @@
+# actionlint 1.7.12 does not know the queue key of concurrency yet (https://github.com/rhysd/actionlint/pull/654).
+paths:
+  .github/workflows/deploy-site.yml:
+    ignore:
+      - 'unexpected key "queue" for "concurrency" section'

@@ -66,18 +66,52 @@ defaults:
     shell: "bash -euo pipefail {0}"
 
 jobs:
+  plan:
+    name: "Plan"
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 5
+    permissions:
+      contents: "read"
+    outputs:
+      production: "${{ steps.plan.outputs.production }}"
+      label: "${{ steps.plan.outputs.label }}"
+    steps:
+      - name: "Check out the publisher"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+        with:
+          ref: "${{ github.event.pull_request.head.sha || github.sha }}"
+          persist-credentials: false
+          sparse-checkout: "dev/publish-site"
+          sparse-checkout-cone-mode: false
+
+      # The only place that names the production branch. Bash compares it exactly, unlike the expressions of GitHub.
+      - name: "Choose the targets"
+        id: "plan"
+        env:
+          BRANCH: "${{ github.head_ref || github.ref_name }}"
+        run: |
+          source dev/publish-site
+          production=false
+          if [[ "${GITHUB_EVENT_NAME}" != "pull_request" && "${GITHUB_REF}" == "refs/heads/rust" ]]; then
+            production=true
+          fi
+          echo "production=${production}" >>"${GITHUB_OUTPUT}"
+          echo "label=$(site_name "branch-${BRANCH}")" >>"${GITHUB_OUTPUT}"
+
   production:
     name: "Production"
-    # The only place that names the production branch.
-    if: "github.event_name != 'pull_request' && github.ref == 'refs/heads/rust'"
+    needs: "plan"
+    if: "needs.plan.outputs.production == 'true'"
     runs-on: "ubuntu-24.04"
     timeout-minutes: 30
     permissions:
       contents: "read"
       id-token: "write"
+    # Deploys wait in order of arrival, and none replaces another; the head check stops all but the newest.
     concurrency:
       group: "${{ inputs.name }}-production"
       cancel-in-progress: false
+      queue: "max"
     steps:
       - name: "Check out the publisher"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -90,15 +124,13 @@ jobs:
         uses: "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c" # v8.0.1
         with:
           name: "${{ inputs.artifact }}"
-
-      - name: "Unpack the build"
-        run: "tar -xf site.tar && rm site.tar"
+          path: "${{ runner.temp }}/build"
 
       # A rerun of an older run, or a run that a newer push overtook, uploads nothing, so it never replaces a newer build.
       - name: "Check that the commit is the head of the branch"
         id: "head"
         run: |
-          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${GITHUB_REF_NAME}" | cut -f1)"
+          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "${GITHUB_REF}" | cut -f1)"
           if [[ "${head}" == "${GITHUB_SHA}" ]]; then
             echo "current=true" >>"${GITHUB_OUTPUT}"
           else
@@ -126,7 +158,7 @@ jobs:
           PREFIX: "${{ inputs.prefix }}"
           FOLDER: "${{ inputs.production-folder }}"
         run: |
-          options=(--dist "${DIST}" --folder "${FOLDER}" --routing "${ROUTING}")
+          options=(--archive "${RUNNER_TEMP}/build/site.tar" --dist "${DIST}" --folder "${FOLDER}" --routing "${ROUTING}")
           if [[ -n "${PREFIX}" ]]; then
             options+=(--prefix "${PREFIX}")
           fi
@@ -138,6 +170,7 @@ jobs:
 
   previews:
     name: "Previews"
+    needs: "plan"
     # Pull requests from forks get no credentials.
     if: "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
     runs-on: "ubuntu-24.04"
@@ -145,10 +178,14 @@ jobs:
     permissions:
       contents: "read"
       id-token: "write"
-      pull-requests: "write"
+      pull-requests: "read"
+    # Branches whose names give the same site, such as feat/a and feat-a, upload one after the other.
     concurrency:
-      group: "${{ inputs.name }}-previews-${{ github.head_ref || github.ref_name }}"
+      group: "${{ inputs.name }}-previews-${{ needs.plan.outputs.label }}"
       cancel-in-progress: false
+      queue: "max"
+    outputs:
+      prs: "${{ steps.sites.outputs.prs }}"
     steps:
       - name: "Check out the publisher"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -162,12 +199,10 @@ jobs:
         uses: "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c" # v8.0.1
         with:
           name: "${{ inputs.artifact }}"
-
-      - name: "Unpack the build"
-        run: "tar -xf site.tar && rm site.tar"
+          path: "${{ runner.temp }}/build"
 
       # The sites of the branch and its pull requests come only from the head of the branch, so an older run never
-      # replaces a newer build. A pull request run deploys only the site of its pull request.
+      # replaces a newer build. A pull request run deploys only the site of its pull request, while it is open.
       - name: "Name the preview sites"
         id: "sites"
         env:
@@ -178,20 +213,27 @@ jobs:
         run: |
           sites=()
           prs=()
-          if [[ -z "${PR_NUMBER}" ]]; then
-            sites+=("commit-${COMMIT::7}")
-          fi
-          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${BRANCH}" | cut -f1)"
-          if [[ "${head}" != "${COMMIT}" ]]; then
-            echo "::notice::${BRANCH} is at ${head}, not at ${COMMIT}: no branch and pull request previews"
-          elif [[ -n "${PR_NUMBER}" ]]; then
-            prs=("${PR_NUMBER}")
+          if [[ -n "${PR_NUMBER}" ]]; then
+            state="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --json state,isCrossRepository,headRefOid --jq '"\(.state) \(.isCrossRepository) \(.headRefOid)"')"
+            if [[ "${state}" == "OPEN false ${COMMIT}" ]]; then
+              prs=("${PR_NUMBER}")
+            else
+              echo "::notice::Pull request ${PR_NUMBER} is not open at ${COMMIT} (${state}): no preview"
+            fi
           else
-            sites+=("branch-${BRANCH}")
-            prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open \
-              --json number,isCrossRepository --jq '.[] | select(.isCrossRepository | not) | .number')"
-            if [[ -n "${prs_text}" ]]; then
-              mapfile -t prs <<<"${prs_text}"
+            sites+=("commit-${COMMIT::7}")
+            head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${BRANCH}" | cut -f1)"
+            if [[ "${head}" == "${COMMIT}" ]]; then
+              sites+=("branch-${BRANCH}")
+              prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open --limit 1000 \
+                --json number,isCrossRepository,headRefOid \
+                --jq ".[] | select((.isCrossRepository | not) and .headRefOid == \"${COMMIT}\") | .number")"
+              if [[ -n "${prs_text}" ]]; then
+                mapfile -t prs <<<"${prs_text}"
+              fi
+            else
+              echo "::notice::${BRANCH} is at ${head}, not at ${COMMIT}: no branch and pull request previews"
             fi
           fi
           for pr in "${prs[@]}"; do
@@ -223,7 +265,7 @@ jobs:
           FOLDER: "${{ inputs.previews-folder }}"
         run: |
           read -ra names <<<"${SITES}"
-          options=(--dist "${DIST}" --folder "${FOLDER}" --routing "${ROUTING}")
+          options=(--archive "${RUNNER_TEMP}/build/site.tar" --dist "${DIST}" --folder "${FOLDER}" --routing "${ROUTING}")
           for name in "${names[@]}"; do
             options+=(--site "${name}")
           done
@@ -242,11 +284,25 @@ jobs:
             done
           } >>"${GITHUB_STEP_SUMMARY}"
 
+  comment:
+    name: "Comment the preview links"
+    needs:
+      - "plan"
+      - "previews"
+    if: "needs.previews.outputs.prs != ''"
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 5
+    permissions:
+      pull-requests: "write"
+    concurrency:
+      group: "${{ inputs.name }}-comment-${{ needs.plan.outputs.label }}"
+      cancel-in-progress: false
+      queue: "max"
+    steps:
       - name: "Comment the preview links on the pull requests"
-        if: "steps.sites.outputs.prs != ''"
         env:
           GH_TOKEN: "${{ github.token }}"
-          PRS: "${{ steps.sites.outputs.prs }}"
+          PRS: "${{ needs.previews.outputs.prs }}"
           COMMIT: "${{ github.event.pull_request.head.sha || github.sha }}"
           PR_NUMBER: "${{ github.event.pull_request.number }}"
           MARKER: "<!-- ${{ inputs.name }}-preview -->"
