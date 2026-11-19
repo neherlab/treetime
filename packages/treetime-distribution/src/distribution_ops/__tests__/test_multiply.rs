@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::aliases::DistributionPlain;
-  use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::{
     HardDomain, distribution_multiplication, guarded_empty_result, hard_domains_disjoint,
   };
@@ -14,61 +13,6 @@ mod tests {
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   const SOFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.001 });
-
-  #[test]
-  fn test_multiply_formula_function_returns_function() {
-    let formula = DistributionFormula::new(|t| Ok(2.0 * t), 0.0, 10.0);
-    let formula_dist = DistributionPlain::Formula(formula);
-
-    let t = array![1.0, 3.0, 5.0, 7.0, 9.0];
-    let y = array![1.0, 2.0, 3.0, 4.0, 5.0];
-    let function_dist = DistributionPlain::function(t, y).unwrap();
-
-    let result = distribution_multiplication(&formula_dist, &function_dist, MaxGridPoints::default()).unwrap();
-
-    let DistributionPlain::Function(result_fn) = result else {
-      panic!("Expected Function variant, got {result:?}");
-    };
-
-    let expected = array![2.0, 12.0, 30.0, 56.0, 90.0];
-    pretty_assert_ulps_eq!(expected, result_fn.y(), max_ulps = 10);
-  }
-
-  #[test]
-  fn test_multiply_function_formula_commutative() {
-    let formula = DistributionFormula::new(|t| Ok(t * t), 0.0, 5.0);
-    let formula_dist = DistributionPlain::Formula(formula);
-
-    let t = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
-    let y = array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-    let function_dist = DistributionPlain::function(t, y).unwrap();
-
-    let result_ff = distribution_multiplication(&formula_dist, &function_dist, MaxGridPoints::default()).unwrap();
-    let result_fxf = distribution_multiplication(&function_dist, &formula_dist, MaxGridPoints::default()).unwrap();
-
-    let (DistributionPlain::Function(ff_fn), DistributionPlain::Function(fxf_fn)) = (&result_ff, &result_fxf) else {
-      panic!("Both results should be Function variants");
-    };
-
-    pretty_assert_ulps_eq!(ff_fn.y(), fxf_fn.y(), max_ulps = 10);
-  }
-
-  #[test]
-  fn test_multiply_formula_function_uses_function_spacing_over_intersection() {
-    let formula = DistributionPlain::Formula(DistributionFormula::new(|t| Ok(2.0 * t), 1.2, 2.4));
-    let function =
-      DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-
-    let actual = distribution_multiplication(&formula, &function, MaxGridPoints::default()).unwrap();
-    let DistributionPlain::Function(actual) = actual else {
-      panic!("Expected Function variant, got {actual:?}");
-    };
-
-    let expected_t = array![1.2, 1.8, 2.4];
-    let expected_y = array![5.28, 10.08, 16.32];
-    pretty_assert_ulps_eq!(expected_t, actual.t(), max_ulps = 4);
-    pretty_assert_ulps_eq!(expected_y, actual.y(), max_ulps = 4);
-  }
 
   #[rustfmt::skip]
   #[rstest]

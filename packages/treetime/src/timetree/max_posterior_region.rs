@@ -140,9 +140,6 @@ impl Posterior {
       (Distribution::Point(_), Some((t, _))) => Self::Point(t),
       (Distribution::Range(_), Some((start, end))) => Self::Range(start, end),
       (Distribution::Empty, _) => Self::Empty,
-      (Distribution::Formula(_), _) => {
-        return make_internal_error!("Normalization left a formula distribution undiscretized");
-      },
       (Distribution::Point(_) | Distribution::Range(_), None) => {
         return make_internal_error!("A point or range distribution has no time bounds");
       },

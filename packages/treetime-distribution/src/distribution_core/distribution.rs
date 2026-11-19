@@ -1,9 +1,8 @@
 use crate::DistributionFunction;
-use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::negate::distribution_negation;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
@@ -11,11 +10,7 @@ use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side, coordinates_coincide};
 use treetime_grid::{NegLog, Plain, YAxisPolicy};
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
-
-const TIME_LIMIT: f64 = 1e10;
-const FORMULA_GRID_SIZE: usize = 200;
 
 #[must_use]
 #[derive(Clone, Debug, Default, PartialEq, Display)]
@@ -26,7 +21,6 @@ pub enum Distribution<Y: YAxisPolicy = Plain> {
   Point(DistributionPoint<f64, Y>),
   Range(DistributionRange<f64, Y>),
   Function(DistributionFunction<f64, Y>),
-  Formula(DistributionFormula<Y>),
 }
 
 impl<Y: YAxisPolicy> Distribution<Y> {
@@ -64,10 +58,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     Ok(Self::Function(DistributionFunction::from_arrays(&x, y)?))
   }
 
-  pub fn constant(amplitude: f64) -> Self {
-    Distribution::range((-TIME_LIMIT, TIME_LIMIT), amplitude)
-  }
-
   pub const fn is_point(&self) -> bool {
     matches!(self, Self::Point(_))
   }
@@ -78,7 +68,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       Self::Point(p) => Ok(Some(p.t())),
       Self::Range(r) => Ok(Some(f64::midpoint(r.start(), r.end()))),
       Self::Function(f) => f.likely_time(),
-      Self::Formula(f) => f.likely_time().map(Some),
     }
   }
 
@@ -94,9 +83,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
         ndarray::array![r.start(), r.end()]
       },
       Self::Function(f) => f.t().to_owned(),
-      Self::Formula(f) => {
-        ndarray::array![f.t_min(), f.t_max()]
-      },
     }
   }
 
@@ -105,16 +91,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       Self::Point(p) => Ok(ndarray::array![p.amplitude()]),
       Self::Range(r) => Ok(ndarray::array![r.amplitude(), r.amplitude()]),
       Self::Function(f) => Ok(f.values()),
-      Self::Formula(f) => {
-        let t = ndarray::array![f.t_min(), f.t_max()];
-        f.eval_many(&t).wrap_err_with(|| {
-          format!(
-            "When evaluating a formula distribution at its bounds [{}, {}]",
-            f.t_min(),
-            f.t_max()
-          )
-        })
-      },
       Self::Empty => Ok(ndarray::array![]),
     }
   }
@@ -129,7 +105,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       Self::Point(p) => Some((p.t(), p.t())),
       Self::Range(r) => Some((r.start(), r.end())),
       Self::Function(f) => Some((f.x_min(), f.x_max())),
-      Self::Formula(f) => Some((f.t_min(), f.t_max())),
     }
   }
 
@@ -146,7 +121,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   pub fn eval(&self, t: f64) -> Result<f64, Report> {
     match self {
       Self::Function(f) => f.interp(t),
-      Self::Formula(f) => f.eval_single(t),
       Self::Point(p) => {
         if coordinates_coincide(t, p.t(), t.abs().max(p.t().abs())) {
           Ok(p.amplitude())
@@ -195,23 +169,12 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       Self::Point(p) => Ok(Self::point(p.t() * factor, p.amplitude())),
       Self::Range(r) => Ok(Self::range((r.start() * factor, r.end() * factor), r.amplitude())),
       Self::Function(f) => Ok(Self::Function(f.scale_time(factor)?)),
-      Self::Formula(_) => make_error!("Time scaling is not implemented for Formula distributions"),
     }
   }
 
   pub fn repeak(&self) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(f.repeak()?.map_or(Self::Empty, Self::Function)),
-      Self::Formula(f) => {
-        let discretized = discretize_formula(f).wrap_err_with(|| {
-          format!(
-            "When discretizing a formula distribution on [{}, {}] for re-peaking",
-            f.t_min(),
-            f.t_max()
-          )
-        })?;
-        Ok(discretized.repeak()?.map_or(Self::Empty, Self::Function))
-      },
       Self::Point(p) => Ok(defined_amplitude::<Y>(p.amplitude(), "point")?.map_or(Self::Empty, |_| self.clone())),
       Self::Range(r) => Ok(defined_amplitude::<Y>(r.amplitude(), "range")?.map_or(Self::Empty, |_| self.clone())),
       Self::Empty => Ok(Self::Empty),
@@ -235,16 +198,6 @@ impl Distribution<NegLog> {
           .map_or(Distribution::Empty, |_| Distribution::range((r.start(), r.end()), 0.0)),
       ),
       Distribution::Function(f) => neglog_function_normalize(f),
-      Distribution::Formula(f) => {
-        let discretized = discretize_formula(f).wrap_err_with(|| {
-          format!(
-            "When discretizing a formula distribution on [{}, {}] for normalization",
-            f.t_min(),
-            f.t_max()
-          )
-        })?;
-        neglog_function_normalize(&discretized)
-      },
     }
   }
 }
@@ -290,13 +243,4 @@ fn neglog_peak(minimum: f64, context: &str) -> Result<Option<f64>, Report> {
   } else {
     make_error!("Cannot normalize a distribution {context}: its peak negative log-likelihood is {minimum}")
   }
-}
-
-fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
-  let n_points = FORMULA_GRID_SIZE;
-  let t = Array1::from_shape_fn(n_points, |i| {
-    f.t_min() + (f.t_max() - f.t_min()) * (i.to_f64_exact() / (n_points - 1).to_f64_exact())
-  });
-  let values = f.eval_many(&t)?;
-  DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
 }

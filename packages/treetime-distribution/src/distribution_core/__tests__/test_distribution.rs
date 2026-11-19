@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution_core::formula::DistributionFormula;
   use crate::{Distribution, DistributionFunction};
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_grid::{NegLog, Plain};
-  use treetime_utils::{assert_error, make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -121,22 +120,6 @@ mod tests {
   }
 
   #[test]
-  fn test_distribution_y_formula_evaluates_bounds() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| Ok(2.0 * t), 1.0, 3.0));
-    assert_eq!(array![2.0, 6.0], formula.y().unwrap());
-  }
-
-  #[test]
-  fn test_distribution_y_formula_propagates_evaluation_error() {
-    let formula =
-      Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
-    assert_error!(
-      formula.y(),
-      "When evaluating a formula distribution at its bounds [1, 3]: no value at 1"
-    );
-  }
-
-  #[test]
   fn test_distribution_neglog_normalize_function_shifts_peak_to_zero() {
     let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![1004.0, 1000.0, 1003.0]).unwrap();
     let Distribution::Function(f) = distribution.normalize().unwrap() else {
@@ -165,17 +148,6 @@ mod tests {
     assert_eq!(expected, distribution.normalize().unwrap());
   }
 
-  #[test]
-  fn test_distribution_neglog_normalize_formula_discretizes_and_shifts_peak() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| Ok((t - 1.0).powi(2) + 7.0), 0.0, 2.0));
-    let Distribution::Function(f) = formula.normalize().unwrap() else {
-      panic!("Expected Function");
-    };
-    let grid_min_offset = (1.0_f64 / 199.0).powi(2);
-    let expected = f.t().mapv(|t| (t - 1.0).powi(2) - grid_min_offset);
-    pretty_assert_abs_diff_eq!(expected, f.y(), epsilon = 1e-12);
-  }
-
   #[rustfmt::skip]
   #[rstest]
   #[case::empty(   Distribution::<NegLog>::Empty)]
@@ -199,40 +171,5 @@ mod tests {
   #[trace]
   fn test_distribution_neglog_normalize_rejects_invalid_likelihood(#[case] distribution: Distribution<NegLog>, #[case] expected: &str) {
     assert_error!(distribution.normalize(), expected);
-  }
-
-  #[test]
-  fn test_distribution_neglog_normalize_formula_propagates_evaluation_error() {
-    let formula =
-      Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
-    assert_error!(
-      formula.normalize(),
-      "When discretizing a formula distribution on [1, 3] for normalization: no value at 1"
-    );
-  }
-
-  #[test]
-  fn test_distribution_likely_time_formula_selects_min_neglog() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| Ok((t - 1.0).abs()), 0.0, 1.99));
-    pretty_assert_ulps_eq!(1.0, formula.likely_time().unwrap().unwrap(), max_ulps = 4);
-  }
-
-  #[test]
-  fn test_distribution_likely_time_formula_propagates_evaluation_error() {
-    let formula =
-      Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
-    assert_error!(
-      formula.likely_time(),
-      "When finding the most likely time of a formula distribution on [1, 3]: no value at 1"
-    );
-  }
-
-  #[test]
-  fn test_distribution_likely_time_formula_rejects_nan() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|_| Ok(f64::NAN), 1.0, 3.0));
-    assert_error!(
-      formula.likely_time(),
-      "Cannot find the most likely time of a formula distribution on [1, 3]: its values contain NaN"
-    );
   }
 }

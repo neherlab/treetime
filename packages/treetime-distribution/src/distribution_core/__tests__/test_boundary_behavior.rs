@@ -2,7 +2,6 @@
 mod tests {
   use crate::__tests__::aliases::DistributionPlain;
   use crate::Distribution;
-  use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use eyre::Report;
@@ -76,16 +75,6 @@ mod tests {
     pretty_assert_ulps_eq!(0.0, empty.eval(1.0)?, max_ulps = 4);
     pretty_assert_ulps_eq!(0.0, point.eval(0.0)?, max_ulps = 4);
     assert!(range.eval(3.0)?.is_infinite());
-    Ok(())
-  }
-
-  #[test]
-  fn test_boundary_formula_ignores_soft_tail_fitting() -> Result<(), Report> {
-    let formula: Distribution<NegLog> = Distribution::Formula(DistributionFormula::new(Ok, 0.0, 2.0));
-    let fitted = formula.fit_soft_tail(Side::Right, 10)?;
-
-    assert!(matches!(fitted, Distribution::Formula(_)));
-    pretty_assert_ulps_eq!(2.5, fitted.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 

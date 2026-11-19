@@ -77,7 +77,7 @@ mod tests {
           DistributionNegLog::Function(_) => Self::Function,
           DistributionNegLog::Point(_) => Self::Point,
           DistributionNegLog::Range(_) => Self::Range,
-          DistributionNegLog::Empty | DistributionNegLog::Formula(_) => {
+          DistributionNegLog::Empty => {
             unreachable!("golden overlap cases produce concrete non-empty distributions")
           },
         }

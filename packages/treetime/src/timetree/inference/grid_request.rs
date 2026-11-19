@@ -258,7 +258,7 @@ impl GridOperand {
   pub(crate) fn of(role: OperandRole, distribution: &Distribution<NegLog>, origin: GridOrigin) -> Self {
     let spacing = match distribution {
       Distribution::Function(function) => Some(function.dx()),
-      Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) | Distribution::Formula(_) => None,
+      Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) => None,
     };
     Self {
       role,

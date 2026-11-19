@@ -15,7 +15,7 @@ pub fn distribution_product<Y: YAxisPolicy>(
     match factor {
       Distribution::Empty => return Ok(Distribution::empty()),
       Distribution::Function(function) => functions.push(function),
-      Distribution::Point(_) | Distribution::Range(_) | Distribution::Formula(_) => others.push(factor),
+      Distribution::Point(_) | Distribution::Range(_) => others.push(factor),
     }
   }
 

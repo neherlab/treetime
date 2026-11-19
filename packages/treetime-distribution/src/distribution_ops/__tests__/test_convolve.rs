@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{
-    DistributionVariant, PiecewiseLinear, distribution, exponential_box_density, function_on, neg_log,
-  };
+  use self::helpers::{PiecewiseLinear, exponential_box_density, function_on, neg_log};
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::__tests__::test_mass_profile_convergence::tests::helpers::assert_second_order;
@@ -41,25 +39,13 @@ mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::formula_empty(   DistributionVariant::Formula,  DistributionVariant::Empty,    "Cannot convolve formula with empty: operation not implemented")]
-  #[case::formula_point(   DistributionVariant::Formula,  DistributionVariant::Point,    "Cannot convolve formula with point: operation not implemented")]
-  #[case::formula_range(   DistributionVariant::Formula,  DistributionVariant::Range,    "Cannot convolve formula with range: operation not implemented")]
-  #[case::formula_function(DistributionVariant::Formula,  DistributionVariant::Function, "Cannot convolve formula with function: operation not implemented")]
-  #[case::formula_formula( DistributionVariant::Formula,  DistributionVariant::Formula,  "Cannot convolve formula with formula: operation not implemented")]
-  #[case::empty_formula(   DistributionVariant::Empty,    DistributionVariant::Formula,  "Cannot convolve empty with formula: operation not implemented")]
-  #[case::point_formula(   DistributionVariant::Point,    DistributionVariant::Formula,  "Cannot convolve point with formula: operation not implemented")]
-  #[case::range_formula(   DistributionVariant::Range,    DistributionVariant::Formula,  "Cannot convolve range with formula: operation not implemented")]
-  #[case::function_formula(DistributionVariant::Function, DistributionVariant::Formula,  "Cannot convolve function with formula: operation not implemented")]
-  #[case::range_range(     DistributionVariant::Range,    DistributionVariant::Range,    "Cannot convolve range with range: operation not implemented")]
-  #[trace]
-  fn test_convolve_unsupported_pairs_return_errors(
-    #[case] left: DistributionVariant,
-    #[case] right: DistributionVariant,
-    #[case] expected: &str,
-  ) {
-    assert_error!(distribution_convolution(&distribution(left), &distribution(right), MaxGridPoints::default(), &FftPlans::new()), expected);
+  #[test]
+  fn test_convolve_range_with_range_returns_error() {
+    let range = DistributionNegLog::range((0.0, 1.0), 0.0);
+    assert_error!(
+      distribution_convolution(&range, &range, MaxGridPoints::default(), &FftPlans::new()),
+      "Cannot convolve range with range: operation not implemented"
+    );
   }
 
   #[test]
@@ -801,29 +787,7 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use crate::distribution_core::formula::DistributionFormula;
     use treetime_grid::NegLog;
-
-    #[derive(Clone, Copy, Debug)]
-    pub(super) enum DistributionVariant {
-      Empty,
-      Point,
-      Range,
-      Function,
-      Formula,
-    }
-
-    pub(super) fn distribution(variant: DistributionVariant) -> DistributionNegLog {
-      match variant {
-        DistributionVariant::Empty => DistributionNegLog::empty(),
-        DistributionVariant::Point => DistributionNegLog::point(0.0, 0.0),
-        DistributionVariant::Range => DistributionNegLog::range((0.0, 1.0), 0.0),
-        DistributionVariant::Function => {
-          DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 0.0, 1.0]).unwrap()
-        },
-        DistributionVariant::Formula => DistributionNegLog::Formula(DistributionFormula::new(|_| Ok(0.0), 0.0, 1.0)),
-      }
-    }
 
     pub(super) fn function_on(
       range: (f64, f64),

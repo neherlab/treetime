@@ -22,9 +22,6 @@ pub fn distribution_division<Y: YAxisPolicy>(
   max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   match (dividend, divisor) {
-    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
-      make_error!("Cannot divide {dividend} by {divisor}: operation not implemented")
-    },
     (Distribution::Empty, _) => {
       let dividend_domain = distribution_hard_domain(dividend);
       let divisor_domain = distribution_hard_domain(divisor);

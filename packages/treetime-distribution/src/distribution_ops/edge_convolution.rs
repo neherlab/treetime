@@ -347,6 +347,6 @@ fn operand_mass_domain(dist: &Distribution<NegLog>, eps: f64) -> Result<Option<(
     Distribution::Function(f) => mass_sizable_profile(f)
       .map(|profile| mass_bounded_domain(&profile, eps))
       .transpose(),
-    Distribution::Empty | Distribution::Formula(_) => Ok(None),
+    Distribution::Empty => Ok(None),
   }
 }

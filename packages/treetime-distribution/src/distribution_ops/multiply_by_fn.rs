@@ -18,16 +18,11 @@ where
   if matches!(distribution, Distribution::Empty) {
     return Ok(Distribution::Empty);
   }
-  if matches!(distribution, Distribution::Formula(_)) {
-    return make_error!("distribution_multiply_by_fn requires a concrete Point, Range, or Function distribution");
-  }
 
   let times = distribution.t();
   let (ordinates, amplitude) = match distribution {
     Distribution::Function(f) => (f.y().clone(), f.amplitude()),
-    Distribution::Empty | Distribution::Point(..) | Distribution::Range(..) | Distribution::Formula(..) => {
-      (distribution.y()?, 0.0)
-    },
+    Distribution::Empty | Distribution::Point(..) | Distribution::Range(..) => (distribution.y()?, 0.0),
   };
 
   let weights: Array1<f64> = times.iter().map(|&t| weight(t)).collect::<Result<_, Report>>()?;

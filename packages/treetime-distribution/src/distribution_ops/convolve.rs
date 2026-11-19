@@ -45,9 +45,7 @@ pub(crate) fn distribution_convolution(
   fft_plans: &FftPlans,
 ) -> Result<Distribution<NegLog>, Report> {
   match (a, b) {
-    (Distribution::Formula(_), _)
-    | (_, Distribution::Formula(_))
-    | (Distribution::Range(_), Distribution::Range(_)) => {
+    (Distribution::Range(_), Distribution::Range(_)) => {
       make_error!("Cannot convolve {a} with {b}: operation not implemented")
     },
     (Distribution::Empty, _) | (_, Distribution::Empty) => {

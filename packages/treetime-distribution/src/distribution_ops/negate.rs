@@ -4,7 +4,6 @@ use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use eyre::Report;
 use treetime_grid::YAxisPolicy;
-use treetime_utils::make_error;
 
 pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<Distribution<Y>, Report> {
   match dist {
@@ -12,7 +11,6 @@ pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> R
     Distribution::Point(p) => Ok(negate_point(p)),
     Distribution::Range(r) => Ok(negate_range(r)),
     Distribution::Function(f) => negate_function(f),
-    Distribution::Formula(_) => make_error!("Negation not implemented for Formula distributions"),
   }
 }
 

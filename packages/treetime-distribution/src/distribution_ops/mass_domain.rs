@@ -20,7 +20,6 @@ pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
       let relative = profile.neg_log_mass_between(f64::NEG_INFINITY, f64::INFINITY)?;
       Ok(-f.amplitude() - profile.y_peak() - relative)
     },
-    Distribution::Formula(_) => log_mass(&dist.repeak()?),
   }
 }
 

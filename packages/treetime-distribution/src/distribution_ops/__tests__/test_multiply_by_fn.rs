@@ -2,8 +2,8 @@
 mod tests {
   use self::helpers::{flat, linear_with_soft_side, sides};
   use crate::__tests__::aliases::DistributionNegLog;
+  use crate::DistributionFunction;
   use crate::distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
-  use crate::{DistributionFormula, DistributionFunction};
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
@@ -22,15 +22,6 @@ mod tests {
   fn test_multiply_by_fn_empty_passthrough() {
     let actual = distribution_multiply_by_fn(&DistributionNegLog::Empty, |_| Ok(1.0), flat).unwrap();
     assert_eq!(DistributionNegLog::Empty, actual);
-  }
-
-  #[test]
-  fn test_multiply_by_fn_rejects_formula() {
-    let formula = DistributionNegLog::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
-    assert_error!(
-      distribution_multiply_by_fn(&formula, |_| Ok(1.0), flat),
-      "distribution_multiply_by_fn requires a concrete Point, Range, or Function distribution"
-    );
   }
 
   #[test]

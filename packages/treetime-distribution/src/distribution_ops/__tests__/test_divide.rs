@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{
-    DistributionVariant, distribution, end_index, end_tail, hard_end, power_law_to_hard_end, power_law_values,
-  };
+  use self::helpers::{end_index, end_tail, hard_end, power_law_to_hard_end, power_law_values};
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
@@ -17,29 +15,6 @@ mod tests {
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   const TINY_NUMBER: f64 = 1e-10;
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::formula_empty(   DistributionVariant::Formula,  DistributionVariant::Empty,    "Cannot divide formula by empty: operation not implemented")]
-  #[case::formula_point(   DistributionVariant::Formula,  DistributionVariant::Point,    "Cannot divide formula by point: operation not implemented")]
-  #[case::formula_range(   DistributionVariant::Formula,  DistributionVariant::Range,    "Cannot divide formula by range: operation not implemented")]
-  #[case::formula_function(DistributionVariant::Formula,  DistributionVariant::Function, "Cannot divide formula by function: operation not implemented")]
-  #[case::formula_formula( DistributionVariant::Formula,  DistributionVariant::Formula,  "Cannot divide formula by formula: operation not implemented")]
-  #[case::empty_formula(   DistributionVariant::Empty,    DistributionVariant::Formula,  "Cannot divide empty by formula: operation not implemented")]
-  #[case::point_formula(   DistributionVariant::Point,    DistributionVariant::Formula,  "Cannot divide point by formula: operation not implemented")]
-  #[case::range_formula(   DistributionVariant::Range,    DistributionVariant::Formula,  "Cannot divide range by formula: operation not implemented")]
-  #[case::function_formula(DistributionVariant::Function, DistributionVariant::Formula,  "Cannot divide function by formula: operation not implemented")]
-  #[trace]
-  fn test_divide_formula_combinations_return_errors(
-    #[case] dividend: DistributionVariant,
-    #[case] divisor: DistributionVariant,
-    #[case] expected: &str,
-  ) {
-    assert_error!(
-      distribution_division(&distribution(dividend), &distribution(divisor), MaxGridPoints::default()),
-      expected
-    );
-  }
 
   #[test]
   fn test_divide_empty_by_any() {
@@ -503,10 +478,8 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::aliases::DistributionPlain;
-    use crate::distribution_core::formula::DistributionFormula;
     use crate::distribution_core::function::DistributionFunction;
-    use ndarray::{Array1, array};
+    use ndarray::Array1;
     use treetime_grid::NegLog;
     use treetime_grid::{BoundaryBehavior, HardApproachLaw, Side};
     use treetime_utils::cast::ToF64Exact;
@@ -560,27 +533,6 @@ mod tests {
       match side {
         Side::Left => f.left_extrap(),
         Side::Right => f.right_extrap(),
-      }
-    }
-
-    #[derive(Clone, Copy, Debug)]
-    pub(super) enum DistributionVariant {
-      Empty,
-      Point,
-      Range,
-      Function,
-      Formula,
-    }
-
-    pub(super) fn distribution(variant: DistributionVariant) -> DistributionPlain {
-      match variant {
-        DistributionVariant::Empty => DistributionPlain::empty(),
-        DistributionVariant::Point => DistributionPlain::point(0.0, 1.0),
-        DistributionVariant::Range => DistributionPlain::range((0.0, 1.0), 1.0),
-        DistributionVariant::Function => {
-          DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]).unwrap()
-        },
-        DistributionVariant::Formula => DistributionPlain::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0)),
       }
     }
   }

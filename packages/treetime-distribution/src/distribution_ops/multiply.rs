@@ -1,5 +1,4 @@
 use crate::Distribution;
-use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
@@ -11,8 +10,6 @@ use ordered_float::OrderedFloat;
 use treetime_grid::YAxisPolicy;
 use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side};
 use treetime_utils::make_internal_error;
-
-const FORMULA_GRID_SIZE: usize = 200;
 
 pub fn distribution_multiplication<Y: YAxisPolicy>(
   a: &Distribution<Y>,
@@ -37,16 +34,6 @@ pub fn distribution_multiplication<Y: YAxisPolicy>(
       multiply_range_function::<Y>(a, b, max_points)
     },
     (Distribution::Function(a), Distribution::Function(b)) => multiply_functions(&[a, b], max_points),
-    (Distribution::Formula(a), Distribution::Formula(b)) => multiply_formula_formula::<Y>(a, b),
-    (Distribution::Formula(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Formula(a)) => {
-      multiply_formula_function::<Y>(a, b, max_points)
-    },
-    (Distribution::Formula(a), Distribution::Point(b)) | (Distribution::Point(b), Distribution::Formula(a)) => {
-      multiply_formula_point::<Y>(a, b)
-    },
-    (Distribution::Formula(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Formula(a)) => {
-      multiply_formula_range::<Y>(a, b)
-    },
   }
 }
 
@@ -221,128 +208,6 @@ fn compose_product_tail(
   tails.try_fold(first, |a, b| compose_multiplication_tail(side, a, b))
 }
 
-fn multiply_formula_formula<Y: YAxisPolicy>(
-  a: &DistributionFormula<Y>,
-  b: &DistributionFormula<Y>,
-) -> Result<Distribution<Y>, Report> {
-  let a_domain = formula_hard_domain(a);
-  let b_domain = formula_hard_domain(b);
-  match multiplication_support_intersection(&[a_domain, b_domain]) {
-    SupportIntersection::Disjoint => {
-      let a_domain = Some(a_domain);
-      let b_domain = Some(b_domain);
-      guarded_empty_result("multiplication", a_domain, b_domain)
-    },
-    SupportIntersection::Point(t) => Ok(Distribution::point(
-      t,
-      Y::multiply(a.eval_single(t)?, b.eval_single(t)?),
-    )),
-    SupportIntersection::Interval(bounds) => {
-      let grid = Array1::linspace(bounds.0, bounds.1, FORMULA_GRID_SIZE);
-      let a_values = a.eval_many(&grid)?;
-      let b_values = b.eval_many(&grid)?;
-      let values = Zip::from(&a_values)
-        .and(&b_values)
-        .map_collect(|&a_value, &b_value| Y::multiply(a_value, b_value));
-      let function = with_composed_tails(
-        DistributionFunction::from_range_values(bounds, values)?,
-        a_domain.1,
-        b_domain.1,
-      )?;
-      Ok(Distribution::Function(function))
-    },
-  }
-}
-
-fn multiply_formula_function<Y: YAxisPolicy>(
-  a: &DistributionFormula<Y>,
-  b: &DistributionFunction<f64, Y>,
-  max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
-  let a_bounds = (a.t_min(), a.t_max());
-  let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
-  let b_bounds = (b.x_min(), b.x_max());
-  let b_tails = (b.left_extrap(), b.right_extrap());
-  match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
-    SupportIntersection::Disjoint => {
-      let a_domain = Some((a_bounds, a_tails));
-      let b_domain = Some((b_bounds, b_tails));
-      guarded_empty_result("multiplication", a_domain, b_domain)
-    },
-    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
-    SupportIntersection::Interval(bounds) => {
-      let n_points = distribution_support_n_points(bounds, b.dx(), max_points)?;
-      let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let formula_values = a.eval_many(&grid)?;
-      let function_values = b.interp_many(&grid)?;
-      let values = Zip::from(&formula_values)
-        .and(&function_values)
-        .map_collect(|&formula, &function| Y::multiply(formula, function));
-      let function = with_composed_tails(
-        DistributionFunction::from_range_values(bounds, values)?,
-        a_tails,
-        b_tails,
-      )?;
-      Ok(Distribution::Function(function))
-    },
-  }
-}
-
-fn multiply_formula_point<Y: YAxisPolicy>(
-  a: &DistributionFormula<Y>,
-  b: &DistributionPoint<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
-  const EPS: f64 = 1e-9;
-  let t = b.t();
-
-  if t < a.t_min() - EPS || t > a.t_max() + EPS {
-    return guarded_empty_result(
-      "multiplication",
-      Some(formula_hard_domain(a)),
-      Some(point_hard_domain(b)),
-    );
-  }
-
-  let va = a.eval_single(t)?;
-  let amplitude = Y::multiply(va, b.amplitude());
-
-  if !Y::is_defined(amplitude) {
-    return guarded_empty_result(
-      "multiplication",
-      Some(formula_hard_domain(a)),
-      Some(point_hard_domain(b)),
-    );
-  }
-
-  Ok(Distribution::point(t, amplitude))
-}
-
-fn multiply_formula_range<Y: YAxisPolicy>(
-  a: &DistributionFormula<Y>,
-  b: &DistributionRange<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
-  let a_domain = formula_hard_domain(a);
-  let b_domain = range_hard_domain(b);
-  match multiplication_support_intersection(&[a_domain, b_domain]) {
-    SupportIntersection::Disjoint => {
-      let a_domain = Some(a_domain);
-      let b_domain = Some(b_domain);
-      guarded_empty_result("multiplication", a_domain, b_domain)
-    },
-    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.amplitude()))),
-    SupportIntersection::Interval(bounds) => {
-      let grid = Array1::linspace(bounds.0, bounds.1, FORMULA_GRID_SIZE);
-      let values = a.eval_many(&grid)?.mapv(|value| Y::multiply(value, b.amplitude()));
-      let function = with_composed_tails(
-        DistributionFunction::from_range_values(bounds, values)?,
-        a_domain.1,
-        b_domain.1,
-      )?;
-      Ok(Distribution::Function(function))
-    },
-  }
-}
-
 #[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
 pub(super) fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
   let (hard_lo, soft_lo) = side_bounds(domains, Side::Left);
@@ -469,7 +334,6 @@ pub(crate) fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> O
     Distribution::Empty => None,
     Distribution::Point(p) => Some(point_hard_domain(p)),
     Distribution::Range(r) => Some(range_hard_domain(r)),
-    Distribution::Formula(f) => Some(formula_hard_domain(f)),
     Distribution::Function(f) => (!f.is_empty()).then(|| function_hard_domain(f)),
   }
 }
@@ -484,13 +348,6 @@ pub(crate) fn range_hard_domain<Y: YAxisPolicy>(r: &DistributionRange<f64, Y>) -
 
 pub(crate) fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) -> HardDomain {
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
-}
-
-fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
-  (
-    (f.t_min(), f.t_max()),
-    (BoundaryBehavior::Error, BoundaryBehavior::Error),
-  )
 }
 
 pub(crate) fn guarded_empty_result<Y: YAxisPolicy>(
