@@ -11,18 +11,16 @@ mod tests {
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
 
-  use crate::test_utils::RecordingSeqSink;
   use crate::test_utils::{TestDataset, ancestral_input_for_tree, complete_sequence_source};
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   #[test]
   fn test_smoke_ancestral_sample_from_profile_root_reproducible() -> Result<(), Report> {
-    let seqs_a = helpers::run_root_sampled(42)?;
-    let seqs_b = helpers::run_root_sampled(42)?;
+    let seqs_a = helpers::run_sampled(SampleMode::Root, 42)?;
+    let seqs_b = helpers::run_sampled(SampleMode::Root, 42)?;
     assert_eq!(seqs_a, seqs_b);
     Ok(())
   }
@@ -62,12 +60,18 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use crate::alphabet::alphabet::Alphabet;
+    use crate::ancestral::params::{AncestralParams, MethodAncestral};
+    use crate::ancestral::pipeline;
+    use crate::cancel::NoopCancel;
+    use crate::gtr::get_gtr::GtrModel;
+    use crate::partition::marginal::sample::SampleMode;
+    use crate::progress::NoopProgress;
     use crate::seq::sink::SeqStream;
-
-    pub(super) fn run_root_sampled(seed: u64) -> Result<BTreeMap<String, String>, Report> {
-      run_sampled(SampleMode::Root, seed)
-    }
+    use crate::test_utils::{RecordingSeqSink, TestDataset, ancestral_input_for_tree, complete_sequence_source};
+    use eyre::Report;
+    use std::collections::BTreeMap;
+    use treetime_io::nwk::nwk_read;
 
     pub(super) fn run_sampled(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let alphabet = Alphabet::default();

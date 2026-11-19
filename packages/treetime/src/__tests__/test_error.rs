@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::cancel::CancelledError;
-  use crate::error::{OperationError, input_error};
+  use crate::error::{NoPositiveRateRoot, OperationError, input_error};
   use eyre::{Report, WrapErr, eyre};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
   fn cause_chain(report: &Report) -> Vec<String> {
     report.chain().map(ToString::to_string).collect()
@@ -40,17 +41,17 @@ mod tests {
     assert!(matches!(classified, OperationError::Cancelled));
   }
 
-  #[test]
-  fn test_error_classify_detects_a_wrapped_input_error() {
-    let classified =
-      OperationError::classify(input_error("Reroot tip not found: X").wrap_err("Failed to fit the clock"));
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::input_error(          input_error("Reroot tip not found: X"), "Reroot tip not found: X")]
+  #[case::no_positive_rate_root(Report::new(NoPositiveRateRoot),        "Clock rate is negative for all root positions. The data may lack temporal signal. Please specify --clock-rate explicitly.")]
+  #[trace]
+  fn test_error_classify_detects_a_wrapped_input_error(#[case] cause: Report, #[case] cause_message: &str) {
+    let classified = OperationError::classify(cause.wrap_err("Failed to fit the clock"));
     let OperationError::InvalidInput(report) = classified else {
       panic!("an input error must classify as invalid input");
     };
-    assert_eq!(
-      vec!["Failed to fit the clock", "Reroot tip not found: X"],
-      cause_chain(&report)
-    );
+    assert_eq!(vec!["Failed to fit the clock", cause_message], cause_chain(&report));
   }
 
   #[test]

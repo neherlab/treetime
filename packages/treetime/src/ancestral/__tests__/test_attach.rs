@@ -30,9 +30,8 @@ mod tests {
     )
     .unwrap();
 
-    assert_eq!(4, by_name.len());
-    assert_eq!(Seq::try_from_str("ACGT").unwrap(), by_name["A"]);
-    assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["D"]);
+    let expected = helpers::by_name(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGT"), ("D", "NNNN")]);
+    assert_eq!(expected, by_name);
   }
 
   #[test]
@@ -63,8 +62,8 @@ mod tests {
 
     let by_name = helpers::complete(&graph, &names, sequences, &alphabet, MissingLeafLimit { ignored: true }).unwrap();
 
-    assert_eq!(2, by_name.len());
-    assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["B"]);
+    let expected = helpers::by_name(&[("A", "ACGT"), ("B", "NNNN")]);
+    assert_eq!(expected, by_name);
   }
 
   #[test]
@@ -82,8 +81,8 @@ mod tests {
     )
     .unwrap();
 
-    assert_eq!(3, by_name.len());
-    assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["C"]);
+    let expected = helpers::by_name(&[("A", "ACGT"), ("B", "ACGT"), ("C", "NNNN")]);
+    assert_eq!(expected, by_name);
   }
 
   #[test]
@@ -237,6 +236,13 @@ mod tests {
           name: (*name).to_owned(),
           seq: Seq::try_from_str(seq).unwrap(),
         })
+        .collect()
+    }
+
+    pub(super) fn by_name(entries: &[(&str, &str)]) -> BTreeMap<String, Seq> {
+      entries
+        .iter()
+        .map(|(name, seq)| ((*name).to_owned(), Seq::try_from_str(seq).unwrap()))
         .collect()
     }
 

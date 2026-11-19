@@ -28,17 +28,19 @@ mod tests {
     assert_eq!(expected, aview1(&sparse));
   }
 
-  #[test]
-  fn test_marginal_shared_forward_log_lh_remove_child_cancels_matching_neg_infinity() {
-    let actual = forward_log_lh_remove_child(LogLh::IMPOSSIBLE, LogLh::IMPOSSIBLE).value();
-    pretty_assert_abs_diff_eq!(0.0, actual, epsilon = 1e-12);
-  }
-
-  #[test]
-  fn test_marginal_shared_forward_log_lh_add_normalization_ignores_neg_infinity() {
-    let expected = -3.0;
-    let actual = forward_log_lh_add_normalization(LogLh::new(expected), f64::NEG_INFINITY).value();
-    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::matching_neg_infinity_cancels(   LogLh::IMPOSSIBLE, LogLh::IMPOSSIBLE, LogLh::ZERO)]
+  #[case::unmatched_neg_infinity_stays(    LogLh::IMPOSSIBLE, LogLh::new(-3.0),  LogLh::IMPOSSIBLE)]
+  #[case::unmatched_child_gives_pos_inf(   LogLh::new(-3.0),  LogLh::IMPOSSIBLE, LogLh::new(f64::INFINITY))]
+  #[trace]
+  fn test_marginal_shared_forward_log_lh_remove_child_non_finite(
+    #[case] node_log_lh: LogLh,
+    #[case] child_log_lh: LogLh,
+    #[case] expected: LogLh,
+  ) {
+    let actual = forward_log_lh_remove_child(node_log_lh, child_log_lh);
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -50,24 +52,6 @@ mod tests {
   #[test]
   fn test_marginal_shared_forward_log_lh_add_normalization_propagates_positive_infinity() {
     let actual = forward_log_lh_add_normalization(LogLh::new(-3.0), f64::INFINITY).value();
-    assert!(
-      actual.is_infinite() && actual.is_sign_positive(),
-      "expected positive infinity, got {actual}"
-    );
-  }
-
-  #[test]
-  fn test_marginal_shared_forward_log_lh_remove_child_preserves_unmatched_neg_infinity() {
-    let actual = forward_log_lh_remove_child(LogLh::IMPOSSIBLE, LogLh::new(-3.0)).value();
-    assert!(
-      actual.is_infinite() && actual.is_sign_negative(),
-      "expected negative infinity, got {actual}"
-    );
-  }
-
-  #[test]
-  fn test_marginal_shared_forward_log_lh_remove_child_preserves_unmatched_positive_infinity() {
-    let actual = forward_log_lh_remove_child(LogLh::new(-3.0), LogLh::IMPOSSIBLE).value();
     assert!(
       actual.is_infinite() && actual.is_sign_positive(),
       "expected positive infinity, got {actual}"

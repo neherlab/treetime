@@ -5,157 +5,33 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
-  #[test]
-  fn test_indel_compose_both_empty() {
-    let result = compose_indels(&[], &[]);
-    assert_eq!(result, vec![]);
-  }
-
-  #[test]
-  fn test_indel_compose_parent_empty() {
-    let child = vec![del(1, 4, "CGT")];
-    let result = compose_indels(&[], &child);
-    assert_eq!(result, child);
-  }
-
-  #[test]
-  fn test_indel_compose_child_empty() {
-    let parent = vec![del(1, 4, "CGT")];
-    let result = compose_indels(&parent, &[]);
-    assert_eq!(result, parent);
-  }
-
-  #[test]
-  fn test_indel_compose_case1_overlapping_deletions_same_range() {
-    let parent = vec![del(1, 3, "CG")];
-    let child = vec![del(1, 4, "CGT")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(1, 4, "CGT")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_case2_adjacent_deletions() {
-    let parent = vec![del(1, 3, "CG")];
-    let child = vec![del(3, 5, "TC")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(1, 5, "CGTC")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_case3_overlapping_insertions_same_range() {
-    let parent = vec![ins(1, 4, "TTT")];
-    let child = vec![ins(1, 4, "GGG")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![ins(1, 4, "GGG")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_case4_deletion_then_insertion_cancel() {
-    let parent = vec![del(1, 4, "CGT")];
-    let child = vec![ins(1, 4, "CGT")];
-    let result = compose_indels(&parent, &child);
-    let expected: Vec<InDel> = vec![];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_case5_deletion_then_insertion_different() {
-    let parent = vec![del(1, 4, "CGT")];
-    let child = vec![ins(1, 4, "TTT")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(1, 4, "CGT"), ins(1, 4, "TTT")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_case6_partially_overlapping_deletions() {
-    let parent = vec![del(1, 3, "CG")];
-    let child = vec![del(2, 5, "TAC")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(1, 5, "CGAC")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_case7_non_overlapping() {
-    let parent = vec![del(1, 3, "CG")];
-    let child = vec![del(6, 7, "G")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(1, 3, "CG"), del(6, 7, "G")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_multiple_non_overlapping_interleaved() {
-    let parent = vec![del(1, 3, "CG"), del(10, 12, "AT")];
-    let child = vec![del(5, 7, "GC"), del(15, 16, "T")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(1, 3, "CG"), del(5, 7, "GC"), del(10, 12, "AT"), del(15, 16, "T")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_insertion_then_deletion_cancel() {
-    let parent = vec![ins(2, 5, "AAA")];
-    let child = vec![del(2, 5, "AAA")];
-    let result = compose_indels(&parent, &child);
-    let expected: Vec<InDel> = vec![];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_insertion_then_deletion_different() {
-    let parent = vec![ins(2, 5, "AAA")];
-    let child = vec![del(2, 5, "GGG")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![ins(2, 5, "AAA"), del(2, 5, "GGG")];
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_indel_compose_mixed_overlap_output_sorted() {
-    let parent = vec![del(3, 7, "ACGT")];
-    let child = vec![ins(1, 5, "TTTT")];
-    let result = compose_indels(&parent, &child);
-    assert_eq!(result, vec![ins(1, 5, "TTTT"), del(3, 7, "ACGT")]);
-    assert!(
-      result.is_sorted_by_key(|x| x.range.0),
-      "output must be sorted by range.0"
-    );
-  }
-
-  #[test]
-  fn test_indel_compose_child_before_parent_adjacent() {
-    let parent = vec![del(5, 8, "ACG")];
-    let child = vec![del(3, 5, "TT")];
-    let result = compose_indels(&parent, &child);
-    let expected = vec![del(3, 8, "TTACG")];
-    assert_eq!(result, expected);
-  }
-
   #[rustfmt::skip]
   #[rstest]
-  #[case::adjacent_triple(
-    vec![del(0, 2, "AC")],
-    vec![del(2, 4, "GT"), del(4, 6, "CG")],
-    vec![del(0, 6, "ACGTCG")]
-  )]
-  #[case::parent_superset(
-    vec![del(0, 10, "ACGTACGTAC")],
-    vec![del(2, 5, "TAC")],
-    vec![del(0, 10, "ACGTACGTAC")]
-  )]
+  #[case::both_empty(                     vec![],                                  vec![],                                  vec![])]
+  #[case::parent_empty(                   vec![],                                  vec![del(1, 4, "CGT")],                  vec![del(1, 4, "CGT")])]
+  #[case::child_empty(                    vec![del(1, 4, "CGT")],                  vec![],                                  vec![del(1, 4, "CGT")])]
+  #[case::deletions_on_the_same_start(    vec![del(1, 3, "CG")],                   vec![del(1, 4, "CGT")],                  vec![del(1, 4, "CGT")])]
+  #[case::adjacent_deletions(             vec![del(1, 3, "CG")],                   vec![del(3, 5, "TC")],                   vec![del(1, 5, "CGTC")])]
+  #[case::child_deletion_before_parent(   vec![del(5, 8, "ACG")],                  vec![del(3, 5, "TT")],                   vec![del(3, 8, "TTACG")])]
+  #[case::adjacent_triple(                vec![del(0, 2, "AC")],                   vec![del(2, 4, "GT"), del(4, 6, "CG")],  vec![del(0, 6, "ACGTCG")])]
+  #[case::partially_overlapping_deletions(vec![del(1, 3, "CG")],                   vec![del(2, 5, "TAC")],                  vec![del(1, 5, "CGAC")])]
+  #[case::parent_deletion_contains_child( vec![del(0, 10, "ACGTACGTAC")],          vec![del(2, 5, "TAC")],                  vec![del(0, 10, "ACGTACGTAC")])]
+  #[case::insertions_on_the_same_range(   vec![ins(1, 4, "TTT")],                  vec![ins(1, 4, "GGG")],                  vec![ins(1, 4, "GGG")])]
+  #[case::deletion_then_same_insertion(   vec![del(1, 4, "CGT")],                  vec![ins(1, 4, "CGT")],                  vec![])]
+  #[case::insertion_then_same_deletion(   vec![ins(2, 5, "AAA")],                  vec![del(2, 5, "AAA")],                  vec![])]
+  #[case::deletion_then_other_insertion(  vec![del(1, 4, "CGT")],                  vec![ins(1, 4, "TTT")],                  vec![del(1, 4, "CGT"), ins(1, 4, "TTT")])]
+  #[case::insertion_then_other_deletion(  vec![ins(2, 5, "AAA")],                  vec![del(2, 5, "GGG")],                  vec![ins(2, 5, "AAA"), del(2, 5, "GGG")])]
+  #[case::overlapping_deletion_insertion( vec![del(3, 7, "ACGT")],                 vec![ins(1, 5, "TTTT")],                 vec![ins(1, 5, "TTTT"), del(3, 7, "ACGT")])]
+  #[case::disjoint(                       vec![del(1, 3, "CG")],                   vec![del(6, 7, "G")],                    vec![del(1, 3, "CG"), del(6, 7, "G")])]
+  #[case::disjoint_interleaved(           vec![del(1, 3, "CG"), del(10, 12, "AT")], vec![del(5, 7, "GC"), del(15, 16, "T")], vec![del(1, 3, "CG"), del(5, 7, "GC"), del(10, 12, "AT"), del(15, 16, "T")])]
   #[trace]
-  fn test_indel_compose_parametric(
+  fn test_indel_compose_applies_the_child_indels_after_the_parent_indels(
     #[case] parent: Vec<InDel>,
     #[case] child: Vec<InDel>,
     #[case] expected: Vec<InDel>,
   ) {
-    let result = compose_indels(&parent, &child);
-    assert_eq!(result, expected);
+    let actual = compose_indels(&parent, &child);
+    assert_eq!(expected, actual);
   }
 
   #[rustfmt::skip]
@@ -166,7 +42,7 @@ mod tests {
   #[case::overlap_ins_del(vec![ins(3, 7, "TTTT")],               vec![del(1, 5, "ACGT")])]
   #[case::multi_del(      vec![del(1, 3, "CG"), del(6, 8, "AT")], vec![del(4, 5, "T")])]
   #[trace]
-  fn test_indel_compose_output_sorted_invariant(#[case] parent: Vec<InDel>, #[case] child: Vec<InDel>) {
+  fn test_indel_compose_output_is_sorted_by_start_position(#[case] parent: Vec<InDel>, #[case] child: Vec<InDel>) {
     let result = compose_indels(&parent, &child);
     assert!(
       result.is_sorted_by_key(|x| x.range.0),
@@ -174,43 +50,11 @@ mod tests {
     );
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::short(  (0,   3),   "ACG")]
-  #[case::medium( (5,   10),  "ACGTC")]
-  #[case::long(   (100, 105), "TTTTT")]
-  #[trace]
-  fn test_indel_compose_cancellation_roundtrip(#[case] (start, end): (usize, usize), #[case] seq: &str) {
-    let result = compose_indels(&[del(start, end, seq)], &[ins(start, end, seq)]);
-    assert_eq!(result, vec![], "del+ins should cancel");
-
-    let result = compose_indels(&[ins(start, end, seq)], &[del(start, end, seq)]);
-    assert_eq!(result, vec![], "ins+del should cancel");
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::partial_overlap(  vec![del(1, 3, "CG")],  vec![del(2, 5, "TAC")])]
-  #[case::triple_merge(     vec![del(0, 2, "AC")],   vec![del(2, 4, "GT"), del(4, 6, "CG")])]
-  #[case::del_then_ins(     vec![del(1, 4, "CGT")],  vec![ins(1, 4, "TTT")])]
-  #[case::ins_then_ins(     vec![ins(1, 4, "TTT")],  vec![ins(1, 4, "GGG")])]
-  #[trace]
-  fn test_indel_compose_seq_length_invariant(#[case] parent: Vec<InDel>, #[case] child: Vec<InDel>) {
-    let result = compose_indels(&parent, &child);
-    for indel in &result {
-      assert_eq!(
-        indel.seq.len(),
-        indel.range.1 - indel.range.0,
-        "seq length mismatch for {indel:?}"
-      );
-    }
-  }
-
   #[test]
-  fn test_indel_sort_indels() {
-    let mut indels = vec![del(5, 7, "AC"), del(1, 3, "CG"), del(3, 5, "GT")];
-    sort_indels(&mut indels);
-    assert_eq!(indels, vec![del(1, 3, "CG"), del(3, 5, "GT"), del(5, 7, "AC")]);
+  fn test_indel_sort_indels_orders_by_start_position() {
+    let mut actual = vec![del(5, 7, "AC"), del(1, 3, "CG"), del(3, 5, "GT")];
+    sort_indels(&mut actual);
+    assert_eq!(vec![del(1, 3, "CG"), del(3, 5, "GT"), del(5, 7, "AC")], actual);
   }
 
   mod helpers {

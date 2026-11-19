@@ -1,69 +1,54 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_marginal_analytical_support::tests::{analytical_star_tree_likelihood, state_index};
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, Mu};
+  use crate::gtr::gtr::GTR;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::run_dense_marginal_with_newick;
   use eyre::Report;
-  use ndarray::array;
+  use helpers::nonuniform_pi_gtr;
+  use itertools::Itertools;
+  use rstest::rstest;
 
-  #[test]
-  fn test_star_tree_analytical_jc69_all_same() -> Result<(), Report> {
-    let gtr = jc69(JC69Params::default())?;
-    let t = 0.1;
-    let observations = [0, 0, 0, 0];
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::jc69_all_same(     jc69(JC69Params::default()).unwrap(), 0.1,  "AAAA")]
+  #[case::jc69_mixed_states( jc69(JC69Params::default()).unwrap(), 0.2,  "ACGT")]
+  #[case::nonuniform_pi(     nonuniform_pi_gtr(),                  0.15, "TTGC")]
+  #[trace]
+  fn test_star_tree_log_likelihood_matches_analytical(
+    #[case] gtr: GTR,
+    #[case] t: f64,
+    #[case] tip_states: &str,
+  ) -> Result<(), Report> {
+    let observations = tip_states.chars().map(state_index).collect_vec();
+    let expected_log_lh = analytical_star_tree_likelihood(&gtr, &observations, t).ln();
 
-    let expected_lh = analytical_star_tree_likelihood(&gtr, &observations, t);
-    let expected_log_lh = expected_lh.ln();
-
-    let newick = "(A:0.1,B:0.1,C:0.1,D:0.1)root;";
-    let aln = ">A\nA\n>B\nA\n>C\nA\n>D\nA\n";
-    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
-
-    pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
-    Ok(())
-  }
-
-  #[test]
-  fn test_star_tree_analytical_jc69_mixed_states() -> Result<(), Report> {
-    let gtr = jc69(JC69Params::default())?;
-    let t = 0.2;
-    let observations = [state_index('A'), state_index('C'), state_index('G'), state_index('T')];
-
-    let expected_lh = analytical_star_tree_likelihood(&gtr, &observations, t);
-    let expected_log_lh = expected_lh.ln();
-
-    let newick = "(A:0.2,B:0.2,C:0.2,D:0.2)root;";
-    let aln = ">A\nA\n>B\nC\n>C\nG\n>D\nT\n";
-    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
+    let newick = format!("(A:{t},B:{t},C:{t},D:{t})root;");
+    let aln = ["A", "B", "C", "D"]
+      .iter()
+      .zip(tip_states.chars())
+      .map(|(name, state)| format!(">{name}\n{state}\n"))
+      .join("");
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(&newick, &aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
   }
 
-  #[test]
-  fn test_star_tree_analytical_nonuniform_pi() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let n_states = alphabet.n_canonical();
-    let gtr = GTR::builder()
-      .n_states(n_states)
-      .mu(Mu::FromMatrix(1.0))
-      .pi(array![0.1, 0.2, 0.3, 0.4])
-      .build()?;
+  mod helpers {
+    use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::gtr::gtr::{GTR, Mu};
+    use ndarray::array;
 
-    let t = 0.15;
-    let observations = [state_index('T'), state_index('T'), state_index('G'), state_index('C')];
-
-    let expected_lh = analytical_star_tree_likelihood(&gtr, &observations, t);
-    let expected_log_lh = expected_lh.ln();
-
-    let newick = "(A:0.15,B:0.15,C:0.15,D:0.15)root;";
-    let aln = ">A\nT\n>B\nT\n>C\nG\n>D\nC\n";
-    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
-
-    pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
-    Ok(())
+    pub(super) fn nonuniform_pi_gtr() -> GTR {
+      let n_states = Alphabet::new(AlphabetName::Nuc).unwrap().n_canonical();
+      GTR::builder()
+        .n_states(n_states)
+        .mu(Mu::FromMatrix(1.0))
+        .pi(array![0.1, 0.2, 0.3, 0.4])
+        .build()
+        .unwrap()
+    }
   }
 }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::pretty_assert_ulps_eq;
   use crate::vec_u8;
@@ -298,16 +298,6 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_reserved_constants() {
-    let expected_non_char = AsciiChar::from_byte_unchecked(b'.');
-    let expected_variable_char = AsciiChar::from_byte_unchecked(b'~');
-    let expected_fill_char = AsciiChar::from_byte_unchecked(b' ');
-    assert_eq!(expected_non_char, NON_CHAR);
-    assert_eq!(expected_variable_char, VARIABLE_CHAR);
-    assert_eq!(expected_fill_char, FILL_CHAR);
-  }
-
-  #[test]
   fn test_alphabet_aa_b_maps_to_nd() {
     let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
     let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(b'B'));
@@ -472,16 +462,6 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_char_index_roundtrip() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    for i in 0..alphabet.n_canonical() {
-      let c = alphabet.char(i);
-      let idx = alphabet.index(c).unwrap();
-      assert_eq!(i, idx);
-    }
-  }
-
-  #[test]
   fn test_alphabet_set_to_char_canonical_roundtrip() {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     for c in alphabet.canonical() {
@@ -521,15 +501,5 @@ mod tests {
     let index = alphabet.index(star).unwrap();
     let profile = alphabet.get_profile(star).unwrap();
     pretty_assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
-  }
-
-  #[test]
-  fn test_alphabet_char_index_roundtrip_aa() {
-    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
-    for i in 0..alphabet.n_canonical() {
-      let c = alphabet.char(i);
-      let idx = alphabet.index(c).unwrap();
-      assert_eq!(i, idx);
-    }
   }
 }

@@ -7,9 +7,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::seq::composition::Composition;
   use proptest::prelude::*;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
-
   use treetime_utils::prop_assert_abs_diff_eq;
 
   proptest! {
@@ -18,33 +16,25 @@ mod tests {
     #[test]
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
       let nwk_parsed = nwk_read(input.newick.as_bytes()).unwrap();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
+      let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);
       let (_, recon) = run_dense_marginal_for_input(&input).unwrap();
 
-      let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
-      let log_lh_first = log_lh_first.value();
-      let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
-      let log_lh_second = log_lh_second.value();
+      let (recon, log_lh_first) = recon.marginal_update(&nwk_parsed.graph, &branch_lengths).unwrap();
+      let (_, log_lh_second) = recon.marginal_update(&nwk_parsed.graph, &branch_lengths).unwrap();
 
-      prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+      prop_assert_abs_diff_eq!(log_lh_first.value(), log_lh_second.value(), epsilon = 1e-10);
     }
 
     #[test]
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
       let nwk_parsed = nwk_read(input.newick.as_bytes()).unwrap();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
+      let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);
       let (_, recon) = run_sparse_marginal_for_input(&input).unwrap();
 
-      let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
-      let log_lh_first = log_lh_first.value();
-      let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
-      let log_lh_second = log_lh_second.value();
+      let (recon, log_lh_first) = recon.marginal_update(&nwk_parsed.graph, &branch_lengths).unwrap();
+      let (_, log_lh_second) = recon.marginal_update(&nwk_parsed.graph, &branch_lengths).unwrap();
 
-      prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+      prop_assert_abs_diff_eq!(log_lh_first.value(), log_lh_second.value(), epsilon = 1e-10);
     }
 
     #[test]

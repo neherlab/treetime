@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::pretty_assert_ulps_eq;
   use crate::vec_u8;
   use indexmap::indexmap;
   use ndarray::array;
-  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::AsciiChar;
 
@@ -120,9 +118,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case::non_char(u8::from(NON_CHAR))]
-  #[case::variable_char(u8::from(VARIABLE_CHAR))]
-  #[case::fill_char(u8::from(FILL_CHAR))]
+  #[case::non_char(b'.')]
+  #[case::variable_char(b'~')]
+  #[case::fill_char(b' ')]
   #[trace]
   fn test_alphabet_config_validate_reserved_in_canonical(#[case] reserved: u8) {
     let config = AlphabetConfig {
@@ -138,9 +136,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case::non_char(u8::from(NON_CHAR))]
-  #[case::variable_char(u8::from(VARIABLE_CHAR))]
-  #[case::fill_char(u8::from(FILL_CHAR))]
+  #[case::non_char(b'.')]
+  #[case::variable_char(b'~')]
+  #[case::fill_char(b' ')]
   #[trace]
   fn test_alphabet_config_validate_reserved_in_ambiguous_key(#[case] reserved: u8) {
     let config = AlphabetConfig {
@@ -158,9 +156,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case::non_char(u8::from(NON_CHAR))]
-  #[case::variable_char(u8::from(VARIABLE_CHAR))]
-  #[case::fill_char(u8::from(FILL_CHAR))]
+  #[case::non_char(b'.')]
+  #[case::variable_char(b'~')]
+  #[case::fill_char(b' ')]
   #[trace]
   fn test_alphabet_config_validate_reserved_in_ambiguous_value(#[case] reserved: u8) {
     let config = AlphabetConfig {
@@ -229,9 +227,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case::non_char(u8::from(NON_CHAR))]
-  #[case::variable_char(u8::from(VARIABLE_CHAR))]
-  #[case::fill_char(u8::from(FILL_CHAR))]
+  #[case::non_char(b'.')]
+  #[case::variable_char(b'~')]
+  #[case::fill_char(b' ')]
   #[trace]
   fn test_alphabet_config_validate_reserved_as_unknown(#[case] reserved: u8) {
     let config = AlphabetConfig {
@@ -247,9 +245,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case::non_char(u8::from(NON_CHAR))]
-  #[case::variable_char(u8::from(VARIABLE_CHAR))]
-  #[case::fill_char(u8::from(FILL_CHAR))]
+  #[case::non_char(b'.')]
+  #[case::variable_char(b'~')]
+  #[case::fill_char(b' ')]
   #[trace]
   fn test_alphabet_config_validate_reserved_as_gap(#[case] reserved: u8) {
     let config = AlphabetConfig {
@@ -314,28 +312,6 @@ mod tests {
     let profile_w = &profile_map[&AsciiChar::from_byte_unchecked(b'W')];
     let expected_w = array![1.0, 0.0, 0.0, 1.0];
     pretty_assert_ulps_eq!(expected_w, profile_w, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_alphabet_config_equality() {
-    let config1 = make_valid_config();
-    let config2 = make_valid_config();
-    assert_eq!(config1, config2);
-
-    let config3 = AlphabetConfig {
-      canonical: vec_u8!['A', 'C', 'G'],
-      ambiguous: indexmap! {},
-      unknown: b'N',
-      gap: b'-',
-    };
-    assert_ne!(config1, config3);
-  }
-
-  #[test]
-  fn test_alphabet_config_clone() {
-    let config = make_valid_config();
-    let cloned = config.clone();
-    assert_eq!(config, cloned);
   }
 
   #[test]

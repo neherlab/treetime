@@ -6,6 +6,7 @@ mod tests {
     edge_state_change_counts, mutation_strings,
   };
   use eyre::Report;
+  use helpers::sub;
   use treetime_graph::keymap;
 
   use pretty_assertions::assert_eq;
@@ -31,123 +32,23 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_mutation_compose_substitutions_both_empty() -> Result<(), Report> {
-    let result = compose_substitutions(&[], &[])?;
-    assert_eq!(result, vec![]);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_parent_empty() -> Result<(), Report> {
-    let child = vec![helpers::sub(b'A', 0, b'T'), helpers::sub(b'G', 5, b'C')];
-    let result = compose_substitutions(&[], &child)?;
-    assert_eq!(result, child);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_child_empty() -> Result<(), Report> {
-    let parent = vec![helpers::sub(b'A', 0, b'T'), helpers::sub(b'G', 5, b'C')];
-    let result = compose_substitutions(&parent, &[])?;
-    assert_eq!(result, parent);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_non_overlapping() -> Result<(), Report> {
-    let parent = vec![helpers::sub(b'A', 0, b'T'), helpers::sub(b'A', 1, b'C')];
-    let child = vec![helpers::sub(b'G', 2, b'T'), helpers::sub(b'C', 3, b'A')];
-    let result = compose_substitutions(&parent, &child)?;
-    let expected = vec![
-      helpers::sub(b'A', 0, b'T'),
-      helpers::sub(b'A', 1, b'C'),
-      helpers::sub(b'G', 2, b'T'),
-      helpers::sub(b'C', 3, b'A'),
-    ];
-    assert_eq!(result, expected);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_chain() -> Result<(), Report> {
-    let parent = vec![helpers::sub(b'A', 0, b'G')];
-    let child = vec![helpers::sub(b'G', 0, b'T')];
-    let result = compose_substitutions(&parent, &child)?;
-    assert_eq!(result, vec![helpers::sub(b'A', 0, b'T')]);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_cancellation() -> Result<(), Report> {
-    let parent = vec![helpers::sub(b'A', 0, b'G')];
-    let child = vec![helpers::sub(b'G', 0, b'A')];
-    let result = compose_substitutions(&parent, &child)?;
-    assert_eq!(result, vec![]);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_mixed() -> Result<(), Report> {
-    let parent = vec![
-      helpers::sub(b'A', 0, b'T'),
-      helpers::sub(b'A', 2, b'G'),
-      helpers::sub(b'C', 6, b'T'),
-    ];
-    let child = vec![
-      helpers::sub(b'G', 2, b'T'),
-      helpers::sub(b'G', 4, b'C'),
-      helpers::sub(b'T', 6, b'C'),
-    ];
-    let result = compose_substitutions(&parent, &child)?;
-    let expected = vec![
-      helpers::sub(b'A', 0, b'T'),
-      helpers::sub(b'A', 2, b'T'),
-      helpers::sub(b'G', 4, b'C'),
-    ];
-    assert_eq!(result, expected);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_output_sorted_by_position() -> Result<(), Report> {
-    let parent = vec![
-      helpers::sub(b'A', 1, b'T'),
-      helpers::sub(b'G', 3, b'C'),
-      helpers::sub(b'T', 5, b'A'),
-    ];
-    let child = vec![
-      helpers::sub(b'C', 0, b'G'),
-      helpers::sub(b'A', 2, b'T'),
-      helpers::sub(b'C', 4, b'G'),
-    ];
-    let result = compose_substitutions(&parent, &child)?;
-    let expected = vec![
-      helpers::sub(b'C', 0, b'G'),
-      helpers::sub(b'A', 1, b'T'),
-      helpers::sub(b'A', 2, b'T'),
-      helpers::sub(b'G', 3, b'C'),
-      helpers::sub(b'C', 4, b'G'),
-      helpers::sub(b'T', 5, b'A'),
-    ];
-    assert_eq!(result, expected);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_compose_substitutions_all_cancel() -> Result<(), Report> {
-    let parent = vec![
-      helpers::sub(b'A', 0, b'G'),
-      helpers::sub(b'C', 1, b'T'),
-      helpers::sub(b'G', 2, b'A'),
-    ];
-    let child = vec![
-      helpers::sub(b'G', 0, b'A'),
-      helpers::sub(b'T', 1, b'C'),
-      helpers::sub(b'A', 2, b'G'),
-    ];
-    let result = compose_substitutions(&parent, &child)?;
-    assert_eq!(result, vec![]);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::both_empty(        vec![],                                                     vec![],                                                     vec![])]
+  #[case::parent_empty(      vec![],                                                     vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')],               vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')])]
+  #[case::child_empty(       vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')],               vec![],                                                     vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')])]
+  #[case::chain(             vec![sub(b'A', 0, b'G')],                                   vec![sub(b'G', 0, b'T')],                                   vec![sub(b'A', 0, b'T')])]
+  #[case::cancellation(      vec![sub(b'A', 0, b'G')],                                   vec![sub(b'G', 0, b'A')],                                   vec![])]
+  #[case::chain_cancel_keep( vec![sub(b'A', 0, b'T'), sub(b'A', 2, b'G'), sub(b'C', 6, b'T')], vec![sub(b'G', 2, b'T'), sub(b'G', 4, b'C'), sub(b'T', 6, b'C')], vec![sub(b'A', 0, b'T'), sub(b'A', 2, b'T'), sub(b'G', 4, b'C')])]
+  #[case::interleaved_sites( vec![sub(b'A', 1, b'T'), sub(b'G', 3, b'C'), sub(b'T', 5, b'A')], vec![sub(b'C', 0, b'G'), sub(b'A', 2, b'T'), sub(b'C', 4, b'G')], vec![sub(b'C', 0, b'G'), sub(b'A', 1, b'T'), sub(b'A', 2, b'T'), sub(b'G', 3, b'C'), sub(b'C', 4, b'G'), sub(b'T', 5, b'A')])]
+  #[trace]
+  fn test_mutation_compose_substitutions_applies_the_child_after_the_parent_by_position(
+    #[case] parent: Vec<Sub>,
+    #[case] child: Vec<Sub>,
+    #[case] expected: Vec<Sub>,
+  ) -> Result<(), Report> {
+    let actual = compose_substitutions(&parent, &child)?;
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -180,7 +81,7 @@ mod tests {
     #[case] expected: Vec<&str>,
   ) -> Result<(), Report> {
     let events = [
-      MutationEvent::Substitution(helpers::sub(b'A', 9, b'G')),
+      MutationEvent::Substitution(sub(b'A', 9, b'G')),
       MutationEvent::Insertion(AlignedMutation::new((5, 6), seq![helpers::c(b'T')])?),
       MutationEvent::Deletion(AlignedMutation::new((1, 3), seq![helpers::c(b'C'), helpers::c(b'G')])?),
     ];
@@ -195,7 +96,7 @@ mod tests {
   #[case::zero_based(PositionBase::Zero, "A9G")]
   #[trace]
   fn test_mutation_strings_number_substitutions(#[case] positions: PositionBase, #[case] expected: &str) -> Result<(), Report> {
-    let event = MutationEvent::Substitution(helpers::sub(b'A', 9, b'G'));
+    let event = MutationEvent::Substitution(sub(b'A', 9, b'G'));
     let actual = mutation_strings([&event], positions)?;
     assert_eq!(vec![expected], actual);
     Ok(())
@@ -214,14 +115,14 @@ mod tests {
     #[case] qry: u8,
     #[case] expected: bool,
   ) -> Result<(), Report> {
-    assert_eq!(expected, helpers::sub(reff, 0, qry).changes_state(&Alphabet::default())?);
+    assert_eq!(expected, sub(reff, 0, qry).changes_state(&Alphabet::default())?);
     Ok(())
   }
 
   #[test]
   fn test_mutation_sub_changes_state_rejects_a_character_outside_the_alphabet() {
     assert_error!(
-      helpers::sub(b'A', 0, b'J').changes_state(&Alphabet::default()),
+      sub(b'A', 0, b'J').changes_state(&Alphabet::default()),
       "Substitution 'A1J' holds a character outside the alphabet: Character 'J' is not in the alphabet. This is an internal error. Please report it to developers."
     );
   }
@@ -232,7 +133,7 @@ mod tests {
       track: MutationTrack::Nucleotide,
       event,
     };
-    let substitution = |reff, pos, qry| mutation(MutationEvent::Substitution(helpers::sub(reff, pos, qry)));
+    let substitution = |reff, pos, qry| mutation(MutationEvent::Substitution(sub(reff, pos, qry)));
     let deletion = mutation(MutationEvent::Deletion(AlignedMutation::new(
       (4, 5),
       seq![helpers::c(b'A')],

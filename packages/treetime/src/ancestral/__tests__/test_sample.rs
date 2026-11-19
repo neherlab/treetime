@@ -7,7 +7,7 @@ mod tests {
   use treetime_utils::sync::random::get_random_number_generator;
 
   #[test]
-  fn test_sample_deterministic_profile() {
+  fn test_sample_one_hot_profile_returns_its_state() {
     let profile = array![0.0, 0.0, 1.0, 0.0];
     let mut rng = get_random_number_generator(42);
     let idx = sample_from_profile(profile.view(), &mut rng);
@@ -15,7 +15,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sample_reproducible_with_seed() {
+  fn test_sample_same_seed_gives_same_draws() {
     let profile = array![0.25, 0.25, 0.25, 0.25];
     let mut rng1 = get_random_number_generator(123);
     let mut rng2 = get_random_number_generator(123);
@@ -31,7 +31,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sample_respects_distribution() {
+  fn test_sample_frequencies_follow_profile() {
     let profile = array![0.9, 0.1, 0.0, 0.0];
     let mut rng = get_random_number_generator(42);
 
@@ -59,14 +59,14 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_profile_argmax_when_not_sampling() {
+  fn test_resolve_profile_argmax_returns_most_likely_state() {
     let profile = array![0.1, 0.3, 0.6, 0.0];
     let idx = resolve_profile(profile.view(), &mut Resolve::Argmax);
     assert_eq!(2, idx);
   }
 
   #[test]
-  fn test_resolve_profile_samples_when_true() {
+  fn test_resolve_profile_sample_draws_every_supported_state() {
     let profile = array![0.5, 0.5, 0.0, 0.0];
     let mut rng = get_random_number_generator(42);
 

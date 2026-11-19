@@ -1,71 +1,16 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{
     run_dense_marginal_for_input, run_sparse_marginal_for_input,
   };
-  use crate::gtr::get_gtr::{JC69Params, jc69};
   use eyre::Report;
   use ndarray::aview1;
-  use treetime_io::fasta::fasta_read;
-  use treetime_primitives::AlignmentRecord;
   use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
-  fn example_input() -> Result<MarginalTestInput, Report> {
-    let alignment: Vec<AlignmentRecord> = fasta_read(
-      "
->A
-ACGTACGT
->B
-ACGTACGA
->C
-ACGTACGG
->D
-ACGTACGC
-"
-      .as_bytes(),
-      &*crate::test_utils::NUC_ALPHABET,
-    )?
-    .into_iter()
-    .map(AlignmentRecord::from)
-    .collect();
-    let gtr = jc69(JC69Params::default())?;
-    Ok(MarginalTestInput {
-      newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),
-      alignment,
-      gtr,
-      n_taxa: 4,
-      seq_len: 8,
-    })
-  }
-
-  fn assert_example_alignment_shape(alignment: &[AlignmentRecord]) -> Result<(), Report> {
-    let expected_names = ["A", "B", "C", "D"];
-    for (index, record) in alignment.iter().enumerate() {
-      let expected_name = expected_names[index];
-      if record.name != expected_name {
-        return Err(eyre::eyre!(
-          "Unexpected sequence name at index {index}: got {}, expected {expected_name}",
-          record.name
-        ));
-      }
-      let expected_len = 8;
-      let actual_len = record.seq.len();
-      if actual_len != expected_len {
-        return Err(eyre::eyre!(
-          "Unexpected sequence length for {}: got {actual_len}, expected {expected_len}",
-          record.name
-        ));
-      }
-    }
-    Ok(())
-  }
-
   #[test]
-  fn test_marginal_normalization_example_dense() -> Result<(), Report> {
-    let input = example_input()?;
-    assert_example_alignment_shape(&input.alignment)?;
+  fn test_marginal_normalization_example_dense_profiles_and_messages_normalized() -> Result<(), Report> {
+    let input = helpers::example_input()?;
     let (log_lh, partitions) = run_dense_marginal_for_input(&input)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
@@ -97,8 +42,8 @@ ACGTACGC
   }
 
   #[test]
-  fn test_marginal_normalization_example_sparse() -> Result<(), Report> {
-    let input = example_input()?;
+  fn test_marginal_normalization_example_sparse_profiles_and_messages_normalized() -> Result<(), Report> {
+    let input = helpers::example_input()?;
     let (log_lh, partitions) = run_sparse_marginal_for_input(&input)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
@@ -141,5 +86,42 @@ ACGTACGC
       }
     }
     Ok(())
+  }
+
+  mod helpers {
+    use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
+    use crate::gtr::get_gtr::{JC69Params, jc69};
+    use crate::test_utils::NUC_ALPHABET;
+    use eyre::Report;
+    use treetime_io::fasta::fasta_read;
+    use treetime_primitives::AlignmentRecord;
+
+    pub(super) fn example_input() -> Result<MarginalTestInput, Report> {
+      let alignment: Vec<AlignmentRecord> = fasta_read(
+        "
+>A
+ACGTACGT
+>B
+ACGTACGA
+>C
+ACGTACGG
+>D
+ACGTACGC
+"
+        .as_bytes(),
+        &*NUC_ALPHABET,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
+      let gtr = jc69(JC69Params::default())?;
+      Ok(MarginalTestInput {
+        newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),
+        alignment,
+        gtr,
+        n_taxa: 4,
+        seq_len: 8,
+      })
+    }
   }
 }

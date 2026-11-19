@@ -8,43 +8,34 @@ mod tests {
   use crate::test_utils::run_dense_marginal_with_newick;
   use eyre::Report;
   use ndarray::array;
+  use rstest::rstest;
 
-  #[test]
-  fn test_two_taxon_analytical_jc69_same_state() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::same_state(           'A', 'A', 0.1,  0.2)]
+  #[case::different_states(     'A', 'T', 0.1,  0.2)]
+  #[case::asymmetric_branches(  'G', 'G', 0.01, 1.0)]
+  #[trace]
+  fn test_marginal_analytical_two_taxon_jc69_log_lh_matches_closed_form(
+    #[case] state_a: char,
+    #[case] state_b: char,
+    #[case] t1: f64,
+    #[case] t2: f64,
+  ) -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let t1 = 0.1;
-    let t2 = 0.2;
 
-    let expected_lh = analytical_two_taxon_likelihood(&gtr, 0, 0, t1, t2);
-    let expected_log_lh = expected_lh.ln();
+    let expected_log_lh = analytical_two_taxon_likelihood(&gtr, state_index(state_a), state_index(state_b), t1, t2).ln();
 
-    let newick = "(A:0.1,B:0.2)root;";
-    let aln = ">A\nA\n>B\nA\n";
-    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
+    let newick = format!("(A:{t1},B:{t2})root;");
+    let aln = format!(">A\n{state_a}\n>B\n{state_b}\n");
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(&newick, &aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
   }
 
   #[test]
-  fn test_two_taxon_analytical_jc69_different_states() -> Result<(), Report> {
-    let gtr = jc69(JC69Params::default())?;
-    let t1 = 0.1;
-    let t2 = 0.2;
-
-    let expected_lh = analytical_two_taxon_likelihood(&gtr, state_index('A'), state_index('T'), t1, t2);
-    let expected_log_lh = expected_lh.ln();
-
-    let newick = "(A:0.1,B:0.2)root;";
-    let aln = ">A\nA\n>B\nT\n";
-    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
-
-    pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
-    Ok(())
-  }
-
-  #[test]
-  fn test_two_taxon_analytical_nonuniform_pi() -> Result<(), Report> {
+  fn test_marginal_analytical_two_taxon_nonuniform_pi_log_lh_matches_closed_form() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
@@ -68,7 +59,7 @@ mod tests {
   }
 
   #[test]
-  fn test_two_taxon_analytical_multiple_positions() -> Result<(), Report> {
+  fn test_marginal_analytical_two_taxon_log_lh_sums_over_positions() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
     let t1 = 0.1;
     let t2 = 0.2;
@@ -87,23 +78,6 @@ mod tests {
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nACG\n>B\nTCA\n";
-    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
-
-    pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
-    Ok(())
-  }
-
-  #[test]
-  fn test_two_taxon_analytical_asymmetric_branches() -> Result<(), Report> {
-    let gtr = jc69(JC69Params::default())?;
-    let t1 = 0.01;
-    let t2 = 1.0;
-
-    let expected_lh = analytical_two_taxon_likelihood(&gtr, state_index('G'), state_index('G'), t1, t2);
-    let expected_log_lh = expected_lh.ln();
-
-    let newick = "(A:0.01,B:1.0)root;";
-    let aln = ">A\nG\n>B\nG\n";
     let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);

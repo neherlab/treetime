@@ -1,103 +1,35 @@
 #[cfg(test)]
 mod tests {
   use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
+  use itertools::Itertools;
+  use maplit::btreeset;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeSet;
   use treetime_primitives::Seq;
 
-  fn refs<T>(v: &[T]) -> Vec<&T> {
-    v.iter().collect()
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_no_disagreement() {
-    let child_gaps = [vec![(2, 4)], vec![(2, 4)]];
-    let child_unknown = [vec![], vec![]];
-    let empty0 = BTreeSet::new();
-    let empty1 = BTreeSet::new();
-    let child_vis = [&empty0, &empty1];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert!(
-      result.variable_indel.is_empty(),
-      "No disagreement when all children have same gaps"
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::children_agree_on_gap(         vec![vec![(2, 4)], vec![(2, 4)]], vec![vec![],       vec![]],       vec![btreeset! {},       btreeset! {}],       (vec![(2, 4)], btreeset! {}))]
+  #[case::one_child_has_gap(             vec![vec![(2, 4)], vec![]],       vec![vec![],       vec![]],       vec![btreeset! {},       btreeset! {}],       (vec![],       btreeset! {(2, 4)}))]
+  #[case::gap_meets_child_variable_indel(vec![vec![(2, 4)], vec![]],       vec![vec![],       vec![]],       vec![btreeset! {},       btreeset! {(2, 4)}], (vec![(2, 4)], btreeset! {}))]
+  #[case::all_children_unknown(          vec![vec![],       vec![]],       vec![vec![(2, 4)], vec![(2, 4)]], vec![btreeset! {},       btreeset! {}],       (vec![],       btreeset! {}))]
+  #[case::all_children_variable(         vec![vec![],       vec![]],       vec![vec![],       vec![]],       vec![btreeset! {(2, 4)}, btreeset! {(2, 4)}], (vec![],       btreeset! {(2, 4)}))]
+  #[case::single_child_keeps_its_gaps(   vec![vec![(2, 4)]],               vec![vec![]],                     vec![btreeset! {}],                         (vec![(2, 4)], btreeset! {}))]
+  #[trace]
+  fn test_fitch_indel_backward_resolves_gaps_and_variable_indels(
+    #[case] child_gaps: Vec<Vec<(usize, usize)>>,
+    #[case] child_unknown: Vec<Vec<(usize, usize)>>,
+    #[case] child_variable_indels: Vec<BTreeSet<(usize, usize)>>,
+    #[case] expected: (Vec<(usize, usize)>, BTreeSet<(usize, usize)>),
+  ) {
+    let result = resolve_indels_backward(
+      &child_gaps.iter().collect_vec(),
+      &child_unknown.iter().collect_vec(),
+      &child_variable_indels.iter().collect_vec(),
+      10,
     );
-    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_one_child_has_gap() {
-    let child_gaps = [vec![(2, 4)], vec![]];
-    let child_unknown = [vec![], vec![]];
-    let empty0 = BTreeSet::new();
-    let empty1 = BTreeSet::new();
-    let child_vis = [&empty0, &empty1];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert_eq!(result.variable_indel.len(), 1);
-    assert!(result.variable_indel.contains(&(2, 4)));
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_all_children_deleted() {
-    let child_gaps = [vec![(2, 4)], vec![(2, 4)], vec![(2, 4)]];
-    let child_unknown = [vec![], vec![], vec![]];
-    let empty0 = BTreeSet::new();
-    let empty1 = BTreeSet::new();
-    let empty2 = BTreeSet::new();
-    let child_vis = [&empty0, &empty1, &empty2];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert!(
-      result.variable_indel.is_empty(),
-      "All children agree on gap, no variable indels"
-    );
-    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_propagates_child_variable_indels() {
-    let child_gaps = [vec![(2, 4)], vec![]];
-    let child_unknown = [vec![], vec![]];
-    let empty0 = BTreeSet::new();
-    let child1_vi = BTreeSet::from([(2_usize, 4_usize)]);
-    let child_vis = [&empty0, &child1_vi];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-
-    assert!(result.variable_indel.is_empty());
-    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_all_unknown_not_deletion_evidence() {
-    let child_gaps = [vec![], vec![]];
-    let child_unknown = [vec![(2, 4)], vec![(2, 4)]];
-    let empty0 = BTreeSet::new();
-    let empty1 = BTreeSet::new();
-    let child_vis = [&empty0, &empty1];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert!(result.variable_indel.is_empty());
-    assert!(result.resolved_gaps.is_empty());
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_propagates_child_variable_indel_set() {
-    let child_gaps = [vec![], vec![]];
-    let child_unknown = [vec![], vec![]];
-    let vi0 = BTreeSet::from([(2_usize, 4_usize)]);
-    let vi1 = BTreeSet::from([(2_usize, 4_usize)]);
-    let child_vis = [&vi0, &vi1];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert_eq!(result.variable_indel.len(), 1);
-    assert!(result.resolved_gaps.is_empty());
-  }
-
-  #[test]
-  fn test_fitch_indel_backward_single_child_preserves_gaps() {
-    let child_gaps = [vec![(2, 4)]];
-    let child_unknown = [vec![]];
-    let empty0 = BTreeSet::new();
-    let child_vis = [&empty0];
-    let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert!(result.variable_indel.is_empty());
-    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
+    assert_eq!(expected, (result.resolved_gaps, result.variable_indel));
   }
 
   #[test]

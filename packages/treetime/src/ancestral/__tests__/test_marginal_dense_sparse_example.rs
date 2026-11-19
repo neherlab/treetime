@@ -1,18 +1,32 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{
     run_dense_marginal_for_input, run_sparse_marginal_for_input,
   };
-  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
-  use treetime_io::fasta::fasta_read;
-  use treetime_primitives::AlignmentRecord;
 
-  fn example_gap_free_input() -> Result<MarginalTestInput, Report> {
-    let alignment: Vec<AlignmentRecord> = fasta_read(
-      "
+  #[test]
+  fn test_marginal_dense_sparse_example_gap_free_log_lh_equal() -> Result<(), Report> {
+    let input = helpers::example_gap_free_input()?;
+    let (dense_log_lh, _) = run_dense_marginal_for_input(&input)?;
+    let (sparse_log_lh, _) = run_sparse_marginal_for_input(&input)?;
+
+    pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
+    Ok(())
+  }
+
+  mod helpers {
+    use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
+    use crate::gtr::get_gtr::{JC69Params, jc69};
+    use crate::test_utils::NUC_ALPHABET;
+    use eyre::Report;
+    use treetime_io::fasta::fasta_read;
+    use treetime_primitives::AlignmentRecord;
+
+    pub(super) fn example_gap_free_input() -> Result<MarginalTestInput, Report> {
+      let alignment: Vec<AlignmentRecord> = fasta_read(
+        "
 >A
 ACGTACGTACGTACGT
 >B
@@ -22,29 +36,20 @@ ACGTACGTACGTACGG
 >D
 ACGTACGTACGTACGC
 "
-      .as_bytes(),
-      &*crate::test_utils::NUC_ALPHABET,
-    )?
-    .into_iter()
-    .map(AlignmentRecord::from)
-    .collect();
-    let gtr = jc69(JC69Params::default())?;
-    Ok(MarginalTestInput {
-      newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),
-      alignment,
-      gtr,
-      n_taxa: 4,
-      seq_len: 16,
-    })
-  }
-
-  #[test]
-  fn test_marginal_dense_sparse_example_gap_free_consistency() -> Result<(), Report> {
-    let input = example_gap_free_input()?;
-    let (dense_log_lh, _) = run_dense_marginal_for_input(&input)?;
-    let (sparse_log_lh, _) = run_sparse_marginal_for_input(&input)?;
-
-    pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
-    Ok(())
+        .as_bytes(),
+        &*NUC_ALPHABET,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
+      let gtr = jc69(JC69Params::default())?;
+      Ok(MarginalTestInput {
+        newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),
+        alignment,
+        gtr,
+        n_taxa: 4,
+        seq_len: 16,
+      })
+    }
   }
 }
