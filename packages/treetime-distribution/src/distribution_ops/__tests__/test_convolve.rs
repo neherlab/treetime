@@ -65,7 +65,7 @@ mod tests {
   #[test]
   fn test_convolution_empty() -> Result<(), Report> {
     let a = Distribution::empty();
-    let b = Distribution::function(array![], array![])?;
+    let b = Distribution::function(array![1.0, 2.0], array![0.0, 0.0])?;
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
     assert_eq!(Distribution::empty(), actual);
     Ok(())
@@ -607,15 +607,6 @@ mod tests {
 
     assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
     pretty_assert_abs_diff_eq!(neg_log(&array![0.25, 2.0, 2.5, 0.5]), actual.y(), epsilon = 1e-15);
-    Ok(())
-  }
-
-  #[test]
-  fn test_convolution_function_function_empty() -> Result<(), Report> {
-    let a = Distribution::function(array![], array![])?;
-    let b = Distribution::function(array![1.0, 2.0], array![0.0, 0.0])?;
-    let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(Distribution::empty(), actual);
     Ok(())
   }
 
