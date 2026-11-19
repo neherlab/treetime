@@ -5,12 +5,13 @@ mod tests {
   use crate::distribution_ops::multiply::{
     HardDomain, distribution_multiplication, guarded_empty_result, hard_domains_disjoint,
   };
+  use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::Plain;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
-  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
+  use treetime_grid::{NegLog, Plain};
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   const SOFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.001 });
 
@@ -238,7 +239,7 @@ mod tests {
       4.0,
       result.likely_time().unwrap().unwrap(),
       max_ulps = 4,
-      "argmax on the grid of step 0.08 of exp(-(t - 4)^2 / 8) (0.249 + 0.001 (10 - t)), N(4, 2^2) times the soft tail of a; ln p at 4.00 exceeds 3.92 by 4.9e-4 (bc -l)"
+      "argmax on the grid of step 0.08 of exp(-(t - 4)^2 / 8 + 0.001 t), N(4, 2^2) times the exponential soft tail of a; ln p at 4.00 exceeds 4.08 by 7.2e-4 (bc -l)"
     );
   }
 
@@ -265,10 +266,10 @@ mod tests {
     pretty_assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
     pretty_assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
     pretty_assert_ulps_eq!(
-      1989.9,
+      1990.0,
       result.likely_time().unwrap().unwrap(),
       max_ulps = 4,
-      "argmax on the grid of step 0.1 of exp(-(t - 1990)^2 / 50) (exp(-1.125) + 0.001 (2001 - t)), the subtree message times the soft tail of the leaf message; ln p at 1989.9 exceeds 1990.0 by 9.8e-5 (bc -l)"
+      "argmax on the grid of step 0.1 of exp(-(t - 1990)^2 / 50 + 0.001 t), the subtree message times the exponential soft tail of the leaf message; ln p at 1990.0 exceeds 1990.1 by 1.0e-4 (bc -l)"
     );
   }
 
@@ -365,50 +366,65 @@ mod tests {
   }
 
   #[test]
-  fn test_multiply_tail_chained_survives_disjoint() {
-    let msg1 = DistributionPlain::Function(
-      helpers::make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
-    let msg2 = DistributionPlain::Function(
-      helpers::make_function(2001.0, 2008.0, 71, 2004.0, 1.5)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
-    let msg3 = DistributionPlain::Function(
-      helpers::make_function(2003.0, 2009.0, 61, 2006.0, 1.5)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
-    let msg4 = DistributionPlain::Function(
-      helpers::make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+  fn test_multiply_tail_chained_survives_disjoint() -> Result<(), Report> {
+    let [msg1, msg2, msg3, msg4] = helpers::chained_messages::<Plain>()?;
+    let leaves = helpers::multiply_all(&msg1, &[&msg2, &msg3])?;
+    let DistributionPlain::Function(f) = &leaves else {
+      panic!("Expected Function, got {leaves:?}")
+    };
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw {
+        slope: -0.001 - 0.001 - 0.001
+      }),
+      f.left_extrap(),
+      "costs add under multiplication, so the slopes of the three soft tails add"
     );
 
-    let mut accum = msg1;
-    for msg in [&msg2, &msg3, &msg4] {
-      accum = distribution_multiplication(&accum, msg, MaxGridPoints::default()).unwrap();
-    }
-
+    let accum = helpers::multiply_all(&leaves, &[&msg4])?;
     let DistributionPlain::Function(f) = &accum else {
       panic!("Chained multiplication collapsed to {accum:?} despite soft left tails")
     };
-    assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
-    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
-    assert!(
-      accum.likely_time().unwrap().is_some(),
-      "Accumulated result must have a likely_time"
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw {
+        slope: -0.001 - 0.001 - 0.001 - 0.001
+      }),
+      f.left_extrap()
     );
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
+    pretty_assert_ulps_eq!(
+      1990.1,
+      accum.likely_time()?.unwrap(),
+      max_ulps = 4,
+      "argmax on the grid of step 0.1 of exp(-(t - 1990)^2 / 50 + 0.003 t), the subtree message times the summed soft tails of the three leaf messages; ln p at 1990.1 exceeds 1990.0 by 1.0e-4 (bc -l)"
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::far_in_tail((1990.0,  7.159))]
+  #[case::near_edge(  (1999.95, 7.129_15))]
+  #[trace]
+  fn test_multiply_tail_chained_leaf_product_is_the_product_of_the_tails(
+    #[case] (t, expected): (f64, f64),
+  ) -> Result<(), Report> {
+    let [plain1, plain2, plain3, _] = helpers::chained_messages::<Plain>()?;
+    let [neg_log1, neg_log2, neg_log3, _] = helpers::chained_messages::<NegLog>()?;
+    let plain = helpers::multiply_all(&plain1, &[&plain2, &plain3])?;
+    let neg_log = helpers::multiply_all(&neg_log1, &[&neg_log2, &neg_log3])?;
+    pretty_assert_abs_diff_eq!(
+      expected,
+      neg_log.eval(t)?,
+      epsilon = 1e-13,
+      "cost of the product of the three tails at t < 2000: (2005 - 2000)^2 / 8 + (2004 - 2001)^2 / 4.5 + 0.001 (2001 - t) + (2006 - 2003)^2 / 4.5 + 0.001 (2003 - t) + 0.001 (2000 - t) nats. Bound: at most 30 roundings, each within one ulp (1.8e-15) of a cost below 8"
+    );
+    pretty_assert_abs_diff_eq!(
+      expected,
+      -plain.eval(t)?.ln(),
+      epsilon = 1e-13,
+      "the plain product is exp(-cost) of the same closed form. Bound: at most 30 roundings, each within one ulp (1.8e-15) of a cost below 8"
+    );
+    Ok(())
   }
 
   #[rustfmt::skip]
@@ -571,11 +587,45 @@ mod tests {
   }
 
   mod helpers {
+    use super::SOFT;
     use crate::__tests__::aliases::DistributionPlain;
-    use crate::DistributionFunction;
+    use crate::distribution_ops::multiply::distribution_multiplication;
+    use crate::{Distribution, DistributionFunction};
+    use eyre::Report;
     use ndarray::Array1;
-    use treetime_grid::Plain;
+    use treetime_grid::{BoundaryBehavior, MaxGridPoints, Plain, YAxisPolicy};
     use treetime_utils::cast::ToF64Exact;
+
+    pub(super) fn chained_messages<Y: YAxisPolicy>() -> Result<[Distribution<Y>; 4], Report> {
+      Ok([
+        soft_message((2000.0, 2010.0), 101, 2005.0, 2.0)?,
+        soft_message((2001.0, 2008.0), 71, 2004.0, 1.5)?,
+        soft_message((2003.0, 2009.0), 61, 2006.0, 1.5)?,
+        soft_message((1970.0, 1999.0), 291, 1990.0, 5.0)?,
+      ])
+    }
+
+    pub(super) fn multiply_all<Y: YAxisPolicy>(
+      first: &Distribution<Y>,
+      rest: &[&Distribution<Y>],
+    ) -> Result<Distribution<Y>, Report> {
+      rest.iter().try_fold(first.clone(), |accum, msg| {
+        distribution_multiplication(&accum, msg, MaxGridPoints::default())
+      })
+    }
+
+    fn soft_message<Y: YAxisPolicy>(
+      range: (f64, f64),
+      n: usize,
+      peak_at: f64,
+      sigma: f64,
+    ) -> Result<Distribution<Y>, Report> {
+      let y = Array1::linspace(range.0, range.1, n).mapv(|x| Y::from_neg_log(0.5 * ((x - peak_at) / sigma).powi(2)));
+      let f = DistributionFunction::<f64, Y>::from_range_values(range, y)?
+        .with_left_extrap(SOFT)?
+        .with_right_extrap(BoundaryBehavior::Hard)?;
+      Ok(Distribution::Function(f))
+    }
 
     pub(super) fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> DistributionPlain {
       let x_min = mu - 5.0 * sigma;

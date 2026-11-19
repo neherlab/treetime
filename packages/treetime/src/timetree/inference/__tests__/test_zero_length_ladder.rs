@@ -362,7 +362,7 @@ mod tests {
       let lambda = SITES * CLOCK_RATE;
       let t = Array1::linspace(0.0, BRANCH_GRID_END, points);
       let f = GridFn::from_range_values((0.0, BRANCH_GRID_END), t.mapv(|t| lambda * t))?;
-      let right = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit::<NegLog>(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let distribution = DistributionFunction::from_grid_fn(f)
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;

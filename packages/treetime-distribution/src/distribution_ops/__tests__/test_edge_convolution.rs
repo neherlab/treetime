@@ -465,8 +465,8 @@ pub(crate) mod tests {
       let t = Array1::linspace(-6.0 * sigma, 6.0 * sigma, n_points);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
-      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;
@@ -482,8 +482,8 @@ pub(crate) mod tests {
       let t = Array1::linspace(mu_a - 6.0 * sigma, mu_b + 6.0 * sigma, n_points);
       let y = t.mapv(|t| ((t - mu_a).powi(2)).min((t - mu_b).powi(2)) / (2.0 * sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
-      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;
@@ -562,8 +562,8 @@ pub(crate) mod tests {
 
     pub(super) fn gaussian(sigma: f64) -> Result<DistributionNegLog, Report> {
       let f = gaussian_grid(sigma)?;
-      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;

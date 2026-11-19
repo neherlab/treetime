@@ -334,7 +334,7 @@ mod tests {
     pub(super) fn with_fitted_right_tail(
       f: DistributionFunction<f64, NegLog>,
     ) -> Result<DistributionFunction<f64, NegLog>, Report> {
-      let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let law = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       f.with_right_extrap(BoundaryBehavior::Linear(law))
     }
 

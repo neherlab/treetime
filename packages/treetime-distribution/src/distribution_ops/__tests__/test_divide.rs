@@ -8,6 +8,7 @@ mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::divide::distribution_division;
   use crate::distribution_ops::multiply::distribution_multiplication;
+  use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
@@ -234,9 +235,35 @@ mod tests {
       .unwrap();
 
     let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
-    let expected =
-      DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 10.0, 15.0, 20.0, 20.0]).unwrap();
-    assert_eq!(expected, actual);
+    let DistributionPlain::Function(actual) = actual else {
+      panic!("expected a function, got {actual:?}");
+    };
+    let divisor_tail = 2.0 * (-0.5_f64).exp();
+    let expected = array![10.0 / divisor_tail, 10.0, 15.0, 20.0, 50.0 / divisor_tail];
+    pretty_assert_ulps_eq!(array![0.0, 1.0, 2.0, 3.0, 4.0], actual.t(), max_ulps = 0);
+    pretty_assert_ulps_eq!(
+      expected,
+      actual.values(),
+      max_ulps = 5,
+      "dividend over divisor; one unit beyond its grid the divisor is 2 e^-0.5 under the neg-log slope 0.5. Bound: one ulp for each of ln 2, the sum, exp and the quotient in the evaluation, and exp and the quotient in the oracle"
+    );
+  }
+
+  #[test]
+  fn test_divide_plain_shared_zero_end_takes_the_limit_of_the_power_laws() -> Result<(), Report> {
+    let f = DistributionPlain::function(array![0.0, 1.0, 2.0], array![0.0, 1.0, 4.0])?;
+    let actual = distribution_division(&f, &f, MaxGridPoints::default())?;
+    let DistributionPlain::Function(actual) = actual else {
+      panic!("expected a function, got {actual:?}");
+    };
+    pretty_assert_ulps_eq!(array![0.0, 1.0, 2.0], actual.t(), max_ulps = 0);
+    pretty_assert_ulps_eq!(
+      array![1.0, 1.0, 1.0],
+      actual.values(),
+      max_ulps = 0,
+      "t^2 / t^2 is 1 up to the shared zero end at 0; exact: ln 1 = 0, exp 0 = 1 and v / v = 1"
+    );
+    Ok(())
   }
 
   #[test]

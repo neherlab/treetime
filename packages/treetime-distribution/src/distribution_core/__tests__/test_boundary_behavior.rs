@@ -107,16 +107,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::error_left(    (-1.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
-  #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
-  #[case::hard_left(     (-1.0, BoundaryBehavior::Hard,     BoundaryBehavior::Error),    None)]
-  #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard),     None)]
-  #[case::linear_some_left( (-1.0, BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), BoundaryBehavior::Error), Some(4.0))]
-  #[case::linear_some_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 })), Some(8.0))]
+  #[case::error_left(    (-1.0, BoundaryBehavior::Error,    BoundaryBehavior::Error))]
+  #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error))]
+  #[case::hard_left(     (-1.0, BoundaryBehavior::Hard,     BoundaryBehavior::Error))]
+  #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard))]
   #[trace]
-  fn test_boundary_multiply_point_function_outside_support(
+  fn test_boundary_multiply_point_function_outside_hard_support_is_empty(
     #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
-    #[case] expected_amplitude: Option<f64>,
   ) -> Result<(), Report> {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(left)?
@@ -125,8 +122,36 @@ mod tests {
     let point = Distribution::point(t, 2.0);
 
     let actual = distribution_multiplication(&point, &function, MaxGridPoints::default())?;
-    let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
-    assert_eq!(expected, actual);
+    assert_eq!(Distribution::empty(), actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left( (-1.0, BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), BoundaryBehavior::Error), 2.0 * (-1.0_f64).exp())]
+  #[case::right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 })), 2.0 * 3.0 * (-1.0_f64).exp())]
+  #[trace]
+  fn test_boundary_multiply_point_function_in_soft_tail_reads_the_tail(
+    #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
+    #[case] expected_amplitude: f64,
+  ) -> Result<(), Report> {
+    let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+    let function = Distribution::Function(f);
+    let point = Distribution::point(t, 2.0);
+
+    let actual = distribution_multiplication(&point, &function, MaxGridPoints::default())?;
+    let DistributionPlain::Point(actual) = actual else {
+      panic!("expected a point, got {actual:?}");
+    };
+    pretty_assert_ulps_eq!(t, actual.t(), max_ulps = 0);
+    pretty_assert_ulps_eq!(
+      expected_amplitude,
+      actual.amplitude(),
+      max_ulps = 4,
+      "point amplitude 2 times the edge density e^0 or 3, decayed by e^-1 over one unit at slope 1 in neg-log. Bound: one ulp for each of ln 3, the subtraction and exp in the evaluation, and exp in the oracle"
+    );
     Ok(())
   }
 
@@ -144,8 +169,13 @@ mod tests {
       MaxGridPoints::default(),
     )?;
 
-    let expected = 5.0 + f64::midpoint(slope_a, slope_b);
-    pretty_assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
+    let expected = 2.0 * (-slope_a * 0.5).exp() * 2.5 * (-slope_b * 0.5).exp();
+    pretty_assert_ulps_eq!(
+      expected,
+      product.eval(2.5)?,
+      max_ulps = 11,
+      "product of the operand tails at 2.5: 2 e^(-0.6 * 0.5) times 2.5 e^(-0.9 * 0.5). Bound: one ulp for each of the 5 roundings and libm calls of the evaluation (product, ln, slope times step, sum, exp) and the 6 of the oracle"
+    );
     Ok(())
   }
 

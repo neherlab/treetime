@@ -55,10 +55,21 @@ mod tests {
     #[case] b: f64,
   ) -> Result<(), Report> {
     let grid = make_neglog_power_law_grid(t_hard, a, b, 0.1, 1.0, 20);
-    let law = HardApproachLaw::fit(&grid, t_hard, Side::Left, 10).expect("fit should succeed");
+    let law = HardApproachLaw::fit::<NegLog>(&grid, t_hard, Side::Left, 10).expect("fit should succeed");
     pretty_assert_abs_diff_eq!(t_hard, law.t_hard, epsilon = 1e-14);
     pretty_assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::b1( 1.0)]
+  #[case::b05(0.5)]
+  #[trace]
+  fn test_hard_approach_law_fit_reads_plain_densities_in_neg_log(#[case] b: f64) {
+    let grid = make_neglog_power_law_grid(0.0, 1.0, b, 0.1, 1.0, 20).map_y(|y| (-y).exp());
+    let law = HardApproachLaw::fit::<Plain>(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
+    pretty_assert_abs_diff_eq!(b, law.b, epsilon = 1e-10, "the density e^-1 t^b is the cost 1 - b ln t");
   }
 
   #[rustfmt::skip]
@@ -102,7 +113,7 @@ mod tests {
     let b = 1.5;
     let y = Array1::linspace(8.0, 9.9, 20).mapv(|t: f64| 2.0 - b * (t_hard - t).ln());
     let grid = GridFn::from_range_values((8.0, 9.9), y)?;
-    let law = HardApproachLaw::fit(&grid, t_hard, Side::Right, 10).expect("fit should succeed");
+    let law = HardApproachLaw::fit::<NegLog>(&grid, t_hard, Side::Right, 10).expect("fit should succeed");
     pretty_assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     Ok(())
   }
@@ -111,7 +122,7 @@ mod tests {
   fn test_hard_approach_law_fit_clamps_wrong_sign_to_zero() -> Result<(), Report> {
     let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| 2.0 + (t - 0.0).abs().ln());
     let grid = GridFn::from_range_values((0.1, 1.0), y)?;
-    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
+    let law = HardApproachLaw::fit::<NegLog>(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
     assert_eq!(HardApproachLaw { t_hard: 0.0, b: 0.0 }, law);
     Ok(())
   }
@@ -121,7 +132,7 @@ mod tests {
     let mut y = Array1::from_elem(10, f64::INFINITY);
     y[0] = 0.0;
     let grid = GridFn::from_range_values((0.1, 1.0), y)?;
-    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 5);
+    let law = HardApproachLaw::fit::<NegLog>(&grid, 0.0, Side::Left, 5);
     assert_error!(
       law,
       "Hard-boundary power-law fit on the Left side needs at least two finite grid points off the boundary t_hard=0, found 1"
@@ -204,20 +215,20 @@ mod tests {
 
     pretty_assert_abs_diff_eq!(
       2.0_f64.ln(),
-      grid.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?,
+      grid.interp_with_extrap::<NegLog>(0.5, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
     assert!(
       grid
-        .interp_with_extrap(0.0, behavior, BoundaryBehavior::Error)?
+        .interp_with_extrap::<NegLog>(0.0, behavior, BoundaryBehavior::Error)?
         .is_infinite()
     );
     pretty_assert_abs_diff_eq!(
       0.0,
-      grid.interp_with_extrap(-0.5, behavior, BoundaryBehavior::Error)?,
+      grid.interp_with_extrap::<NegLog>(-0.5, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
-    pretty_assert_abs_diff_eq!(0.0, grid.interp(1.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(0.0, grid.interp::<NegLog>(1.0)?, epsilon = 1e-14);
     Ok(())
   }
 
@@ -228,17 +239,17 @@ mod tests {
 
     pretty_assert_abs_diff_eq!(
       5.0,
-      grid.interp_with_extrap(0.05, behavior, BoundaryBehavior::Error)?,
+      grid.interp_with_extrap::<NegLog>(0.05, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
     pretty_assert_abs_diff_eq!(
       5.0,
-      grid.interp_with_extrap(0.0, behavior, BoundaryBehavior::Error)?,
+      grid.interp_with_extrap::<NegLog>(0.0, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
     pretty_assert_abs_diff_eq!(
       0.0,
-      grid.interp_with_extrap(-0.1, behavior, BoundaryBehavior::Error)?,
+      grid.interp_with_extrap::<NegLog>(-0.1, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
     Ok(())
@@ -252,11 +263,11 @@ mod tests {
     )?;
     let behavior = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
 
-    let before = grid.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?;
+    let before = grid.interp_with_extrap::<NegLog>(0.5, behavior, BoundaryBehavior::Error)?;
     let shifted = grid.shift_y(10.0);
     pretty_assert_abs_diff_eq!(
       before + 10.0,
-      shifted.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?,
+      shifted.interp_with_extrap::<NegLog>(0.5, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-13
     );
     Ok(())

@@ -51,7 +51,7 @@ impl MassProfile {
       .filter(|&cell| r[cell].is_infinite() != r[cell + 1].is_infinite())
       .filter_map(|cell| {
         f.grid_fn()
-          .hard_cell(cell, left_extrap, right_extrap)
+          .hard_cell::<NegLog>(cell, left_extrap, right_extrap)
           .map(|hard| hard.map(|hard| HardCellPower::new(cell, hard.law.b)))
           .transpose()
       })

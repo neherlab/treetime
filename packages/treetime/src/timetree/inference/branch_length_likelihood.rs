@@ -56,7 +56,7 @@ pub(crate) fn compute_branch_length_distribution(
   let left_boundary = if finite_boundary {
     BoundaryBehavior::Hard
   } else {
-    let law = HardApproachLaw::fit(&f, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+    let law = HardApproachLaw::fit::<NegLog>(&f, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
       format!("When building the branch-length likelihood hard boundary near t=0 over [{time_min}, {time_max}]")
     })?;
     BoundaryBehavior::HardApproach(law)
@@ -65,7 +65,7 @@ pub(crate) fn compute_branch_length_distribution(
   let right_boundary = match right_edge {
     RightEdge::Hard => BoundaryBehavior::Hard,
     RightEdge::Soft => {
-      let law = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+      let law = SoftTailLaw::fit::<NegLog>(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
         format!("When fitting the branch-length likelihood soft tail near t_max over [{time_min}, {time_max}]")
       })?;
       BoundaryBehavior::Linear(law)

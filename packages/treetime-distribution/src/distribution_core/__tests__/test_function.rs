@@ -43,7 +43,7 @@ mod tests {
 
     pretty_assert_ulps_eq!(2.5, function.interp(2.5)?);
     assert_error!(
-      function.grid_fn().interp(2.5),
+      function.grid_fn().interp::<NegLog>(2.5),
       "GridFn evaluated at 2.5, above the support boundary 2.0, but no extrapolation policy is set for that side"
     );
     assert_eq!(right, function.right_extrap());

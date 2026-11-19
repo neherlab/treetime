@@ -252,7 +252,7 @@ mod tests {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| -lambda.ln() + lambda * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Hard)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
@@ -263,8 +263,8 @@ mod tests {
       let t = Array1::linspace(-t_max, t_max, n);
       let y = t.mapv(|ti| slope * ti.abs());
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
-      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Linear(left))
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
@@ -275,7 +275,7 @@ mod tests {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| slope * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Hard)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))

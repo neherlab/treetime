@@ -233,7 +233,7 @@ struct TrimWindow {
 
 fn hard_cell_fit_hull(grid_fn: &GridFn<f64>, first: usize, end: usize) -> Result<(usize, usize), Report> {
   (first..end).try_fold((first, end), |(lo, hi), cell| {
-    Ok(match grid_fn.hard_cell_fit_range(cell)? {
+    Ok(match grid_fn.hard_cell_fit_range::<NegLog>(cell)? {
       Some(range) => (lo.min(*range.start()), hi.max(*range.end())),
       None => (lo, hi),
     })
@@ -370,13 +370,13 @@ pub(crate) fn refit_soft_tails(
   f: DistributionFunction<f64, NegLog>,
 ) -> Result<DistributionFunction<f64, NegLog>, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
-    let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+    let law = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_left_extrap(BoundaryBehavior::Linear(law))?
   } else {
     f
   };
   let f = if matches!(f.right_extrap(), BoundaryBehavior::Linear(_)) {
-    let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+    let law = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_right_extrap(BoundaryBehavior::Linear(law))?
   } else {
     f
@@ -430,10 +430,10 @@ fn window_edge_tail_law(
     .filter(|y| y.is_finite())
     .count();
   if finite < 2 {
-    return SoftTailLaw::fit(resampled.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS);
+    return SoftTailLaw::fit::<NegLog>(resampled.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS);
   }
   let window_edge = input.grid_fn().slice(first..=end)?;
-  SoftTailLaw::fit(&window_edge, side, DEFAULT_TAIL_FIT_POINTS)
+  SoftTailLaw::fit::<NegLog>(&window_edge, side, DEFAULT_TAIL_FIT_POINTS)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

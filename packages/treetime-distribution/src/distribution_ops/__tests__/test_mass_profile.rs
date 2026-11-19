@@ -399,7 +399,7 @@ mod tests {
     let cells: Vec<f64> = (0..y.len() - 1)
       .map(|c| {
         let width = x[c + 1] - x[c];
-        match f.grid_fn().hard_cell(c, HARD, HARD)? {
+        match f.grid_fn().hard_cell::<NegLog>(c, HARD, HARD)? {
           Some(hard) => Ok((y_peak - hard.anchor.y).exp() * width / (hard.law.b + 1.0)),
           None => Ok(helpers::linear_density_mass(width, (y[c] - y_peak, y[c + 1] - y_peak), (0.0, width))),
         }

@@ -104,9 +104,17 @@ pub(super) mod tests {
       let left = if range.0 == 0.0 {
         BoundaryBehavior::Hard
       } else {
-        BoundaryBehavior::Linear(SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?)
+        BoundaryBehavior::Linear(SoftTailLaw::fit::<NegLog>(
+          f.grid_fn(),
+          Side::Left,
+          DEFAULT_TAIL_FIT_POINTS,
+        )?)
       };
-      let right = BoundaryBehavior::Linear(SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?);
+      let right = BoundaryBehavior::Linear(SoftTailLaw::fit::<NegLog>(
+        f.grid_fn(),
+        Side::Right,
+        DEFAULT_TAIL_FIT_POINTS,
+      )?);
       f.with_left_extrap(left)?.with_right_extrap(right)
     }
 

@@ -163,7 +163,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     let val = self
       .grid_fn
-      .interp_with_extrap(x, self.left_extrap, self.right_extrap)?;
+      .interp_with_extrap::<Y>(x, self.left_extrap, self.right_extrap)?;
     let prob_zero: T = Y::probability_zero().into();
     if prob_zero != T::zero() && val == T::zero() && self.is_beyond_hard_boundary(x) {
       return Ok(prob_zero);
@@ -225,14 +225,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float,
   {
-    self.grid_fn.hard_cell(cell, self.left_extrap, self.right_extrap)
+    self.grid_fn.hard_cell::<Y>(cell, self.left_extrap, self.right_extrap)
   }
 
   pub fn edge_cell(&self, cell: usize) -> Result<Option<EdgeCell>, Report>
   where
     T: Float,
   {
-    self.grid_fn.edge_cell(cell, self.left_extrap, self.right_extrap)
+    self.grid_fn.edge_cell::<Y>(cell, self.left_extrap, self.right_extrap)
   }
 
   pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {
@@ -251,7 +251,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     let grid_fn = self
       .grid_fn
-      .resample_with_extrap(grid, self.left_extrap, self.right_extrap)?;
+      .resample_with_extrap::<Y>(grid, self.left_extrap, self.right_extrap)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
       self.ampl,
@@ -295,7 +295,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     let grid_fn = self
       .grid_fn
-      .resample_range_dx_clamped(x_range, dx, anchor, max_points)?;
+      .resample_range_dx_clamped::<Y>(x_range, dx, anchor, max_points)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
       self.ampl,
@@ -415,7 +415,7 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
   }
 
   pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
-    let law = SoftTailLaw::fit(&self.grid_fn, side, n_fit)?;
+    let law = SoftTailLaw::fit::<Y>(&self.grid_fn, side, n_fit)?;
     match side {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),

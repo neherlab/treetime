@@ -164,7 +164,7 @@ fn shared_hard_end<Y: YAxisPolicy>(
   side: Side,
   t: f64,
 ) -> Result<Option<SharedHardEnd>, Report> {
-  if divisor.interp_stored(t)?.is_finite() {
+  if Y::to_neg_log(divisor.interp_stored(t)?).is_finite() {
     return Ok(None);
   }
   let (Some(dividend_law), Some(divisor_law)) = (end_approach(dividend, side, t)?, end_approach(divisor, side, t)?)
@@ -174,7 +174,9 @@ fn shared_hard_end<Y: YAxisPolicy>(
   let exponent = dividend_law.exponent - divisor_law.exponent;
   let end = match exponent.total_cmp(&0.0) {
     Ordering::Greater => SharedHardEnd::ZeroDensity(HardApproachLaw { t_hard: t, b: exponent }),
-    Ordering::Equal => SharedHardEnd::Finite(Y::divide(dividend_law.offset, divisor_law.offset)),
+    Ordering::Equal => SharedHardEnd::Finite(Y::from_neg_log(
+      dividend_law.neg_log_offset - divisor_law.neg_log_offset,
+    )),
     Ordering::Less => SharedHardEnd::Flat,
   };
   Ok(Some(end))
@@ -185,11 +187,11 @@ fn end_approach<Y: YAxisPolicy>(
   side: Side,
   t: f64,
 ) -> Result<Option<EndApproach>, Report> {
-  let value = f.interp_stored(t)?;
-  if value.is_finite() {
+  let neg_log = Y::to_neg_log(f.interp_stored(t)?);
+  if neg_log.is_finite() {
     return Ok(Some(EndApproach {
       exponent: 0.0,
-      offset: value,
+      neg_log_offset: neg_log,
     }));
   }
   let Some(last_cell) = f.len().checked_sub(2) else {
@@ -202,19 +204,19 @@ fn end_approach<Y: YAxisPolicy>(
   if !f.grid_fn().coincides(edge, t) {
     return Ok(None);
   }
-  let Some(HardCell { law, anchor }) = f.grid_fn().hard_cell(cell, f.left_extrap(), f.right_extrap())? else {
+  let Some(HardCell { law, anchor }) = f.hard_cell(cell)? else {
     return Ok(None);
   };
   Ok(Some(EndApproach {
     exponent: law.b,
-    offset: anchor.y + law.b * (anchor.t - law.t_hard).abs().ln(),
+    neg_log_offset: anchor.y + law.b * (anchor.t - law.t_hard).abs().ln(),
   }))
 }
 
 #[derive(Clone, Copy, Debug)]
 struct EndApproach {
   exponent: f64,
-  offset: f64,
+  neg_log_offset: f64,
 }
 
 #[derive(Clone, Copy, Debug)]

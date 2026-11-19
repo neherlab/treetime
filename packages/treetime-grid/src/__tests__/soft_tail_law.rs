@@ -44,21 +44,32 @@ mod tests {
     #[case] expected_slope: f64,
   ) {
     let grid = make_neglog_linear_grid(slope, 0.1, 2.0, 20);
-    let law = SoftTailLaw::fit(&grid, side, 10).expect("fit should succeed");
+    let law = SoftTailLaw::fit::<NegLog>(&grid, side, 10).expect("fit should succeed");
     pretty_assert_abs_diff_eq!(expected_slope, law.slope, epsilon = 1e-10);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right( 0.8, Side::Right)]
+  #[case::left( -0.6, Side::Left)]
+  #[trace]
+  fn test_soft_tail_law_fit_reads_plain_densities_in_neg_log(#[case] slope: f64, #[case] side: Side) {
+    let grid = make_neglog_linear_grid(slope, 0.1, 2.0, 20).map_y(|y| (-y).exp());
+    let law = SoftTailLaw::fit::<Plain>(&grid, side, 10).expect("fit should succeed");
+    pretty_assert_abs_diff_eq!(slope, law.slope, epsilon = 1e-10, "the density exp(-slope t) is the cost slope t");
   }
 
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_right_tail_to_flat() {
     let grid = make_neglog_linear_grid(-1.0, 0.1, 2.0, 20);
-    let law = SoftTailLaw::fit(&grid, Side::Right, 10).expect("fit should succeed");
+    let law = SoftTailLaw::fit::<NegLog>(&grid, Side::Right, 10).expect("fit should succeed");
     pretty_assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
   }
 
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_left_tail_to_flat() {
     let grid = make_neglog_linear_grid(1.0, 0.1, 2.0, 20);
-    let law = SoftTailLaw::fit(&grid, Side::Left, 10).expect("fit should succeed");
+    let law = SoftTailLaw::fit::<NegLog>(&grid, Side::Left, 10).expect("fit should succeed");
     pretty_assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
   }
 
@@ -104,7 +115,7 @@ mod tests {
   #[test]
   fn test_soft_tail_law_fit_err_for_non_finite() -> Result<(), Report> {
     let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
-    let law = SoftTailLaw::fit(&grid, Side::Right, 5);
+    let law = SoftTailLaw::fit::<NegLog>(&grid, Side::Right, 5);
     assert_error!(
       law,
       "Soft-tail fit on the Right side needs at least two finite grid points near the edge, found 0"
@@ -168,10 +179,10 @@ mod tests {
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?;
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
 
-    pretty_assert_abs_diff_eq!(2.0, grid.interp(2.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(2.0, grid.interp::<NegLog>(2.0)?, epsilon = 1e-14);
     pretty_assert_abs_diff_eq!(
       2.5,
-      grid.interp_with_extrap(2.5, BoundaryBehavior::Error, right)?,
+      grid.interp_with_extrap::<NegLog>(2.5, BoundaryBehavior::Error, right)?,
       epsilon = 1e-14
     );
     Ok(())
@@ -182,10 +193,10 @@ mod tests {
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![2.0, 3.0, 4.0])?;
     let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 });
 
-    pretty_assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(2.0, grid.interp::<NegLog>(0.0)?, epsilon = 1e-14);
     pretty_assert_abs_diff_eq!(
       2.5,
-      grid.interp_with_extrap(-0.5, left, BoundaryBehavior::Error)?,
+      grid.interp_with_extrap::<NegLog>(-0.5, left, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
     Ok(())
