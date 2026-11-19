@@ -42,9 +42,6 @@ metadata: "metadata.tsv"
 clock_rate: 0.005
 confidence: true
 
-# A fixed seed makes the random steps of the run repeat exactly.
-seed: 42
-
 output_selection:
   - "nexus"
   - "auspice"

@@ -78,7 +78,6 @@ steps:
       metadata: "metadata.tsv"
       clock_rate: "{{ vars.clock_rate }}"
       confidence: true
-      seed: 42
       output_selection:
         - "nexus"
         - "auspice"

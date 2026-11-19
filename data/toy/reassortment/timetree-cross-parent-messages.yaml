@@ -19,8 +19,10 @@
 #
 # With `cross_parent_messages`, the message that a node sends to one of its
 # parents also carries the messages of its other parents, so the time passes
-# iterate on the loops of the graph until the dates converge. Without it (the
-# default, `timetree.yaml`), the message to a parent carries the subtree alone.
+# repeat on the loops of the graph: they stop when no node time changes by more
+# than 1e-4 of the time span of the graph between two sweeps, or after 20
+# sweeps per round with a warning that the dates did not settle. Without it (the default,
+# `timetree.yaml`), the message to a parent carries the subtree alone.
 # Compare the two dates tables to see how much the loops of this graph matter.
 #
 # The clock rate is that of the toy graph: its node dates are 2000 + 200 times
@@ -43,9 +45,6 @@ metadata: "metadata.tsv"
 clock_rate: 0.005
 confidence: true
 cross_parent_messages: true
-
-# A fixed seed makes the random steps of the run repeat exactly.
-seed: 42
 
 output_selection:
   - "nexus"
