@@ -34,6 +34,22 @@ macro_rules! prop_assert_ulps_eq {
       )));
     }
   }};
+  ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if !approx::Ulps::default().epsilon(0.0)$(.$opt($val))*.eq(lhs, rhs) {
+      let lhs_fmt = format!("{lhs:?}");
+      let rhs_fmt = format!("{rhs:?}");
+      return Err(proptest::test_runner::TestCaseError::fail(format!(
+        "prop_assert_ulps_eq!({}, {}{}): {}\n\n{}",
+        stringify!($lhs),
+        stringify!($rhs),
+        stringify!($(, $opt = $val)*),
+        format!($msg $(, $arg)*),
+        pretty_assertions::StrComparison::new(&lhs_fmt, &rhs_fmt),
+      )));
+    }
+  }};
 }
 
 #[macro_export]
@@ -49,6 +65,22 @@ macro_rules! prop_assert_relative_eq {
         stringify!($lhs),
         stringify!($rhs),
         stringify!($(, $opt = $val)*),
+        pretty_assertions::StrComparison::new(&lhs_fmt, &rhs_fmt),
+      )));
+    }
+  }};
+  ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if !approx::Relative::default().epsilon(0.0)$(.$opt($val))*.eq(lhs, rhs) {
+      let lhs_fmt = format!("{lhs:?}");
+      let rhs_fmt = format!("{rhs:?}");
+      return Err(proptest::test_runner::TestCaseError::fail(format!(
+        "prop_assert_relative_eq!({}, {}{}): {}\n\n{}",
+        stringify!($lhs),
+        stringify!($rhs),
+        stringify!($(, $opt = $val)*),
+        format!($msg $(, $arg)*),
         pretty_assertions::StrComparison::new(&lhs_fmt, &rhs_fmt),
       )));
     }
