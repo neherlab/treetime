@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Build the influenza H3N2 segment datasets in data/flu/h3n2/segments/ from the TreeKnit output in data/flu/treeknit/.
+
+1. Name the nodes of the four resolved TreeKnit trees so that an ancestor shared by several segments has one name in
+   every tree (test_scripts/treeknit_named_trees.py)
+2. Choose the leaves of each dataset size, spread over sampling regions and dates
+3. Prune the four named trees to these leaves, remove the nodes left without leaves and the nodes left with one child,
+   and keep the names, so the nodes that the segments share stay shared
+4. Write per size: tree_<segment>.nwk, aln_<segment>.fasta.xz (the tree leaves only) and metadata.tsv
+
+Run from the repository root in the Python environment of the repository (Biopython and zstd):
+    pixi run python -I data/flu/h3n2/segments/build
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import gzip
+import io
+import itertools
+import json
+import logging
+import lzma
+import re
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+
+from Bio import Phylo, SeqIO
+from Bio.Phylo.Newick import Clade, Tree
+
+DATASET_SIZES = (100, 500)
+CONVERSION_SCRIPT = Path("test_scripts/treeknit_named_trees.py")
+METADATA_COLUMNS = (
+    "strain",
+    "date",
+    "region",
+    "country",
+    "division",
+    "location",
+    "host",
+    "is_reference",
+    "subclade_nextclade_ha",
+    "subclade_nextclade_na",
+    "accession_ha",
+    "accession_na",
+    "accession_pb1",
+    "accession_pb2",
+    "authors",
+    "institution",
+)
+MONTH_MIDPOINT = 6
+DAY_MIDPOINT = 15
+DAYS_PER_YEAR = 365.25
+DAYS_PER_MONTH = 30.44
+
+logger = logging.getLogger("build")
+
+
+def main() -> None:
+    args = _parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+    source = _read_source(args.treeknit)
+    for count in (*DATASET_SIZES, len(source.leaves)):
+        leaves = select_leaves(source.leaves, source.metadata, count)
+        write_dataset(source, leaves, args.output / str(len(leaves)))
+
+
+def select_leaves(leaves: frozenset[str], metadata: dict[str, dict[str, str]], count: int) -> frozenset[str]:
+    """Choose `count` leaves spread over sampling regions and dates.
+
+    Each region receives a share of `count` proportional to its number of leaves (largest remainder, at least one per
+    region), and within a region the leaves are sorted by date and taken at equal intervals, the oldest first, as
+    `data/subsample` does for one dataset.
+    """
+    if count >= len(leaves):
+        return leaves
+    by_region = {
+        region: sorted(members, key=lambda name: (_numeric_date(metadata[name]["date"]), name))
+        for region, members in itertools.groupby(
+            sorted(leaves, key=lambda name: metadata[name]["region"]), key=lambda name: metadata[name]["region"]
+        )
+    }
+    shares = _region_shares({region: len(members) for region, members in by_region.items()}, count)
+    return frozenset(
+        members[int(index * len(members) / shares[region])]
+        for region, members in by_region.items()
+        for index in range(shares[region])
+    )
+
+
+def write_dataset(source: Source, leaves: frozenset[str], directory: Path) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    for segment in Segment:
+        tree = prune_tree(source.trees[segment], leaves)
+        _check_tree(tree, leaves, segment)
+        Phylo.write(tree, directory / f"tree_{segment.value}.nwk", "newick", format_branch_length="%.8f")
+        _write_fasta(directory / f"aln_{segment.value}.fasta.xz", source.alignments[segment], leaves)
+    _write_metadata(directory / "metadata.tsv", source.metadata_rows, leaves)
+    logger.info("Wrote %s with %d leaves", directory, len(leaves))
+
+
+def prune_tree(tree: Tree, leaves: frozenset[str]) -> Tree:
+    """Keep the given leaves, remove nodes without leaves, and merge each node with one child into its child edge."""
+    root = _pruned(tree.root, leaves)
+    if root is None:
+        msg = "No leaf of the tree is selected"
+        raise ValueError(msg)
+    return Tree(root=Clade(name=root.name, clades=root.clades), rooted=True)
+
+
+@dataclass(frozen=True)
+class Source:
+    trees: dict[Segment, Tree]
+    alignments: dict[Segment, dict[str, str]]
+    metadata: dict[str, dict[str, str]]
+    metadata_rows: list[dict[str, str]]
+    leaves: frozenset[str]
+
+
+class Segment(Enum):
+    HA = "ha"
+    NA = "na"
+    PB1 = "pb1"
+    PB2 = "pb2"
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--treeknit", type=Path, default=Path("data/flu/treeknit"), help="TreeKnit output folder")
+    parser.add_argument("--output", type=Path, default=Path("data/flu/h3n2/segments"), help="Folder of the datasets")
+    return parser.parse_args()
+
+
+def _read_source(treeknit: Path) -> Source:
+    trees = _named_trees(treeknit)
+    leaf_sets = {segment: frozenset(leaf.name for leaf in tree.get_terminals()) for segment, tree in trees.items()}
+    leaves = leaf_sets[Segment.HA]
+    if any(leaf_set != leaves for leaf_set in leaf_sets.values()):
+        msg = "The segment trees have different leaves"
+        raise ValueError(msg)
+    metadata_rows = _read_metadata(treeknit / "metadata.tsv.gz")
+    metadata = {row["strain"]: row for row in metadata_rows}
+    alignments = {segment: _read_alignment(treeknit / f"alignment_{segment.value}.fasta.zst") for segment in Segment}
+    missing = {
+        "metadata": leaves - metadata.keys(),
+        **{f"alignment of {segment.value}": leaves - alignment.keys() for segment, alignment in alignments.items()},
+    }
+    if any(missing.values()):
+        msg = f"Leaves without data: { {source: sorted(names) for source, names in missing.items() if names} }"
+        raise ValueError(msg)
+    return Source(trees=trees, alignments=alignments, metadata=metadata, metadata_rows=metadata_rows, leaves=leaves)
+
+
+def _named_trees(treeknit: Path) -> dict[Segment, Tree]:
+    with tempfile.TemporaryDirectory(prefix="treeknit-named-") as directory:
+        result = subprocess.run(  # noqa: S603
+            [
+                sys.executable,
+                "-I",
+                str(CONVERSION_SCRIPT),
+                str(treeknit),
+                directory,
+                *(segment.value for segment in Segment),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        logger.info("Node identities of the TreeKnit trees: %s", json.dumps(json.loads(result.stdout)))
+        return {segment: Phylo.read(Path(directory) / f"tree_{segment.value}.nwk", "newick") for segment in Segment}
+
+
+def _read_metadata(path: Path) -> list[dict[str, str]]:
+    with gzip.open(path, "rt", newline="") as file:
+        return list(csv.DictReader(file, delimiter="\t"))
+
+
+def _read_alignment(path: Path) -> dict[str, str]:
+    text = subprocess.run(["zstd", "-dc", str(path)], check=True, capture_output=True, text=True).stdout  # noqa: S603, S607
+    return {record.id: str(record.seq) for record in SeqIO.parse(io.StringIO(text), "fasta")}
+
+
+def _numeric_date(date: str) -> float:
+    match = re.fullmatch(r"(\d{4})-(\d{2}|XX)-(\d{2}|XX)", date)
+    if match is None:
+        msg = f"Cannot parse date: {date}"
+        raise ValueError(msg)
+    year, month, day = match.groups()
+    month_number = MONTH_MIDPOINT if month == "XX" else int(month)
+    day_number = DAY_MIDPOINT if day == "XX" else int(day)
+    return int(year) + ((month_number - 1) * DAYS_PER_MONTH + day_number) / DAYS_PER_YEAR
+
+
+def _region_shares(sizes: dict[str, int], count: int) -> dict[str, int]:
+    if count < len(sizes):
+        msg = f"Cannot spread {count} leaves over {len(sizes)} regions"
+        raise ValueError(msg)
+    total = sum(sizes.values())
+    spare = count - len(sizes)
+    quotas = {region: spare * size / total for region, size in sizes.items()}
+    floors = {region: int(quota) for region, quota in quotas.items()}
+    by_remainder = sorted(sizes, key=lambda region: (floors[region] - quotas[region], region))
+    extra = frozenset(by_remainder[: spare - sum(floors.values())])
+    return {region: 1 + floors[region] + (region in extra) for region in sizes}
+
+
+def _pruned(clade: Clade, leaves: frozenset[str]) -> Clade | None:
+    if clade.is_terminal():
+        return Clade(branch_length=clade.branch_length, name=clade.name) if clade.name in leaves else None
+    children = [child for child in (_pruned(child, leaves) for child in clade.clades) if child is not None]
+    match children:
+        case []:
+            return None
+        case [only]:
+            return Clade(
+                branch_length=(clade.branch_length or 0.0) + (only.branch_length or 0.0),
+                name=only.name,
+                clades=only.clades,
+            )
+        case _:
+            return Clade(branch_length=clade.branch_length, name=clade.name, clades=children)
+
+
+def _check_tree(tree: Tree, leaves: frozenset[str], segment: Segment) -> None:
+    names = [clade.name for clade in tree.find_clades()]
+    problems = {
+        "leaves differ from the selection": frozenset(leaf.name for leaf in tree.get_terminals()) != leaves,
+        "a node has no name": None in names,
+        "a name occurs twice": len(names) != len(set(names)),
+        "a node has one child": any(len(clade.clades) == 1 for clade in tree.find_clades()),
+    }
+    if failed := [problem for problem, found in problems.items() if found]:
+        msg = f"Tree of {segment.value}: {', '.join(failed)}"
+        raise ValueError(msg)
+
+
+def _write_fasta(path: Path, alignment: dict[str, str], leaves: frozenset[str]) -> None:
+    with lzma.open(path, "wt") as file:
+        file.writelines(f">{name}\n{sequence}\n" for name, sequence in alignment.items() if name in leaves)
+
+
+def _write_metadata(path: Path, rows: list[dict[str, str]], leaves: frozenset[str]) -> None:
+    with path.open("w", newline="") as file:
+        writer = csv.DictWriter(
+            file, fieldnames=METADATA_COLUMNS, delimiter="\t", lineterminator="\n", extrasaction="ignore"
+        )
+        writer.writeheader()
+        writer.writerows(row for row in rows if row["strain"] in leaves)
+
+
+if __name__ == "__main__":
+    main()
