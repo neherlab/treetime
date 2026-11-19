@@ -6,11 +6,11 @@ Validation of `optimize --segment-trees --segment-alignments` on segmented genom
 
 - **Graph**: coalescent with reassortment (CoalRe model; `Tc = 10` years, 80 tips at 40 sample times), reassortment rate 0.02 (`low`) or 0.2 (`high`) per lineage and year, 3 replicates each
 - **Segments**: `s1`-`s4` with lengths 1500, 1200, 1000, 800 and rates 4, 3, 2, 1 x 10^-3 per site and year, each with a random GTR; sequences evolve along each segment's local tree
-- **Input trees**: the true segment topologies with named internal nodes and branch lengths mu t x lognormal(0, 0.3); `full` keeps the nodes a segment passes through where another segment branches, `collapsed` drops them as tree inference would. Neither keeps the hidden nodes, which have one child in every segment (reassortment nodes, mergers of lineages with disjoint segments): no tree inference recovers them. Before commit `fcd860c10`, the `full` trees kept them
+- **Input trees**: the true segment topologies with named internal nodes and branch lengths mu t x lognormal(0, 0.3); `full` keeps the nodes a segment passes through where another segment branches, `collapsed` drops them as tree inference would. Neither keeps the hidden nodes, which have one child in every segment (reassortment nodes, mergers of lineages with disjoint segments): no tree inference recovers them. Before commit `f16b1235a`, the `full` trees kept them
 - **Variants**: `joint-full` and `joint-collapsed` (`optimize --segment-trees`), `separate` (`optimize --tree` per segment, topology kept)
 - **Branches**: those of the collapsed segment trees; a fitted branch is the sum along its path in the output tree, times the fitted rate of the segment, times L. The two branches at each segment root are scored as a sum, because their split is not identifiable
 
-## Results (commit `fcd860c10`)
+## Results (commit `f16b1235a`)
 
 Reassortments per replicate: high 27, high 16, high 27, low 0, low 3, low 5
 

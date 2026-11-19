@@ -11,4 +11,4 @@
 
 ## v1 direction
 
-One graph for all segments, with edge scopes that record which segments (or sites) each edge carries: [kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md).
+One graph for all segments, with edge scopes that record which segments (or sites) each edge carries: [kb/proposals/edge-scoped-inheritance.md](../proposals/edge-scoped-inheritance.md). Results differ from v0 `arg` by design: [kb/decisions/segment-graph-replaces-v0-arg-masks.md](../decisions/segment-graph-replaces-v0-arg-masks.md).

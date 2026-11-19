@@ -13,10 +13,13 @@
 Known limitations of the passes:
 
 - **Hidden nodes**: a node with one child in every segment (a reassortment node given as a pass-through node of every segment, or a merger of lineages with disjoint segments) is placed at its child with a narrow region, because optimize holds the edge below it at length 0, and it pulls the neighbouring deep nodes. Tree inference never produces such nodes, so real inputs lack them; an input that has them could be rejected, or the nodes contracted
-- **Zero-length edges** (decided: kept): the flu graph has 391 nodes with a zero-length parent edge among 801 with several parents. TreeKnit expects collapsed input trees and resolves their polytomies with splits from compatible other segments, so such an edge is a branch that another segment supports, not an arbitrary resolution. The graph keeps them and does not contract them; inputs to TreeKnit should be collapsed trees
-- **Cross-parent messages**: off by default (decided: little information in practice, slower convergence); `--cross-parent-messages` switches them on. With them, the sweep limit of 20 is reached on the flu graph at a relative change of 2 x 10^-4
+- **Zero-length edges**: kept, not contracted ([kb/decisions/segment-graph-zero-length-edges-kept.md](../decisions/segment-graph-zero-length-edges-kept.md)); inputs to TreeKnit should be collapsed trees
+- **Cross-parent messages**: off by default ([kb/decisions/timetree-segment-graph-loopy-message-passing.md](../decisions/timetree-segment-graph-loopy-message-passing.md)); `--cross-parent-messages` switches them on. With them, the sweep limit of 20 is reached on the flu graph at a relative change of 2 x 10^-4
 - **Log marginal likelihood**: the value that a pass reports is not exact on a graph with loops
 - **Parents at incompatible times**: when the messages from the parents of a node and its subtree leave no time with any probability, the node takes its time from its subtree alone, and the forward pass names these nodes in one warning. A reassortant whose segment trees disagree on its age gives such a node
+
+> [!IMPORTANT]
+> **Investigation required.** Hidden nodes have no policy yet, and no measurement shows which policy dates the other nodes correctly. Simulate segment graphs that keep their hidden nodes (the validation of [kb/reports/2026-11-15-segment-validation-timetree.md](../reports/2026-11-15-segment-validation-timetree.md) drops them from its `full` trees since commit `f16b1235a`), date them with the hidden nodes kept and with the hidden nodes contracted, and compare bias, RMSE and coverage at the other nodes against the run without hidden nodes. The result selects one of: reject inputs with hidden nodes, contract them, or keep them as a documented limitation.
 
 ## Depends on
 
