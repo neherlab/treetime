@@ -9,8 +9,10 @@
 # nextstrain/lassa@8bd66e3, segment l: `augur refine --timetree --coalescent opt
 # --date-confidence --root mid_point --clock-rate 0.00078` (no clock filter),
 # `augur ancestral --inference joint`, `augur traits --columns country --confidence`.
-# `reroot: midpoint` roots the tree at the middle of its longest tip-to-tip path, as
-# `--root mid_point` does. TreeTime resolves polytomies at random, so `seed` makes
+# The workflow config takes the clock rate from Ehichioya et al. 2019, "Phylogeography
+# of Lassa virus in Nigeria", J Virol 93:e00929-19, doi:10.1128/JVI.00929-19
+# (phylogenetic/defaults/config.yaml line 36). `reroot: midpoint` roots the tree at
+# the middle of its longest tip-to-tip path, as `--root mid_point` does. TreeTime resolves polytomies at random, so `seed` makes
 # the run reproducible; augur resolves them greedily.
 #
 # Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
