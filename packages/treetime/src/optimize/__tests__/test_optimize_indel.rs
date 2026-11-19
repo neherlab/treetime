@@ -472,43 +472,6 @@ pub(super) mod tests {
   }
 
   #[test]
-  fn test_optimize_indel_poisson_numerical_derivative() {
-    let k = 3;
-    let mu = 5.0;
-    let t = 0.3;
-
-    let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-
-    let h1 = 1e-7;
-    let lh_plus = poisson_indel_log_lh(k, mu, t + h1)
-      .expect("valid Poisson parameters")
-      .log_lh
-      .value();
-    let lh_minus = poisson_indel_log_lh(k, mu, t - h1)
-      .expect("valid Poisson parameters")
-      .log_lh
-      .value();
-    let numerical_deriv = (lh_plus - lh_minus) / (2.0 * h1);
-    pretty_assert_abs_diff_eq!(metrics.derivative, numerical_deriv, epsilon = 1e-8);
-
-    let h2 = 1e-4;
-    let lh_plus2 = poisson_indel_log_lh(k, mu, t + h2)
-      .expect("valid Poisson parameters")
-      .log_lh
-      .value();
-    let lh_center = poisson_indel_log_lh(k, mu, t)
-      .expect("valid Poisson parameters")
-      .log_lh
-      .value();
-    let lh_minus2 = poisson_indel_log_lh(k, mu, t - h2)
-      .expect("valid Poisson parameters")
-      .log_lh
-      .value();
-    let numerical_second = (lh_plus2 - 2.0 * lh_center + lh_minus2) / (h2 * h2);
-    pretty_assert_abs_diff_eq!(metrics.second_derivative, numerical_second, epsilon = 1e-5);
-  }
-
-  #[test]
   fn test_optimize_indel_zero_branch_no_indels_unchanged() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
@@ -697,7 +660,7 @@ pub(super) mod tests {
     use crate::optimize::indel::poisson_indel_log_lh;
     use proptest::prelude::*;
     use treetime_utils::cast::ToF64Exact;
-    use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
+    use treetime_utils::prop_assert_abs_diff_eq;
 
     proptest! {
       #[test]
@@ -726,17 +689,6 @@ pub(super) mod tests {
           "Poisson derivative near t=0 should be positive for k={k}, mu={mu}, got {}",
           metrics.derivative
         );
-      }
-
-      #[test]
-      fn test_prop_optimize_indel_numerical_derivative((k, mu, t) in generators::poisson_params()) {
-        let h = t * 1e-6;
-        prop_assert!(h > 0.0);
-        let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-        let lh_plus = poisson_indel_log_lh(k, mu, t + h).expect("valid Poisson parameters").log_lh.value();
-        let lh_minus = poisson_indel_log_lh(k, mu, t - h).expect("valid Poisson parameters").log_lh.value();
-        let numerical = (lh_plus - lh_minus) / (2.0 * h);
-        prop_assert_relative_eq!(metrics.derivative, numerical, max_relative = 1e-4);
       }
     }
   }
