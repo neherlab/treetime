@@ -3,9 +3,8 @@ use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use eyre::Report;
-use treetime_grid::YAxisPolicy;
 
-pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<Distribution<Y>, Report> {
+pub(crate) fn distribution_negation(dist: &Distribution) -> Result<Distribution, Report> {
   match dist {
     Distribution::Empty => Ok(Distribution::empty()),
     Distribution::Point(p) => Ok(negate_point(p)),
@@ -14,15 +13,15 @@ pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> R
   }
 }
 
-fn negate_point<Y: YAxisPolicy>(point: &DistributionPoint<f64, Y>) -> Distribution<Y> {
+fn negate_point(point: &DistributionPoint<f64>) -> Distribution {
   Distribution::point(-point.t(), point.amplitude())
 }
 
-fn negate_range<Y: YAxisPolicy>(range: &DistributionRange<f64, Y>) -> Distribution<Y> {
+fn negate_range(range: &DistributionRange<f64>) -> Distribution {
   Distribution::range((-range.end(), -range.start()), range.amplitude())
 }
 
-fn negate_function<Y: YAxisPolicy>(func: &DistributionFunction<f64, Y>) -> Result<Distribution<Y>, Report> {
+fn negate_function(func: &DistributionFunction<f64>) -> Result<Distribution, Report> {
   let mut result = func.clone();
   result.negate_arg_inplace()?;
   Ok(Distribution::Function(result))

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::sync::Arc;
-use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
+use treetime_distribution::{BoundaryBehavior, Distribution};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
@@ -102,7 +102,7 @@ pub(crate) struct ReferenceLevel {
 
 #[derive(Clone)]
 pub(crate) enum BranchTime {
-  Distribution(Arc<Distribution<NegLog>>),
+  Distribution(Arc<Distribution>),
   Analytic(AnalyticBranch),
 }
 

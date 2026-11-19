@@ -10,17 +10,16 @@ use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_sup
 use eyre::Report;
 use ndarray::{Array1, Zip};
 use std::cmp::Ordering;
-use treetime_grid::YAxisPolicy;
 use treetime_grid::{
   BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, HardCell, MaxGridPoints, Side, coordinates_coincide,
 };
 use treetime_utils::{make_error, make_internal_error};
 
-pub fn distribution_division<Y: YAxisPolicy>(
-  dividend: &Distribution<Y>,
-  divisor: &Distribution<Y>,
+pub fn distribution_division(
+  dividend: &Distribution,
+  divisor: &Distribution,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   match (dividend, divisor) {
     (Distribution::Empty, _) => {
       let dividend_domain = distribution_hard_domain(dividend);
@@ -32,16 +31,16 @@ pub fn distribution_division<Y: YAxisPolicy>(
       Distribution::Point(_) | Distribution::Range(_) | Distribution::Function(_),
       Distribution::Point(_) | Distribution::Range(_),
     ) => make_error!("Cannot divide {dividend} by {divisor}: operation not well-defined"),
-    (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function::<Y>(a, b),
-    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function::<Y>(a, b, max_points),
-    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function::<Y>(a, b, max_points),
+    (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function(a, b),
+    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function(a, b, max_points),
+    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function(a, b, max_points),
   }
 }
 
-fn divide_point_by_function<Y: YAxisPolicy>(
-  point: &DistributionPoint<f64, Y>,
-  divisor: &DistributionFunction<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
+fn divide_point_by_function(
+  point: &DistributionPoint<f64>,
+  divisor: &DistributionFunction<f64>,
+) -> Result<Distribution, Report> {
   let t = point.t();
   let tail = if t < divisor.x_min() {
     Some(divisor.left_extrap())
@@ -61,8 +60,8 @@ fn divide_point_by_function<Y: YAxisPolicy>(
   }
 
   let divisor_value = divisor.interp(t)?;
-  let result_value = Y::divide(point.amplitude(), Y::safe_divisor(divisor_value));
-  if !Y::is_defined(result_value) {
+  let result_value = point.amplitude() - divisor_value;
+  if !result_value.is_finite() {
     return guarded_empty_result(
       "division",
       Some(point_hard_domain(point)),
@@ -73,11 +72,11 @@ fn divide_point_by_function<Y: YAxisPolicy>(
   Ok(Distribution::point(t, result_value))
 }
 
-fn divide_range_by_function<Y: YAxisPolicy>(
-  range: &DistributionRange<f64, Y>,
-  divisor: &DistributionFunction<f64, Y>,
+fn divide_range_by_function(
+  range: &DistributionRange<f64>,
+  divisor: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   let range_domain = range_hard_domain(range);
   let divisor_domain = function_hard_domain(divisor);
   match multiplication_support_intersection(&[range_domain, divisor_domain]) {
@@ -86,16 +85,11 @@ fn divide_range_by_function<Y: YAxisPolicy>(
       let divisor_domain = Some(divisor_domain);
       guarded_empty_result("division", dividend_domain, divisor_domain)
     },
-    SupportIntersection::Point(t) => Ok(Distribution::point(
-      t,
-      Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)?)),
-    )),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, range.amplitude() - divisor.interp(t)?)),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, divisor.dx(), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let values = divisor
-        .interp_many(&grid)?
-        .mapv(|value| Y::divide(range.amplitude(), Y::safe_divisor(value)));
+      let values = divisor.interp_many(&grid)?.mapv(|value| range.amplitude() - value);
       let function = DistributionFunction::from_range_values(bounds, values)?;
       let function = apply_division_tail(function, Side::Left, range_domain, divisor_domain)?;
       let function = apply_division_tail(function, Side::Right, range_domain, divisor_domain)?;
@@ -104,11 +98,11 @@ fn divide_range_by_function<Y: YAxisPolicy>(
   }
 }
 
-fn divide_function_by_function<Y: YAxisPolicy>(
-  dividend: &DistributionFunction<f64, Y>,
-  divisor: &DistributionFunction<f64, Y>,
+fn divide_function_by_function(
+  dividend: &DistributionFunction<f64>,
+  divisor: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   let dividend_domain = function_hard_domain(dividend);
   let divisor_domain = function_hard_domain(divisor);
   match multiplication_support_intersection(&[dividend_domain, divisor_domain]) {
@@ -117,10 +111,7 @@ fn divide_function_by_function<Y: YAxisPolicy>(
       let divisor_domain = Some(divisor_domain);
       guarded_empty_result("division", dividend_domain, divisor_domain)
     },
-    SupportIntersection::Point(t) => Ok(Distribution::point(
-      t,
-      Y::divide(dividend.interp(t)?, Y::safe_divisor(divisor.interp(t)?)),
-    )),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, dividend.interp(t)? - divisor.interp(t)?)),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
@@ -128,18 +119,18 @@ fn divide_function_by_function<Y: YAxisPolicy>(
       let divisor_values = divisor.interp_many_stored(&grid)?;
       let mut values = Zip::from(&dividend_values)
         .and(&divisor_values)
-        .map_collect(|&dividend, &divisor| Y::divide(dividend, Y::safe_divisor(divisor)));
+        .map_collect(|&dividend, &divisor| dividend - divisor);
       let last = values.len() - 1;
-      let left_end = shared_hard_end::<Y>(dividend, divisor, Side::Left, bounds.0)?;
-      let right_end = shared_hard_end::<Y>(dividend, divisor, Side::Right, bounds.1)?;
+      let left_end = shared_hard_end(dividend, divisor, Side::Left, bounds.0)?;
+      let right_end = shared_hard_end(dividend, divisor, Side::Right, bounds.1)?;
       if let Some(end) = left_end {
-        values[0] = end.value::<Y>(values[1]);
+        values[0] = end.value(values[1]);
       }
       if let Some(end) = right_end {
-        values[last] = end.value::<Y>(values[last - 1]);
+        values[last] = end.value(values[last - 1]);
       }
       let function = DistributionFunction::from_range_values(bounds, values)?
-        .with_amplitude(Y::divide(dividend.amplitude(), divisor.amplitude()));
+        .with_amplitude(dividend.amplitude() - divisor.amplitude());
       let function = apply_division_tail(function, Side::Left, dividend_domain, divisor_domain)?;
       let function = apply_division_tail(function, Side::Right, dividend_domain, divisor_domain)?;
       let function = match left_end.and_then(SharedHardEnd::tail) {
@@ -155,13 +146,13 @@ fn divide_function_by_function<Y: YAxisPolicy>(
   }
 }
 
-fn shared_hard_end<Y: YAxisPolicy>(
-  dividend: &DistributionFunction<f64, Y>,
-  divisor: &DistributionFunction<f64, Y>,
+fn shared_hard_end(
+  dividend: &DistributionFunction<f64>,
+  divisor: &DistributionFunction<f64>,
   side: Side,
   t: f64,
 ) -> Result<Option<SharedHardEnd>, Report> {
-  if Y::to_neg_log(divisor.interp_stored(t)?).is_finite() {
+  if divisor.interp_stored(t)?.is_finite() {
     return Ok(None);
   }
   let (Some(dividend_law), Some(divisor_law)) = (end_approach(dividend, side, t)?, end_approach(divisor, side, t)?)
@@ -171,20 +162,14 @@ fn shared_hard_end<Y: YAxisPolicy>(
   let exponent = dividend_law.exponent - divisor_law.exponent;
   let end = match exponent.total_cmp(&0.0) {
     Ordering::Greater => SharedHardEnd::ZeroDensity(HardApproachLaw { t_hard: t, b: exponent }),
-    Ordering::Equal => SharedHardEnd::Finite(Y::from_neg_log(
-      dividend_law.neg_log_offset - divisor_law.neg_log_offset,
-    )),
+    Ordering::Equal => SharedHardEnd::Finite(dividend_law.neg_log_offset - divisor_law.neg_log_offset),
     Ordering::Less => SharedHardEnd::Flat,
   };
   Ok(Some(end))
 }
 
-fn end_approach<Y: YAxisPolicy>(
-  f: &DistributionFunction<f64, Y>,
-  side: Side,
-  t: f64,
-) -> Result<Option<EndApproach>, Report> {
-  let neg_log = Y::to_neg_log(f.interp_stored(t)?);
+fn end_approach(f: &DistributionFunction<f64>, side: Side, t: f64) -> Result<Option<EndApproach>, Report> {
+  let neg_log = f.interp_stored(t)?;
   if neg_log.is_finite() {
     return Ok(Some(EndApproach {
       exponent: 0.0,
@@ -224,9 +209,9 @@ enum SharedHardEnd {
 }
 
 impl SharedHardEnd {
-  fn value<Y: YAxisPolicy>(self, inner: f64) -> f64 {
+  fn value(self, inner: f64) -> f64 {
     match self {
-      SharedHardEnd::ZeroDensity(_) => Y::probability_zero(),
+      SharedHardEnd::ZeroDensity(_) => f64::INFINITY,
       SharedHardEnd::Finite(value) => value,
       SharedHardEnd::Flat => inner,
     }
@@ -240,12 +225,12 @@ impl SharedHardEnd {
   }
 }
 
-fn apply_division_tail<Y: YAxisPolicy>(
-  function: DistributionFunction<f64, Y>,
+fn apply_division_tail(
+  function: DistributionFunction<f64>,
   side: Side,
   dividend: HardDomain,
   divisor: HardDomain,
-) -> Result<DistributionFunction<f64, Y>, Report> {
+) -> Result<DistributionFunction<f64>, Report> {
   let tail = match division_side_tail(side, dividend, divisor)? {
     DivisionSideTail::Refit => return function.fit_soft_tail(side, DEFAULT_TAIL_FIT_POINTS),
     DivisionSideTail::Fixed(tail) => tail,

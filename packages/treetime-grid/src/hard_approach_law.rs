@@ -1,4 +1,4 @@
-use crate::{GridEdge, GridFn, YAxisPolicy};
+use crate::{GridEdge, GridFn};
 use eyre::Report;
 use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
@@ -14,7 +14,7 @@ impl HardApproachLaw {
     Self { t_hard, b: 0.0 }
   }
 
-  pub fn fit<Y: YAxisPolicy>(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
+  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
     let points: Vec<(f64, f64)> = (0..n_fit)
@@ -22,7 +22,7 @@ impl HardApproachLaw {
         Side::Left => i,
         Side::Right => n - 1 - i,
       })
-      .map(|idx| (grid_fn.grid().x_at(idx), Y::to_neg_log(grid_fn.y()[idx])))
+      .map(|idx| (grid_fn.grid().x_at(idx), grid_fn.y()[idx]))
       .collect();
     Self::from_points(t_hard, side, &points)
   }

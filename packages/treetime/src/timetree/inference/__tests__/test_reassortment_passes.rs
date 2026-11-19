@@ -25,7 +25,7 @@ mod tests {
   use smallvec::smallvec;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
+  use treetime_distribution::{Distribution, MassProfile, TailMass};
   use treetime_graph::key_map::{EdgeMap, NodeMap};
   use treetime_graph::merge_by_name::{MergedGraph, NamedTree, merge_trees_by_name};
   use treetime_grid::MaxGridPoints;
@@ -283,7 +283,7 @@ mod tests {
     merge_trees_by_name(&named)
   }
 
-  fn branch_distribution(gtr: &GTR, k: usize) -> Result<Arc<Distribution<NegLog>>, Report> {
+  fn branch_distribution(gtr: &GTR, k: usize) -> Result<Arc<Distribution>, Report> {
     let n_states = gtr.v().nrows();
     let mut coefficients = Array2::<f64>::zeros((SITES, n_states));
     for site in 0..SITES {
@@ -384,7 +384,7 @@ mod tests {
       .collect()
   }
 
-  fn posterior_cdf(distribution: &Distribution<NegLog>, grid: &[f64]) -> Result<Vec<f64>, Report> {
+  fn posterior_cdf(distribution: &Distribution, grid: &[f64]) -> Result<Vec<f64>, Report> {
     let Distribution::Function(f) = distribution else {
       return Err(make_report!("an internal node posterior must be a function"));
     };

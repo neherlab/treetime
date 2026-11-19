@@ -1,6 +1,8 @@
 use crate::DistributionFunction;
+use crate::distribution_core::function::costs_coincide;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::mass_domain::log_mass;
 use crate::distribution_ops::negate::distribution_negation;
 use eyre::Report;
 use ndarray::Array1;
@@ -9,21 +11,20 @@ use ndarray_stats::errors::MinMaxError;
 use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side, coordinates_coincide};
-use treetime_grid::{NegLog, Plain, YAxisPolicy};
 use treetime_utils::make_error;
 
 #[must_use]
 #[derive(Clone, Debug, Default, PartialEq, Display)]
 #[strum(serialize_all = "kebab-case")]
-pub enum Distribution<Y: YAxisPolicy = Plain> {
+pub enum Distribution {
   #[default]
   Empty,
-  Point(DistributionPoint<f64, Y>),
-  Range(DistributionRange<f64, Y>),
-  Function(DistributionFunction<f64, Y>),
+  Point(DistributionPoint<f64>),
+  Range(DistributionRange<f64>),
+  Function(DistributionFunction<f64>),
 }
 
-impl<Y: YAxisPolicy> Distribution<Y> {
+impl Distribution {
   pub fn empty() -> Self {
     Self::Empty
   }
@@ -51,7 +52,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       return Ok(Self::point(x[0], y[0]));
     }
 
-    if x.len() == 2 && Y::same_value(y[0], y[1]) {
+    if x.len() == 2 && costs_coincide(y[0], y[1]) {
       return Ok(Self::range((x[0], x[1]), y[1]));
     }
 
@@ -125,17 +126,17 @@ impl<Y: YAxisPolicy> Distribution<Y> {
         if coordinates_coincide(t, p.t(), t.abs().max(p.t().abs())) {
           Ok(p.amplitude())
         } else {
-          Ok(Y::probability_zero())
+          Ok(f64::INFINITY)
         }
       },
       Self::Range(r) => {
         if t >= r.start() && t <= r.end() {
           Ok(r.amplitude())
         } else {
-          Ok(Y::probability_zero())
+          Ok(f64::INFINITY)
         }
       },
-      Self::Empty => Ok(Y::probability_zero()),
+      Self::Empty => Ok(f64::INFINITY),
     }
   }
 
@@ -175,16 +176,14 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   pub fn repeak(&self) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(f.repeak()?.map_or(Self::Empty, Self::Function)),
-      Self::Point(p) => Ok(defined_amplitude::<Y>(p.amplitude(), "point")?.map_or(Self::Empty, |_| self.clone())),
-      Self::Range(r) => Ok(defined_amplitude::<Y>(r.amplitude(), "range")?.map_or(Self::Empty, |_| self.clone())),
+      Self::Point(p) => Ok(defined_amplitude(p.amplitude(), "point")?.map_or(Self::Empty, |_| self.clone())),
+      Self::Range(r) => Ok(defined_amplitude(r.amplitude(), "range")?.map_or(Self::Empty, |_| self.clone())),
       Self::Empty => Ok(Self::Empty),
     }
   }
-}
 
-impl Distribution<NegLog> {
   pub fn log_mass(&self) -> Result<f64, Report> {
-    crate::distribution_ops::mass_domain::log_mass(self)
+    log_mass(self)
   }
 
   pub fn normalize(&self) -> Result<Self, Report> {
@@ -210,7 +209,7 @@ fn hard_limit(behavior: BoundaryBehavior, edge: f64, unbounded: f64) -> f64 {
   }
 }
 
-fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Result<Distribution<NegLog>, Report> {
+fn neglog_function_normalize(function: &DistributionFunction<f64>) -> Result<Distribution, Report> {
   let minimum = match function.y().min() {
     Ok(&minimum) => minimum,
     Err(MinMaxError::EmptyInput) => return Ok(Distribution::Empty),
@@ -228,11 +227,11 @@ fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Re
   }))
 }
 
-fn defined_amplitude<Y: YAxisPolicy>(amplitude: f64, context: &str) -> Result<Option<f64>, Report> {
+fn defined_amplitude(amplitude: f64, context: &str) -> Result<Option<f64>, Report> {
   if amplitude.is_nan() {
     return make_error!("Cannot re-peak a distribution {context}: its amplitude is NaN");
   }
-  Ok(Y::is_defined(amplitude).then_some(amplitude))
+  Ok(amplitude.is_finite().then_some(amplitude))
 }
 
 fn neglog_peak(minimum: f64, context: &str) -> Result<Option<f64>, Report> {

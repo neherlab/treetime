@@ -5,7 +5,7 @@ use crate::timetree::inference::grid_request::GridOrigin;
 use crate::timetree::max_posterior_region::{MaxPosteriorRegion, max_posterior_region};
 use eyre::{Report, WrapErr};
 use std::sync::Arc;
-use treetime_distribution::{Distribution, NegLog};
+use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
@@ -151,18 +151,18 @@ impl NodePosterior {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PosteriorView<'a> {
-  pub distribution: Option<&'a Arc<Distribution<NegLog>>>,
+  pub distribution: Option<&'a Arc<Distribution>>,
   pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,
   pub subtree_support: Option<(f64, f64)>,
 }
 
-pub type TimeDistribution = Option<Arc<Distribution<NegLog>>>;
+pub type TimeDistribution = Option<Arc<Distribution>>;
 
 pub(crate) fn likely_time_of_node(
   key: GraphNodeKey,
-  distribution: Option<&Distribution<NegLog>>,
+  distribution: Option<&Distribution>,
 ) -> Result<Option<f64>, Report> {
   distribution.map_or(Ok(None), |distribution| {
     distribution

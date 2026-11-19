@@ -9,7 +9,7 @@ use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, NegLog};
+use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::{GraphNodeKey, Node};
@@ -546,7 +546,7 @@ pub(crate) struct NodeSurvival {
 }
 
 impl NodeSurvival {
-  pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
+  pub(crate) fn of_posterior(distribution: &Distribution) -> Result<Option<Self>, Report> {
     let survival = posterior_survival(distribution, &survival_levels())?;
     Ok(survival.map(Self::from))
   }

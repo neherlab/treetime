@@ -9,7 +9,6 @@ mod tests {
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
   use treetime_ops::FftPlans;
   use treetime_utils::cast::ToF64Exact;
@@ -382,7 +381,7 @@ mod tests {
         }
       }
 
-      pub(super) fn function(&self) -> Result<DistributionFunction<f64, NegLog>, Report> {
+      pub(super) fn function(&self) -> Result<DistributionFunction<f64>, Report> {
         let x_max = self.h * CELLS.to_f64_exact();
         let y = Array1::linspace(0.0, x_max, CELLS + 1).mapv(|x| self.cost(x));
         DistributionFunction::from_range_values((0.0, x_max), y)?
@@ -424,7 +423,7 @@ mod tests {
       }
     }
 
-    pub(super) fn line(poisson: &Poisson, left: BoundaryBehavior) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    pub(super) fn line(poisson: &Poisson, left: BoundaryBehavior) -> Result<DistributionFunction<f64>, Report> {
       let f = poisson.function()?;
       let line = f.t().mapv(|t| 2.0 + 5.0 * t);
       DistributionFunction::from_range_values((f.x_min(), f.x_max()), line)?

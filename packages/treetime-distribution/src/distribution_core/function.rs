@@ -1,4 +1,3 @@
-use crate::policy::PolicyMarker;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -6,23 +5,24 @@ use ndarray_stats::errors::MinMaxError;
 use num::Float;
 use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, EdgeCell, GridFn, HardCell, InterpElem, MaxGridPoints, Side, SoftTailLaw};
-use treetime_grid::{Plain, YAxisPolicy};
+use treetime_utils::float_compare::within_epsilons_of_scale;
 use treetime_utils::make_error;
 
+const MAX_COST_ULPS: f64 = 10.0;
+
 #[derive(Clone, Debug)]
-pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
+pub struct DistributionFunction<T: InterpElem> {
   grid_fn: GridFn<T>,
   ampl: T,
   left_extrap: BoundaryBehavior,
   right_extrap: BoundaryBehavior,
-  _policy: PolicyMarker<Y>,
 }
 
-impl<T: InterpElem, Y: YAxisPolicy> PartialEq for DistributionFunction<T, Y> {
+impl<T: InterpElem> PartialEq for DistributionFunction<T> {
   fn eq(&self, other: &Self) -> bool {
     let with_level = |f: &Self| {
       let ampl: f64 = f.ampl.into();
-      f.grid_fn.map_y(|v| Y::multiply(ampl, v.into()).into())
+      f.grid_fn.map_y(|v| (ampl + Into::<f64>::into(v)).into())
     };
     self.left_extrap == other.left_extrap
       && self.right_extrap == other.right_extrap
@@ -30,7 +30,7 @@ impl<T: InterpElem, Y: YAxisPolicy> PartialEq for DistributionFunction<T, Y> {
   }
 }
 
-impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
+impl<T: InterpElem> DistributionFunction<T> {
   pub(crate) fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,
@@ -65,10 +65,9 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   pub fn from_grid_fn(grid_fn: GridFn<T>) -> Self {
     Self {
       grid_fn,
-      ampl: unit_amplitude::<T, Y>(),
+      ampl: T::zero(),
       left_extrap: BoundaryBehavior::default(),
       right_extrap: BoundaryBehavior::default(),
-      _policy: PolicyMarker::new(),
     }
   }
 
@@ -83,7 +82,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
       ampl,
       left_extrap,
       right_extrap,
-      _policy: PolicyMarker::new(),
     }
   }
 
@@ -139,14 +137,16 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     let ampl: f64 = self.ampl.into();
-    self.y().mapv(|v| Y::multiply(ampl, v.into()).into())
+    self.y().mapv(|v| (ampl + Into::<f64>::into(v)).into())
   }
 
   pub(crate) fn interp(&self, x: T) -> Result<T, Report>
   where
     T: Float,
   {
-    Ok(Y::multiply(self.ampl.into(), self.interp_stored(x)?.into()).into())
+    let ampl: f64 = self.ampl.into();
+    let stored: f64 = self.interp_stored(x)?.into();
+    Ok((ampl + stored).into())
   }
 
   pub(crate) fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
@@ -163,10 +163,9 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     let val = self
       .grid_fn
-      .interp_with_extrap::<Y>(x, self.left_extrap, self.right_extrap)?;
-    let prob_zero: T = Y::probability_zero().into();
-    if prob_zero != T::zero() && val == T::zero() && self.is_beyond_hard_boundary(x) {
-      return Ok(prob_zero);
+      .interp_with_extrap(x, self.left_extrap, self.right_extrap)?;
+    if val == T::zero() && self.is_beyond_hard_boundary(x) {
+      return Ok(T::infinity());
     }
     Ok(val)
   }
@@ -225,14 +224,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float,
   {
-    self.grid_fn.hard_cell::<Y>(cell, self.left_extrap, self.right_extrap)
+    self.grid_fn.hard_cell(cell, self.left_extrap, self.right_extrap)
   }
 
   pub fn edge_cell(&self, cell: usize) -> Result<Option<EdgeCell>, Report>
   where
     T: Float,
   {
-    self.grid_fn.edge_cell::<Y>(cell, self.left_extrap, self.right_extrap)
+    self.grid_fn.edge_cell(cell, self.left_extrap, self.right_extrap)
   }
 
   pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {
@@ -251,7 +250,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     let grid_fn = self
       .grid_fn
-      .resample_with_extrap::<Y>(grid, self.left_extrap, self.right_extrap)?;
+      .resample_with_extrap(grid, self.left_extrap, self.right_extrap)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
       self.ampl,
@@ -295,7 +294,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     let grid_fn = self
       .grid_fn
-      .resample_range_dx_clamped::<Y>(x_range, dx, anchor, max_points)?;
+      .resample_range_dx_clamped(x_range, dx, anchor, max_points)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
       self.ampl,
@@ -309,7 +308,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     let y = self.y();
-    let anchor = resample_anchor::<Y>(self.left_extrap, self.right_extrap, y[0].into(), y[y.len() - 1].into());
+    let anchor = resample_anchor(self.left_extrap, self.right_extrap, y[0].into(), y[y.len() - 1].into());
     self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, anchor, max_points)
   }
 
@@ -336,13 +335,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float,
   {
-    let y_values = self.y();
-    let extremum = if Y::likely_is_maximum() {
-      y_values.argmax()
-    } else {
-      y_values.argmin()
-    };
-    match extremum {
+    match self.y().argmin() {
       Ok(idx) => Ok(Some(self.t()[idx])),
       Err(MinMaxError::EmptyInput) => Ok(None),
       Err(MinMaxError::UndefinedOrder) => {
@@ -365,7 +358,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   }
 }
 
-impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
+impl DistributionFunction<f64> {
   pub fn scale_time(&self, factor: f64) -> Result<Self, Report> {
     Ok(Self::from_grid_fn_with_extrap(
       self.grid_fn.scale_x(factor)?,
@@ -385,13 +378,7 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
   }
 
   pub fn repeak(&self) -> Result<Option<Self>, Report> {
-    let stored = self.y();
-    let extremum = if Y::likely_is_maximum() {
-      stored.max()
-    } else {
-      stored.min()
-    };
-    let peak = match extremum {
+    let peak = match self.y().min() {
       Ok(&peak) => peak,
       Err(MinMaxError::EmptyInput) => return Ok(None),
       Err(MinMaxError::UndefinedOrder) => {
@@ -402,20 +389,20 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
         );
       },
     };
-    if !Y::is_defined(peak) || !peak.is_finite() {
+    if !peak.is_finite() {
       return Ok(None);
     }
-    let grid_fn = self.grid_fn.map_y(|v| Y::divide(v, peak));
+    let grid_fn = self.grid_fn.map_y(|v| v - peak);
     Ok(Some(Self::from_grid_fn_with_extrap(
       grid_fn,
-      Y::multiply(self.ampl, peak),
+      self.ampl + peak,
       self.left_extrap,
       self.right_extrap,
     )))
   }
 
   pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
-    let law = SoftTailLaw::fit::<Y>(&self.grid_fn, side, n_fit)?;
+    let law = SoftTailLaw::fit(&self.grid_fn, side, n_fit)?;
     match side {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
@@ -423,22 +410,18 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
   }
 }
 
-fn resample_anchor<Y: YAxisPolicy>(left: BoundaryBehavior, right: BoundaryBehavior, first: f64, last: f64) -> Side {
-  let right_end_denser = if Y::likely_is_maximum() {
-    last > first
-  } else {
-    last < first
-  };
+fn resample_anchor(left: BoundaryBehavior, right: BoundaryBehavior, first: f64, last: f64) -> Side {
+  let right_end_denser = last < first;
   match (left.is_soft(), right.is_soft()) {
     (false, true) => Side::Left,
     (true, false) => Side::Right,
-    _ if right_end_denser && !Y::same_value(first, last) => Side::Right,
+    _ if right_end_denser && !costs_coincide(first, last) => Side::Right,
     _ => Side::Left,
   }
 }
 
-fn unit_amplitude<T: InterpElem, Y: YAxisPolicy>() -> T {
-  Y::from_plain(1.0).into()
+pub(crate) fn costs_coincide(a: f64, b: f64) -> bool {
+  within_epsilons_of_scale(a, b, a.abs().max(b.abs()).max(1.0), MAX_COST_ULPS)
 }
 
 fn shift_tail_law(behavior: BoundaryBehavior, shift: f64) -> BoundaryBehavior {

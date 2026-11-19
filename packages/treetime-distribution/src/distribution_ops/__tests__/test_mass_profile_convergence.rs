@@ -9,7 +9,6 @@ pub(super) mod tests {
   use statrs::distribution::{ContinuousCDF, Gamma, Normal};
   use statrs::function::gamma::gamma;
   use std::f64::consts::PI;
-  use treetime_grid::NegLog;
   use treetime_grid::{DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
   use treetime_utils::pretty_assert_relative_eq;
 
@@ -98,23 +97,15 @@ pub(super) mod tests {
       range: (f64, f64),
       cells: usize,
       y: impl Fn(f64) -> f64,
-    ) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    ) -> Result<DistributionFunction<f64>, Report> {
       let t = Array1::linspace(range.0, range.1, cells + 1);
       let f = DistributionFunction::from_range_values(range, t.mapv(y))?;
       let left = if range.0 == 0.0 {
         BoundaryBehavior::Hard
       } else {
-        BoundaryBehavior::Linear(SoftTailLaw::fit::<NegLog>(
-          f.grid_fn(),
-          Side::Left,
-          DEFAULT_TAIL_FIT_POINTS,
-        )?)
+        BoundaryBehavior::Linear(SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?)
       };
-      let right = BoundaryBehavior::Linear(SoftTailLaw::fit::<NegLog>(
-        f.grid_fn(),
-        Side::Right,
-        DEFAULT_TAIL_FIT_POINTS,
-      )?);
+      let right = BoundaryBehavior::Linear(SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?);
       f.with_left_extrap(left)?.with_right_extrap(right)
     }
 

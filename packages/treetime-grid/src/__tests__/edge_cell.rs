@@ -292,8 +292,8 @@ mod tests {
     let grid_fn = GridFn::from_range_values((0.0, 4.0 * h), y.clone())?;
     let left = BoundaryBehavior::HardEdgeCell(poisson.law());
 
-    let in_edge_cell = grid_fn.interp_with_extrap::<NegLog>(0.3 * h, left, BoundaryBehavior::Hard)?;
-    let in_second_cell = grid_fn.interp_with_extrap::<NegLog>(1.5 * h, left, BoundaryBehavior::Hard)?;
+    let in_edge_cell = grid_fn.interp_with_extrap(0.3 * h, left, BoundaryBehavior::Hard)?;
+    let in_second_cell = grid_fn.interp_with_extrap(1.5 * h, left, BoundaryBehavior::Hard)?;
     pretty_assert_relative_eq!(poisson.cost(0.3 * h), in_edge_cell, max_relative = 1e-12);
     pretty_assert_relative_eq!(f64::midpoint(y[1], y[2]), in_second_cell, max_relative = 1e-12);
     Ok(())
@@ -308,8 +308,7 @@ mod tests {
     let grid_fn = GridFn::from_range_values((-4.0 * h, 0.0), y)?;
     let law = poisson.law().negate_arg();
 
-    let actual =
-      grid_fn.interp_with_extrap::<NegLog>(-0.3 * h, BoundaryBehavior::Hard, BoundaryBehavior::HardEdgeCell(law))?;
+    let actual = grid_fn.interp_with_extrap(-0.3 * h, BoundaryBehavior::Hard, BoundaryBehavior::HardEdgeCell(law))?;
     pretty_assert_relative_eq!(poisson.cost(0.3 * h), actual, max_relative = 1e-12);
     Ok(())
   }
@@ -321,7 +320,7 @@ mod tests {
     let grid_fn = GridFn::from_range_values((0.0, h), array![poisson.cost(0.0), poisson.cost(h)])?;
     let left = BoundaryBehavior::HardEdgeCell(poisson.law());
 
-    let actual = grid_fn.interp_with_extrap::<NegLog>(-0.5 * poisson.offset, left, BoundaryBehavior::Hard)?;
+    let actual = grid_fn.interp_with_extrap(-0.5 * poisson.offset, left, BoundaryBehavior::Hard)?;
     pretty_assert_ulps_eq!(0.0, actual, max_ulps = 0);
     assert!(!left.is_soft());
     Ok(())
@@ -335,8 +334,8 @@ mod tests {
     let grid_fn = GridFn::from_range_values((h, 2.0 * h), y.clone())?;
     let left = BoundaryBehavior::HardEdgeCell(poisson.law());
 
-    assert_eq!(None, grid_fn.edge_cell::<NegLog>(0, left, BoundaryBehavior::Hard)?);
-    let actual = grid_fn.interp_with_extrap::<NegLog>(1.5 * h, left, BoundaryBehavior::Hard)?;
+    assert_eq!(None, grid_fn.edge_cell(0, left, BoundaryBehavior::Hard)?);
+    let actual = grid_fn.interp_with_extrap(1.5 * h, left, BoundaryBehavior::Hard)?;
     pretty_assert_relative_eq!(f64::midpoint(y[0], y[1]), actual, max_relative = 1e-15);
     Ok(())
   }

@@ -6,7 +6,6 @@ mod tests {
   use itertools::Itertools;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::NegLog;
   use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_relative_eq;
@@ -399,7 +398,7 @@ mod tests {
     let cells: Vec<f64> = (0..y.len() - 1)
       .map(|c| {
         let width = x[c + 1] - x[c];
-        match f.grid_fn().hard_cell::<NegLog>(c, HARD, HARD)? {
+        match f.grid_fn().hard_cell(c, HARD, HARD)? {
           Some(hard) => Ok((y_peak - hard.anchor.y).exp() * width / (hard.law.b + 1.0)),
           None => Ok(helpers::linear_density_mass(width, (y[c] - y_peak, y[c + 1] - y_peak), (0.0, width))),
         }
@@ -511,7 +510,7 @@ mod tests {
       y: Array1<f64>,
       left: BoundaryBehavior,
       right: BoundaryBehavior,
-    ) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    ) -> Result<DistributionFunction<f64>, Report> {
       DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)
@@ -554,7 +553,7 @@ mod tests {
         .sum()
     }
 
-    pub(super) fn piecewise_model() -> Result<DistributionFunction<f64, NegLog>, Report> {
+    pub(super) fn piecewise_model() -> Result<DistributionFunction<f64>, Report> {
       function(
         (0.0, 2.0),
         array![0.5, 0.0, 1.5],

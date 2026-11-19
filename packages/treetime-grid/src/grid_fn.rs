@@ -7,7 +7,6 @@ use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::{HardApproachLaw, Side};
 use crate::hard_cell::HardCell;
 use crate::max_grid_points::MaxGridPoints;
-use crate::y_axis_policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, s};
 use num::Float;
@@ -142,14 +141,14 @@ impl<T: InterpElem> GridFn<T> {
       .fold(self.y[0], |a, b| if a < b { a } else { b })
   }
 
-  pub fn interp<Y: YAxisPolicy>(&self, xi: T) -> Result<T, Report>
+  pub fn interp(&self, xi: T) -> Result<T, Report>
   where
     T: Float,
   {
-    self.interp_with_extrap::<Y>(xi, BoundaryBehavior::Error, BoundaryBehavior::Error)
+    self.interp_with_extrap(xi, BoundaryBehavior::Error, BoundaryBehavior::Error)
   }
 
-  pub fn interp_with_extrap<Y: YAxisPolicy>(
+  pub fn interp_with_extrap(
     &self,
     xi: T,
     left_extrap: BoundaryBehavior,
@@ -165,7 +164,7 @@ impl<T: InterpElem> GridFn<T> {
       if self.grid.coincides(xi.into(), x_min.into()) {
         return Ok(self.y[0]);
       }
-      return self.extrapolate::<Y>(left_extrap, xi, Side::Left);
+      return self.extrapolate(left_extrap, xi, Side::Left);
     }
 
     if xi > x_max {
@@ -173,14 +172,14 @@ impl<T: InterpElem> GridFn<T> {
       if self.grid.coincides(xi.into(), x_max.into()) {
         return Ok(self.y[n - 1]);
       }
-      return self.extrapolate::<Y>(right_extrap, xi, Side::Right);
+      return self.extrapolate(right_extrap, xi, Side::Right);
     }
 
     let idx = self.grid.find_interval_index(xi);
-    self.interpolate_at::<Y>(xi, idx, left_extrap, right_extrap)
+    self.interpolate_at(xi, idx, left_extrap, right_extrap)
   }
 
-  pub fn hard_cell<Y: YAxisPolicy>(
+  pub fn hard_cell(
     &self,
     cell: usize,
     left: BoundaryBehavior,
@@ -190,7 +189,7 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
   {
     let n = self.grid.n_points();
-    let Some(HardCellEnds { boundary, anchor, side }) = self.hard_cell_ends::<Y>(cell)? else {
+    let Some(HardCellEnds { boundary, anchor, side }) = self.hard_cell_ends(cell)? else {
       return Ok(None);
     };
     let stored = match side {
@@ -200,13 +199,13 @@ impl<T: InterpElem> GridFn<T> {
     let t_boundary: f64 = self.grid.x_at(boundary).into();
     let law = match stored {
       Some(BoundaryBehavior::HardApproach(law)) if self.grid.coincides(law.t_hard, t_boundary) => Ok(law),
-      _ => self.fit_hard_cell_law::<Y>(t_boundary, side, anchor),
+      _ => self.fit_hard_cell_law(t_boundary, side, anchor),
     }?;
-    let anchor = self.neg_log_point::<Y>(anchor);
+    let anchor = self.neg_log_point(anchor);
     Ok(Some(HardCell { law, anchor }))
   }
 
-  pub fn edge_cell<Y: YAxisPolicy>(
+  pub fn edge_cell(
     &self,
     cell: usize,
     left: BoundaryBehavior,
@@ -224,25 +223,25 @@ impl<T: InterpElem> GridFn<T> {
       (_, BoundaryBehavior::HardEdgeCell(law)) if cell + 2 == n => (law, n - 1, n - 2),
       _ => return Ok(None),
     };
-    let (edge, anchor) = (self.neg_log_point::<Y>(edge), self.neg_log_point::<Y>(anchor));
+    let (edge, anchor) = (self.neg_log_point(edge), self.neg_log_point(anchor));
     if !(self.grid.coincides(law.t_edge, edge.t) && edge.y.is_finite() && anchor.y.is_finite()) {
       return Ok(None);
     }
     EdgeCell::new(law, edge, anchor).map(Some)
   }
 
-  pub fn hard_cell_fit_range<Y: YAxisPolicy>(&self, cell: usize) -> Result<Option<RangeInclusive<usize>>, Report>
+  pub fn hard_cell_fit_range(&self, cell: usize) -> Result<Option<RangeInclusive<usize>>, Report>
   where
     T: Float,
   {
     Ok(
       self
-        .hard_cell_ends::<Y>(cell)?
-        .map(|HardCellEnds { anchor, side, .. }| self.fit_range::<Y>(anchor, side)),
+        .hard_cell_ends(cell)?
+        .map(|HardCellEnds { anchor, side, .. }| self.fit_range(anchor, side)),
     )
   }
 
-  fn hard_cell_ends<Y: YAxisPolicy>(&self, cell: usize) -> Result<Option<HardCellEnds>, Report>
+  fn hard_cell_ends(&self, cell: usize) -> Result<Option<HardCellEnds>, Report>
   where
     T: Float,
   {
@@ -250,7 +249,7 @@ impl<T: InterpElem> GridFn<T> {
     if cell + 1 >= n {
       return make_error!("Cell {cell} is outside the grid of {n} points");
     }
-    Ok(match (self.is_hard_end::<Y>(cell), self.is_hard_end::<Y>(cell + 1)) {
+    Ok(match (self.is_hard_end(cell), self.is_hard_end(cell + 1)) {
       (true, false) => Some(HardCellEnds {
         boundary: cell,
         anchor: cell + 1,
@@ -265,12 +264,12 @@ impl<T: InterpElem> GridFn<T> {
     })
   }
 
-  fn fit_range<Y: YAxisPolicy>(&self, anchor: usize, side: Side) -> RangeInclusive<usize>
+  fn fit_range(&self, anchor: usize, side: Side) -> RangeInclusive<usize>
   where
     T: Float,
   {
     let reach = DEFAULT_TAIL_FIT_POINTS - 1;
-    let finite = |i: &usize| self.neg_log_at::<Y>(*i).is_finite();
+    let finite = |i: &usize| self.y[*i].is_finite();
     match side {
       Side::Right => {
         let start = (anchor.saturating_sub(reach)..=anchor)
@@ -290,50 +289,45 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  fn neg_log_edge<Y: YAxisPolicy>(&self, side: Side) -> GridEdge
+  fn neg_log_edge(&self, side: Side) -> GridEdge
   where
     T: Float,
   {
-    self.neg_log_point::<Y>(match side {
+    self.neg_log_point(match side {
       Side::Left => 0,
       Side::Right => self.grid.n_points() - 1,
     })
   }
 
-  fn neg_log_point<Y: YAxisPolicy>(&self, idx: usize) -> GridEdge
+  fn neg_log_point(&self, idx: usize) -> GridEdge
   where
     T: Float,
   {
     GridEdge {
       t: self.grid.x_at(idx).into(),
-      y: self.neg_log_at::<Y>(idx),
+      y: self.y[idx].into(),
     }
   }
 
-  fn is_hard_end<Y: YAxisPolicy>(&self, idx: usize) -> bool {
-    self.neg_log_at::<Y>(idx).is_infinite()
+  fn is_hard_end(&self, idx: usize) -> bool
+  where
+    T: Float,
+  {
+    self.y[idx].is_infinite()
   }
 
-  fn neg_log_at<Y: YAxisPolicy>(&self, idx: usize) -> f64 {
-    Y::to_neg_log(self.y[idx].into())
-  }
-
-  fn extrapolate<Y: YAxisPolicy>(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
+  fn extrapolate(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
   where
     T: Float,
   {
     match behavior {
-      BoundaryBehavior::Linear(law) => {
-        let value = Y::from_neg_log(law.eval(self.neg_log_edge::<Y>(side), xi.into()));
-        Ok(value.into())
-      },
+      BoundaryBehavior::Linear(law) => Ok(law.eval(self.neg_log_edge(side), xi.into()).into()),
       BoundaryBehavior::HardApproach(law) => {
         let xi_f64: f64 = xi.into();
         if (side == Side::Left && xi_f64 < law.t_hard) || (side == Side::Right && xi_f64 > law.t_hard) {
           return Ok(T::zero());
         }
-        let value = Y::from_neg_log(law.eval(self.neg_log_edge::<Y>(side), xi_f64));
-        Ok(value.into())
+        Ok(law.eval(self.neg_log_edge(side), xi_f64).into())
       },
       BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => Ok(T::zero()),
       BoundaryBehavior::Error => {
@@ -348,13 +342,7 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  fn interpolate_at<Y: YAxisPolicy>(
-    &self,
-    q: T,
-    idx: usize,
-    left: BoundaryBehavior,
-    right: BoundaryBehavior,
-  ) -> Result<T, Report>
+  fn interpolate_at(&self, q: T, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> Result<T, Report>
   where
     T: Float,
   {
@@ -374,8 +362,8 @@ impl<T: InterpElem> GridFn<T> {
     if t_f64 >= 1.0 {
       return Ok(y1);
     }
-    if let Some(cell) = self.edge_cell::<Y>(idx, left, right)? {
-      return Ok(<T as From<f64>>::from(Y::from_neg_log(cell.eval(q.into()))));
+    if let Some(cell) = self.edge_cell(idx, left, right)? {
+      return Ok(<T as From<f64>>::from(cell.eval(q.into())));
     }
     if t_f64 <= NODE_ROUNDING {
       return Ok(y0);
@@ -383,23 +371,18 @@ impl<T: InterpElem> GridFn<T> {
     if t_f64 >= 1.0 - NODE_ROUNDING {
       return Ok(y1);
     }
-    match self.hard_cell::<Y>(idx, left, right)? {
-      Some(cell) => Ok(<T as From<f64>>::from(Y::from_neg_log(cell.eval(q.into())))),
-      None if self.is_hard_end::<Y>(idx) || self.is_hard_end::<Y>(idx + 1) => Ok(y0.max(y1)),
+    match self.hard_cell(idx, left, right)? {
+      Some(cell) => Ok(<T as From<f64>>::from(cell.eval(q.into()))),
+      None if self.is_hard_end(idx) || self.is_hard_end(idx + 1) => Ok(y0.max(y1)),
       None => Ok(y0 + t * (y1 - y0)),
     }
   }
 
-  fn fit_hard_cell_law<Y: YAxisPolicy>(
-    &self,
-    t_boundary: f64,
-    side: Side,
-    anchor: usize,
-  ) -> Result<HardApproachLaw, Report>
+  fn fit_hard_cell_law(&self, t_boundary: f64, side: Side, anchor: usize) -> Result<HardApproachLaw, Report>
   where
     T: Float,
   {
-    let range = self.fit_range::<Y>(anchor, side);
+    let range = self.fit_range(anchor, side);
     let indices: Vec<usize> = match side {
       Side::Right => range.rev().collect(),
       Side::Left => range.collect(),
@@ -407,7 +390,7 @@ impl<T: InterpElem> GridFn<T> {
     let points: Vec<(f64, f64)> = indices
       .into_iter()
       .map(|i| {
-        let point = self.neg_log_point::<Y>(i);
+        let point = self.neg_log_point(i);
         (point.t, point.y)
       })
       .collect();
@@ -472,7 +455,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(())
   }
 
-  pub fn resample_with_extrap<Y: YAxisPolicy>(
+  pub fn resample_with_extrap(
     &self,
     grid: &Grid<T>,
     left_extrap: BoundaryBehavior,
@@ -483,12 +466,12 @@ impl<T: InterpElem> GridFn<T> {
   {
     let n_points = grid.n_points();
     let y_new = (0..n_points)
-      .map(|i| self.interp_with_extrap::<Y>(grid.x_at(i), left_extrap, right_extrap))
+      .map(|i| self.interp_with_extrap(grid.x_at(i), left_extrap, right_extrap))
       .collect::<Result<Vec<T>, Report>>()?;
     Self::from_grid_values(*grid, Array1::from_vec(y_new))
   }
 
-  pub fn resample_range_dx_clamped<Y: YAxisPolicy>(
+  pub fn resample_range_dx_clamped(
     &self,
     x_range: (T, T),
     dx: T,
@@ -502,7 +485,7 @@ impl<T: InterpElem> GridFn<T> {
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
     let y_new = (0..grid.n_points())
-      .map(|i| self.interp::<Y>(grid.x_at(i).max(x_min).min(x_max)))
+      .map(|i| self.interp(grid.x_at(i).max(x_min).min(x_max)))
       .collect::<Result<Vec<T>, Report>>()?;
     Self::from_grid_values(grid, Array1::from_vec(y_new))
   }

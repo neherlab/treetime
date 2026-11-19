@@ -16,7 +16,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
   use treetime_ops::FftPlans;
 
   use treetime_graph::graph::Graph;
@@ -180,7 +180,7 @@ mod tests {
       for (name, date) in TIPS {
         constraints
           .by_node
-          .insert(keys[name], Some(Arc::new(Distribution::<NegLog>::point(date, 0.0))));
+          .insert(keys[name], Some(Arc::new(Distribution::point(date, 0.0))));
       }
       let mut branches = unknown_branches(&graph);
       for &(name, k) in counts {

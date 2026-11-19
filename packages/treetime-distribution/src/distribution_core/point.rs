@@ -1,21 +1,14 @@
-use crate::policy::PolicyMarker;
 use std::fmt::Debug;
-use treetime_grid::{Plain, YAxisPolicy};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DistributionPoint<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
+pub struct DistributionPoint<T: Clone + Copy + Debug> {
   t: T,
   ampl: T,
-  _policy: PolicyMarker<Y>,
 }
 
-impl<T: Clone + Copy + Debug, Y: YAxisPolicy> DistributionPoint<T, Y> {
+impl<T: Clone + Copy + Debug> DistributionPoint<T> {
   pub(crate) fn new(t: T, ampl: T) -> Self {
-    DistributionPoint {
-      t,
-      ampl,
-      _policy: PolicyMarker::new(),
-    }
+    DistributionPoint { t, ampl }
   }
 
   pub(crate) fn t(&self) -> T {

@@ -18,7 +18,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeSet;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::key_map::NodeMap;
@@ -78,7 +78,7 @@ mod tests {
   #[case::date_range(Distribution::range((2003.0, 2004.0), 0.0))]
   #[trace]
   fn test_time_passes_flagged_tip_takes_the_parent_message_instead_of_its_date(
-    #[case] flagged_date: Distribution<NegLog>,
+    #[case] flagged_date: Distribution,
   ) -> Result<(), Report> {
     let mut fixture = helpers::Fixture::new()?;
     fixture.set_point_branch("B", BRANCH_MEAN);
@@ -344,7 +344,7 @@ mod tests {
     }
 
     impl CoalescentTip {
-      pub(super) fn new(tip_constraint: Option<Distribution<NegLog>>) -> Result<Self, Report> {
+      pub(super) fn new(tip_constraint: Option<Distribution>) -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"(A:9,B:7)root;".as_slice())?;
         let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
@@ -435,7 +435,7 @@ mod tests {
       }
     }
 
-    fn branch_distribution(mean: f64) -> Result<Distribution<NegLog>, Report> {
+    fn branch_distribution(mean: f64) -> Result<Distribution, Report> {
       let t = Array1::linspace(0.0, 2.0 * mean, BRANCH_GRID_POINTS);
       let y = t.mapv(|t: f64| 0.5 * ((t - mean) / BRANCH_SD).powi(2));
       Distribution::function(t, y)

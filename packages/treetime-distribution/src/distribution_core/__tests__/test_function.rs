@@ -6,11 +6,8 @@ mod tests {
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::NegLog;
   use treetime_grid::{EdgeCellLaw, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
-
-  type DistFnNegLog = DistributionFunction<f64, NegLog>;
 
   const HARD: BoundaryBehavior = BoundaryBehavior::Hard;
   const SOFT_LEFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
@@ -24,7 +21,7 @@ mod tests {
   fn test_distribution_function_shift_y_shifts_values_and_preserves_tail_laws(
     #[case] left: BoundaryBehavior,
   ) -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
       .with_left_extrap(left)?
       .with_right_extrap(SOFT_RIGHT)?;
     let shifted = f.shift_y(-1000.0);
@@ -37,12 +34,12 @@ mod tests {
   #[test]
   fn test_function_boundary_storage_is_owned_by_distribution_function() -> Result<(), Report> {
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
-    let function: DistFnNegLog =
+    let function: DistributionFunction<f64> =
       DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?.with_right_extrap(right)?;
 
     pretty_assert_ulps_eq!(2.5, function.interp(2.5)?);
     assert_error!(
-      function.grid_fn().interp::<NegLog>(2.5),
+      function.grid_fn().interp(2.5),
       "GridFn evaluated at 2.5, above the support boundary 2.0, but no extrapolation policy is set for that side"
     );
     assert_eq!(right, function.right_extrap());
@@ -53,9 +50,10 @@ mod tests {
   fn test_function_resample_preserves_boundary_laws() -> Result<(), Report> {
     let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
-    let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
-      .with_left_extrap(left)?
-      .with_right_extrap(right)?;
+    let function: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
+        .with_left_extrap(left)?
+        .with_right_extrap(right)?;
 
     let actual = function.resample_range_dx((1.0, 3.0), 0.25, MaxGridPoints::default())?;
 
@@ -68,9 +66,10 @@ mod tests {
   fn test_function_negate_arg_inplace_swaps_and_reflects_boundary_laws() -> Result<(), Report> {
     let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
-    let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
-      .with_left_extrap(left)?
-      .with_right_extrap(right)?;
+    let function: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
+        .with_left_extrap(left)?
+        .with_right_extrap(right)?;
 
     let mut actual = function;
     actual.negate_arg_inplace()?;
@@ -95,7 +94,7 @@ mod tests {
   fn test_function_negate_arg_inplace_keeps_a_positive_zero_in_the_tail_law(
     #[case] law: BoundaryBehavior,
   ) -> Result<(), Report> {
-    let mut actual: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![3.0, 2.5, 2.0])?
+    let mut actual: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![3.0, 2.5, 2.0])?
       .with_left_extrap(law)?;
 
     actual.negate_arg_inplace()?;
@@ -110,7 +109,8 @@ mod tests {
 
   #[test]
   fn test_function_fit_soft_tail_recovers_linear_slope() -> Result<(), Report> {
-    let function: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+    let function: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
 
     let actual = function.fit_soft_tail(Side::Right, 3)?;
 
@@ -123,14 +123,16 @@ mod tests {
 
   #[test]
   fn test_distribution_function_interp_is_linear_between_grid_points() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
+    let f: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
     pretty_assert_ulps_eq!(15.0, f.interp(1.5)?);
     Ok(())
   }
 
   #[test]
   fn test_distribution_function_interp_many_is_linear_between_grid_points() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
+    let f: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
 
     let query = array![1.5, 2.25, 2.7];
     let expected = array![15.0, 22.5, 27.0];
@@ -142,14 +144,15 @@ mod tests {
   #[test]
   fn test_distribution_function_likely_time_selects_min_cost() -> Result<(), Report> {
     let neg_log = array![1.0, 5.0, 2.0, 4.0].mapv(|p: f64| -p.ln());
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), neg_log)?;
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 3.0), neg_log)?;
     pretty_assert_ulps_eq!(1.0, f.likely_time()?.unwrap());
     Ok(())
   }
 
   #[test]
   fn test_distribution_function_likely_time_rejects_nan() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), array![1.0, f64::NAN, 2.0, 4.0])?;
+    let f: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((0.0, 3.0), array![1.0, f64::NAN, 2.0, 4.0])?;
     assert_error!(
       f.likely_time(),
       "Cannot find the most likely time of a distribution function: its values contain NaN"
@@ -165,7 +168,7 @@ mod tests {
   fn test_distribution_function_resample_dx_keeps_the_left_end_on_a_grid_point_when_the_ends_agree(
     #[case] right_end_offset: f64,
   ) -> Result<(), Report> {
-    let f: DistFnNegLog =
+    let f: DistributionFunction<f64> =
       DistributionFunction::from_range_values((0.0, 1.0), array![3.0, 2.0, 3.0 + right_end_offset])?;
 
     let resampled = f.resample_dx(0.3, MaxGridPoints::default())?;
@@ -176,7 +179,7 @@ mod tests {
 
   #[test]
   fn test_distribution_function_resample_dx_keeps_a_denser_right_end_on_a_grid_point() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 1.0), array![3.0, 2.0, 1.0])?;
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 1.0), array![3.0, 2.0, 1.0])?;
 
     let resampled = f.resample_dx(0.3, MaxGridPoints::default())?;
 
@@ -199,7 +202,7 @@ mod tests {
     #[case] (left, right, y): (BoundaryBehavior, BoundaryBehavior, Array1<f64>),
     #[case] kept: Side,
   ) -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 1.0), y)?
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 1.0), y)?
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
 

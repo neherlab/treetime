@@ -7,54 +7,50 @@ use eyre::Report;
 use itertools::izip;
 use ndarray::{Array1, Zip};
 use ordered_float::OrderedFloat;
-use treetime_grid::YAxisPolicy;
 use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side};
 use treetime_utils::make_internal_error;
 
-pub fn distribution_multiplication<Y: YAxisPolicy>(
-  a: &Distribution<Y>,
-  b: &Distribution<Y>,
+pub fn distribution_multiplication(
+  a: &Distribution,
+  b: &Distribution,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   match (a, b) {
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
       let a_domain = distribution_hard_domain(a);
       let b_domain = distribution_hard_domain(b);
       guarded_empty_result("multiplication", a_domain, b_domain)
     },
-    (Distribution::Point(a), Distribution::Point(b)) => multiply_point_point::<Y>(a, b),
+    (Distribution::Point(a), Distribution::Point(b)) => multiply_point_point(a, b),
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      multiply_point_function::<Y>(a, b)
+      multiply_point_function(a, b)
     },
     (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
-      multiply_point_range::<Y>(a, b)
+      multiply_point_range(a, b)
     },
-    (Distribution::Range(a), Distribution::Range(b)) => multiply_range_range::<Y>(a, b),
+    (Distribution::Range(a), Distribution::Range(b)) => multiply_range_range(a, b),
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      multiply_range_function::<Y>(a, b, max_points)
+      multiply_range_function(a, b, max_points)
     },
     (Distribution::Function(a), Distribution::Function(b)) => multiply_functions(&[a, b], max_points),
   }
 }
 
-fn multiply_point_point<Y: YAxisPolicy>(
-  a: &DistributionPoint<f64, Y>,
-  b: &DistributionPoint<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
+fn multiply_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Result<Distribution, Report> {
   const EPS: f64 = 1e-9;
   if (a.t() - b.t()).abs() > EPS {
     let a_domain = Some(point_hard_domain(a));
     let b_domain = Some(point_hard_domain(b));
     return guarded_empty_result("multiplication", a_domain, b_domain);
   }
-  let amplitude = Y::multiply(a.amplitude(), b.amplitude());
+  let amplitude = a.amplitude() + b.amplitude();
   Ok(Distribution::point(a.t(), amplitude))
 }
 
-fn multiply_point_range<Y: YAxisPolicy>(
-  point: &DistributionPoint<f64, Y>,
-  range: &DistributionRange<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
+fn multiply_point_range(
+  point: &DistributionPoint<f64>,
+  range: &DistributionRange<f64>,
+) -> Result<Distribution, Report> {
   const EPS: f64 = 1e-9;
   let t = point.t();
   if t < range.start() - EPS || t > range.end() + EPS {
@@ -62,14 +58,14 @@ fn multiply_point_range<Y: YAxisPolicy>(
     let range_domain = Some(range_hard_domain(range));
     return guarded_empty_result("multiplication", point_domain, range_domain);
   }
-  let amplitude = Y::multiply(point.amplitude(), range.amplitude());
+  let amplitude = point.amplitude() + range.amplitude();
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_point_function<Y: YAxisPolicy>(
-  point: &DistributionPoint<f64, Y>,
-  func: &DistributionFunction<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
+fn multiply_point_function(
+  point: &DistributionPoint<f64>,
+  func: &DistributionFunction<f64>,
+) -> Result<Distribution, Report> {
   let t = point.t();
   let tail = if t < func.x_min() {
     Some(func.left_extrap())
@@ -86,8 +82,8 @@ fn multiply_point_function<Y: YAxisPolicy>(
     }
   }
   let func_value = func.interp(t)?;
-  let amplitude = Y::multiply(point.amplitude(), func_value);
-  if !Y::is_defined(amplitude) {
+  let amplitude = point.amplitude() + func_value;
+  if !amplitude.is_finite() {
     let point_domain = Some(point_hard_domain(point));
     let function_domain = Some(function_hard_domain(func));
     return guarded_empty_result("multiplication", point_domain, function_domain);
@@ -95,10 +91,7 @@ fn multiply_point_function<Y: YAxisPolicy>(
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_range_range<Y: YAxisPolicy>(
-  a: &DistributionRange<f64, Y>,
-  b: &DistributionRange<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
+fn multiply_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64>) -> Result<Distribution, Report> {
   let overlap_start = a.start().max(b.start());
   let overlap_end = a.end().min(b.end());
 
@@ -108,15 +101,15 @@ fn multiply_range_range<Y: YAxisPolicy>(
     return guarded_empty_result("multiplication", a_domain, b_domain);
   }
 
-  let amplitude = Y::multiply(a.amplitude(), b.amplitude());
+  let amplitude = a.amplitude() + b.amplitude();
   Ok(Distribution::range((overlap_start, overlap_end), amplitude))
 }
 
-fn multiply_range_function<Y: YAxisPolicy>(
-  range: &DistributionRange<f64, Y>,
-  func: &DistributionFunction<f64, Y>,
+fn multiply_range_function(
+  range: &DistributionRange<f64>,
+  func: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   let a_bounds = (range.start(), range.end());
   let a_tails = (BoundaryBehavior::Hard, BoundaryBehavior::Hard);
   let b_bounds = (func.x_min(), func.x_max());
@@ -128,15 +121,13 @@ fn multiply_range_function<Y: YAxisPolicy>(
       guarded_empty_result("multiplication", a_domain, b_domain)
     },
     SupportIntersection::Point(t) => {
-      let amplitude = Y::multiply(range.amplitude(), func.interp(t)?);
+      let amplitude = range.amplitude() + func.interp(t)?;
       Ok(Distribution::point(t, amplitude))
     },
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, func.dx(), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let values = func
-        .interp_many(&grid)?
-        .mapv(|value| Y::multiply(range.amplitude(), value));
+      let values = func.interp_many(&grid)?.mapv(|value| range.amplitude() + value);
       let function = with_composed_tails(
         DistributionFunction::from_range_values(bounds, values)?,
         a_tails,
@@ -147,10 +138,10 @@ fn multiply_range_function<Y: YAxisPolicy>(
   }
 }
 
-pub(crate) fn multiply_functions<Y: YAxisPolicy>(
-  functions: &[&DistributionFunction<f64, Y>],
+pub(crate) fn multiply_functions(
+  functions: &[&DistributionFunction<f64>],
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   let ordered = canonical_operand_order(functions);
   let Some((&first, rest)) = ordered.split_first() else {
     return make_internal_error!("Multiplication of distribution functions requires at least one operand");
@@ -162,7 +153,7 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
     SupportIntersection::Point(t) => {
       let mut amplitude = first.interp(t)?;
       for f in rest {
-        amplitude = Y::multiply(amplitude, f.interp(t)?);
+        amplitude = amplitude + f.interp(t)?;
       }
       Ok(Distribution::point(t, amplitude))
     },
@@ -177,8 +168,8 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
         let other = f.interp_many_stored(&grid)?;
         Zip::from(&mut values)
           .and(&other)
-          .for_each(|value, &o| *value = Y::multiply(*value, o));
-        amplitude = Y::multiply(amplitude, f.amplitude());
+          .for_each(|value, &o| *value = *value + o);
+        amplitude = amplitude + f.amplitude();
       }
 
       let left_tail = compose_product_tail(Side::Left, ordered.iter().map(|f| f.left_extrap()))?;
@@ -190,9 +181,7 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
   }
 }
 
-fn canonical_operand_order<'a, Y: YAxisPolicy>(
-  functions: &[&'a DistributionFunction<f64, Y>],
-) -> Vec<&'a DistributionFunction<f64, Y>> {
+fn canonical_operand_order<'a>(functions: &[&'a DistributionFunction<f64>]) -> Vec<&'a DistributionFunction<f64>> {
   let mut ordered = functions.to_vec();
   ordered.sort_by_key(|f| (OrderedFloat(f.x_min()), OrderedFloat(f.x_max()), OrderedFloat(f.dx())));
   ordered
@@ -254,21 +243,21 @@ fn side_bounds(domains: &[HardDomain], side: Side) -> (Option<f64>, Option<f64>)
   (hard, soft)
 }
 
-fn with_composed_tails<Y: YAxisPolicy>(
-  function: DistributionFunction<f64, Y>,
+fn with_composed_tails(
+  function: DistributionFunction<f64>,
   a_tails: (BoundaryBehavior, BoundaryBehavior),
   b_tails: (BoundaryBehavior, BoundaryBehavior),
-) -> Result<DistributionFunction<f64, Y>, Report> {
+) -> Result<DistributionFunction<f64>, Report> {
   let left = compose_multiplication_tail(Side::Left, a_tails.0, b_tails.0)?;
   let right = compose_multiplication_tail(Side::Right, a_tails.1, b_tails.1)?;
   with_settled_tails(function, left, right)
 }
 
-pub(super) fn with_settled_tails<Y: YAxisPolicy>(
-  function: DistributionFunction<f64, Y>,
+pub(super) fn with_settled_tails(
+  function: DistributionFunction<f64>,
   left: BoundaryBehavior,
   right: BoundaryBehavior,
-) -> Result<DistributionFunction<f64, Y>, Report> {
+) -> Result<DistributionFunction<f64>, Report> {
   let settled = |tail: BoundaryBehavior, edge: f64| match tail {
     BoundaryBehavior::HardEdgeCell(law) if !function.grid_fn().coincides(law.t_edge, edge) => BoundaryBehavior::Hard,
     other => other,
@@ -329,7 +318,7 @@ fn compose_multiplication_tail(
   }
 }
 
-pub(crate) fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<HardDomain> {
+pub(crate) fn distribution_hard_domain(d: &Distribution) -> Option<HardDomain> {
   match d {
     Distribution::Empty => None,
     Distribution::Point(p) => Some(point_hard_domain(p)),
@@ -338,23 +327,23 @@ pub(crate) fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> O
   }
 }
 
-pub(crate) fn point_hard_domain<Y: YAxisPolicy>(p: &DistributionPoint<f64, Y>) -> HardDomain {
+pub(crate) fn point_hard_domain(p: &DistributionPoint<f64>) -> HardDomain {
   ((p.t(), p.t()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
-pub(crate) fn range_hard_domain<Y: YAxisPolicy>(r: &DistributionRange<f64, Y>) -> HardDomain {
+pub(crate) fn range_hard_domain(r: &DistributionRange<f64>) -> HardDomain {
   ((r.start(), r.end()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
-pub(crate) fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) -> HardDomain {
+pub(crate) fn function_hard_domain(f: &DistributionFunction<f64>) -> HardDomain {
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
 }
 
-pub(crate) fn guarded_empty_result<Y: YAxisPolicy>(
+pub(crate) fn guarded_empty_result(
   operation: &str,
   a: Option<HardDomain>,
   b: Option<HardDomain>,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution, Report> {
   let disjoint = match (a, b) {
     (None, _) | (_, None) => true,
     (Some((a_bounds, a_tails)), Some((b_bounds, b_tails))) => {

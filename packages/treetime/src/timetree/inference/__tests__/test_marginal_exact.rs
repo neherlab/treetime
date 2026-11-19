@@ -20,7 +20,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
+  use treetime_distribution::{Distribution, MassProfile, TailMass};
   use treetime_grid::MaxGridPoints;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read;
@@ -246,7 +246,7 @@ mod tests {
       Ok((cdf_of("X")?, cdf_of("R")?))
     }
 
-    fn branch_distribution(gtr: &GTR, k: usize, points: usize) -> Result<Arc<Distribution<NegLog>>, Report> {
+    fn branch_distribution(gtr: &GTR, k: usize, points: usize) -> Result<Arc<Distribution>, Report> {
       let n_states = gtr.v().nrows();
       let mut coefficients = Array2::<f64>::zeros((SITES, n_states));
       for site in 0..SITES {
@@ -557,7 +557,7 @@ mod tests {
         .fold(0.0, f64::max)
     }
 
-    fn posterior_cdf(distribution: &Distribution<NegLog>, grid: &[f64]) -> Result<Vec<f64>, Report> {
+    fn posterior_cdf(distribution: &Distribution, grid: &[f64]) -> Result<Vec<f64>, Report> {
       let Distribution::Function(f) = distribution else {
         return Err(eyre::eyre!("an internal node posterior must be a function"));
       };

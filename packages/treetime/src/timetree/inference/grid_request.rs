@@ -2,7 +2,7 @@ use derive_more::Display;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use treetime_distribution::{Distribution, NegLog};
+use treetime_distribution::Distribution;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::{GridPointLimitExceeded, coordinates_coincide};
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -255,7 +255,7 @@ pub(crate) struct GridOperand {
 }
 
 impl GridOperand {
-  pub(crate) fn of(role: OperandRole, distribution: &Distribution<NegLog>, origin: GridOrigin) -> Self {
+  pub(crate) fn of(role: OperandRole, distribution: &Distribution, origin: GridOrigin) -> Self {
     let spacing = match distribution {
       Distribution::Function(function) => Some(function.dx()),
       Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) => None,

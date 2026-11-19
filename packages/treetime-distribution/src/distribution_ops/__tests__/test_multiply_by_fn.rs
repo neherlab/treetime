@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::{flat, linear_with_soft_side, sides};
-  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::Distribution;
   use crate::DistributionFunction;
   use crate::distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
   use eyre::Report;
@@ -13,20 +13,20 @@ mod tests {
 
   #[test]
   fn test_multiply_by_fn_constant_is_uniform_shift() {
-    let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
+    let neglog = Distribution::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
     let actual = distribution_multiply_by_fn(&neglog, |_| Ok(10.0), flat).unwrap();
     pretty_assert_abs_diff_eq!(array![14.0, 10.0, 13.0], actual.y().unwrap(), epsilon = 1e-15);
   }
 
   #[test]
   fn test_multiply_by_fn_empty_passthrough() {
-    let actual = distribution_multiply_by_fn(&DistributionNegLog::Empty, |_| Ok(1.0), flat).unwrap();
-    assert_eq!(DistributionNegLog::Empty, actual);
+    let actual = distribution_multiply_by_fn(&Distribution::Empty, |_| Ok(1.0), flat).unwrap();
+    assert_eq!(Distribution::Empty, actual);
   }
 
   #[test]
   fn test_multiply_by_fn_rejects_a_weight_with_no_finite_value() {
-    let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
+    let neglog = Distribution::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
     assert_error!(
       distribution_multiply_by_fn(&neglog, |_| Ok(f64::INFINITY), flat),
       "distribution_multiply_by_fn found no finite weight over the distribution grid"
@@ -53,7 +53,7 @@ mod tests {
     let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(weight_slope * ti), at_the_edge)?;
 
     pretty_assert_abs_diff_eq!(expected, actual.eval(t)?, epsilon = 1e-14);
-    let DistributionNegLog::Function(rf) = actual else {
+    let Distribution::Function(rf) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let soft = BoundaryBehavior::Linear(SoftTailLaw { slope: slope + weight_slope });
@@ -77,7 +77,7 @@ mod tests {
     let grid_mass = 0.2 * (p.sum() - f64::midpoint(p[0], p[20]));
     let tail_mass = 1.0 / 2.0;
     pretty_assert_abs_diff_eq!((grid_mass + tail_mass).ln(), actual.log_mass()?, epsilon = 1e-14);
-    let DistributionNegLog::Function(rf) = actual else {
+    let Distribution::Function(rf) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     assert_eq!(BoundaryBehavior::Linear(SoftTailLaw { slope: -2.0 }), rf.left_extrap());
@@ -99,7 +99,7 @@ mod tests {
     let ordinate_at_edge = incoming_slope * edge + weight(edge);
     let expected = ordinate_at_edge + composed_slope * (t - edge);
     pretty_assert_abs_diff_eq!(expected, actual.eval(t)?, epsilon = 1e-15);
-    let DistributionNegLog::Function(rf) = actual else {
+    let Distribution::Function(rf) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     assert_eq!(
@@ -158,14 +158,10 @@ mod tests {
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
-    let actual = distribution_multiply_by_fn(
-      &DistributionNegLog::Function(input),
-      |ti: f64| Ok(0.5 * ti),
-      sides(0.5, 0.5),
-    )
-    .unwrap();
+    let actual =
+      distribution_multiply_by_fn(&Distribution::Function(input), |ti: f64| Ok(0.5 * ti), sides(0.5, 0.5)).unwrap();
 
-    let DistributionNegLog::Function(rf) = actual else {
+    let Distribution::Function(rf) = actual else {
       panic!("expected a Function result");
     };
     assert_eq!(
@@ -175,7 +171,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::aliases::DistributionNegLog;
+    use crate::Distribution;
     use crate::DistributionFunction;
     use eyre::Report;
     use ndarray::Array1;
@@ -192,7 +188,7 @@ mod tests {
       }
     }
 
-    pub(super) fn linear_with_soft_side(slope: f64, side: Side) -> Result<DistributionNegLog, Report> {
+    pub(super) fn linear_with_soft_side(slope: f64, side: Side) -> Result<Distribution, Report> {
       let t = Array1::linspace(0.0, 4.0, 21);
       let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| slope * ti))?;
       let soft = BoundaryBehavior::Linear(SoftTailLaw { slope });
@@ -200,7 +196,7 @@ mod tests {
         Side::Left => f.with_left_extrap(soft)?.with_right_extrap(BoundaryBehavior::Hard)?,
         Side::Right => f.with_left_extrap(BoundaryBehavior::Hard)?.with_right_extrap(soft)?,
       };
-      Ok(DistributionNegLog::Function(f))
+      Ok(Distribution::Function(f))
     }
   }
 }

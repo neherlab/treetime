@@ -196,7 +196,6 @@ mod tests {
     use std::collections::BTreeMap;
     use std::f64::consts::LN_2;
     use std::ops::RangeInclusive;
-    use treetime_grid::NegLog;
     use treetime_grid::{BoundaryBehavior, MaxGridPoints};
     use treetime_ops::{FftConvolver, FftPlans, UNIT_ROUND_OFF, rounding_gamma};
     use treetime_utils::array::ndarray::{max_or, min_or};
@@ -208,7 +207,7 @@ mod tests {
       dx: f64,
       n: usize,
       neg_log: impl Fn(usize, f64) -> f64,
-    ) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    ) -> Result<DistributionFunction<f64>, Report> {
       let y: Array1<f64> = (0..n).map(|i| neg_log(i, x_min + i.to_f64_exact() * dx)).collect();
       DistributionFunction::from_start_dx_values(x_min, dx, y)?
         .with_left_extrap(BoundaryBehavior::Hard)?
@@ -216,8 +215,8 @@ mod tests {
     }
 
     pub(super) fn traced_convolution(
-      a: &DistributionFunction<f64, NegLog>,
-      b: &DistributionFunction<f64, NegLog>,
+      a: &DistributionFunction<f64>,
+      b: &DistributionFunction<f64>,
     ) -> Result<TracedConvolution, Report> {
       let mut sources = SourceRecorder::default();
       let result =
@@ -258,7 +257,7 @@ mod tests {
       peaks: f64,
       dx: f64,
       x_start: f64,
-      result: DistributionFunction<f64, NegLog>,
+      result: DistributionFunction<f64>,
       sources: BTreeMap<usize, SampleSource>,
       quadrature_terms: usize,
       round_offs: BTreeMap<u64, FftRoundOff>,

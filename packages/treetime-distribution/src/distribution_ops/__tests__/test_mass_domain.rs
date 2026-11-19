@@ -16,7 +16,6 @@ mod tests {
   use rstest::rstest;
   use std::f64::consts::LN_10;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
@@ -128,7 +127,7 @@ mod tests {
 
   #[test]
   fn test_mass_domain_rewindow_point_is_unchanged() {
-    let point: Distribution<NegLog> = Distribution::point(3.0, 7.5);
+    let point = Distribution::point(3.0, 7.5);
     let rewindowed = rewindow_to_mass(&point, EPS, GRID_POINTS, MaxGridPoints::default()).unwrap();
     assert_eq!(rewindowed, point);
   }
@@ -233,7 +232,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn total_mass(f: &DistributionFunction<f64, NegLog>) -> f64 {
+    pub(super) fn total_mass(f: &DistributionFunction<f64>) -> f64 {
       MassProfile::new(f)
         .unwrap()
         .fractions(TailMass::Required)
@@ -241,41 +240,41 @@ mod tests {
         .total()
     }
 
-    pub(super) fn as_function(dist: Distribution<NegLog>) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn as_function(dist: Distribution) -> DistributionFunction<f64> {
       match dist {
         Distribution::Function(f) => f,
         other => panic!("expected a Function distribution, got {other:?}"),
       }
     }
 
-    pub(super) fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction<f64> {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| -lambda.ln() + lambda * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Hard)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
         .unwrap()
     }
 
-    pub(super) fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64> {
       let t = Array1::linspace(-t_max, t_max, n);
       let y = t.mapv(|ti| slope * ti.abs());
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
-      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Linear(left))
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
         .unwrap()
     }
 
-    pub(super) fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64> {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| slope * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Hard)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))

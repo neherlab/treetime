@@ -1,6 +1,5 @@
 pub(crate) mod distribution_core;
 pub(crate) mod distribution_ops;
-pub(crate) mod policy;
 
 pub use distribution_core::distribution::Distribution;
 pub use distribution_core::function::DistributionFunction;
@@ -16,8 +15,7 @@ pub use distribution_ops::mass_profile::{MassFractions, MassProfile, TailMass};
 pub use distribution_ops::multiply::distribution_multiplication;
 pub use distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
 pub use distribution_ops::product::distribution_product;
-pub use policy::PolicyMarker;
-pub use treetime_grid::{BoundaryBehavior, NegLog, Plain, YAxisPolicy};
+pub use treetime_grid::BoundaryBehavior;
 
 #[cfg(test)]
 mod __tests__;

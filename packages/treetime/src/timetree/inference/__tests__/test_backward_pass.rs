@@ -13,7 +13,7 @@ mod tests {
   use treetime_ops::FftPlans;
 
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
@@ -623,15 +623,11 @@ mod tests {
     pub(super) fn node_time_distribution(
       backward: &NodeMap<NodeBackward>,
       key: GraphNodeKey,
-    ) -> Option<Arc<Distribution<NegLog>>> {
+    ) -> Option<Arc<Distribution>> {
       backward[&key].subtree.clone()
     }
 
-    pub(super) fn set_date_constraint(
-      constraints: &mut DateConstraints,
-      key: GraphNodeKey,
-      dist: Distribution<NegLog>,
-    ) {
+    pub(super) fn set_date_constraint(constraints: &mut DateConstraints, key: GraphNodeKey, dist: Distribution) {
       constraints.by_node.insert(key, Some(Arc::new(dist)));
     }
 
@@ -683,7 +679,7 @@ mod tests {
       x.mapv(|t| weight * (t - median).abs())
     }
 
-    pub(super) fn fold_laplace_children() -> Result<(Arc<Distribution<NegLog>>, f64), Report> {
+    pub(super) fn fold_laplace_children() -> Result<(Arc<Distribution>, f64), Report> {
       let nwk_parsed = nwk_read(b"((A:0.0,B:0.0,C:0.0)I:1.0)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;

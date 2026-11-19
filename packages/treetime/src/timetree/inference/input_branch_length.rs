@@ -13,7 +13,7 @@ use eyre::Report;
 use log::debug;
 use ndarray::Array1;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, DistributionFunction, NegLog};
+use treetime_distribution::{Distribution, DistributionFunction};
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::EdgeMap;
 use treetime_grid::{BoundaryBehavior, EdgeCellLaw, GridFn, MaxGridPoints, SoftTailLaw};
@@ -151,11 +151,7 @@ impl InputBranchLikelihood {
     }
   }
 
-  pub(crate) fn distribution(
-    self,
-    branch_rate: f64,
-    max_points: MaxGridPoints,
-  ) -> Result<Arc<Distribution<NegLog>>, Report> {
+  pub(crate) fn distribution(self, branch_rate: f64, max_points: MaxGridPoints) -> Result<Arc<Distribution>, Report> {
     self.distribution_with_points_per_width(branch_rate, GRID_POINTS_PER_WIDTH, max_points)
   }
 
@@ -164,7 +160,7 @@ impl InputBranchLikelihood {
     branch_rate: f64,
     points_per_width: f64,
     max_points: MaxGridPoints,
-  ) -> Result<Arc<Distribution<NegLog>>, Report> {
+  ) -> Result<Arc<Distribution>, Report> {
     debug_assert!(branch_rate > 0.0, "branch_rate must be positive, got {branch_rate:.6e}");
     let max_branch_length = self.grid_end()?;
     let time_range = (0.0, max_branch_length / branch_rate);

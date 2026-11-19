@@ -9,7 +9,7 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, NegLog, TailMass};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, TailMass};
   use treetime_grid::EdgeCellLaw;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_relative_eq};
@@ -101,11 +101,11 @@ mod tests {
       (x - mutations * ONE_MUTATION * (x + OFFSET).ln()) / ONE_MUTATION
     }
 
-    pub(super) fn poisson() -> Result<Distribution<NegLog>, Report> {
+    pub(super) fn poisson() -> Result<Distribution, Report> {
       poisson_with(MUTATIONS)
     }
 
-    pub(super) fn poisson_with(mutations: f64) -> Result<Distribution<NegLog>, Report> {
+    pub(super) fn poisson_with(mutations: f64) -> Result<Distribution, Report> {
       let x_max = CELL * CELLS.to_f64_exact();
       let y = Array1::linspace(0.0, x_max, CELLS + 1).mapv(|x| cost_with(mutations, x));
       let law = EdgeCellLaw {

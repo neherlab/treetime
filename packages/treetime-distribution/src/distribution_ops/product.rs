@@ -2,13 +2,9 @@ use crate::Distribution;
 use crate::distribution_ops::multiply::{distribution_multiplication, multiply_functions};
 use eyre::Report;
 use treetime_grid::MaxGridPoints;
-use treetime_grid::YAxisPolicy;
 use treetime_utils::make_internal_error;
 
-pub fn distribution_product<Y: YAxisPolicy>(
-  factors: &[&Distribution<Y>],
-  max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+pub fn distribution_product(factors: &[&Distribution], max_points: MaxGridPoints) -> Result<Distribution, Report> {
   let mut functions = Vec::new();
   let mut others = Vec::new();
   for &factor in factors {
@@ -25,7 +21,7 @@ pub fn distribution_product<Y: YAxisPolicy>(
     Some(multiply_functions(&functions, max_points)?)
   };
 
-  let mut other_product: Option<Distribution<Y>> = None;
+  let mut other_product: Option<Distribution> = None;
   for factor in others {
     other_product = Some(match other_product {
       None => factor.clone(),

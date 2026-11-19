@@ -354,12 +354,12 @@ mod tests {
     use treetime_graph::key_map::NodeMap;
 
     use std::sync::Arc;
-    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_grid::SoftTailLaw;
 
-    pub(super) type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
+    pub(super) type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution>>);
 
     pub(super) fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimeInference {
       let mut posterior: NodeMap<NodePosterior> = graph
@@ -396,7 +396,7 @@ mod tests {
       }
     }
 
-    pub(super) fn laplace(t0: f64, rate: f64, right: BoundaryBehavior) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn laplace(t0: f64, rate: f64, right: BoundaryBehavior) -> DistributionFunction<f64> {
       let half_width = 1.0 / rate;
       let y = Array1::linspace(t0 - half_width, t0 + half_width, 3).mapv(|x| rate * (x - t0).abs());
       DistributionFunction::from_range_values((t0 - half_width, t0 + half_width), y)

@@ -351,7 +351,7 @@ mod tests {
   mod helpers {
     use super::*;
     use std::sync::Arc;
-    use treetime_distribution::{DistributionFunction, NegLog};
+    use treetime_distribution::DistributionFunction;
     use treetime_utils::cast::f64_to_usize_saturating;
 
     pub(super) const BRANCH_RATE: f64 = 0.002;
@@ -374,7 +374,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn sub_cell_lengths(function: &DistributionFunction<f64, NegLog>, (start, end): (f64, f64)) -> Vec<f64> {
+    pub(super) fn sub_cell_lengths(function: &DistributionFunction<f64>, (start, end): (f64, f64)) -> Vec<f64> {
       let step = function.dx() * BRANCH_RATE;
       let first = f64_to_usize_saturating((start / step).ceil());
       let last = f64_to_usize_saturating((end / step).floor());
@@ -410,11 +410,11 @@ mod tests {
 
     pub(super) struct Production {
       pub(super) likelihood: InputBranchLikelihood,
-      pub(super) distribution: Arc<Distribution<NegLog>>,
+      pub(super) distribution: Arc<Distribution>,
     }
 
     impl Production {
-      pub(super) fn function(&self) -> &DistributionFunction<f64, NegLog> {
+      pub(super) fn function(&self) -> &DistributionFunction<f64> {
         let Distribution::Function(function) = self.distribution.as_ref() else {
           panic!(
             "an input branch-length distribution must be a Function, got {:?}",

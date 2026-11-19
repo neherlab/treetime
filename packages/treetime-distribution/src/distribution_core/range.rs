@@ -1,24 +1,16 @@
-use crate::policy::PolicyMarker;
 use getset::Getters;
 use std::fmt::Debug;
-use treetime_grid::{Plain, YAxisPolicy};
 
 #[derive(Debug, Eq, PartialEq, Clone, Getters)]
 #[getset(get = "pub")]
-pub struct DistributionRange<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
+pub struct DistributionRange<T: Clone + Copy + Debug> {
   range: (T, T),
   ampl: T,
-  #[getset(skip)]
-  _policy: PolicyMarker<Y>,
 }
 
-impl<T: Clone + Copy + Debug, Y: YAxisPolicy> DistributionRange<T, Y> {
+impl<T: Clone + Copy + Debug> DistributionRange<T> {
   pub(crate) fn new(x: (T, T), y: T) -> Self {
-    DistributionRange {
-      range: x,
-      ampl: y,
-      _policy: PolicyMarker::new(),
-    }
+    DistributionRange { range: x, ampl: y }
   }
 
   pub(crate) fn start(&self) -> T {

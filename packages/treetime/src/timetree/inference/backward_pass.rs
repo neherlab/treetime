@@ -11,7 +11,6 @@ use eyre::{Report, WrapErr};
 use itertools::{Itertools, izip};
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_multiplication;
 use treetime_distribution::distribution_product;
@@ -51,7 +50,7 @@ pub(crate) fn propagate_distributions_backward(
 pub(crate) fn propagate_distributions_backward_on_graph(
   graph: &Graph,
   inputs: &BackwardInputs<'_>,
-  from_parents: &EdgeMap<Arc<Distribution<NegLog>>>,
+  from_parents: &EdgeMap<Arc<Distribution>>,
   parent_messages: ParentMessages,
 ) -> Result<NodeMap<NodeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
@@ -91,7 +90,7 @@ struct BackwardPass<'a> {
   branches: &'a EdgeMap<BranchLikelihood>,
   max_points: MaxGridPoints,
   fft_plans: &'a FftPlans,
-  from_parents: &'a EdgeMap<Arc<Distribution<NegLog>>>,
+  from_parents: &'a EdgeMap<Arc<Distribution>>,
   parent_messages: ParentMessages,
 }
 
@@ -177,8 +176,8 @@ impl BackwardPass<'_> {
     &self,
     key: GraphNodeKey,
     slot: usize,
-    subtree: Option<&Arc<Distribution<NegLog>>>,
-  ) -> Result<Option<Arc<Distribution<NegLog>>>, Report> {
+    subtree: Option<&Arc<Distribution>>,
+  ) -> Result<Option<Arc<Distribution>>, Report> {
     let parents = self.schedule.parents(key);
     if parents.len() < 2 || self.parent_messages == ParentMessages::ChildrenOnly {
       return Ok(subtree.cloned());
@@ -209,9 +208,9 @@ impl BackwardPass<'_> {
 
 fn combine_child_messages(
   key: GraphNodeKey,
-  messages: &[(Arc<Distribution<NegLog>>, GridOperand)],
+  messages: &[(Arc<Distribution>, GridOperand)],
   max_points: MaxGridPoints,
-) -> Result<(Distribution<NegLog>, GridOrigin), Report> {
+) -> Result<(Distribution, GridOrigin), Report> {
   let factors = messages
     .iter()
     .filter(|(message, _)| !matches!(message.as_ref(), Distribution::Empty))
@@ -228,11 +227,11 @@ fn combine_child_messages(
 
 fn apply_date_constraint(
   key: GraphNodeKey,
-  date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  distribution: Distribution<NegLog>,
+  date_constraint: Option<&Arc<Distribution>>,
+  distribution: Distribution,
   origin: GridOrigin,
   max_points: MaxGridPoints,
-) -> Result<(Distribution<NegLog>, GridOrigin), Report> {
+) -> Result<(Distribution, GridOrigin), Report> {
   let Some(constraint) = date_constraint else {
     return Ok((distribution, origin));
   };
@@ -255,7 +254,7 @@ fn apply_date_constraint(
 fn send_backward_message(
   key: GraphNodeKey,
   bad_branch: bool,
-  subtree: Option<&Distribution<NegLog>>,
+  subtree: Option<&Distribution>,
   subtree_origin: GridOrigin,
   branch: &BranchLikelihood,
   max_points: MaxGridPoints,

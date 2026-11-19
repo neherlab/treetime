@@ -51,7 +51,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::aliases::DistributionNegLog;
+    use crate::Distribution;
     use deser::Deserialize;
     use eyre::Report;
     use ndarray::Array1;
@@ -72,12 +72,12 @@ mod tests {
     }
 
     impl DistributionKind {
-      pub(super) fn from_distribution(distribution: &DistributionNegLog) -> Self {
+      pub(super) fn from_distribution(distribution: &Distribution) -> Self {
         match distribution {
-          DistributionNegLog::Function(_) => Self::Function,
-          DistributionNegLog::Point(_) => Self::Point,
-          DistributionNegLog::Range(_) => Self::Range,
-          DistributionNegLog::Empty => {
+          Distribution::Function(_) => Self::Function,
+          Distribution::Point(_) => Self::Point,
+          Distribution::Range(_) => Self::Range,
+          Distribution::Empty => {
             unreachable!("golden overlap cases produce concrete non-empty distributions")
           },
         }
@@ -99,16 +99,13 @@ mod tests {
     }
 
     impl GoldenOperand {
-      pub(super) fn to_distribution(&self) -> Result<DistributionNegLog, Report> {
+      pub(super) fn to_distribution(&self) -> Result<Distribution, Report> {
         match self.kind {
           DistributionKind::Function => {
-            DistributionNegLog::function(Array1::from_vec(self.x.clone()), Array1::from_vec(self.y.clone()))
+            Distribution::function(Array1::from_vec(self.x.clone()), Array1::from_vec(self.y.clone()))
           },
-          DistributionKind::Range => Ok(DistributionNegLog::range(
-            (self.x[0], self.x[self.x.len() - 1]),
-            self.y[0],
-          )),
-          DistributionKind::Point => Ok(DistributionNegLog::point(self.x[0], self.y[0])),
+          DistributionKind::Range => Ok(Distribution::range((self.x[0], self.x[self.x.len() - 1]), self.y[0])),
+          DistributionKind::Point => Ok(Distribution::point(self.x[0], self.y[0])),
         }
       }
     }

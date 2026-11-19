@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::Distribution;
   use crate::distribution_ops::negate::distribution_negation;
   use eyre::Report;
   use ndarray::array;
@@ -9,17 +9,17 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::empty(          DistributionNegLog::empty(),               DistributionNegLog::empty())]
-  #[case::point(          DistributionNegLog::point(2.0, 3.0),       DistributionNegLog::point(-2.0, 3.0))]
-  #[case::range_reversed( DistributionNegLog::range((1.0, 4.0), 2.0), DistributionNegLog::range((-4.0, -1.0), 2.0))]
+  #[case::empty(          Distribution::empty(),               Distribution::empty())]
+  #[case::point(          Distribution::point(2.0, 3.0),       Distribution::point(-2.0, 3.0))]
+  #[case::range_reversed( Distribution::range((1.0, 4.0), 2.0), Distribution::range((-4.0, -1.0), 2.0))]
   #[case::function_mirrored(
-    DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
-    DistributionNegLog::function(array![-2.0, -1.0, 0.0], array![3.0, 2.0, 1.0]).unwrap(),
+    Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
+    Distribution::function(array![-2.0, -1.0, 0.0], array![3.0, 2.0, 1.0]).unwrap(),
   )]
   #[trace]
   fn test_negation_mirrors_the_distribution_about_zero(
-    #[case] dist: DistributionNegLog,
-    #[case] expected: DistributionNegLog,
+    #[case] dist: Distribution,
+    #[case] expected: Distribution,
   ) -> Result<(), Report> {
     let actual = distribution_negation(&dist)?;
     assert_eq!(expected, actual);

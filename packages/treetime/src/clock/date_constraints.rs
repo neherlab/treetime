@@ -3,7 +3,7 @@ use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, NegLog};
+use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
@@ -20,7 +20,7 @@ pub fn load_date_constraints(
   let mut bad_leaf_count = 0;
   let mut internal_constraint_count = 0;
 
-  let mut date_constraints: NodeMap<Option<Arc<Distribution<NegLog>>>> = NodeMap::new();
+  let mut date_constraints: NodeMap<Option<Arc<Distribution>>> = NodeMap::new();
 
   let schedule = GraphSchedule::new(graph)?;
   for &key in schedule.postorder() {
@@ -69,17 +69,17 @@ pub fn load_date_constraints(
 
 #[derive(Debug, Clone, Default)]
 pub struct DateConstraints {
-  pub(crate) by_node: NodeMap<Option<Arc<Distribution<NegLog>>>>,
+  pub(crate) by_node: NodeMap<Option<Arc<Distribution>>>,
 }
 
 impl DateConstraints {
   #[must_use]
-  pub(crate) fn date_constraint(&self, key: GraphNodeKey) -> Option<Arc<Distribution<NegLog>>> {
+  pub(crate) fn date_constraint(&self, key: GraphNodeKey) -> Option<Arc<Distribution>> {
     self.by_node.get(key).cloned().flatten()
   }
 }
 
-fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
+fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution {
   match &constraint.value {
     DateValue::Exact(d) => Distribution::point(d.value, 0.0),
     DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),

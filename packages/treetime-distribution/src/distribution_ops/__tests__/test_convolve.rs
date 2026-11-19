@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::{PiecewiseLinear, exponential_box_density, function_on, neg_log};
-  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::Distribution;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::__tests__::test_mass_profile_convergence::tests::helpers::assert_second_order;
   use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution, on_common_spacing};
@@ -18,11 +18,11 @@ mod tests {
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[test]
-  fn test_convolve_neglog_gaussian_variances_add() -> Result<(), Report> {
-    let gaussian = |sigma: f64| -> Result<DistributionNegLog, Report> {
+  fn test_convolve_gaussian_variances_add() -> Result<(), Report> {
+    let gaussian = |sigma: f64| -> Result<Distribution, Report> {
       let t = Array1::linspace(-6.0, 6.0, 241);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
-      DistributionNegLog::function(t, y)
+      Distribution::function(t, y)
     };
 
     let result = distribution_convolution(
@@ -41,7 +41,7 @@ mod tests {
 
   #[test]
   fn test_convolve_range_with_range_returns_error() {
-    let range = DistributionNegLog::range((0.0, 1.0), 0.0);
+    let range = Distribution::range((0.0, 1.0), 0.0);
     assert_error!(
       distribution_convolution(&range, &range, MaxGridPoints::default(), &FftPlans::new()),
       "Cannot convolve range with range: operation not implemented"
@@ -50,25 +50,25 @@ mod tests {
 
   #[test]
   fn test_convolution_empty() -> Result<(), Report> {
-    let a = DistributionNegLog::empty();
-    let b = DistributionNegLog::function(array![], array![])?;
+    let a = Distribution::empty();
+    let b = Distribution::function(array![], array![])?;
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(DistributionNegLog::empty(), actual);
+    assert_eq!(Distribution::empty(), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_point_point_adds_neg_log_amplitudes() -> Result<(), Report> {
-    let a = DistributionNegLog::point(2.0, 3.0);
-    let b = DistributionNegLog::point(5.0, 4.0);
+    let a = Distribution::point(2.0, 3.0);
+    let b = Distribution::point(5.0, 4.0);
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(DistributionNegLog::point(7.0, 7.0), actual);
+    assert_eq!(Distribution::point(7.0, 7.0), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_point_function_shifts_values_tail_laws_and_level() -> Result<(), Report> {
-    let p = DistributionNegLog::point(3.0, 2.0);
+    let p = Distribution::point(3.0, 2.0);
     let f = DistributionFunction::from_start_dx_values(1.0, 1.0, array![3.0, 1.0, 2.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.5, b: 2.0 }))?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))?
@@ -76,7 +76,7 @@ mod tests {
 
     let actual = distribution_convolution(
       &p,
-      &DistributionNegLog::Function(f),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
@@ -85,43 +85,43 @@ mod tests {
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.5, b: 2.0 }))?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))?
       .with_amplitude(3.5);
-    assert_eq!(DistributionNegLog::Function(expected), actual);
+    assert_eq!(Distribution::Function(expected), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_point_range() -> Result<(), Report> {
-    let p = DistributionNegLog::point(3.0, 2.0);
-    let r = DistributionNegLog::range((1.0, 4.0), 1.5);
+    let p = Distribution::point(3.0, 2.0);
+    let r = Distribution::range((1.0, 4.0), 1.5);
     let actual = distribution_convolution(&p, &r, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(DistributionNegLog::range((4.0, 7.0), 3.5), actual);
+    assert_eq!(Distribution::range((4.0, 7.0), 3.5), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_range_point() -> Result<(), Report> {
-    let r = DistributionNegLog::range((1.0, 4.0), 1.5);
-    let p = DistributionNegLog::point(3.0, 2.0);
+    let r = Distribution::range((1.0, 4.0), 1.5);
+    let p = Distribution::point(3.0, 2.0);
     let actual = distribution_convolution(&r, &p, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(DistributionNegLog::range((4.0, 7.0), 3.5), actual);
+    assert_eq!(Distribution::range((4.0, 7.0), 3.5), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_range_function_covers_the_full_support() -> Result<(), Report> {
-    let r = DistributionNegLog::range((2.0, 6.0), LN_2);
+    let r = Distribution::range((2.0, 6.0), LN_2);
     let f = DistributionFunction::from_start_dx_values(0.0, 2.0, Array1::zeros(6))?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
 
     let actual = distribution_convolution(
       &r,
-      &DistributionNegLog::Function(f),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let overlap_length = |t: f64| ((t - 2.0).min(10.0) - (t - 6.0).max(0.0)).max(0.0);
@@ -153,13 +153,13 @@ mod tests {
     let model = PiecewiseLinear::of(&f, lambda);
 
     let actual = distribution_convolution(
-      &DistributionNegLog::range(range, 0.0),
-      &DistributionNegLog::Function(f),
+      &Distribution::range(range, 0.0),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let y = g.values();
@@ -196,8 +196,8 @@ mod tests {
           .with_left_extrap(BoundaryBehavior::Hard)?
           .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }))?;
         let actual = distribution_convolution(
-          &DistributionNegLog::range(range, 0.0),
-          &DistributionNegLog::Function(f),
+          &Distribution::range(range, 0.0),
+          &Distribution::Function(f),
           MaxGridPoints::default(), &FftPlans::new(),
         )?;
         helpers::assert_grid_point(&actual, t);
@@ -225,8 +225,8 @@ mod tests {
           .with_left_extrap(BoundaryBehavior::Hard)?
           .with_right_extrap(BoundaryBehavior::Hard)?;
         let actual = distribution_convolution(
-          &DistributionNegLog::range((a, b), 0.0),
-          &DistributionNegLog::Function(f),
+          &Distribution::range((a, b), 0.0),
+          &Distribution::Function(f),
           MaxGridPoints::default(), &FftPlans::new(),
         )?;
         helpers::assert_grid_point(&actual, t);
@@ -245,11 +245,11 @@ mod tests {
   #[trace]
   fn test_convolution_function_function_hard_edges_converge_at_second_order(#[case] t: f64) -> Result<(), Report> {
     let (a, b) = (1.5_f64, 4.0_f64);
-    let exponential = |rate: f64, cells: usize| -> Result<DistributionNegLog, Report> {
+    let exponential = |rate: f64, cells: usize| -> Result<Distribution, Report> {
       let f = function_on((0.0, 4.0), cells + 1, |x| rate * x - rate.ln())?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?;
-      Ok(DistributionNegLog::Function(f))
+      Ok(Distribution::Function(f))
     };
     let errors: Vec<f64> = [32, 64, 128, 256]
       .iter()
@@ -267,11 +267,11 @@ mod tests {
   #[test]
   fn test_convolution_function_function_hard_edges_mass_converges_at_second_order() -> Result<(), Report> {
     let (a, b, end) = (1.5_f64, 4.0_f64, 4.0_f64);
-    let exponential = |rate: f64, cells: usize| -> Result<DistributionNegLog, Report> {
+    let exponential = |rate: f64, cells: usize| -> Result<Distribution, Report> {
       let f = function_on((0.0, end), cells + 1, |x| rate * x - rate.ln())?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Hard)?;
-      Ok(DistributionNegLog::Function(f))
+      Ok(Distribution::Function(f))
     };
     let operand_mass = |rate: f64| 1.0 - (-rate * end).exp();
     let errors: Vec<f64> = [32, 64, 128, 256]
@@ -283,7 +283,7 @@ mod tests {
           MaxGridPoints::default(),
           &FftPlans::new(),
         )?;
-        let DistributionNegLog::Function(conv) = &actual else {
+        let Distribution::Function(conv) = &actual else {
           panic!("expected a Function result, got {actual:?}");
         };
         let density = conv.values().mapv(|v| (-v).exp());
@@ -316,11 +316,11 @@ mod tests {
           .with_left_extrap(BoundaryBehavior::Hard)?
           .with_right_extrap(BoundaryBehavior::Hard)?;
         let actual = distribution_convolution(
-          &DistributionNegLog::Function(subtree),
-          &DistributionNegLog::Function(branch).negate()?,
+          &Distribution::Function(subtree),
+          &Distribution::Function(branch).negate()?,
           MaxGridPoints::default(), &FftPlans::new(),
         )?;
-        let DistributionNegLog::Function(conv) = &actual else {
+        let Distribution::Function(conv) = &actual else {
           panic!("expected a Function result, got {actual:?}");
         };
         Ok(match s {
@@ -347,13 +347,13 @@ mod tests {
     let f = f.with_amplitude(-2.0_f64.ln());
 
     let actual = distribution_convolution(
-      &DistributionNegLog::range((0.0, 1.0), -height.ln()),
-      &DistributionNegLog::Function(f),
+      &Distribution::range((0.0, 1.0), -height.ln()),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let expected = g
@@ -373,11 +373,11 @@ mod tests {
     let f = DistributionFunction::from_range_values((0.0, 1000.0), array![0.0, 1000.0])?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
-    let r = DistributionNegLog::range((0.0, 1.0), -1000.0);
+    let r = Distribution::range((0.0, 1.0), -1000.0);
 
     let actual = distribution_convolution(
       &r,
-      &DistributionNegLog::Function(f),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
@@ -396,13 +396,13 @@ mod tests {
     let model = PiecewiseLinear::of(&f, 1.0);
 
     let actual = distribution_convolution(
-      &DistributionNegLog::range((0.0, 0.2), 0.0),
-      &DistributionNegLog::Function(f),
+      &Distribution::range((0.0, 0.2), 0.0),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     pretty_assert_ulps_eq!(Array1::linspace(0.0, 3.2, 1 + 128), g.t(), max_ulps = 4);
@@ -420,8 +420,8 @@ mod tests {
     let box_mass = |t: f64| (t.min(1.0) - (t - 0.2).max(0.0)).max(0.0);
 
     let actual = distribution_convolution(
-      &DistributionNegLog::range((0.0, 0.2), 0.0),
-      &DistributionNegLog::Function(f),
+      &Distribution::range((0.0, 0.2), 0.0),
+      &Distribution::Function(f),
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
@@ -453,8 +453,8 @@ mod tests {
     let function_log_mass = (support.1 - support.0).ln() - y;
 
     let actual = distribution_convolution(
-      &DistributionNegLog::range(range, range_amplitude),
-      &DistributionNegLog::Function(f),
+      &Distribution::range(range, range_amplitude),
+      &Distribution::Function(f),
       MaxGridPoints::default(), &FftPlans::new(),
     )?;
 
@@ -471,10 +471,10 @@ mod tests {
         let f = function_on((0.0, 2.0), cells + 1, |t| lambda * t)?
           .with_left_extrap(BoundaryBehavior::Hard)?
           .with_right_extrap(BoundaryBehavior::Hard)?;
-        let function_mass = DistributionNegLog::Function(f.clone()).log_mass()?.exp();
+        let function_mass = Distribution::Function(f.clone()).log_mass()?.exp();
         let actual = distribution_convolution(
-          &DistributionNegLog::range(range, 0.0),
-          &DistributionNegLog::Function(f),
+          &Distribution::range(range, 0.0),
+          &Distribution::Function(f),
           MaxGridPoints::default(),
           &FftPlans::new(),
         )?;
@@ -501,12 +501,12 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)?;
 
     let actual = distribution_convolution(
-      &DistributionNegLog::range((0.0, 0.2), 0.0),
-      &DistributionNegLog::Function(f),
+      &Distribution::range((0.0, 0.2), 0.0),
+      &Distribution::Function(f),
       MaxGridPoints::default(), &FftPlans::new(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let overlap = |t: f64| {
@@ -526,12 +526,12 @@ mod tests {
     let branch = DistributionFunction::from_range_values((0.1, 2.1), t.mapv(|t: f64| t - 2.0 * t.ln()))?
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
-    let negated = DistributionNegLog::Function(branch).negate()?;
-    let r = DistributionNegLog::range((2000.0, 2001.0), 0.0);
+    let negated = Distribution::Function(branch).negate()?;
+    let r = Distribution::range((2000.0, 2001.0), 0.0);
 
     let actual = distribution_convolution(&r, &negated, MaxGridPoints::default(), &FftPlans::new())?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let y = g.y();
@@ -557,16 +557,16 @@ mod tests {
     let branch = function_on((0.0, 135.431_597_963_692_52), 5, |t| t)?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
-    let negated = DistributionNegLog::Function(branch).negate()?;
+    let negated = Distribution::Function(branch).negate()?;
 
     let actual = distribution_convolution(
-      &DistributionNegLog::point(date, 0.0),
+      &Distribution::point(date, 0.0),
       &negated,
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
+    let Distribution::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     pretty_assert_ulps_eq!(date, g.x_max(), max_ulps = 0);
@@ -575,8 +575,8 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_basic() -> Result<(), Report> {
-    let a = DistributionNegLog::function(array![0.0, 1.0, 2.0], neg_log(&array![1.0, 2.0, 1.0]))?;
-    let b = DistributionNegLog::function(array![0.0, 1.0], neg_log(&array![1.0, 2.0]))?;
+    let a = Distribution::function(array![0.0, 1.0, 2.0], neg_log(&array![1.0, 2.0, 1.0]))?;
+    let b = Distribution::function(array![0.0, 1.0], neg_log(&array![1.0, 2.0]))?;
 
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
@@ -587,35 +587,35 @@ mod tests {
 
   #[test]
   fn test_convolution_single_point_functions_are_points() -> Result<(), Report> {
-    let a = DistributionNegLog::function(array![2.0], array![3.0])?;
-    let b = DistributionNegLog::function(array![5.0], array![4.0])?;
+    let a = Distribution::function(array![2.0], array![3.0])?;
+    let b = Distribution::function(array![5.0], array![4.0])?;
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(DistributionNegLog::point(7.0, 7.0), actual);
+    assert_eq!(Distribution::point(7.0, 7.0), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_function_function_empty() -> Result<(), Report> {
-    let a = DistributionNegLog::function(array![], array![])?;
-    let b = DistributionNegLog::function(array![1.0, 2.0], array![0.0, 0.0])?;
+    let a = Distribution::function(array![], array![])?;
+    let b = Distribution::function(array![1.0, 2.0], array![0.0, 0.0])?;
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(DistributionNegLog::empty(), actual);
+    assert_eq!(Distribution::empty(), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_disjoint_grids_is_not_empty() -> Result<(), Report> {
-    let a = DistributionNegLog::function(array![0.0, 1.0], array![0.0, 0.5])?;
-    let b = DistributionNegLog::function(array![10.0, 11.0], array![0.0, 0.5])?;
+    let a = Distribution::function(array![0.0, 1.0], array![0.0, 0.5])?;
+    let b = Distribution::function(array![10.0, 11.0], array![0.0, 0.5])?;
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert!(!matches!(actual, DistributionNegLog::Empty));
+    assert!(!matches!(actual, Distribution::Empty));
     Ok(())
   }
 
   #[test]
   fn test_convolution_function_function_different_spacing() -> Result<(), Report> {
-    let a = DistributionNegLog::function(array![0.0, 0.5, 1.0], neg_log(&array![1.0, 2.0, 1.0]))?;
-    let b = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![0.0, 0.0, 0.0])?;
+    let a = Distribution::function(array![0.0, 0.5, 1.0], neg_log(&array![1.0, 2.0, 1.0]))?;
+    let b = Distribution::function(array![0.0, 1.0, 2.0], array![0.0, 0.0, 0.0])?;
 
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
@@ -626,8 +626,8 @@ mod tests {
 
   #[test]
   fn test_convolution_point_function_zero_width() -> Result<(), Report> {
-    let a = DistributionNegLog::point(5.0, 1.0);
-    let b = DistributionNegLog::function(array![1.0, 2.0], array![2.0, 3.0])?;
+    let a = Distribution::point(5.0, 1.0);
+    let b = Distribution::function(array![1.0, 2.0], array![2.0, 3.0])?;
 
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
@@ -638,36 +638,36 @@ mod tests {
 
   #[test]
   fn test_backward_pass_temporal_direction() -> Result<(), Report> {
-    let child_time_dist = DistributionNegLog::point(2013.0, 0.0);
-    let negated_branch = DistributionNegLog::point(2.5, 0.0).negate()?;
+    let child_time_dist = Distribution::point(2013.0, 0.0);
+    let negated_branch = Distribution::point(2.5, 0.0).negate()?;
     let actual = distribution_convolution(
       &child_time_dist,
       &negated_branch,
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
-    assert_eq!(DistributionNegLog::point(2010.5, 0.0), actual);
+    assert_eq!(Distribution::point(2010.5, 0.0), actual);
     Ok(())
   }
 
   #[test]
   fn test_forward_pass_temporal_direction() -> Result<(), Report> {
-    let parent_time_dist = DistributionNegLog::point(2010.0, 0.0);
-    let branch_length_dist = DistributionNegLog::point(1.5, 0.0);
+    let parent_time_dist = Distribution::point(2010.0, 0.0);
+    let branch_length_dist = Distribution::point(1.5, 0.0);
     let actual = distribution_convolution(
       &parent_time_dist,
       &branch_length_dist,
       MaxGridPoints::default(),
       &FftPlans::new(),
     )?;
-    assert_eq!(DistributionNegLog::point(2011.5, 0.0), actual);
+    assert_eq!(Distribution::point(2011.5, 0.0), actual);
     Ok(())
   }
 
   #[test]
   fn test_convolution_with_uncertainty() -> Result<(), Report> {
-    let parent = DistributionNegLog::function(array![2010.0, 2010.5, 2011.0], neg_log(&array![0.2, 0.6, 0.2]))?;
-    let branch = DistributionNegLog::function(array![1.0, 1.5, 2.0], neg_log(&array![0.3, 0.4, 0.3]))?;
+    let parent = Distribution::function(array![2010.0, 2010.5, 2011.0], neg_log(&array![0.2, 0.6, 0.2]))?;
+    let branch = Distribution::function(array![1.0, 1.5, 2.0], neg_log(&array![0.3, 0.4, 0.3]))?;
 
     let actual = distribution_convolution(&parent, &branch, MaxGridPoints::default(), &FftPlans::new())?;
 
@@ -685,12 +685,12 @@ mod tests {
     let dx = 1e-7;
     let num_points = 500;
     let values = Array1::zeros(num_points);
-    let dist_a = DistributionNegLog::Function(DistributionFunction::from_start_dx_values(0.0, dx, values.clone())?);
-    let dist_b = DistributionNegLog::Function(DistributionFunction::from_start_dx_values(0.0, dx, values)?);
+    let dist_a = Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values.clone())?);
+    let dist_b = Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values)?);
 
     let actual = distribution_convolution(&dist_a, &dist_b, MaxGridPoints::default(), &FftPlans::new())?;
 
-    let DistributionNegLog::Function(result_fn) = actual else {
+    let Distribution::Function(result_fn) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     assert_eq!(2 * num_points - 1, result_fn.len());
@@ -703,16 +703,16 @@ mod tests {
   fn test_convolution_convolve_small_dx_range_function() -> Result<(), Report> {
     let dx = 1e-7;
     let n = 500;
-    let func = DistributionNegLog::Function(
+    let func = Distribution::Function(
       DistributionFunction::from_start_dx_values(0.0, dx, Array1::zeros(n))?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Hard)?,
     );
-    let range = DistributionNegLog::range((0.0, 2e-7), 0.0);
+    let range = Distribution::range((0.0, 2e-7), 0.0);
 
     let actual = distribution_convolution(&range, &func, MaxGridPoints::default(), &FftPlans::new())?;
 
-    let DistributionNegLog::Function(f) = actual else {
+    let Distribution::Function(f) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
     let rise_cell = 2e-7 / 8.0;
@@ -731,7 +731,7 @@ mod tests {
 
     let actual = coarsen_convolution(fine.clone(), 1.0, MaxGridPoints::default())?;
 
-    assert_eq!(DistributionNegLog::Function(fine), actual);
+    assert_eq!(Distribution::Function(fine), actual);
     Ok(())
   }
 
@@ -741,7 +741,7 @@ mod tests {
     let expected_points = Grid::from_range_dx(0.0, 0.5, 1.0, MaxGridPoints::default())?.n_points();
     assert_eq!(2, expected_points);
 
-    let DistributionNegLog::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
+    let Distribution::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
       panic!("expected a Function result");
     };
 
@@ -756,7 +756,7 @@ mod tests {
     let expected_points = Grid::from_range_dx(0.0, 4.0, 1.0, MaxGridPoints::default())?.n_points();
     assert_eq!(5, expected_points);
 
-    let DistributionNegLog::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
+    let Distribution::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
       panic!("expected a Function result");
     };
 
@@ -787,18 +787,17 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use treetime_grid::NegLog;
 
     pub(super) fn function_on(
       range: (f64, f64),
       n_points: usize,
       y: impl Fn(f64) -> f64,
-    ) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    ) -> Result<DistributionFunction<f64>, Report> {
       DistributionFunction::from_range_values(range, Array1::linspace(range.0, range.1, n_points).mapv(y))
     }
 
-    pub(super) fn assert_grid_point(actual: &DistributionNegLog, t: f64) {
-      let DistributionNegLog::Function(g) = actual else {
+    pub(super) fn assert_grid_point(actual: &Distribution, t: f64) {
+      let Distribution::Function(g) = actual else {
         panic!("expected a Function result, got {actual:?}");
       };
       assert!(
@@ -830,7 +829,7 @@ mod tests {
     }
 
     impl PiecewiseLinear {
-      pub(super) fn of(f: &DistributionFunction<f64, NegLog>, right_rate: f64) -> Self {
+      pub(super) fn of(f: &DistributionFunction<f64>, right_rate: f64) -> Self {
         Self {
           x: f.t(),
           p: f.y().mapv(|y| (-y).exp()),

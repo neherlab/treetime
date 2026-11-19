@@ -13,7 +13,7 @@ mod tests {
   use pretty_assertions::assert_eq;
 
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -194,7 +194,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn nan_distribution() -> Result<Distribution<NegLog>, Report> {
+    pub(super) fn nan_distribution() -> Result<Distribution, Report> {
       Distribution::function(array![0.0, 1.0, 2.0], array![1.0, f64::NAN, 2.0])
     }
 

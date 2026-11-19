@@ -19,7 +19,6 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::ForwardPosterior;
 use treetime_distribution::MessageSpacing;
-use treetime_distribution::NegLog;
 use treetime_distribution::convolve_forward_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
@@ -51,7 +50,7 @@ pub(crate) fn propagate_distributions_forward_on_graph<S: Send + Sync>(
   backward: NodeMap<NodeBackward>,
   summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
   log: &dyn LogSink,
-) -> Result<(NodeMap<S>, EdgeMap<Arc<Distribution<NegLog>>>), Report> {
+) -> Result<(NodeMap<S>, EdgeMap<Arc<Distribution>>), Report> {
   let schedule = GraphSchedule::new(graph)?;
   let pass = ForwardPass {
     schedule: &schedule,
@@ -333,7 +332,7 @@ fn message_from_parent(
   edge: ParentEdge<'_>,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
-) -> Result<Option<Distribution<NegLog>>, Report> {
+) -> Result<Option<Distribution>, Report> {
   let (Some(parent_time_dist), Some(branch_dist)) = (&parent.distribution, &edge.branch.distribution) else {
     return Ok(None);
   };
@@ -374,7 +373,7 @@ struct ForwardOutput<S> {
   undated: bool,
   contradicted: bool,
   parents_disjoint: bool,
-  from_parents: PerEdge<(GraphEdgeKey, Arc<Distribution<NegLog>>)>,
+  from_parents: PerEdge<(GraphEdgeKey, Arc<Distribution>)>,
 }
 
 fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefinement, Report> {
@@ -476,11 +475,11 @@ fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefin
 
 fn parent_without_child(
   key: GraphNodeKey,
-  parent_time_dist: &Distribution<NegLog>,
+  parent_time_dist: &Distribution,
   parent_operand: GridOperand,
   edge: ParentEdge<'_>,
   max_points: MaxGridPoints,
-) -> Result<(Distribution<NegLog>, GridOperand), Report> {
+) -> Result<(Distribution, GridOperand), Report> {
   let Some(msg_to_parent) = edge.msg_to_parent else {
     return Ok((parent_time_dist.clone(), parent_operand));
   };
@@ -500,10 +499,10 @@ struct ForwardStep<'a> {
   names: &'a NodeNames,
   key: GraphNodeKey,
   leaf_prior: Option<&'a CoalescentPrior>,
-  date_constraint: Option<&'a Arc<Distribution<NegLog>>>,
+  date_constraint: Option<&'a Arc<Distribution>>,
   parent: Option<&'a Posterior>,
   edge: Option<ParentEdge<'a>>,
-  subtree: Option<&'a Distribution<NegLog>>,
+  subtree: Option<&'a Distribution>,
   subtree_origin: GridOrigin,
   max_points: MaxGridPoints,
   fft_plans: &'a FftPlans,
@@ -511,11 +510,11 @@ struct ForwardStep<'a> {
 
 fn normalized_product(
   key: GraphNodeKey,
-  dist_from_parent: &Distribution<NegLog>,
-  subtree_dist: &Distribution<NegLog>,
+  dist_from_parent: &Distribution,
+  subtree_dist: &Distribution,
   operands: [GridOperand; 2],
   max_points: MaxGridPoints,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   distribution_multiplication(dist_from_parent, subtree_dist, max_points)
     .wrap_grid_request(|| GridRequest::new(GridOperation::Posterior(key), operands))?
     .normalize()
@@ -526,7 +525,7 @@ fn normalized_product(
 struct ParentEdge<'a> {
   parent_key: GraphNodeKey,
   branch: &'a BranchLikelihood,
-  msg_to_parent: Option<&'a Distribution<NegLog>>,
+  msg_to_parent: Option<&'a Distribution>,
   msg_origin: GridOrigin,
 }
 
@@ -534,14 +533,14 @@ struct ParentEdge<'a> {
 enum ForwardRefinement {
   Unrefined,
   Refined {
-    distribution: Distribution<NegLog>,
+    distribution: Distribution,
     origin: GridOrigin,
   },
   ContradictedGivenDate,
 }
 
 fn commit_node_time(
-  date_constraint: Option<&Arc<Distribution<NegLog>>>,
+  date_constraint: Option<&Arc<Distribution>>,
   parent: Option<&Posterior>,
   likely_time: Option<f64>,
 ) -> Option<f64> {
@@ -560,7 +559,7 @@ struct Posterior {
   origin: GridOrigin,
 }
 
-fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
+fn has_exact_date(date_constraint: Option<&Arc<Distribution>>) -> bool {
   date_constraint.is_some_and(|dist| dist.is_point())
 }
 
@@ -571,10 +570,10 @@ pub(super) fn committed_time(likely_time: f64, parent_time: Option<f64>) -> f64 
 fn log_refinement(
   names: &NodeNames,
   key: GraphNodeKey,
-  parent: &Distribution<NegLog>,
-  convolved: &Distribution<NegLog>,
+  parent: &Distribution,
+  convolved: &Distribution,
   spacing: MessageSpacing,
-  refined: &Distribution<NegLog>,
+  refined: &Distribution,
 ) {
   if !log_enabled!(Level::Debug) {
     return;
@@ -591,8 +590,8 @@ fn log_refinement(
 fn log_kept_given_date(
   names: &NodeNames,
   key: GraphNodeKey,
-  date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  dist_from_parent: &Distribution<NegLog>,
+  date_constraint: Option<&Arc<Distribution>>,
+  dist_from_parent: &Distribution,
 ) {
   if !log_enabled!(Level::Debug) {
     return;
@@ -606,7 +605,7 @@ fn log_kept_given_date(
   );
 }
 
-fn describe_grid(dist: &Distribution<NegLog>) -> String {
+fn describe_grid(dist: &Distribution) -> String {
   let n_points = dist.t().len();
   match dist.time_bounds() {
     Some((t_min, t_max)) => format!("n={n_points}, [{t_min:.6}, {t_max:.6}]"),

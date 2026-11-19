@@ -31,7 +31,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp::<NegLog>(query)?;
+    let actual = grid_fn.interp(query)?;
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -53,7 +53,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp::<NegLog>(query)?;
+    let actual = grid_fn.interp(query)?;
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -61,7 +61,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_range_dx_clamped_holds_boundary_on_overshoot() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let clamped = grid_fn.resample_range_dx_clamped::<NegLog>((0.0, 1.0), 0.4, Side::Left, MaxGridPoints::default())?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4, Side::Left, MaxGridPoints::default())?;
     pretty_assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
     Ok(())
   }
@@ -69,8 +69,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_range_dx_clamped_anchored_right_keeps_the_right_end_on_a_grid_point() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let clamped =
-      grid_fn.resample_range_dx_clamped::<NegLog>((0.0, 1.0), 0.4, Side::Right, MaxGridPoints::default())?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4, Side::Right, MaxGridPoints::default())?;
     pretty_assert_abs_diff_eq!(clamped.y(), &array![0.0, 2.0, 6.0, 10.0], epsilon = 1e-12);
     Ok(())
   }
@@ -78,7 +77,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_range_dx_clamped_interpolates_within_support() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let clamped = grid_fn.resample_range_dx_clamped::<NegLog>((0.0, 1.0), 0.5, Side::Left, MaxGridPoints::default())?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5, Side::Left, MaxGridPoints::default())?;
     pretty_assert_ulps_eq!(clamped.y(), &array![0.0, 5.0, 10.0], max_ulps = 4);
     Ok(())
   }
@@ -94,7 +93,7 @@ mod tests {
     #[case] query: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp_with_extrap::<NegLog>(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
     pretty_assert_ulps_eq!(0.0, actual, max_ulps = 4);
     Ok(())
   }
@@ -113,7 +112,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, array![2.0, 10.0])?;
-    let actual = grid_fn.interp_with_extrap::<NegLog>(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
     Ok(())
   }
@@ -125,7 +124,7 @@ mod tests {
   #[trace]
   fn test_gridfn_interp_out_of_support_errors_by_default(#[case] query: f64, #[case] expected: &str) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![2.0, 10.0])?;
-    assert_error!(grid_fn.interp::<NegLog>(query), expected);
+    assert_error!(grid_fn.interp(query), expected);
     Ok(())
   }
 
@@ -174,7 +173,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::slice(         |f: &GridFn<f64>| f.slice(2..=4))]
-  #[case::anchored_right(|f: &GridFn<f64>| f.resample_range_dx_clamped::<NegLog>(BRANCH, 0.3, Side::Right, MaxGridPoints::default()))]
+  #[case::anchored_right(|f: &GridFn<f64>| f.resample_range_dx_clamped(BRANCH, 0.3, Side::Right, MaxGridPoints::default()))]
   #[trace]
   fn test_gridfn_grids_that_keep_the_right_end_end_at_it(
     #[case]
@@ -209,7 +208,7 @@ mod tests {
     let y = t.mapv(|ti: f64| if ti < 10.0 { law(ti) } else { f64::INFINITY });
     let grid_fn = GridFn::from_range_values((0.0, 10.0), y)?;
 
-    let actual = grid_fn.interp::<NegLog>(query)?;
+    let actual = grid_fn.interp(query)?;
 
     pretty_assert_abs_diff_eq!(law(query), actual, epsilon = 1e-9);
     Ok(())
@@ -225,7 +224,7 @@ mod tests {
       &[(3.0, 0.0), (2.0, -3.0 * 2.0_f64.ln())],
     )?);
 
-    let actual = grid_fn.interp_with_extrap::<NegLog>(3.5, BoundaryBehavior::Hard, law)?;
+    let actual = grid_fn.interp_with_extrap(3.5, BoundaryBehavior::Hard, law)?;
 
     pretty_assert_abs_diff_eq!(-3.0 * 0.5_f64.ln(), actual, epsilon = 1e-12);
     Ok(())
@@ -244,7 +243,7 @@ mod tests {
     let y = array![f64::INFINITY, 2.0, 0.0, f64::INFINITY, f64::INFINITY];
     let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
 
-    let actual = grid_fn.interp::<NegLog>(query)?;
+    let actual = grid_fn.interp(query)?;
 
     assert!(!actual.is_nan(), "interpolation at {query} returned NaN");
     if expected.is_infinite() {
@@ -274,7 +273,7 @@ mod tests {
   ) -> Result<(), Report> {
     let n = y.len().to_f64_exact();
     let grid_fn = GridFn::from_range_values((0.0, n - 1.0), y)?;
-    let actual = grid_fn.hard_cell::<NegLog>(cell, BoundaryBehavior::Hard, right)?;
+    let actual = grid_fn.hard_cell(cell, BoundaryBehavior::Hard, right)?;
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -290,7 +289,7 @@ mod tests {
     ];
     let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
     let actual = grid_fn
-      .hard_cell::<NegLog>(3, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
+      .hard_cell(3, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
       .unwrap();
     assert_eq!(GridEdge { t: 3.0, y: 0.0 }, actual.anchor);
     pretty_assert_ulps_eq!(4.0, actual.law.t_hard, max_ulps = 0);
@@ -304,9 +303,9 @@ mod tests {
     let grid_fn = GridFn::from_range_values((0.0, 5.0), y)?;
     for (cell, t) in [(0, 0.3), (4, 4.6)] {
       let hard_cell = grid_fn
-        .hard_cell::<NegLog>(cell, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
+        .hard_cell(cell, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
         .unwrap();
-      pretty_assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp::<NegLog>(t)?, max_ulps = 0);
+      pretty_assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp(t)?, max_ulps = 0);
     }
     Ok(())
   }
@@ -328,7 +327,7 @@ mod tests {
   ) -> Result<(), Report> {
     let n = y.len().to_f64_exact();
     let grid_fn = GridFn::from_range_values((0.0, n - 1.0), y)?;
-    assert_eq!(expected, grid_fn.hard_cell_fit_range::<NegLog>(cell)?);
+    assert_eq!(expected, grid_fn.hard_cell_fit_range(cell)?);
     Ok(())
   }
 
@@ -336,10 +335,10 @@ mod tests {
   fn test_gridfn_hard_cell_law_depends_only_on_its_fit_range() -> Result<(), Report> {
     let y = array![7.0, 30.0, 30.0, 0.0, 300.0, 0.0, f64::INFINITY];
     let grid_fn = GridFn::from_range_values((0.0, 6.0), y.clone())?;
-    let range = grid_fn.hard_cell_fit_range::<NegLog>(5)?.unwrap();
+    let range = grid_fn.hard_cell_fit_range(5)?.unwrap();
     let sliced = GridFn::from_range_values((1.0, 6.0), y.slice(s![*range.start()..]).to_owned())?;
-    let full = grid_fn.hard_cell::<NegLog>(5, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
-    let kept = sliced.hard_cell::<NegLog>(4, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    let full = grid_fn.hard_cell(5, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    let kept = sliced.hard_cell(4, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
     assert_eq!(1..=5, range);
     assert_eq!(full, kept);
     Ok(())
@@ -348,10 +347,7 @@ mod tests {
   #[test]
   fn test_gridfn_hard_cell_fit_range_outside_the_grid_is_error() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, f64::INFINITY])?;
-    assert_error!(
-      grid_fn.hard_cell_fit_range::<NegLog>(1),
-      "Cell 1 is outside the grid of 2 points"
-    );
+    assert_error!(grid_fn.hard_cell_fit_range(1), "Cell 1 is outside the grid of 2 points");
     Ok(())
   }
 
@@ -359,7 +355,7 @@ mod tests {
   fn test_gridfn_hard_cell_outside_the_grid_is_error() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, f64::INFINITY])?;
     assert_error!(
-      grid_fn.hard_cell::<NegLog>(1, BoundaryBehavior::Hard, BoundaryBehavior::Hard),
+      grid_fn.hard_cell(1, BoundaryBehavior::Hard, BoundaryBehavior::Hard),
       "Cell 1 is outside the grid of 2 points"
     );
     Ok(())
@@ -390,7 +386,7 @@ mod tests {
     let grid_fn = GridFn::from_range_values(range, cost)?;
     pretty_assert_abs_diff_eq!(
       expected,
-      grid_fn.interp_with_extrap::<NegLog>(t, left, right)?,
+      grid_fn.interp_with_extrap(t, left, right)?,
       epsilon = 1e-13,
       "closed-form cost of the law at t: soft tail c_edge + k (t - t_edge); hard approach c_edge - b ln(|t - t_hard| / |t_edge - t_hard|); edge cell c_anchor - b ln(d / d_anchor) + s (d - d_anchor), d = |t - t_edge| + offset, s set by both cell ends. Bound: at most 20 roundings, each within one ulp (8.9e-16) of a cost below 4"
     );

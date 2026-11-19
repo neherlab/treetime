@@ -13,7 +13,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::key_map::NodeMap;
   use treetime_graph::node::GraphNodeKey;
@@ -200,8 +200,8 @@ mod tests {
 
       pub(super) fn backward_pass(
         &self,
-        dates: Vec<(GraphNodeKey, Distribution<NegLog>)>,
-        branches_above: Vec<(GraphNodeKey, Distribution<NegLog>)>,
+        dates: Vec<(GraphNodeKey, Distribution)>,
+        branches_above: Vec<(GraphNodeKey, Distribution)>,
         clock_rate_fixed: bool,
       ) -> Result<NodeMap<NodeBackward>, Report> {
         let mut constraints = DateConstraints::default();
@@ -237,7 +237,7 @@ mod tests {
       }
     }
 
-    pub(super) fn gaussian(start: f64, end: f64, n_points: usize) -> Result<Distribution<NegLog>, Report> {
+    pub(super) fn gaussian(start: f64, end: f64, n_points: usize) -> Result<Distribution, Report> {
       let x = Array1::linspace(start, end, n_points);
       let mid = f64::midpoint(start, end);
       let y = x.mapv(|t| (t - mid).powi(2));

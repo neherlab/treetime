@@ -2,7 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use eyre::Report;
 use std::collections::BTreeSet;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, NegLog};
+use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
@@ -50,7 +50,7 @@ pub(crate) fn applied_date_constraint(
   constraints: &DateConstraints,
   key: GraphNodeKey,
   bad_branch: bool,
-) -> Option<Arc<Distribution<NegLog>>> {
+) -> Option<Arc<Distribution>> {
   if bad_branch {
     return None;
   }

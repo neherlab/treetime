@@ -2,7 +2,6 @@ use crate::coalescent::mean_field::CoalescentPrior;
 use crate::timetree::inference::runner::GRID_POINTS;
 use eyre::Report;
 use ndarray::Array1;
-use treetime_distribution::NegLog;
 use treetime_distribution::distribution_multiply_by_fn;
 use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
 use treetime_graph::node::GraphNodeKey;
@@ -12,8 +11,8 @@ pub(crate) fn apply_coalescent_prior(
   coalescent_model: Option<&CoalescentPrior>,
   key: GraphNodeKey,
   n_children: usize,
-  distribution: Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report> {
+  distribution: Distribution,
+) -> Result<Distribution, Report> {
   let Some(model) = coalescent_model else {
     return Ok(distribution);
   };
@@ -30,8 +29,8 @@ pub(crate) fn apply_coalescent_prior(
 pub(crate) fn apply_leaf_coalescent_factor(
   coalescent_model: Option<&CoalescentPrior>,
   key: GraphNodeKey,
-  distribution: Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report> {
+  distribution: Distribution,
+) -> Result<Distribution, Report> {
   let Some(model) = coalescent_model else {
     return Ok(distribution);
   };

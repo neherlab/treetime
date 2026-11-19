@@ -27,8 +27,7 @@ mod tests {
   use std::sync::Arc;
   use std::sync::Weak;
   use treetime_distribution::{
-    Distribution, DistributionFunction, MassProfile, NegLog, TailMass, convolve_across_edge,
-    distribution_multiplication,
+    Distribution, DistributionFunction, MassProfile, TailMass, convolve_across_edge, distribution_multiplication,
   };
   use treetime_graph::key_map::NodeMap;
   use treetime_graph::keymap;
@@ -238,7 +237,7 @@ mod tests {
       Distribution::function(t, y)?
     };
 
-    let refine = |parent: Distribution<NegLog>| -> Result<f64, Report> {
+    let refine = |parent: Distribution| -> Result<f64, Report> {
       let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -555,7 +554,7 @@ mod tests {
   #[case::message_without_a_subtree(       None                                         )]
   #[trace]
   fn test_forward_pass_message_resolves_the_posterior_it_forms_after_a_resample(
-    #[case] subtree: Option<Distribution<NegLog>>,
+    #[case] subtree: Option<Distribution>,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(N:1.0)root;".as_slice())?;
     let names = nwk_parsed.names.clone();
@@ -741,7 +740,7 @@ mod tests {
     for name in ["A", "B", "C", "I"] {
       set_branch_length_distribution(&graph, &mut inputs, key(name), 1.0);
     }
-    let grids: Mutex<NodeMap<Weak<Distribution<NegLog>>>> = Mutex::new(NodeMap::new());
+    let grids: Mutex<NodeMap<Weak<Distribution>>> = Mutex::new(NodeMap::new());
 
     let live_before_each_node = ThreadPoolBuilder::new().num_threads(1).build()?.install(|| {
       propagate_distributions_forward(
@@ -845,13 +844,13 @@ mod tests {
       }
     }
 
-    pub(super) fn set_date(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution<NegLog>) {
+    pub(super) fn set_date(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution) {
       let dist = Arc::new(dist);
       inputs.constraints.by_node.insert(key, Some(Arc::clone(&dist)));
       inputs.backward.entry(key).or_default().subtree = Some(dist);
     }
 
-    pub(super) fn set_time_distribution(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution<NegLog>) {
+    pub(super) fn set_time_distribution(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution) {
       inputs.backward.entry(key).or_default().subtree = Some(Arc::new(dist));
     }
 
@@ -872,7 +871,7 @@ mod tests {
       graph: &Graph,
       inputs: &mut ForwardInputs,
       target_key: GraphNodeKey,
-      dist: Distribution<NegLog>,
+      dist: Distribution,
     ) {
       let time_length = dist.likely_time().expect("the branch distribution has a peak");
       let branch = BranchLikelihood {
@@ -887,7 +886,7 @@ mod tests {
       n_points: usize,
       mean: f64,
       sigma: f64,
-    ) -> Result<Distribution<NegLog>, Report> {
+    ) -> Result<Distribution, Report> {
       let grid = Array1::linspace(x_min, x_max, n_points);
       let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
@@ -901,7 +900,7 @@ mod tests {
       n_points: usize,
       mean: f64,
       sigma: f64,
-    ) -> Result<Distribution<NegLog>, Report> {
+    ) -> Result<Distribution, Report> {
       let grid = Array1::linspace(x_min, x_max, n_points);
       let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
       let law = SoftTailLaw {
@@ -922,8 +921,8 @@ mod tests {
     }
 
     pub(super) fn refine_child_of(
-      parent_posterior: Distribution<NegLog>,
-      message_from_child: Option<Distribution<NegLog>>,
+      parent_posterior: Distribution,
+      message_from_child: Option<Distribution>,
     ) -> Result<Option<f64>, Report> {
       let nwk_parsed = nwk_read(b"(N:1.0)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
@@ -944,7 +943,7 @@ mod tests {
     pub(super) fn leaf_time_distribution(
       posterior: &NodeMap<FullPosterior>,
       key: GraphNodeKey,
-    ) -> Option<Distribution<NegLog>> {
+    ) -> Option<Distribution> {
       posterior[&key].distribution.as_deref().cloned()
     }
   }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::Distribution;
   use crate::distribution_ops::multiply::{
     HardDomain, distribution_multiplication, guarded_empty_result, hard_domains_disjoint,
   };
@@ -8,7 +8,6 @@ mod tests {
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
@@ -26,15 +25,15 @@ mod tests {
     #[case] expected_t: Vec<f64>,
     #[case] expected_y: Vec<f64>,
   ) {
-    let range = DistributionNegLog::range(range_bounds, 2.0);
-    let function = DistributionNegLog::function(
+    let range = Distribution::range(range_bounds, 2.0);
+    let function = Distribution::function(
       array![0.0, 1.0, 2.0, 3.0, 4.0],
       array![1.0, 2.0, 3.0, 4.0, 5.0],
     )
     .unwrap();
 
     let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(actual) = actual else {
+    let Distribution::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
     pretty_assert_ulps_eq!(Array1::from_vec(expected_t), actual.t(), max_ulps = 4);
@@ -48,42 +47,41 @@ mod tests {
 
   #[test]
   fn test_multiply_range_function_disjoint_returns_empty() {
-    let range = DistributionNegLog::range((5.0, 6.0), 2.0);
-    let function = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let range = Distribution::range((5.0, 6.0), 2.0);
+    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
     let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
-    let expected = DistributionNegLog::Empty;
+    let expected = Distribution::Empty;
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_multiply_range_function_endpoint_contact_returns_point() {
-    let range = DistributionNegLog::range((2.0, 3.0), 2.0);
-    let function = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let range = Distribution::range((2.0, 3.0), 2.0);
+    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
     let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
-    let expected = DistributionNegLog::point(2.0, 5.0);
+    let expected = Distribution::point(2.0, 5.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_multiply_function_function_endpoint_contact_returns_point() {
-    let left = DistributionNegLog::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
-    let right = DistributionNegLog::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
+    let left = Distribution::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
+    let right = Distribution::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
     let actual = distribution_multiplication(&left, &right, MaxGridPoints::default()).unwrap();
-    let expected = DistributionNegLog::point(1.0, 8.0);
+    let expected = Distribution::point(1.0, 8.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_multiply_function_function_uses_finer_spacing_over_intersection() {
-    let coarse =
-      DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let fine = DistributionNegLog::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
+    let coarse = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let fine = Distribution::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
 
     let actual = distribution_multiplication(&coarse, &fine, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(actual) = actual else {
+    let Distribution::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
 
@@ -104,7 +102,7 @@ mod tests {
     let b = helpers::make_gaussian(20.0, 1.0, 101);
 
     let actual = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    assert_eq!(DistributionNegLog::Empty, actual);
+    assert_eq!(Distribution::Empty, actual);
   }
 
   #[test]
@@ -114,7 +112,7 @@ mod tests {
 
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
 
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function variant");
     };
 
@@ -140,10 +138,10 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c1_overlapping_no_tails() {
-    let a = DistributionNegLog::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0));
-    let b = DistributionNegLog::Function(helpers::make_function(3.0, 13.0, 101, 8.0, 2.0));
+    let a = Distribution::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0));
+    let b = Distribution::Function(helpers::make_function(3.0, 13.0, 101, 8.0, 2.0));
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
     pretty_assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
@@ -158,18 +156,18 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c2_overlapping_with_tails() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(
+    let b = Distribution::Function(
       helpers::make_function(3.0, 13.0, 101, 8.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
     pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -178,14 +176,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c3_disjoint_one_constant_left() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(10.0, 20.0, 101, 15.0, 3.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let b = Distribution::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function, got {result:?}")
     };
     pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -200,14 +198,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c4_disjoint_both_constant_left() {
-    let leaf_msg = DistributionNegLog::Function(
+    let leaf_msg = Distribution::Function(
       helpers::make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let subtree_msg = DistributionNegLog::Function(
+    let subtree_msg = Distribution::Function(
       helpers::make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
         .with_left_extrap(SOFT)
         .unwrap()
@@ -215,7 +213,7 @@ mod tests {
         .unwrap(),
     );
     let result = distribution_multiplication(&leaf_msg, &subtree_msg, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function (non-empty product), got {result:?}")
     };
     pretty_assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
@@ -230,26 +228,26 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c5_disjoint_hard_tail() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(10.0, 20.0, 101, 15.0, 3.0)
         .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let b = Distribution::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
     let actual = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    assert_eq!(DistributionNegLog::Empty, actual);
+    assert_eq!(Distribution::Empty, actual);
   }
 
   #[test]
   fn test_multiply_tail_c6_endpoint_contact_with_constant() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(5.0, 10.0, 51, 7.5, 2.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(helpers::make_function(0.0, 5.0, 51, 2.5, 2.0));
+    let b = Distribution::Function(helpers::make_function(0.0, 5.0, 51, 2.5, 2.0));
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function (interval, not point contact), got {result:?}")
     };
     pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -258,14 +256,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c7_contained_with_tails() {
-    let outer = DistributionNegLog::Function(
+    let outer = Distribution::Function(
       helpers::make_function(0.0, 20.0, 201, 10.0, 5.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let inner = DistributionNegLog::Function(helpers::make_function(5.0, 15.0, 101, 10.0, 3.0));
+    let inner = Distribution::Function(helpers::make_function(5.0, 15.0, 101, 10.0, 3.0));
     let result = distribution_multiplication(&outer, &inner, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
     pretty_assert_ulps_eq!(f.x_min(), 5.0, max_ulps = 4);
@@ -274,14 +272,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c8_mixed_constant_zero() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(
+    let b = Distribution::Function(
       helpers::make_function(3.0, 8.0, 51, 5.5, 1.5)
         .with_left_extrap(SOFT)
         .unwrap()
@@ -289,7 +287,7 @@ mod tests {
         .unwrap(),
     );
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
     pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -304,15 +302,15 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_commutative() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(10.0, 20.0, 101, 15.0, 3.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let b = Distribution::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
     let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let ba = distribution_multiplication(&b, &a, MaxGridPoints::default()).unwrap();
-    let (DistributionNegLog::Function(fab), DistributionNegLog::Function(fba)) = (&ab, &ba) else {
+    let (Distribution::Function(fab), Distribution::Function(fba)) = (&ab, &ba) else {
       panic!("Both results should be Function")
     };
     pretty_assert_ulps_eq!(fab.x_min(), fba.x_min(), max_ulps = 4);
@@ -324,7 +322,7 @@ mod tests {
   fn test_multiply_tail_chained_survives_disjoint() -> Result<(), Report> {
     let [msg1, msg2, msg3, msg4] = helpers::chained_messages()?;
     let leaves = helpers::multiply_all(&msg1, &[&msg2, &msg3])?;
-    let DistributionNegLog::Function(f) = &leaves else {
+    let Distribution::Function(f) = &leaves else {
       panic!("Expected Function, got {leaves:?}")
     };
     assert_eq!(
@@ -336,7 +334,7 @@ mod tests {
     );
 
     let accum = helpers::multiply_all(&leaves, &[&msg4])?;
-    let DistributionNegLog::Function(f) = &accum else {
+    let Distribution::Function(f) = &accum else {
       panic!("Chained multiplication collapsed to {accum:?} despite soft left tails")
     };
     assert_eq!(
@@ -387,18 +385,18 @@ mod tests {
     #[case] b_left: BoundaryBehavior,
     #[case] expected_left: BoundaryBehavior,
   ) {
-    let a = DistributionNegLog::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
-    let b = DistributionNegLog::Function(helpers::make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
+    let a = Distribution::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
+    let b = Distribution::Function(helpers::make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
 
     let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(fab) = &ab else {
+    let Distribution::Function(fab) = &ab else {
       panic!("Expected Function, got {ab:?}")
     };
     assert_eq!(expected_left, fab.left_extrap());
     assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
 
     let ba = distribution_multiplication(&b, &a, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(fba) = &ba else {
+    let Distribution::Function(fba) = &ba else {
       panic!("Expected Function, got {ba:?}")
     };
     assert_eq!(expected_left, fba.left_extrap());
@@ -406,19 +404,19 @@ mod tests {
 
   #[test]
   fn test_multiply_function_function_composes_soft_tails() {
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.002 }))
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(
+    let b = Distribution::Function(
       helpers::make_function(2.0, 12.0, 101, 7.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.003 }))
         .unwrap(),
     );
 
     let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(fab) = &ab else {
+    let Distribution::Function(fab) = &ab else {
       panic!("Expected Function, got {ab:?}")
     };
     let BoundaryBehavior::Linear(law) = fab.left_extrap() else {
@@ -433,12 +431,12 @@ mod tests {
     let law_a = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let law_b = HardApproachLaw { t_hard: 0.0, b: 2.0 };
 
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::HardApproach(law_a))
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(
+    let b = Distribution::Function(
       helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::HardApproach(law_b))
         .unwrap(),
@@ -454,19 +452,19 @@ mod tests {
   fn test_multiply_function_function_nullary_hard_absorbs_approach_law() {
     let law = HardApproachLaw { t_hard: 0.0, b: 1.5 };
 
-    let a = DistributionNegLog::Function(
+    let a = Distribution::Function(
       helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::HardApproach(law))
         .unwrap(),
     );
-    let b = DistributionNegLog::Function(
+    let b = Distribution::Function(
       helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let DistributionNegLog::Function(f) = &result else {
+    let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
     assert_eq!(BoundaryBehavior::Hard, f.left_extrap());
@@ -492,8 +490,8 @@ mod tests {
 
   #[test]
   fn test_multiply_point_on_function_zero_raises_internal_error() {
-    let point = DistributionNegLog::point(1.0, 5.0);
-    let func = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, f64::INFINITY, 1.0]).unwrap();
+    let point = Distribution::point(1.0, 5.0);
+    let func = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, f64::INFINITY, 1.0]).unwrap();
     assert_error!(
       distribution_multiplication(&point, &func, MaxGridPoints::default()),
       "multiplication produced an empty result, but the operands' hard domains overlap: operand A Some(((1.0, 1.0), (Hard, Hard))), operand B Some(((0.0, 2.0), (Error, Error))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers."
@@ -502,10 +500,10 @@ mod tests {
 
   #[test]
   fn test_multiply_disjoint_points_return_empty() {
-    let a = DistributionNegLog::point(1.0, 2.0);
-    let b = DistributionNegLog::point(5.0, 3.0);
+    let a = Distribution::point(1.0, 2.0);
+    let b = Distribution::point(5.0, 3.0);
     assert_eq!(
-      DistributionNegLog::Empty,
+      Distribution::Empty,
       distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap()
     );
   }
@@ -515,7 +513,7 @@ mod tests {
     let a = Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
     let b = Some(((5.0, 15.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
     assert_error!(
-      guarded_empty_result::<NegLog>("convolution", a, b),
+      guarded_empty_result("convolution", a, b),
       "convolution produced an empty result, but the operands' hard domains overlap: operand A Some(((0.0, 10.0), (Error, Error))), operand B Some(((5.0, 15.0), (Error, Error))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers."
     );
   }
@@ -528,22 +526,22 @@ mod tests {
   #[trace]
   fn test_guarded_empty_result_returns_empty_without_overlap(#[case] a: Option<HardDomain>, #[case] b: Option<HardDomain>) {
     assert_eq!(
-      DistributionNegLog::Empty,
-      guarded_empty_result::<NegLog>("multiplication", a, b).unwrap()
+      Distribution::Empty,
+      guarded_empty_result("multiplication", a, b).unwrap()
     );
   }
 
   mod helpers {
     use super::SOFT;
-    use crate::__tests__::aliases::DistributionNegLog;
+    use crate::Distribution;
     use crate::DistributionFunction;
     use crate::distribution_ops::multiply::distribution_multiplication;
     use eyre::Report;
     use ndarray::Array1;
-    use treetime_grid::{BoundaryBehavior, MaxGridPoints, NegLog};
+    use treetime_grid::{BoundaryBehavior, MaxGridPoints};
     use treetime_utils::cast::ToF64Exact;
 
-    pub(super) fn chained_messages() -> Result<[DistributionNegLog; 4], Report> {
+    pub(super) fn chained_messages() -> Result<[Distribution; 4], Report> {
       Ok([
         soft_message((2000.0, 2010.0), 101, 2005.0, 2.0)?,
         soft_message((2001.0, 2008.0), 71, 2004.0, 1.5)?,
@@ -552,24 +550,21 @@ mod tests {
       ])
     }
 
-    pub(super) fn multiply_all(
-      first: &DistributionNegLog,
-      rest: &[&DistributionNegLog],
-    ) -> Result<DistributionNegLog, Report> {
+    pub(super) fn multiply_all(first: &Distribution, rest: &[&Distribution]) -> Result<Distribution, Report> {
       rest.iter().try_fold(first.clone(), |accum, msg| {
         distribution_multiplication(&accum, msg, MaxGridPoints::default())
       })
     }
 
-    fn soft_message(range: (f64, f64), n: usize, peak_at: f64, sigma: f64) -> Result<DistributionNegLog, Report> {
+    fn soft_message(range: (f64, f64), n: usize, peak_at: f64, sigma: f64) -> Result<Distribution, Report> {
       let y = Array1::linspace(range.0, range.1, n).mapv(|x| 0.5 * ((x - peak_at) / sigma).powi(2));
-      let f = DistributionFunction::<f64, NegLog>::from_range_values(range, y)?
+      let f = DistributionFunction::<f64>::from_range_values(range, y)?
         .with_left_extrap(SOFT)?
         .with_right_extrap(BoundaryBehavior::Hard)?;
-      Ok(DistributionNegLog::Function(f))
+      Ok(Distribution::Function(f))
     }
 
-    pub(super) fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> DistributionNegLog {
+    pub(super) fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> Distribution {
       let x_min = mu - 5.0 * sigma;
       let x_max = mu + 5.0 * sigma;
       let dx = (x_max - x_min) / (n_points - 1).to_f64_exact();
@@ -577,8 +572,8 @@ mod tests {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - mu) / sigma).powi(2)
       });
-      let f = DistributionFunction::<f64, NegLog>::from_start_dx_values(x_min, dx, y).unwrap();
-      DistributionNegLog::Function(f)
+      let f = DistributionFunction::<f64>::from_start_dx_values(x_min, dx, y).unwrap();
+      Distribution::Function(f)
     }
 
     pub(super) fn make_function(
@@ -587,13 +582,13 @@ mod tests {
       n: usize,
       peak_at: f64,
       sigma: f64,
-    ) -> DistributionFunction<f64, NegLog> {
+    ) -> DistributionFunction<f64> {
       let dx = (x_max - x_min) / (n - 1).to_f64_exact();
       let y = Array1::from_shape_fn(n, |i| {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - peak_at) / sigma).powi(2)
       });
-      DistributionFunction::<f64, NegLog>::from_start_dx_values(x_min, dx, y).unwrap()
+      DistributionFunction::<f64>::from_start_dx_values(x_min, dx, y).unwrap()
     }
   }
 }

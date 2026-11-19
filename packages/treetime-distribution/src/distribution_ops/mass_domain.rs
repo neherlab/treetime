@@ -4,13 +4,12 @@ use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use itertools::Either;
 use ndarray::{Array1, s};
-use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, GridFn, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 use treetime_utils::{make_error, make_internal_error};
 
-pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
+pub(crate) fn log_mass(dist: &Distribution) -> Result<f64, Report> {
   match dist {
     Distribution::Empty => Ok(f64::NEG_INFINITY),
     Distribution::Point(p) => Ok(-p.amplitude()),
@@ -24,11 +23,11 @@ pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
 }
 
 pub fn rewindow_to_mass(
-  dist: &Distribution<NegLog>,
+  dist: &Distribution,
   eps: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   let Distribution::Function(f) = dist else {
     return dist.repeak();
   };
@@ -39,7 +38,7 @@ pub fn rewindow_to_mass(
   resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points, SpacingLimit::Input)
 }
 
-pub(crate) fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distribution<NegLog>, Report> {
+pub(crate) fn trim_to_mass(dist: Distribution, eps: f64) -> Result<Distribution, Report> {
   let Distribution::Function(f) = &dist else {
     return Ok(dist);
   };
@@ -49,11 +48,7 @@ pub(crate) fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distr
   trim_with_profile(dist, &profile, eps)
 }
 
-pub(crate) fn trim_with_profile(
-  dist: Distribution<NegLog>,
-  profile: &MassProfile,
-  eps: f64,
-) -> Result<Distribution<NegLog>, Report> {
+pub(crate) fn trim_with_profile(dist: Distribution, profile: &MassProfile, eps: f64) -> Result<Distribution, Report> {
   let Distribution::Function(f) = &dist else {
     return Ok(dist);
   };
@@ -232,7 +227,7 @@ struct TrimWindow {
 
 fn hard_cell_fit_hull(grid_fn: &GridFn<f64>, first: usize, end: usize) -> Result<(usize, usize), Report> {
   (first..end).try_fold((first, end), |(lo, hi), cell| {
-    Ok(match grid_fn.hard_cell_fit_range::<NegLog>(cell)? {
+    Ok(match grid_fn.hard_cell_fit_range(cell)? {
       Some(range) => (lo.min(*range.start()), hi.max(*range.end())),
       None => (lo, hi),
     })
@@ -270,7 +265,7 @@ fn tail_with_mass_beyond(profile: &MassProfile, side: Side, edge: GridEdge) -> R
     reason = "a mass profile that cannot be computed means the distribution is not mass-sizable, and callers fall back to plain normalization"
   )
 )]
-pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegLog>) -> Option<MassSized> {
+pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64>) -> Option<MassSized> {
   let Ok(Some(normalized)) = f.repeak() else {
     return None;
   };
@@ -287,7 +282,7 @@ pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegL
     reason = "a mass profile that cannot be computed means the distribution is not mass-sizable, and callers fall back to plain normalization"
   )
 )]
-pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64, NegLog>) -> Option<MassProfile> {
+pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64>) -> Option<MassProfile> {
   let Ok(profile) = MassProfile::new(f) else {
     return None;
   };
@@ -295,7 +290,7 @@ pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64, NegLog>) -> Opt
 }
 
 pub(crate) struct MassSized {
-  pub(crate) normalized: DistributionFunction<f64, NegLog>,
+  pub(crate) normalized: DistributionFunction<f64>,
   profile: MassProfile,
 }
 
@@ -328,13 +323,13 @@ pub(crate) fn mass_bounded_domain(profile: &MassProfile, eps: f64) -> Result<(f6
 }
 
 pub(crate) fn resample_to_mass_window(
-  normalized: &DistributionFunction<f64, NegLog>,
+  normalized: &DistributionFunction<f64>,
   lo: f64,
   hi: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
   spacing: SpacingLimit,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   if hi <= lo {
     return make_error!("Mass window collapsed to an empty interval [{lo}, {hi}]");
   }
@@ -365,17 +360,15 @@ pub(crate) fn resample_to_mass_window(
   Ok(Distribution::Function(resampled))
 }
 
-pub(crate) fn refit_soft_tails(
-  f: DistributionFunction<f64, NegLog>,
-) -> Result<DistributionFunction<f64, NegLog>, Report> {
+pub(crate) fn refit_soft_tails(f: DistributionFunction<f64>) -> Result<DistributionFunction<f64>, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
-    let law = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+    let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_left_extrap(BoundaryBehavior::Linear(law))?
   } else {
     f
   };
   let f = if matches!(f.right_extrap(), BoundaryBehavior::Linear(_)) {
-    let law = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+    let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_right_extrap(BoundaryBehavior::Linear(law))?
   } else {
     f
@@ -384,10 +377,10 @@ pub(crate) fn refit_soft_tails(
 }
 
 fn soft_tails_at_window_edges(
-  input: &DistributionFunction<f64, NegLog>,
-  resampled: DistributionFunction<f64, NegLog>,
+  input: &DistributionFunction<f64>,
+  resampled: DistributionFunction<f64>,
   (lo, hi): (f64, f64),
-) -> Result<DistributionFunction<f64, NegLog>, Report> {
+) -> Result<DistributionFunction<f64>, Report> {
   let resampled = if matches!(resampled.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = window_edge_tail_law(input, &resampled, Side::Left, lo)?;
     resampled.with_left_extrap(BoundaryBehavior::Linear(law))?
@@ -404,8 +397,8 @@ fn soft_tails_at_window_edges(
 }
 
 fn window_edge_tail_law(
-  input: &DistributionFunction<f64, NegLog>,
-  resampled: &DistributionFunction<f64, NegLog>,
+  input: &DistributionFunction<f64>,
+  resampled: &DistributionFunction<f64>,
   side: Side,
   edge: f64,
 ) -> Result<SoftTailLaw, Report> {
@@ -429,10 +422,10 @@ fn window_edge_tail_law(
     .filter(|y| y.is_finite())
     .count();
   if finite < 2 {
-    return SoftTailLaw::fit::<NegLog>(resampled.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS);
+    return SoftTailLaw::fit(resampled.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS);
   }
   let window_edge = input.grid_fn().slice(first..=end)?;
-  SoftTailLaw::fit::<NegLog>(&window_edge, side, DEFAULT_TAIL_FIT_POINTS)
+  SoftTailLaw::fit(&window_edge, side, DEFAULT_TAIL_FIT_POINTS)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

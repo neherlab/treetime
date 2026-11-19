@@ -7,20 +7,19 @@ use crate::distribution_ops::mass_domain::{
 };
 use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
 use eyre::Report;
-use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
 use treetime_ops::FftPlans;
 use treetime_utils::cast::ToF64Exact;
 
 pub fn convolve_across_edge(
-  a: &Distribution<NegLog>,
-  b: &Distribution<NegLog>,
+  a: &Distribution,
+  b: &Distribution,
   soft: Side,
   eps: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   let conv = WindowedConvolution::new(a, b, soft, eps, max_points, fft_plans)?;
   match soft {
     Side::Right => conv.resample(grid_points, max_points, OutputSpacing::Capped),
@@ -29,8 +28,8 @@ pub fn convolve_across_edge(
 }
 
 pub fn convolve_forward_across_edge(
-  a: &Distribution<NegLog>,
-  b: &Distribution<NegLog>,
+  a: &Distribution,
+  b: &Distribution,
   eps: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
@@ -54,7 +53,7 @@ impl ForwardConvolution {
   pub fn resolve_posterior(
     &self,
     eps: f64,
-    posterior_of: impl Fn(&Distribution<NegLog>) -> Result<Distribution<NegLog>, Report>,
+    posterior_of: impl Fn(&Distribution) -> Result<Distribution, Report>,
   ) -> Result<ResolvedForward, Report> {
     let message = self
       .conv
@@ -118,8 +117,8 @@ impl ForwardConvolution {
 
   fn finer_spacing_needed(
     &self,
-    message: &Distribution<NegLog>,
-    posterior: &Distribution<NegLog>,
+    message: &Distribution,
+    posterior: &Distribution,
     eps: f64,
     fine_dx: f64,
   ) -> SpacingCheck {
@@ -144,8 +143,8 @@ impl ForwardConvolution {
 }
 
 pub struct ResolvedForward {
-  message: Distribution<NegLog>,
-  posterior: Distribution<NegLog>,
+  message: Distribution,
+  posterior: Distribution,
   spacing: MessageSpacing,
   profile: PosteriorProfile,
 }
@@ -186,8 +185,8 @@ impl ResolvedForward {
 }
 
 pub struct ForwardPosterior {
-  pub message: Distribution<NegLog>,
-  pub posterior: Distribution<NegLog>,
+  pub message: Distribution,
+  pub posterior: Distribution,
   pub spacing: MessageSpacing,
 }
 
@@ -211,9 +210,9 @@ pub enum MessageSpacing {
 }
 
 enum WindowedConvolution {
-  Exact(Distribution<NegLog>),
+  Exact(Distribution),
   Window {
-    normalized: DistributionFunction<f64, NegLog>,
+    normalized: DistributionFunction<f64>,
     window: (f64, f64),
     cap: f64,
   },
@@ -221,8 +220,8 @@ enum WindowedConvolution {
 
 impl WindowedConvolution {
   fn new(
-    a: &Distribution<NegLog>,
-    b: &Distribution<NegLog>,
+    a: &Distribution,
+    b: &Distribution,
     soft: Side,
     eps: f64,
     max_points: MaxGridPoints,
@@ -279,7 +278,7 @@ impl WindowedConvolution {
     grid_points: usize,
     max_points: MaxGridPoints,
     spacing: OutputSpacing,
-  ) -> Result<Distribution<NegLog>, Report> {
+  ) -> Result<Distribution, Report> {
     match self {
       Self::Exact(conv) => conv.repeak(),
       Self::Window {
@@ -303,14 +302,14 @@ enum OutputSpacing {
   Fine,
 }
 
-fn coarser_operand_spacing(a: &Distribution<NegLog>, b: &Distribution<NegLog>) -> Option<f64> {
+fn coarser_operand_spacing(a: &Distribution, b: &Distribution) -> Option<f64> {
   let (Distribution::Function(a), Distribution::Function(b)) = (a, b) else {
     return None;
   };
   Some(a.dx().max(b.dx()))
 }
 
-fn hard_end(conv: &Distribution<NegLog>, side: Side) -> BoundaryBehavior {
+fn hard_end(conv: &Distribution, side: Side) -> BoundaryBehavior {
   let Distribution::Function(f) = conv else {
     return BoundaryBehavior::Hard;
   };
@@ -321,7 +320,7 @@ fn hard_end(conv: &Distribution<NegLog>, side: Side) -> BoundaryBehavior {
   }
 }
 
-fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {
+fn has_no_soft_law(conv: &Distribution, soft: Side) -> bool {
   let Distribution::Function(f) = conv else {
     return false;
   };
@@ -329,18 +328,14 @@ fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {
   law == BoundaryBehavior::Error
 }
 
-fn convolution_output_window(
-  a: &Distribution<NegLog>,
-  b: &Distribution<NegLog>,
-  eps: f64,
-) -> Result<Option<(f64, f64)>, Report> {
+fn convolution_output_window(a: &Distribution, b: &Distribution, eps: f64) -> Result<Option<(f64, f64)>, Report> {
   let (Some((lo_a, hi_a)), Some((lo_b, hi_b))) = (operand_mass_domain(a, eps)?, operand_mass_domain(b, eps)?) else {
     return Ok(None);
   };
   Ok(Some((lo_a + lo_b, hi_a + hi_b)))
 }
 
-fn operand_mass_domain(dist: &Distribution<NegLog>, eps: f64) -> Result<Option<(f64, f64)>, Report> {
+fn operand_mass_domain(dist: &Distribution, eps: f64) -> Result<Option<(f64, f64)>, Report> {
   match dist {
     Distribution::Point(p) => Ok(Some((p.t(), p.t()))),
     Distribution::Range(r) => Ok(Some((r.start(), r.end()))),

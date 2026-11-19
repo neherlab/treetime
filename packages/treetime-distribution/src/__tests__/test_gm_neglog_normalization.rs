@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::Distribution;
   use crate::distribution_multiplication;
   use eyre::Report;
   use helpers::{GoldenInput, GoldenOutput};
@@ -22,11 +22,11 @@ mod tests {
     let input = &inputs["coalescent_underflow"];
     let expected = &outputs["coalescent_underflow"];
 
-    let child = DistributionNegLog::function(
+    let child = Distribution::function(
       Array1::from_vec(input.time_points.clone()),
       Array1::from_vec(input.child_neglog.clone()),
     )?;
-    let coalescent = DistributionNegLog::function(
+    let coalescent = Distribution::function(
       Array1::from_vec(input.time_points.clone()),
       Array1::from_vec(input.coalescent_neglog.clone()),
     )?;

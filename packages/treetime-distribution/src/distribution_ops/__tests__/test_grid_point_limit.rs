@@ -150,21 +150,20 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::aliases::DistributionNegLog;
+    use crate::Distribution;
     use crate::distribution_core::function::DistributionFunction;
     use ndarray::Array1;
     use treetime_grid::MaxGridPoints;
-    use treetime_grid::NegLog;
 
     pub(super) fn limit() -> MaxGridPoints {
       MaxGridPoints::new(MaxGridPoints::MIN).unwrap()
     }
 
-    pub(super) fn flat(x_min: f64, x_max: f64, n_points: usize) -> DistributionNegLog {
-      DistributionNegLog::Function(flat_function(x_min, x_max, n_points))
+    pub(super) fn flat(x_min: f64, x_max: f64, n_points: usize) -> Distribution {
+      Distribution::Function(flat_function(x_min, x_max, n_points))
     }
 
-    pub(super) fn flat_function(x_min: f64, x_max: f64, n_points: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn flat_function(x_min: f64, x_max: f64, n_points: usize) -> DistributionFunction<f64> {
       DistributionFunction::from_range_values((x_min, x_max), Array1::zeros(n_points)).unwrap()
     }
   }

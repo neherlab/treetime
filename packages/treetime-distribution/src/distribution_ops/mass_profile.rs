@@ -5,7 +5,6 @@ use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::cmp::Ordering;
 use std::sync::OnceLock;
-use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, CellEnd, EdgeCell, Grid, Side};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::f64_to_usize_saturating;
@@ -33,7 +32,7 @@ pub struct MassProfile {
 }
 
 impl MassProfile {
-  pub fn new(f: &DistributionFunction<f64, NegLog>) -> Result<Self, Report> {
+  pub fn new(f: &DistributionFunction<f64>) -> Result<Self, Report> {
     let n = f.len();
     if n < 2 {
       return make_error!("Mass profile needs at least two grid points, got {n}");
@@ -51,7 +50,7 @@ impl MassProfile {
       .filter(|&cell| r[cell].is_infinite() != r[cell + 1].is_infinite())
       .filter_map(|cell| {
         f.grid_fn()
-          .hard_cell::<NegLog>(cell, left_extrap, right_extrap)
+          .hard_cell(cell, left_extrap, right_extrap)
           .map(|hard| hard.map(|hard| HardCellPower::new(cell, hard.law.b)))
           .transpose()
       })

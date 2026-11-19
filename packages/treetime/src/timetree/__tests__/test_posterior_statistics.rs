@@ -9,7 +9,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Gamma};
-  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, NegLog, TailMass};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, TailMass};
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
@@ -24,7 +24,7 @@ mod tests {
     let t = grid(1e-4, 12.0, 120_000);
     let neglog = t.mapv(|x| 5.0 - (shape - 1.0) * x.ln() + rate * x);
 
-    let median = posterior_median(&Distribution::<NegLog>::function(t, neglog)?)?;
+    let median = posterior_median(&Distribution::function(t, neglog)?)?;
 
     pretty_assert_abs_diff_eq!(
       Gamma::new(shape, rate)?.inverse_cdf(0.5),
@@ -43,7 +43,7 @@ mod tests {
       -(a + b).ln()
     });
 
-    let median = posterior_median(&Distribution::<NegLog>::function(t, neglog)?)?.unwrap();
+    let median = posterior_median(&Distribution::function(t, neglog)?)?.unwrap();
 
     assert!(median > 2013.5 && median < 2014.5, "median {median}");
     Ok(())
@@ -51,15 +51,12 @@ mod tests {
 
   #[test]
   fn test_posterior_median_of_point_range_and_empty() -> Result<(), Report> {
-    assert_eq!(
-      Some(2015.5),
-      posterior_median(&Distribution::<NegLog>::point(2015.5, 0.0))?
-    );
+    assert_eq!(Some(2015.5), posterior_median(&Distribution::point(2015.5, 0.0))?);
     assert_eq!(
       Some(2016.0),
-      posterior_median(&Distribution::<NegLog>::range((2015.0, 2017.0), 3.0))?
+      posterior_median(&Distribution::range((2015.0, 2017.0), 3.0))?
     );
-    assert_eq!(None, posterior_median(&Distribution::<NegLog>::Empty)?);
+    assert_eq!(None, posterior_median(&Distribution::Empty)?);
     Ok(())
   }
 
@@ -106,7 +103,7 @@ mod tests {
   fn test_posterior_survival_follows_a_steep_later_tail() -> Result<(), Report> {
     let rate = 100.0;
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 1.0), Array1::zeros(11))?
+      DistributionFunction::<f64>::from_range_values((0.0, 1.0), Array1::zeros(11))?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?,
     );
@@ -160,12 +157,9 @@ mod tests {
   fn test_posterior_survival_follows_the_power_law_of_a_hard_cell_end() -> Result<(), Report> {
     let (anchor_y, b) = (0.4, 2.5);
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(
-        (0.0, 3.0),
-        array![anchor_y, anchor_y, anchor_y, f64::INFINITY],
-      )?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b }))?,
+      DistributionFunction::<f64>::from_range_values((0.0, 3.0), array![anchor_y, anchor_y, anchor_y, f64::INFINITY])?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b }))?,
     );
 
     let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
@@ -193,7 +187,7 @@ mod tests {
   #[test]
   fn test_posterior_survival_is_flat_across_an_interior_gap_only_up_to_the_level_spacing() -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(
+      DistributionFunction::<f64>::from_range_values(
         (0.0, 5.0),
         array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0],
       )?
@@ -212,7 +206,7 @@ mod tests {
   #[test]
   fn test_posterior_survival_follows_a_long_soft_tail_of_a_narrow_posterior() -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 0.01), Array1::zeros(11))?
+      DistributionFunction::<f64>::from_range_values((0.0, 0.01), Array1::zeros(11))?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?,
     );
@@ -247,7 +241,7 @@ mod tests {
     #[case] right: BoundaryBehavior,
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_start_dx_values(start, STEP, y)?
+      DistributionFunction::<f64>::from_start_dx_values(start, STEP, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)?,
     );
@@ -271,7 +265,7 @@ mod tests {
     #[case] y: Array1<f64>,
     #[case] max_interpolation_error: f64,
   ) -> Result<(), Report> {
-    let function = DistributionFunction::<f64, NegLog>::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
+    let function = DistributionFunction::<f64>::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
     let profile = MassProfile::new(&function)?;
@@ -297,7 +291,7 @@ mod tests {
     #[case] message: &str,
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(range, y)?
+      DistributionFunction::<f64>::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)?,
     );
@@ -318,13 +312,13 @@ mod tests {
     let levels = survival_levels();
     assert_eq!(
       Some(point),
-      posterior_survival(&Distribution::<NegLog>::point(2015.5, 0.0), &levels)?
+      posterior_survival(&Distribution::point(2015.5, 0.0), &levels)?
     );
     assert_eq!(
       Some(range),
-      posterior_survival(&Distribution::<NegLog>::range((2015.0, 2017.0), 3.0), &levels)?
+      posterior_survival(&Distribution::range((2015.0, 2017.0), 3.0), &levels)?
     );
-    assert_eq!(None, posterior_survival(&Distribution::<NegLog>::Empty, &levels)?);
+    assert_eq!(None, posterior_survival(&Distribution::Empty, &levels)?);
     Ok(())
   }
 
@@ -334,7 +328,7 @@ mod tests {
     use eyre::Report;
     use itertools::Itertools;
     use ndarray::{Array1, array};
-    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
     use treetime_utils::cast::ToF64Exact;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -366,7 +360,7 @@ mod tests {
       range: (f64, f64),
       left: BoundaryBehavior,
       right: BoundaryBehavior,
-    ) -> Result<Distribution<NegLog>, Report> {
+    ) -> Result<Distribution, Report> {
       let function = DistributionFunction::from_range_values(range, array![0.0, 0.0])?
         .with_left_extrap(left)?
         .with_right_extrap(right)?;

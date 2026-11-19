@@ -7,7 +7,7 @@ use ndarray::{Array1, ArrayView1, s};
 use ordered_float::OrderedFloat;
 use std::iter::once;
 use treetime_distribution::{
-  BoundaryBehavior, Distribution, DistributionFunction, MassFractions, MassProfile, NegLog, TailMass,
+  BoundaryBehavior, Distribution, DistributionFunction, MassFractions, MassProfile, TailMass,
 };
 use treetime_grid::{EdgeCell, GridEdge, HardCell, Side};
 use treetime_utils::array::ndarray::partition_point;
@@ -17,10 +17,7 @@ const LEVEL_BRACKET_DOUBLINGS: usize = 64;
 const LEVEL_SOLVE_MAX_ITERS: u64 = 200;
 const REGION_MASS_ROUNDING_ULPS: f64 = 64.0;
 
-pub fn max_posterior_region(
-  distribution: &Distribution<NegLog>,
-  fraction: f64,
-) -> Result<Option<MaxPosteriorRegion>, Report> {
+pub fn max_posterior_region(distribution: &Distribution, fraction: f64) -> Result<Option<MaxPosteriorRegion>, Report> {
   if !(fraction > 0.0 && fraction < 1.0) {
     return make_error!("Posterior mass fraction must be in (0, 1), got {fraction}");
   }
@@ -37,7 +34,7 @@ pub fn max_posterior_region(
   Ok(Some(MaxPosteriorRegion::Grid(region)))
 }
 
-pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Option<f64>, Report> {
+pub(crate) fn posterior_median(distribution: &Distribution) -> Result<Option<f64>, Report> {
   match Posterior::of(distribution)? {
     Posterior::Empty => Ok(None),
     Posterior::Point(t) => Ok(Some(t)),
@@ -50,7 +47,7 @@ pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Op
 }
 
 pub(crate) fn posterior_survival(
-  distribution: &Distribution<NegLog>,
+  distribution: &Distribution,
   levels: &[SurvivalLevel],
 ) -> Result<Option<PosteriorSurvival>, Report> {
   match Posterior::of(distribution)? {
@@ -128,11 +125,11 @@ enum Posterior {
   Empty,
   Point(f64),
   Range(f64, f64),
-  Function(DistributionFunction<f64, NegLog>),
+  Function(DistributionFunction<f64>),
 }
 
 impl Posterior {
-  fn of(distribution: &Distribution<NegLog>) -> Result<Self, Report> {
+  fn of(distribution: &Distribution) -> Result<Self, Report> {
     let normalized = distribution.normalize()?;
     let bounds = normalized.time_bounds();
     Ok(match (normalized, bounds) {
@@ -159,7 +156,7 @@ fn posterior_fractions(profile: &MassProfile) -> Result<MassFractions<'_>, Repor
 }
 
 fn function_survival(
-  function: &DistributionFunction<f64, NegLog>,
+  function: &DistributionFunction<f64>,
   levels: &[SurvivalLevel],
 ) -> Result<PosteriorSurvival, Report> {
   let profile = MassProfile::new(function)?;
@@ -206,7 +203,7 @@ fn function_survival(
 }
 
 fn function_max_posterior_region(
-  function: &DistributionFunction<f64, NegLog>,
+  function: &DistributionFunction<f64>,
   fraction: f64,
 ) -> Result<PosteriorRegion, Report> {
   let peak = latest_peak_index(function.y().view());
@@ -231,7 +228,7 @@ fn function_max_posterior_region(
 }
 
 fn local_max_posterior_region(
-  function: &DistributionFunction<f64, NegLog>,
+  function: &DistributionFunction<f64>,
   fractions: &MassFractions<'_>,
   peak: usize,
   fraction: f64,
@@ -290,7 +287,7 @@ struct EdgeCells {
 }
 
 impl EdgeCells {
-  fn of(function: &DistributionFunction<f64, NegLog>) -> Result<Self, Report> {
+  fn of(function: &DistributionFunction<f64>) -> Result<Self, Report> {
     let last_cell = function.y().len() - 2;
     let left = function.edge_cell(0)?.filter(|cell| cell.edge.t <= cell.anchor.t);
     let right = function
@@ -309,7 +306,7 @@ impl EdgeCells {
 }
 
 fn grid_peak_sides(
-  function: &DistributionFunction<f64, NegLog>,
+  function: &DistributionFunction<f64>,
   peak: usize,
   carries_mass: BoundaryMass,
   cells: EdgeCells,
@@ -347,7 +344,7 @@ fn grid_peak_sides(
 }
 
 fn cell_peak_sides(
-  function: &DistributionFunction<f64, NegLog>,
+  function: &DistributionFunction<f64>,
   side: Side,
   cell: EdgeCell,
   mode: GridEdge,
@@ -404,7 +401,7 @@ fn cell_peak_sides(
 }
 
 fn first_hard_cell(
-  function: &DistributionFunction<f64, NegLog>,
+  function: &DistributionFunction<f64>,
   cells: impl Iterator<Item = usize>,
   outer_point: impl Fn(usize) -> usize,
 ) -> Result<Option<HardCell>, Report> {

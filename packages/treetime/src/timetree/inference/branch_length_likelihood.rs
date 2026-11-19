@@ -9,7 +9,6 @@ use std::iter::successors;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
-use treetime_distribution::NegLog;
 use treetime_distribution::rewindow_to_mass;
 use treetime_grid::GridFn;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, MaxGridPoints, Side, SoftTailLaw};
@@ -24,7 +23,7 @@ pub(crate) fn compute_branch_length_distribution(
   n_grid_points: usize,
   branch_rate: f64,
   max_points: MaxGridPoints,
-) -> Result<Arc<Distribution<NegLog>>, Report> {
+) -> Result<Arc<Distribution>, Report> {
   debug_assert!(branch_rate > 0.0, "branch_rate must be positive, got {branch_rate:.6e}");
 
   let finite_boundary = branch_length_has_finite_boundary(contributions, indels)?;
@@ -56,7 +55,7 @@ pub(crate) fn compute_branch_length_distribution(
   let left_boundary = if finite_boundary {
     BoundaryBehavior::Hard
   } else {
-    let law = HardApproachLaw::fit::<NegLog>(&f, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+    let law = HardApproachLaw::fit(&f, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
       format!("When building the branch-length likelihood hard boundary near t=0 over [{time_min}, {time_max}]")
     })?;
     BoundaryBehavior::HardApproach(law)
@@ -65,7 +64,7 @@ pub(crate) fn compute_branch_length_distribution(
   let right_boundary = match right_edge {
     RightEdge::Hard => BoundaryBehavior::Hard,
     RightEdge::Soft => {
-      let law = SoftTailLaw::fit::<NegLog>(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+      let law = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
         format!("When fitting the branch-length likelihood soft tail near t_max over [{time_min}, {time_max}]")
       })?;
       BoundaryBehavior::Linear(law)

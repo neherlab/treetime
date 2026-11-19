@@ -3,7 +3,6 @@ mod tests {
   use crate::Distribution;
   use ndarray::Array1;
   use proptest::prelude::*;
-  use treetime_grid::NegLog;
   use treetime_utils::{prop_assert_array_abs_diff_eq, prop_assert_array_finite, prop_assert_array_nonneg};
 
   proptest! {
@@ -52,7 +51,7 @@ mod tests {
 
     pub(super) fn normalized_values(y: &Array1<f64>) -> Array1<f64> {
       let x = Array1::linspace(0.0, 1.0, y.len());
-      let distribution = Distribution::<NegLog>::function(x, y.clone()).unwrap();
+      let distribution = Distribution::function(x, y.clone()).unwrap();
       let Distribution::Function(f) = distribution.normalize().unwrap() else {
         panic!("a finite function normalizes to a function");
       };

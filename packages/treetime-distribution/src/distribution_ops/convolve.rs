@@ -11,7 +11,6 @@ use itertools::Itertools;
 use ndarray::{Array1, Zip};
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, Grid, GridFn, MaxGridPoints, Side};
 use treetime_ops::{FftConvolver, FftPlans, convolve_direct_at, convolve_direct_neg_log_at};
 use treetime_utils::array::ndarray::{max_or, min_or};
@@ -25,11 +24,11 @@ const CONV_TAIL_MARGIN: usize = 3;
 const CELLS_PER_RISE: f64 = 8.0;
 
 pub(crate) fn distribution_convolution_fine(
-  a: &Distribution<NegLog>,
-  b: &Distribution<NegLog>,
+  a: &Distribution,
+  b: &Distribution,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   match (a, b) {
     (Distribution::Function(a), Distribution::Function(b)) => {
       convolution_function_function_fine(a, b, max_points, fft_plans)
@@ -39,11 +38,11 @@ pub(crate) fn distribution_convolution_fine(
 }
 
 pub(crate) fn distribution_convolution(
-  a: &Distribution<NegLog>,
-  b: &Distribution<NegLog>,
+  a: &Distribution,
+  b: &Distribution,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   match (a, b) {
     (Distribution::Range(_), Distribution::Range(_)) => {
       make_error!("Cannot convolve {a} with {b}: operation not implemented")
@@ -81,25 +80,19 @@ struct NoTrace;
 
 impl SampleTrace for NoTrace {}
 
-fn convolution_point_point(
-  a: &DistributionPoint<f64, NegLog>,
-  b: &DistributionPoint<f64, NegLog>,
-) -> Distribution<NegLog> {
+fn convolution_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Distribution {
   Distribution::point(a.t() + b.t(), a.amplitude() + b.amplitude())
 }
 
-fn convolution_point_range(
-  p: &DistributionPoint<f64, NegLog>,
-  r: &DistributionRange<f64, NegLog>,
-) -> Distribution<NegLog> {
+fn convolution_point_range(p: &DistributionPoint<f64>, r: &DistributionRange<f64>) -> Distribution {
   Distribution::range((r.start() + p.t(), r.end() + p.t()), p.amplitude() + r.amplitude())
 }
 
 fn convolution_range_function(
-  r: &DistributionRange<f64, NegLog>,
-  f: &DistributionFunction<f64, NegLog>,
+  r: &DistributionRange<f64>,
+  f: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   if f.is_empty() || !f.grid_fn().y_min().is_finite() || r.amplitude() == f64::INFINITY {
     return guarded_empty_result("convolution", conv_operand_domain(false), conv_operand_domain(false));
   }
@@ -152,11 +145,7 @@ fn convolution_range_function(
   Ok(Distribution::Function(g.with_amplitude(r.amplitude() + f.amplitude())))
 }
 
-fn narrowest_support_component(
-  f: &DistributionFunction<f64, NegLog>,
-  left: SupportEnd,
-  right: SupportEnd,
-) -> Option<f64> {
+fn narrowest_support_component(f: &DistributionFunction<f64>, left: SupportEnd, right: SupportEnd) -> Option<f64> {
   let last = f.len() - 1;
   f.y()
     .iter()
@@ -191,7 +180,7 @@ struct SupportEnd {
 }
 
 impl SupportEnd {
-  fn of(f: &DistributionFunction<f64, NegLog>, side: Side) -> Self {
+  fn of(f: &DistributionFunction<f64>, side: Side) -> Self {
     let y = f.y();
     let last = y.len() - 1;
     let (behavior, edge_index, outermost_finite) = match side {
@@ -237,18 +226,18 @@ impl SupportEnd {
 }
 
 fn convolution_point_function(
-  p: &DistributionPoint<f64, NegLog>,
-  f: &DistributionFunction<f64, NegLog>,
-) -> Result<DistributionFunction<f64, NegLog>, Report> {
+  p: &DistributionPoint<f64>,
+  f: &DistributionFunction<f64>,
+) -> Result<DistributionFunction<f64>, Report> {
   Ok(f.shift_time(p.t())?.with_amplitude(f.amplitude() + p.amplitude()))
 }
 
 fn convolution_function_function(
-  a: &DistributionFunction<f64, NegLog>,
-  b: &DistributionFunction<f64, NegLog>,
+  a: &DistributionFunction<f64>,
+  b: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   let coarse_dx = a.dx().max(b.dx());
   match convolution_function_function_fine(a, b, max_points, fft_plans)? {
     Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx, max_points),
@@ -257,21 +246,21 @@ fn convolution_function_function(
 }
 
 fn convolution_function_function_fine(
-  a: &DistributionFunction<f64, NegLog>,
-  b: &DistributionFunction<f64, NegLog>,
+  a: &DistributionFunction<f64>,
+  b: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   convolution_function_function_fine_traced(a, b, max_points, fft_plans, &mut NoTrace)
 }
 
 pub(crate) fn convolution_function_function_fine_traced(
-  a: &DistributionFunction<f64, NegLog>,
-  b: &DistributionFunction<f64, NegLog>,
+  a: &DistributionFunction<f64>,
+  b: &DistributionFunction<f64>,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
   trace: &mut impl SampleTrace,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
     let b_domain = conv_operand_domain(!b.is_empty());
@@ -335,10 +324,10 @@ pub(crate) fn convolution_function_function_fine_traced(
 }
 
 pub(crate) fn on_common_spacing(
-  operand: &DistributionFunction<f64, NegLog>,
+  operand: &DistributionFunction<f64>,
   other_dx: f64,
   max_points: MaxGridPoints,
-) -> Result<Cow<'_, DistributionFunction<f64, NegLog>>, Report> {
+) -> Result<Cow<'_, DistributionFunction<f64>>, Report> {
   if operand.dx() <= other_dx {
     Ok(Cow::Borrowed(operand))
   } else {
@@ -354,10 +343,10 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
 }
 
 pub(super) fn coarsen_convolution(
-  conv_distr: DistributionFunction<f64, NegLog>,
+  conv_distr: DistributionFunction<f64>,
   coarse_dx: f64,
   max_points: MaxGridPoints,
-) -> Result<Distribution<NegLog>, Report> {
+) -> Result<Distribution, Report> {
   let range = conv_distr.x_max() - conv_distr.x_min();
   let coarse_intervals = (range / coarse_dx).round();
   if coarse_intervals.is_nan() || coarse_intervals < 1.0 {

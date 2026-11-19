@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::aliases::DistributionNegLog;
   use crate::Distribution;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
@@ -8,23 +7,20 @@ mod tests {
   use ndarray::array;
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_ulps_eq;
-
-  type DistFnNegLog = DistributionFunction<f64, NegLog>;
 
   #[rustfmt::skip]
   #[rstest]
   #[case::left( Side::Left,  -1.0)]
   #[case::right(Side::Right,  3.0)]
   #[trace]
-  fn test_boundary_neglog_hard_side_is_zero_probability_outside_support(
+  fn test_boundary_hard_side_is_zero_probability_outside_support(
     #[case] side: Side,
     #[case] t: f64,
   ) -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let f = match side {
       Side::Left => f.with_left_extrap(BoundaryBehavior::Hard)?,
       Side::Right => f.with_right_extrap(BoundaryBehavior::Hard)?,
@@ -35,7 +31,7 @@ mod tests {
 
   #[test]
   fn test_boundary_function_eval_errors_by_default() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let dist = Distribution::Function(f);
     assert_error!(
       dist.eval(3.0),
@@ -46,7 +42,7 @@ mod tests {
 
   #[test]
   fn test_boundary_compact_variant_remains_hard() -> Result<(), Report> {
-    let point: DistributionNegLog = Distribution::point(1.0, 2.0);
+    let point = Distribution::point(1.0, 2.0);
     let unchanged = point
       .clone()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?;
@@ -56,9 +52,9 @@ mod tests {
 
   #[test]
   fn test_boundary_compact_variants_evaluate_to_probability_zero_outside_support() -> Result<(), Report> {
-    let empty: DistributionNegLog = Distribution::empty();
-    let point: DistributionNegLog = Distribution::point(1.0, 2.0);
-    let range: DistributionNegLog = Distribution::range((0.0, 2.0), 3.0);
+    let empty = Distribution::empty();
+    let point = Distribution::point(1.0, 2.0);
+    let range = Distribution::range((0.0, 2.0), 3.0);
 
     assert_eq!(f64::INFINITY, empty.eval(1.0)?);
     assert_eq!(f64::INFINITY, point.eval(0.0)?);
@@ -68,7 +64,8 @@ mod tests {
 
   #[test]
   fn test_boundary_distribution_function_soft_tail_fitting() -> Result<(), Report> {
-    let function: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+    let function: DistributionFunction<f64> =
+      DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let distribution = Distribution::Function(function).fit_soft_tail(Side::Right, 3)?;
 
     let Distribution::Function(fitted) = &distribution else {
@@ -92,7 +89,7 @@ mod tests {
   fn test_boundary_multiply_point_function_outside_hard_support_is_empty(
     #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
   ) -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
     let function = Distribution::Function(f);
@@ -112,14 +109,14 @@ mod tests {
     #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
     #[case] expected_amplitude: f64,
   ) -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
     let function = Distribution::Function(f);
     let point = Distribution::point(t, 2.0);
 
     let actual = distribution_multiplication(&point, &function, MaxGridPoints::default())?;
-    let DistributionNegLog::Point(actual) = actual else {
+    let Distribution::Point(actual) = actual else {
       panic!("expected a point, got {actual:?}");
     };
     pretty_assert_ulps_eq!(t, actual.t(), max_ulps = 0);
@@ -135,9 +132,9 @@ mod tests {
   #[test]
   fn test_boundary_multiply_composes_linear_tail_slopes() -> Result<(), Report> {
     let (slope_a, slope_b) = (0.6, 0.9);
-    let fa: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?
+    let fa: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: slope_a }))?;
-    let fb: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 1.5, 2.5])?
+    let fb: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 1.5, 2.5])?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: slope_b }))?;
 
     let product = distribution_multiplication(
@@ -158,7 +155,7 @@ mod tests {
 
   #[test]
   fn test_boundary_multiply_point_inside_function_is_point() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let function = Distribution::Function(f);
     let point_inside = Distribution::point(1.0, 2.0);
     let actual = distribution_multiplication(&point_inside, &function, MaxGridPoints::default())?;

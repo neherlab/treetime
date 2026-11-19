@@ -445,7 +445,7 @@ mod tests {
     use itertools::Itertools;
     use std::collections::{BTreeMap, BTreeSet};
     use std::sync::Arc;
-    use treetime_distribution::{Distribution, NegLog};
+    use treetime_distribution::Distribution;
     use treetime_graph::graph::Graph;
     use treetime_graph::node_names::NodeNames;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
@@ -453,7 +453,7 @@ mod tests {
     #[derive(Clone, Default, Debug, PartialEq)]
     pub(super) struct LoadedNode {
       pub(super) name: String,
-      pub(super) date_constraint: Option<Arc<Distribution<NegLog>>>,
+      pub(super) date_constraint: Option<Arc<Distribution>>,
     }
 
     pub(super) fn node_constraints(names: &NodeNames, graph: &Graph, constraints: &DateConstraints) -> Vec<LoadedNode> {
@@ -481,7 +481,7 @@ mod tests {
       )
     }
 
-    pub(super) fn loaded(name: &str, date_constraint: Option<Distribution<NegLog>>) -> LoadedNode {
+    pub(super) fn loaded(name: &str, date_constraint: Option<Distribution>) -> LoadedNode {
       LoadedNode {
         name: name.to_owned(),
         date_constraint: date_constraint.map(Arc::new),

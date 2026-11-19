@@ -5,7 +5,6 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::NegLog;
   use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::pretty_assert_relative_eq;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -356,13 +355,13 @@ mod tests {
       y: Array1<f64>,
       left: BoundaryBehavior,
       right: BoundaryBehavior,
-    ) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    ) -> Result<DistributionFunction<f64>, Report> {
       DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)
     }
 
-    pub(super) fn growing_tail(side: Side) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    pub(super) fn growing_tail(side: Side) -> Result<DistributionFunction<f64>, Report> {
       match side {
         Side::Left => function(
           (0.0, 1.0),

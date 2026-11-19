@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub(crate) mod tests {
-  use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::mass_domain::{peak_normalized_if_mass_sizable, trim_to_mass};
@@ -16,7 +15,6 @@ pub(crate) mod tests {
   use statrs::function::erf::{erf, erfc};
   use std::f64::consts::{LN_10, PI, SQRT_2};
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_ops::FftPlans;
   use treetime_utils::array::ndarray::min_or;
@@ -99,12 +97,12 @@ pub(crate) mod tests {
 
   #[test]
   fn test_edge_convolution_point_keeps_steep_soft_law_without_window() -> Result<(), Report> {
-    let steep = DistributionFunction::<f64, NegLog>::from_range_values((0.0, 1.0), Array1::zeros(2))?
+    let steep = DistributionFunction::<f64>::from_range_values((0.0, 1.0), Array1::zeros(2))?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1e6 }))?;
 
     let message = convolve_across_edge(
-      &DistributionNegLog::point(0.0, 0.0),
+      &Distribution::point(0.0, 0.0),
       &Distribution::Function(steep.clone()),
       Side::Right,
       5e-4,
@@ -122,7 +120,7 @@ pub(crate) mod tests {
     let branch = branch(BoundaryBehavior::Hard, 0.0)?;
 
     let message = convolve_across_edge(
-      &DistributionNegLog::point(2000.0, 1.5),
+      &Distribution::point(2000.0, 1.5),
       &branch.negate()?,
       Side::Left,
       5e-4,
@@ -138,7 +136,7 @@ pub(crate) mod tests {
   #[test]
   fn test_edge_convolution_date_range_message_ends_at_range_end() -> Result<(), Report> {
     let branch = branch(BoundaryBehavior::Hard, 0.0)?;
-    let leaf = DistributionNegLog::range((2000.0, 2001.0), 0.0);
+    let leaf = Distribution::range((2000.0, 2001.0), 0.0);
 
     let message = convolve_across_edge(
       &leaf,
@@ -167,17 +165,14 @@ pub(crate) mod tests {
   fn test_edge_convolution_message_ends_at_the_subtree_end_when_the_coarser_branch_is_denser_at_its_far_end()
   -> Result<(), Report> {
     let t = Array1::<f64>::linspace(0.0, 2.0, 41);
-    let branch =
-      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 2.0), t.mapv(|t| 4.0 * (t - 1.8).powi(2)))?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
+    let branch = DistributionFunction::<f64>::from_range_values((0.0, 2.0), t.mapv(|t| 4.0 * (t - 1.8).powi(2)))?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
     let t = Array1::<f64>::linspace(2000.0, 2000.99, 23);
-    let subtree = DistributionFunction::<f64, NegLog>::from_range_values(
-      (2000.0, 2000.99),
-      t.mapv(|t| 50.0 * (t - 2000.9).powi(2)),
-    )?
-    .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -10.0 }))?
-    .with_right_extrap(BoundaryBehavior::Hard)?;
+    let subtree =
+      DistributionFunction::<f64>::from_range_values((2000.0, 2000.99), t.mapv(|t| 50.0 * (t - 2000.9).powi(2)))?
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -10.0 }))?
+        .with_right_extrap(BoundaryBehavior::Hard)?;
 
     let message = convolve_across_edge(
       &Distribution::Function(subtree.clone()),
@@ -207,7 +202,7 @@ pub(crate) mod tests {
     .negate()?;
     let messages = [2000.0, 2000.5].map(|date| {
       convolve_across_edge(
-        &DistributionNegLog::point(date, 0.0),
+        &Distribution::point(date, 0.0),
         &negated,
         Side::Left,
         1e-6,
@@ -460,30 +455,25 @@ pub(crate) mod tests {
   pub(crate) mod helpers {
     use super::*;
 
-    pub(super) fn gaussian_at(sigma: f64, dx: f64) -> Result<DistributionNegLog, Report> {
+    pub(super) fn gaussian_at(sigma: f64, dx: f64) -> Result<Distribution, Report> {
       let n_points = f64_to_usize_saturating((12.0 * sigma / dx).round()) + 1;
       let t = Array1::linspace(-6.0 * sigma, 6.0 * sigma, n_points);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
-      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;
       Ok(Distribution::Function(f))
     }
 
-    pub(super) fn two_gaussians(
-      mu_a: f64,
-      mu_b: f64,
-      sigma: f64,
-      n_points: usize,
-    ) -> Result<DistributionNegLog, Report> {
+    pub(super) fn two_gaussians(mu_a: f64, mu_b: f64, sigma: f64, n_points: usize) -> Result<Distribution, Report> {
       let t = Array1::linspace(mu_a - 6.0 * sigma, mu_b + 6.0 * sigma, n_points);
       let y = t.mapv(|t| ((t - mu_a).powi(2)).min((t - mu_b).powi(2)) / (2.0 * sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
-      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;
@@ -493,8 +483,8 @@ pub(crate) mod tests {
     pub(super) const CONV_TRUST_DEPTH: f64 = 13.0 * LN_10;
 
     pub(super) fn log_space_trapezoid_convolution(
-      a: &DistributionNegLog,
-      b: &DistributionNegLog,
+      a: &Distribution,
+      b: &Distribution,
       t: &Array1<f64>,
     ) -> Result<Array1<f64>, Report> {
       let (Distribution::Function(a), Distribution::Function(b)) = (a, b) else {
@@ -560,28 +550,26 @@ pub(crate) mod tests {
       }
     }
 
-    pub(super) fn gaussian(sigma: f64) -> Result<DistributionNegLog, Report> {
+    pub(super) fn gaussian(sigma: f64) -> Result<Distribution, Report> {
       let f = gaussian_grid(sigma)?;
-      let left = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-      let right = SoftTailLaw::fit::<NegLog>(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
         .with_left_extrap(BoundaryBehavior::Linear(left))?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;
       Ok(Distribution::Function(f))
     }
 
-    pub(super) fn branch(left: BoundaryBehavior, x_min: f64) -> Result<DistributionNegLog, Report> {
+    pub(super) fn branch(left: BoundaryBehavior, x_min: f64) -> Result<Distribution, Report> {
       let t = Array1::linspace(x_min, x_min + 2.0, 41);
-      let f = DistributionFunction::<f64, NegLog>::from_range_values(
-        (x_min, x_min + 2.0),
-        t.mapv(|t| 4.0 * (t - 0.5).powi(2)),
-      )?
-      .with_left_extrap(left)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
+      let f =
+        DistributionFunction::<f64>::from_range_values((x_min, x_min + 2.0), t.mapv(|t| 4.0 * (t - 0.5).powi(2)))?
+          .with_left_extrap(left)?
+          .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
       Ok(Distribution::Function(f))
     }
 
-    pub(super) fn gaussian_grid(sigma: f64) -> Result<DistributionFunction<f64, NegLog>, Report> {
+    pub(super) fn gaussian_grid(sigma: f64) -> Result<DistributionFunction<f64>, Report> {
       let t = Array1::linspace(-6.0, 6.0, 241);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
       DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)

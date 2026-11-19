@@ -13,7 +13,7 @@ mod tests {
   use statrs::distribution::{Continuous, ContinuousCDF, Gamma, Normal};
   use std::f64::consts::LN_10;
   use std::iter::{once, repeat_n};
-  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, NegLog, TailMass};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, TailMass};
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq, prop_assert_abs_diff_eq};
 
@@ -261,7 +261,7 @@ mod tests {
   #[test]
   fn test_max_posterior_region_inside_hard_cells_inverts_their_power_law() -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values((-1.0, 1.0), array![f64::INFINITY, 0.0, f64::INFINITY])?
+      DistributionFunction::<f64>::from_range_values((-1.0, 1.0), array![f64::INFINITY, 0.0, f64::INFINITY])?
         .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -1.0, b: 1.0 }))?
         .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 1.0, b: 1.0 }))?,
     );
@@ -291,12 +291,9 @@ mod tests {
   #[test]
   fn test_max_posterior_region_jump_at_plateau_level_ends_inside_the_plateau() -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(
-        (0.0, 7.0),
-        array![1.0, 0.0, 5.0, 0.5, 0.5, 0.5, 0.5, 30.0],
-      )?
-      .with_left_extrap(HARD)?
-      .with_right_extrap(HARD)?,
+      DistributionFunction::<f64>::from_range_values((0.0, 7.0), array![1.0, 0.0, 5.0, 0.5, 0.5, 0.5, 0.5, 30.0])?
+        .with_left_extrap(HARD)?
+        .with_right_extrap(HARD)?,
     );
 
     let region = grid_region(&distribution, 0.9)?;
@@ -320,12 +317,10 @@ mod tests {
 
   #[test]
   fn test_max_posterior_region_zero_density_gap_is_crossed_inside_the_next_component() -> Result<(), Report> {
-    let function = DistributionFunction::<f64, NegLog>::from_range_values(
-      (0.0, 6.0),
-      array![1.0, 0.0, 1.0, f64::INFINITY, 0.1, 0.1, 1.0],
-    )?
-    .with_left_extrap(HARD)?
-    .with_right_extrap(HARD)?;
+    let function =
+      DistributionFunction::<f64>::from_range_values((0.0, 6.0), array![1.0, 0.0, 1.0, f64::INFINITY, 0.1, 0.1, 1.0])?
+        .with_left_extrap(HARD)?
+        .with_right_extrap(HARD)?;
 
     let region = grid_region(&Distribution::Function(function.clone()), 0.9)?;
 
@@ -377,7 +372,7 @@ mod tests {
   fn test_max_posterior_region_flat_top_holding_the_fraction_extends_from_latest_peak() -> Result<(), Report> {
     let y: Array1<f64> = chain!(once(20.0), repeat_n(0.0, 21), once(20.0)).collect();
     let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 22.0), y)?
+      DistributionFunction::<f64>::from_range_values((0.0, 22.0), y)?
         .with_left_extrap(HARD)?
         .with_right_extrap(HARD)?,
     );
@@ -415,7 +410,7 @@ mod tests {
 
   #[test]
   fn test_max_posterior_region_flat_range_resolves_tie_to_latest_date() -> Result<(), Report> {
-    let distribution = Distribution::<NegLog>::range((2019.0, 2021.0), 4.0);
+    let distribution = Distribution::range((2019.0, 2021.0), 4.0);
 
     let region = max_posterior_region(&distribution, 0.9)?;
 
@@ -430,7 +425,7 @@ mod tests {
 
   #[test]
   fn test_max_posterior_region_point_distribution_is_a_point_region() -> Result<(), Report> {
-    let distribution = Distribution::<NegLog>::point(2020.5, 1.0);
+    let distribution = Distribution::point(2020.5, 1.0);
 
     let region = max_posterior_region(&distribution, 0.9)?;
 
@@ -441,14 +436,14 @@ mod tests {
 
   #[test]
   fn test_max_posterior_region_zero_probability_point_has_no_region() -> Result<(), Report> {
-    let distribution = Distribution::<NegLog>::point(2020.5, f64::INFINITY);
+    let distribution = Distribution::point(2020.5, f64::INFINITY);
     assert_eq!(None, max_posterior_region(&distribution, 0.9)?);
     Ok(())
   }
 
   #[test]
   fn test_max_posterior_region_empty_has_no_region() -> Result<(), Report> {
-    assert_eq!(None, max_posterior_region(&Distribution::<NegLog>::empty(), 0.9)?);
+    assert_eq!(None, max_posterior_region(&Distribution::empty(), 0.9)?);
     Ok(())
   }
 
@@ -481,7 +476,7 @@ mod tests {
 
   #[test]
   fn test_max_posterior_region_rejects_nan_ordinates() -> Result<(), Report> {
-    let distribution = Distribution::Function(DistributionFunction::<f64, NegLog>::from_range_values(
+    let distribution = Distribution::Function(DistributionFunction::<f64>::from_range_values(
       (0.0, 2.0),
       array![0.0, f64::NAN, 1.0],
     )?);
@@ -501,7 +496,7 @@ mod tests {
   #[case::nan(     f64::NAN)]
   #[trace]
   fn test_max_posterior_region_rejects_fraction_outside_unit_interval(#[case] fraction: f64) {
-    let result = max_posterior_region(&Distribution::<NegLog>::range((0.0, 1.0), 0.0), fraction);
+    let result = max_posterior_region(&Distribution::range((0.0, 1.0), 0.0), fraction);
     assert_error!(result, format!("Posterior mass fraction must be in (0, 1), got {fraction}"));
   }
 
@@ -537,7 +532,7 @@ mod tests {
       let y = grid(0.0, 1.0, 1001).mapv(|x| ((x - center) / width).powi(2) + (x - center));
       let distribution = |range: (f64, f64)| {
         Distribution::Function(
-          DistributionFunction::<f64, NegLog>::from_range_values(range, y.clone())
+          DistributionFunction::<f64>::from_range_values(range, y.clone())
             .and_then(|f| f.with_left_extrap(HARD))
             .and_then(|f| f.with_right_extrap(HARD))
             .unwrap(),
@@ -558,7 +553,7 @@ mod tests {
     use eyre::Report;
     use itertools::Itertools;
     use ndarray::Array1;
-    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
     use treetime_utils::make_error;
 
     pub(super) fn grid(start: f64, end: f64, n_points: usize) -> Array1<f64> {
@@ -571,7 +566,7 @@ mod tests {
       left: BoundaryBehavior,
       right: BoundaryBehavior,
       neglog: impl Fn(f64) -> f64,
-    ) -> Result<Distribution<NegLog>, Report> {
+    ) -> Result<Distribution, Report> {
       let y = grid(range.0, range.1, n_points).mapv(neglog);
       let function = DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
@@ -579,7 +574,7 @@ mod tests {
       Ok(Distribution::Function(function))
     }
 
-    pub(super) fn grid_region(distribution: &Distribution<NegLog>, fraction: f64) -> Result<PosteriorRegion, Report> {
+    pub(super) fn grid_region(distribution: &Distribution, fraction: f64) -> Result<PosteriorRegion, Report> {
       match max_posterior_region(distribution, fraction)? {
         Some(MaxPosteriorRegion::Grid(region)) => Ok(region),
         other => make_error!("Expected a grid region, got {other:?}"),
@@ -588,7 +583,7 @@ mod tests {
 
     pub(super) fn region_errors(
       cells: &[usize],
-      distribution: impl Fn(usize) -> Result<Distribution<NegLog>, Report>,
+      distribution: impl Fn(usize) -> Result<Distribution, Report>,
       expected: (f64, f64),
     ) -> Result<Vec<f64>, Report> {
       cells

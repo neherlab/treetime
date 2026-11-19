@@ -19,7 +19,7 @@ mod tests {
   use std::collections::BTreeSet;
   use std::ops::RangeInclusive;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, DistributionFunction, MassProfile, NegLog, TailMass, rewindow_to_mass};
+  use treetime_distribution::{Distribution, DistributionFunction, MassProfile, TailMass, rewindow_to_mass};
   use treetime_graph::graph::Graph;
   use treetime_graph::key_map::{EdgeMap, NodeMap};
   use treetime_graph::node_names::NodeNames;
@@ -202,7 +202,7 @@ mod tests {
     }
 
     impl DateSummary {
-      pub(super) fn of(distribution: &Distribution<NegLog>) -> Result<Self, Report> {
+      pub(super) fn of(distribution: &Distribution) -> Result<Self, Report> {
         let Distribution::Function(function) = distribution.normalize()? else {
           return make_error!("The root date posterior is not a function");
         };
@@ -358,11 +358,11 @@ mod tests {
       format!("{root};")
     }
 
-    fn zero_mutation_branch(points: usize) -> Result<Arc<Distribution<NegLog>>, Report> {
+    fn zero_mutation_branch(points: usize) -> Result<Arc<Distribution>, Report> {
       let lambda = SITES * CLOCK_RATE;
       let t = Array1::linspace(0.0, BRANCH_GRID_END, points);
       let f = GridFn::from_range_values((0.0, BRANCH_GRID_END), t.mapv(|t| lambda * t))?;
-      let right = SoftTailLaw::fit::<NegLog>(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let distribution = DistributionFunction::from_grid_fn(f)
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(right))?;

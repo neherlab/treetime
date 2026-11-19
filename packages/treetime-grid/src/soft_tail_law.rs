@@ -1,5 +1,5 @@
 use crate::hard_approach_law::Side;
-use crate::{GridEdge, GridFn, YAxisPolicy};
+use crate::{GridEdge, GridFn};
 use eyre::Report;
 use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
@@ -10,7 +10,7 @@ pub struct SoftTailLaw {
 }
 
 impl SoftTailLaw {
-  pub fn fit<Y: YAxisPolicy>(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Result<Self, Report> {
+  pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
 
@@ -25,7 +25,7 @@ impl SoftTailLaw {
         Side::Right => n - 1 - i,
       })
       .filter_map(|idx| {
-        let y = Y::to_neg_log(grid_fn.y()[idx]);
+        let y = grid_fn.y()[idx];
         y.is_finite().then(|| (grid_fn.grid().x_at(idx) - t_edge, y))
       })
       .collect();

@@ -1,16 +1,15 @@
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
-use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::min_or;
 use treetime_utils::{make_error, make_internal_error};
 
 pub fn distribution_multiply_by_fn<F, S>(
-  distribution: &Distribution<NegLog>,
+  distribution: &Distribution,
   weight: F,
   outward_slope: S,
-) -> Result<Distribution<NegLog>, Report>
+) -> Result<Distribution, Report>
 where
   F: Fn(f64) -> Result<f64, Report>,
   S: Fn(Side, f64) -> f64,
@@ -33,7 +32,7 @@ where
     return make_error!("distribution_multiply_by_fn found no finite weight over the distribution grid");
   }
 
-  let result: Distribution<NegLog> = if let Distribution::Function(f) = distribution {
+  let result: Distribution = if let Distribution::Function(f) = distribution {
     let combined_fn = DistributionFunction::from_grid_fn(f.grid_fn().with_values(combined)?)
       .with_left_extrap(weighted_tail_law(f, Side::Left, &outward_slope)?)?
       .with_right_extrap(weighted_tail_law(f, Side::Right, &outward_slope)?)?;
@@ -46,7 +45,7 @@ where
 }
 
 fn weighted_tail_law(
-  f: &DistributionFunction<f64, NegLog>,
+  f: &DistributionFunction<f64>,
   side: Side,
   outward_slope: impl Fn(Side, f64) -> f64,
 ) -> Result<BoundaryBehavior, Report> {

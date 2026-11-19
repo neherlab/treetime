@@ -11,7 +11,7 @@ mod tests {
   use treetime_graph::key_map::NodeMap;
 
   use std::sync::Arc;
-  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
 
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_grid::{Side, SoftTailLaw};
@@ -206,7 +206,7 @@ mod tests {
     let names = parsed.names.clone();
     let graph = parsed.graph;
     let unit_box_with_tail_mass_one = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values((-1.0, 0.0), array![0.0, 0.0])?
+      DistributionFunction::<f64>::from_range_values((-1.0, 0.0), array![0.0, 0.0])?
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?
         .with_right_extrap(BoundaryBehavior::Hard)?,
     );
@@ -234,7 +234,7 @@ mod tests {
     let tent = Array1::linspace(0.0, 1.0, 11).mapv(|t: f64| 1.0 - 1.8 * (t - 0.5).abs());
     let rate = 0.2;
     let root = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 1.0), tent.mapv(|p| -p.ln()))?
+      DistributionFunction::<f64>::from_range_values((0.0, 1.0), tent.mapv(|p| -p.ln()))?
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate }))?
         .with_right_extrap(BoundaryBehavior::Hard)?,
     );
@@ -271,12 +271,9 @@ mod tests {
     let graph = parsed.graph;
     let density = [1.0, 3.0, 2.0, 4.0, 1.0];
     let root = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(
-        (0.0, 4.0),
-        Array1::from_iter(density.map(|p: f64| -p.ln())),
-      )?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?,
+      DistributionFunction::<f64>::from_range_values((0.0, 4.0), Array1::from_iter(density.map(|p: f64| -p.ln())))?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Hard)?,
     );
     let step = 0.5;
     let expectation = helpers::expectation(&graph, &names, &[("A", step), ("B", 3.0)], &[("root", root)])?;
@@ -506,7 +503,7 @@ mod tests {
     use crate::timetree::inference::result::NodePosterior;
     use eyre::Report;
     use std::sync::Arc;
-    use treetime_distribution::{Distribution, NegLog};
+    use treetime_distribution::Distribution;
     use treetime_graph::graph::Graph;
     use treetime_graph::key_map::NodeMap;
     use treetime_graph::node_names::NodeNames;
@@ -570,7 +567,7 @@ mod tests {
       graph: &Graph,
       names: &NodeNames,
       points: &[(&str, f64)],
-      distributions: &[(&str, Distribution<NegLog>)],
+      distributions: &[(&str, Distribution)],
     ) -> Result<Arc<LineageExpectation>, Report> {
       let key = |name: &str| find_node_key_by_name(graph, names, name).expect("node must exist");
       let posterior = points

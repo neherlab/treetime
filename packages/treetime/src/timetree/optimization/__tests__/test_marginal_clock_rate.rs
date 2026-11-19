@@ -13,7 +13,7 @@ mod tests {
   use treetime_ops::FftPlans;
 
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
 
   use treetime_grid::MaxGridPoints;
@@ -121,7 +121,7 @@ mod tests {
     setup
       .constraints
       .by_node
-      .insert(leaf_a, Some(Arc::new(Distribution::<NegLog>::point(2015.0, f64::NAN))));
+      .insert(leaf_a, Some(Arc::new(Distribution::point(2015.0, f64::NAN))));
 
     let result = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 0.5, RateWindow::initial()));
 
@@ -219,7 +219,7 @@ mod tests {
       }
     }
 
-    pub(super) fn single_leaf(date: Distribution<NegLog>, branch: Distribution<NegLog>) -> Result<Fixture, Report> {
+    pub(super) fn single_leaf(date: Distribution, branch: Distribution) -> Result<Fixture, Report> {
       let parsed = nwk_read(b"(A:1)root;".as_slice())?;
       let names = parsed.names.clone();
       let graph = parsed.graph;
@@ -243,7 +243,7 @@ mod tests {
       })
     }
 
-    pub(super) fn gaussian(start: f64, end: f64, n_points: usize) -> Result<Distribution<NegLog>, Report> {
+    pub(super) fn gaussian(start: f64, end: f64, n_points: usize) -> Result<Distribution, Report> {
       let x = Array1::linspace(start, end, n_points);
       let mid = f64::midpoint(start, end);
       let y = x.mapv(|t| (t - mid).powi(2));
@@ -264,7 +264,7 @@ mod tests {
         let key = find_node_key_by_name(&graph, &names, name).expect("leaf not found");
         constraints
           .by_node
-          .insert(key, Some(Arc::new(Distribution::<NegLog>::point(date, 0.0))));
+          .insert(key, Some(Arc::new(Distribution::point(date, 0.0))));
         let n = f64_to_usize_saturating((2.0 * mean / branch_grid_dx).round()) + 1;
         let t = Array1::from_shape_fn(n, |i| branch_grid_dx * i.to_f64_exact());
         let y = t.mapv(|t| 0.5 * PRECISION * (t - mean).powi(2));

@@ -6,7 +6,7 @@ mod tests {
   use crate::timetree::inference::runner::{EPS, GRID_POINTS};
   use eyre::Report;
   use rstest::rstest;
-  use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
+  use treetime_distribution::{BoundaryBehavior, Distribution};
   use treetime_grid::MaxGridPoints;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -457,7 +457,7 @@ mod tests {
 
     pub(super) const INDEL_RATE: f64 = 10.0;
 
-    pub(super) fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
+    pub(super) fn eval(distribution: &Distribution, t: f64) -> f64 {
       distribution.eval(t).unwrap_or(0.0)
     }
 
@@ -496,7 +496,7 @@ mod tests {
         .unzip()
     }
 
-    pub(super) fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
+    pub(super) fn build_indel_rate_only_distribution() -> Result<Arc<Distribution>, Report> {
       let contributions: Vec<OptimizationContribution> = vec![];
       compute_branch_length_distribution(
         &contributions,

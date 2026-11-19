@@ -14,7 +14,7 @@ mod tests {
   use ndarray::array;
   use rstest::rstest;
   use std::str::FromStr;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_grid::MaxGridPoints;
   use treetime_utils::{o, pretty_assert_relative_eq, pretty_assert_ulps_eq};
 
@@ -295,7 +295,7 @@ mod tests {
       InputBranchModel::new(sequence_length, JC69_NUCLEOTIDE_SATURATED_DIFFERENCE)
     }
 
-    pub(super) fn function(distribution: &Distribution<NegLog>) -> &DistributionFunction<f64, NegLog> {
+    pub(super) fn function(distribution: &Distribution) -> &DistributionFunction<f64> {
       let Distribution::Function(function) = distribution else {
         panic!("an input branch-length distribution must be a Function, got {distribution:?}");
       };
