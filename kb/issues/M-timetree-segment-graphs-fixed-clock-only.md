@@ -9,7 +9,7 @@
 - **Rooting**: the roots of the graph are kept; `--reroot` and `--outgroup` are rejected. Rerooting inverts edges, which has no meaning at a node with several parents
 - **Polytomy resolution, short-branch collapse, clock filter, tip pruning, relaxed clock**: not run, or rejected
 - **Outputs**: reconstructed sequences, augur node data, the clock model and the root-to-tip table are not written; the node dates table covers every node of the graph
-- **Branch-length settings**: the optimize step runs Brent with the fixed values `OPTIMIZE_MAX_ITER = 10` and `OPTIMIZE_TOLERANCE = 0.1` and no damping (`fn segment_optimize_params()` [packages/treetime/src/timetree/segments.rs#L201](../../packages/treetime/src/timetree/segments.rs#L201))
+- **Branch-length settings**: the optimize step runs Brent with the fixed values `OPTIMIZE_MAX_ITER = 10` and `OPTIMIZE_TOLERANCE = 0.1` and no damping (`fn segment_optimize_params()` [packages/treetime/src/timetree/segments.rs#L201](../../packages/treetime/src/timetree/segments.rs#L201)). On the 100-virus H3N2 set ([data/flu/h3n2/segments/100/](../../data/flu/h3n2/segments/100/)) the loop stops at this tolerance while the relative rate of HA still rises (1.06 to 1.11 over its 4 iterations); on the 1564-virus set the rates converge
 
 Each feature of the tree pipeline (`packages/treetime/src/timetree/pipeline.rs`) needs a second implementation in `run_segment_timetree`, or the two pipelines drift apart.
 

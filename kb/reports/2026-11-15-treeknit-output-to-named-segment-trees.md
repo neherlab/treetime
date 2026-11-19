@@ -19,14 +19,11 @@ TreeTime merges segment trees by node name ([kb/proposals/edge-scoped-inheritanc
 | Internal nodes in one segment only      | 518                                                            |
 | Identities with two nodes of one tree   | 10 (51 nodes)                                                  |
 | Identities split to remove cycles       | 3                                                              |
-| Merged graph                            | 2839 nodes, 4374 edges, 4 roots; 801 nodes with 2 to 4 parents |
+| Merged graph                            | 2839 nodes, 4374 edges, 4 roots; 802 nodes with 2 to 4 parents |
 
 `treetime ancestral --segment-trees --segment-alignments --method-anc parsimony` runs on the four named trees in 0.3 s and 60 MB, and gives each segment the same reconstructed sequences as a run on its own tree.
 
-With pass-through insertion ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)) the merge inserts 178 nodes into segments that pass through them, and leaves 10 edges whose other segments disagree on the path and 40 edges whose path holds a node of the segment elsewhere. The graph keeps 2839 nodes and has 4277 edges instead of 4374; 744 nodes keep 2 to 4 parents.
-
-> [!WARNING]
-> **Needs review.** These counts predate commits `c4c2b5e9a` and `f053a5da0`, which changed which nodes continue a chain of inserted nodes. The first commit fixed a case that the merge counted among the edges whose path holds a node of the segment elsewhere, so the 40 such edges and the edge and parent counts can differ on the current code.
+With pass-through insertion ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)) the merge inserts 179 nodes into segments that pass through them, and leaves 9 edges whose other segments disagree on the path and 29 edges whose path holds a node of the segment elsewhere. The graph keeps 2839 nodes and has 4268 edges instead of 4374; 737 nodes keep 2 to 4 parents (289 with 2, 200 with 3, 248 with 4). The datasets of [data/flu/h3n2/segments/](../../data/flu/h3n2/segments/) hold these named trees, with subsets of 100 and 500 viruses.
 
 ## What the TreeKnit output does not determine
 
