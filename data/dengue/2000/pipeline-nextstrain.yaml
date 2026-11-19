@@ -14,6 +14,14 @@
 # while augur gives it to every node (`data/dengue/2000/mugration-serotype.yaml`,
 # kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md).
 #
+# TreeTime 0.x treats `--coalescent const` as `opt`, so the timetree step fits a
+# constant coalescent time scale with `coalescent: opt`. augur refine removes the tips
+# that its clock filter flags, and the tips without a usable date. TreeTime only flags
+# them by default; `prune_filtered_tips` and `prune_undated_tips` remove them. The
+# kept tips can still differ from augur, because augur runs the filter without the
+# fixed clock rate:
+# kb/issues/M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md.
+#
 # Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
 # augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
 # branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
@@ -36,6 +44,8 @@ steps:
       coalescent: "opt"
       confidence: true
       clock_filter: 4.0
+      prune_filtered_tips: true
+      prune_undated_tips: true
       no_indels: true
       seed: 42
 

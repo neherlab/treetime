@@ -12,6 +12,10 @@
 # writes the coordinates of each country (`../country_lat_longs.tsv`), so Auspice
 # shows the countries on a map.
 #
+# augur refine removes the tips that its clock filter flags, and the tips without a
+# usable date. TreeTime only flags them by default; `prune_filtered_tips` and
+# `prune_undated_tips` remove the same tips.
+#
 # Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
 # augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
 # branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
@@ -28,6 +32,8 @@ steps:
       coalescent: "opt"
       confidence: true
       clock_filter: 4.0
+      prune_filtered_tips: true
+      prune_undated_tips: true
       no_indels: true
       seed: 42
 
