@@ -4,44 +4,22 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
-  use treetime_grid::{NegLog, Plain};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::empty(   Distribution::<Plain>::Empty,                                                                 None)]
-  #[case::point(   Distribution::<Plain>::point(1.0, 5.0),                                                       Some((1.0, 1.0)))]
-  #[case::range(   Distribution::<Plain>::range((0.0, 2.0), 3.0),                                                Some((0.0, 2.0)))]
-  #[case::function(Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap(), Some((0.0, 2.0)))]
+  #[case::empty(   Distribution::<NegLog>::Empty,                                                                 None)]
+  #[case::point(   Distribution::<NegLog>::point(1.0, 5.0),                                                       Some((1.0, 1.0)))]
+  #[case::range(   Distribution::<NegLog>::range((0.0, 2.0), 3.0),                                                Some((0.0, 2.0)))]
+  #[case::function(Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap(), Some((0.0, 2.0)))]
   #[trace]
   fn test_distribution_time_bounds_span_the_support(
-    #[case] distribution: Distribution<Plain>,
+    #[case] distribution: Distribution<NegLog>,
     #[case] expected: Option<(f64, f64)>,
   ) {
     assert_eq!(expected, distribution.time_bounds());
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::equal_densities(               array![3.0, 3.0],                      true)]
-  #[case::densities_within_rounding(     array![1.0, 1.0 + 2.0 * f64::EPSILON], true)]
-  #[case::tiny_densities_that_differ(    array![1e-20, 2e-20],                  false)]
-  #[case::zero_and_tiny_density(         array![0.0, 1e-300],                   false)]
-  #[trace]
-  fn test_distribution_plain_function_of_two_equal_values_is_a_range(
-    #[case] y: Array1<f64>,
-    #[case] is_range: bool,
-  ) -> Result<(), Report> {
-    let x = array![0.0, 1.0];
-    let expected = if is_range {
-      Distribution::<Plain>::range((0.0, 1.0), y[1])
-    } else {
-      Distribution::Function(DistributionFunction::from_range_values((0.0, 1.0), y.clone())?)
-    };
-    let actual = Distribution::<Plain>::function(x, y)?;
-    assert_eq!(expected, actual);
-    Ok(())
   }
 
   #[rustfmt::skip]
@@ -71,18 +49,18 @@ mod tests {
   #[rstest]
   #[case::at_the_point(               2015.5,                  5.0)]
   #[case::within_rounding_of_a_date(  2015.5 + 1e-12,          5.0)]
-  #[case::beyond_rounding_of_a_date(  2015.5 + 1e-11,          0.0)]
+  #[case::beyond_rounding_of_a_date(  2015.5 + 1e-11,          f64::INFINITY)]
   #[trace]
   fn test_distribution_point_eval_at_a_date(#[case] t: f64, #[case] expected: f64) -> Result<(), Report> {
-    let actual = Distribution::<Plain>::point(2015.5, 5.0).eval(t)?;
-    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
+    let actual = Distribution::<NegLog>::point(2015.5, 5.0).eval(t)?;
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   #[test]
-  fn test_distribution_point_at_zero_is_zero_at_a_tiny_nonzero_time() -> Result<(), Report> {
-    let actual = Distribution::<Plain>::point(0.0, 5.0).eval(1e-17)?;
-    pretty_assert_ulps_eq!(0.0, actual, max_ulps = 0);
+  fn test_distribution_point_at_zero_has_zero_probability_at_a_tiny_nonzero_time() -> Result<(), Report> {
+    let actual = Distribution::<NegLog>::point(0.0, 5.0).eval(1e-17)?;
+    assert_eq!(f64::INFINITY, actual);
     Ok(())
   }
 

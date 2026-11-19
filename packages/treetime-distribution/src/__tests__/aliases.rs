@@ -1,5 +1,4 @@
 use crate::Distribution;
-use treetime_grid::{NegLog, Plain};
+use treetime_grid::NegLog;
 
-pub(crate) type DistributionPlain = Distribution<Plain>;
 pub(crate) type DistributionNegLog = Distribution<NegLog>;

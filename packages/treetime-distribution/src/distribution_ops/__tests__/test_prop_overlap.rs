@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::aliases::DistributionPlain;
+  use crate::__tests__::aliases::DistributionNegLog;
   use crate::{distribution_division, distribution_multiplication};
   use ndarray::{Array1, array};
   use proptest::prelude::*;
@@ -15,7 +15,7 @@ mod tests {
     ) {
       let start = f64::from(start_hundredths) / 100.0;
       let end = start + f64::from(width_hundredths) / 100.0;
-      let range = DistributionPlain::range((start, end), 3.0);
+      let range = DistributionNegLog::range((start, end), 3.0);
       let function = linear_function();
 
       let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
@@ -29,7 +29,7 @@ mod tests {
     ) {
       let start = f64::from(start_hundredths) / 100.0;
       let end = start + f64::from(width_hundredths) / 100.0;
-      let range = DistributionPlain::range((start, end), 3.0);
+      let range = DistributionNegLog::range((start, end), 3.0);
       let function = linear_function();
 
       let range_function = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
@@ -59,7 +59,7 @@ mod tests {
     ) {
       let start = f64::from(start_hundredths) / 100.0;
       let end = start + f64::from(width_hundredths) / 100.0;
-      let range = DistributionPlain::range((start, end), 3.0);
+      let range = DistributionNegLog::range((start, end), 3.0);
       let function = linear_function();
       let product = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
 
@@ -71,18 +71,18 @@ mod tests {
   }
 
   #[expect(clippy::float_cmp, reason = "an exact tie of interval bounds selects the point case")]
-  fn assert_intersection(actual: &DistributionPlain, (start, end): (f64, f64)) -> Result<(), TestCaseError> {
+  fn assert_intersection(actual: &DistributionNegLog, (start, end): (f64, f64)) -> Result<(), TestCaseError> {
     if start > end {
-      prop_assert_eq!(&DistributionPlain::Empty, actual);
+      prop_assert_eq!(&DistributionNegLog::Empty, actual);
     } else if start == end {
-      let DistributionPlain::Point(point) = actual else {
+      let DistributionNegLog::Point(point) = actual else {
         return Err(TestCaseError::fail(format!(
           "expected Point at {start}, got {actual:?}"
         )));
       };
       prop_assert_ulps_eq!(start, point.t(), max_ulps = 4);
     } else {
-      let DistributionPlain::Function(function) = actual else {
+      let DistributionNegLog::Function(function) = actual else {
         return Err(TestCaseError::fail(format!(
           "expected Function on [{start}, {end}], got {actual:?}"
         )));
@@ -93,13 +93,13 @@ mod tests {
     Ok(())
   }
 
-  fn linear_function() -> DistributionPlain {
-    DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap()
+  fn linear_function() -> DistributionNegLog {
+    DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap()
   }
 
-  fn linear_function_n_points(n_points: usize, width: f64) -> DistributionPlain {
+  fn linear_function_n_points(n_points: usize, width: f64) -> DistributionNegLog {
     let x = Array1::linspace(0.0, width, n_points);
     let y = x.mapv(|value| value + 1.0);
-    DistributionPlain::function(x, y).unwrap()
+    DistributionNegLog::function(x, y).unwrap()
   }
 }

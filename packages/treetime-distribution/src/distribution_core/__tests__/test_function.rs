@@ -6,11 +6,10 @@ mod tests {
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::NegLog;
   use treetime_grid::{EdgeCellLaw, HardApproachLaw, Side, SoftTailLaw};
-  use treetime_grid::{NegLog, Plain};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
-  type DistFn = DistributionFunction<f64, Plain>;
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
 
   const HARD: BoundaryBehavior = BoundaryBehavior::Hard;
@@ -124,14 +123,14 @@ mod tests {
 
   #[test]
   fn test_distribution_function_interp_is_linear_between_grid_points() -> Result<(), Report> {
-    let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
+    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
     pretty_assert_ulps_eq!(15.0, f.interp(1.5)?);
     Ok(())
   }
 
   #[test]
   fn test_distribution_function_interp_many_is_linear_between_grid_points() -> Result<(), Report> {
-    let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
+    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
 
     let query = array![1.5, 2.25, 2.7];
     let expected = array![15.0, 22.5, 27.0];
@@ -141,14 +140,7 @@ mod tests {
   }
 
   #[test]
-  fn test_distribution_function_likely_time_plain_selects_max_ordinate() -> Result<(), Report> {
-    let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![1.0, 5.0, 2.0, 4.0])?;
-    pretty_assert_ulps_eq!(1.0, f.likely_time()?.unwrap());
-    Ok(())
-  }
-
-  #[test]
-  fn test_distribution_function_likely_time_neglog_selects_min_ordinate() -> Result<(), Report> {
+  fn test_distribution_function_likely_time_selects_min_cost() -> Result<(), Report> {
     let neg_log = array![1.0, 5.0, 2.0, 4.0].mapv(|p: f64| -p.ln());
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), neg_log)?;
     pretty_assert_ulps_eq!(1.0, f.likely_time()?.unwrap());

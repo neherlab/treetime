@@ -63,17 +63,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::b1( 1.0)]
-  #[case::b05(0.5)]
-  #[trace]
-  fn test_hard_approach_law_fit_reads_plain_densities_in_neg_log(#[case] b: f64) {
-    let grid = make_neglog_power_law_grid(0.0, 1.0, b, 0.1, 1.0, 20).map_y(|y| (-y).exp());
-    let law = HardApproachLaw::fit::<Plain>(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
-    pretty_assert_abs_diff_eq!(b, law.b, epsilon = 1e-10, "the density e^-1 t^b is the cost 1 - b ln t");
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
   #[case::right_half_distance(  (1.0, 1.0), (0.0, 0.0), 2.0_f64.ln(), 0.5)]
   #[case::left_half_distance(   (0.0, 2.0), (1.0, 3.0), 3.0 + 2.0 * 2.0_f64.ln(), 0.5)]
   #[case::right_steep_quarter(  (5.0, 0.5), (4.0, 1.0), 1.0 + 0.5 * 4.0_f64.ln(), 4.75)]

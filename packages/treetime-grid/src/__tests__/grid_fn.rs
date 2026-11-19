@@ -383,43 +383,17 @@ mod tests {
   #[case::hard_approach(((1.0, 3.0), array![1.0, 0.5, 0.25], BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }), BoundaryBehavior::Error), ( 0.5, 1.0 + 2.0_f64.ln()))]
   #[case::edge_cell(    ((0.0, 2.0), array![1.0, 0.5, 0.7], BoundaryBehavior::HardEdgeCell(EdgeCellLaw { t_edge: 0.0, offset: 0.1, b: 2.0 }), BoundaryBehavior::Error), ( 0.5, 0.75 - 2.0 * 6.0_f64.ln() + 11.0_f64.ln()))]
   #[trace]
-  fn test_gridfn_laws_give_one_density_under_both_policies(
-    #[case] (range, neg_log, left, right): ((f64, f64), Array1<f64>, BoundaryBehavior, BoundaryBehavior),
+  fn test_gridfn_laws_give_the_closed_form_cost(
+    #[case] (range, cost, left, right): ((f64, f64), Array1<f64>, BoundaryBehavior, BoundaryBehavior),
     #[case] (t, expected): (f64, f64),
   ) -> Result<(), Report> {
-    let plain = GridFn::from_range_values(range, neg_log.mapv(|y| (-y).exp()))?;
-    let neg_log = GridFn::from_range_values(range, neg_log)?;
+    let grid_fn = GridFn::from_range_values(range, cost)?;
     pretty_assert_abs_diff_eq!(
       expected,
-      neg_log.interp_with_extrap::<NegLog>(t, left, right)?,
+      grid_fn.interp_with_extrap::<NegLog>(t, left, right)?,
       epsilon = 1e-13,
       "closed-form cost of the law at t: soft tail c_edge + k (t - t_edge); hard approach c_edge - b ln(|t - t_hard| / |t_edge - t_hard|); edge cell c_anchor - b ln(d / d_anchor) + s (d - d_anchor), d = |t - t_edge| + offset, s set by both cell ends. Bound: at most 20 roundings, each within one ulp (8.9e-16) of a cost below 4"
     );
-    pretty_assert_abs_diff_eq!(
-      expected,
-      -plain.interp_with_extrap::<Plain>(t, left, right)?.ln(),
-      epsilon = 1e-13,
-      "the plain density is exp(-cost) of the same closed form. Bound: at most 20 roundings, each within one ulp (8.9e-16) of a cost below 4"
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_plain_zero_density_end_follows_the_power_law() -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 1.0, 4.0])?;
-    pretty_assert_ulps_eq!(
-      0.25,
-      grid_fn.interp::<Plain>(0.5)?,
-      max_ulps = 8,
-      "p = t^2 is zero at 0 and passes through 1 at 1 and 4 at 2. Bound: one ulp for each of ln 4, the two-point slope, ln 0.5, the product and exp"
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_plain_hard_cell_fit_range_stops_at_a_zero_density() -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 0.0, 9.0])?;
-    assert_eq!(Some(1..=2), grid_fn.hard_cell_fit_range::<Plain>(0)?);
     Ok(())
   }
 

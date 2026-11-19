@@ -48,17 +48,6 @@ mod tests {
     pretty_assert_abs_diff_eq!(expected_slope, law.slope, epsilon = 1e-10);
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::right( 0.8, Side::Right)]
-  #[case::left( -0.6, Side::Left)]
-  #[trace]
-  fn test_soft_tail_law_fit_reads_plain_densities_in_neg_log(#[case] slope: f64, #[case] side: Side) {
-    let grid = make_neglog_linear_grid(slope, 0.1, 2.0, 20).map_y(|y| (-y).exp());
-    let law = SoftTailLaw::fit::<Plain>(&grid, side, 10).expect("fit should succeed");
-    pretty_assert_abs_diff_eq!(slope, law.slope, epsilon = 1e-10, "the density exp(-slope t) is the cost slope t");
-  }
-
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_right_tail_to_flat() {
     let grid = make_neglog_linear_grid(-1.0, 0.1, 2.0, 20);

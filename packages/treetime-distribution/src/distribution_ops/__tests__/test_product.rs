@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::aliases::DistributionPlain;
+  use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::distribution_ops::product::distribution_product;
   use itertools::Itertools;
@@ -11,32 +11,38 @@ mod tests {
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
-  fn test_product_three_functions_is_elementwise_product_on_shared_grid() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let b = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
-    let c = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
+  fn test_product_three_functions_adds_the_costs_on_a_shared_grid() {
+    let a = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let b = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
+    let c = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
     let actual = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap();
-    let DistributionPlain::Function(actual) = actual else {
+    let DistributionNegLog::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
 
-    let expected_y = array![10.0, 16.0, 18.0, 16.0, 10.0];
+    let expected_y = array![
+      1.0 + 5.0 + 2.0,
+      2.0 + 4.0 + 2.0,
+      3.0 + 3.0 + 2.0,
+      4.0 + 2.0 + 2.0,
+      5.0 + 1.0 + 2.0
+    ];
     pretty_assert_ulps_eq!(array![0.0, 1.0, 2.0, 3.0, 4.0], actual.t(), max_ulps = 4);
     pretty_assert_ulps_eq!(expected_y, actual.y(), max_ulps = 4);
   }
 
   #[test]
   fn test_product_independent_of_factor_order() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let b = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
-    let c = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 3.0, 5.0, 3.0, 2.0]).unwrap();
+    let a = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let b = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
+    let c = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 3.0, 5.0, 3.0, 2.0]).unwrap();
 
-    let DistributionPlain::Function(abc) = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap()
+    let DistributionNegLog::Function(abc) = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap()
     else {
       panic!("Expected Function variant");
     };
-    let DistributionPlain::Function(cab) = distribution_product(&[&c, &a, &b], MaxGridPoints::default()).unwrap()
+    let DistributionNegLog::Function(cab) = distribution_product(&[&c, &a, &b], MaxGridPoints::default()).unwrap()
     else {
       panic!("Expected Function variant");
     };
@@ -45,18 +51,18 @@ mod tests {
 
   #[test]
   fn test_product_point_factor_samples_function() {
-    let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
-    let point = DistributionPlain::point(1.0, 2.0);
+    let function = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let point = DistributionNegLog::point(1.0, 2.0);
 
     let actual = distribution_product(&[&function, &point], MaxGridPoints::default()).unwrap();
-    let expected = DistributionPlain::point(1.0, 4.0);
+    let expected = DistributionNegLog::point(1.0, 2.0 + 2.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_product_two_factors_equals_pairwise_multiplication() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let b = DistributionPlain::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
+    let a = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let b = DistributionNegLog::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
 
     let pairwise = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let nary = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap();
@@ -67,37 +73,37 @@ mod tests {
   #[rstest]
   #[case::endpoint_contact_of_two((
     vec![
-      DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap(),
-      DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap(),
+      DistributionNegLog::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap(),
+      DistributionNegLog::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap(),
     ],
-    DistributionPlain::point(1.0, 15.0),
+    DistributionNegLog::point(1.0, 3.0 + 5.0),
   ))]
   #[case::single_point_intersection_of_three((
     vec![
-      DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap(),
-      DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap(),
-      DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 1.0]).unwrap(),
+      DistributionNegLog::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap(),
+      DistributionNegLog::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap(),
+      DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 1.0]).unwrap(),
     ],
-    DistributionPlain::point(1.0, 60.0),
+    DistributionNegLog::point(1.0, 3.0 + 5.0 + 4.0),
   ))]
   #[case::empty_factor((
     vec![
-      DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
-      DistributionPlain::Empty,
-      DistributionPlain::function(array![0.0, 1.0, 2.0], array![3.0, 2.0, 1.0]).unwrap(),
+      DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
+      DistributionNegLog::Empty,
+      DistributionNegLog::function(array![0.0, 1.0, 2.0], array![3.0, 2.0, 1.0]).unwrap(),
     ],
-    DistributionPlain::Empty,
+    DistributionNegLog::Empty,
   ))]
   #[case::disjoint_hard_functions((
     vec![
-      DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
-      DistributionPlain::function(array![5.0, 6.0, 7.0], array![3.0, 2.0, 1.0]).unwrap(),
+      DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
+      DistributionNegLog::function(array![5.0, 6.0, 7.0], array![3.0, 2.0, 1.0]).unwrap(),
     ],
-    DistributionPlain::Empty,
+    DistributionNegLog::Empty,
   ))]
   #[trace]
   fn test_product_degenerate_overlap_collapses_to_point_or_empty(
-    #[case] (factors, expected): (Vec<DistributionPlain>, DistributionPlain),
+    #[case] (factors, expected): (Vec<DistributionNegLog>, DistributionNegLog),
   ) {
     let factors = factors.iter().collect_vec();
     let actual = distribution_product(&factors, MaxGridPoints::default()).unwrap();
@@ -106,10 +112,10 @@ mod tests {
 
   #[test]
   fn test_product_hard_bounds_land_on_grid_nodes() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let b = DistributionPlain::function(array![1.0, 1.5, 2.0, 2.5, 3.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
+    let a = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let b = DistributionNegLog::function(array![1.0, 1.5, 2.0, 2.5, 3.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
-    let DistributionPlain::Function(f) = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap() else {
+    let DistributionNegLog::Function(f) = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap() else {
       panic!("Expected Function variant");
     };
     let t = f.t();
@@ -119,9 +125,9 @@ mod tests {
 
   #[test]
   fn test_product_bit_identical_across_operand_order() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let b = DistributionPlain::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
-    let c = DistributionPlain::function(array![0.5, 1.25, 2.0, 2.75, 3.5], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
+    let a = DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let b = DistributionNegLog::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
+    let c = DistributionNegLog::function(array![0.5, 1.25, 2.0, 2.75, 3.5], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
 
     let abc = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap();
     let cba = distribution_product(&[&c, &b, &a], MaxGridPoints::default()).unwrap();
