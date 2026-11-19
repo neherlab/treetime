@@ -155,7 +155,7 @@ impl GridPointLimitExceeded {
 )]
 pub struct InvalidMaxGridPoints {
   #[error(not(source))]
-  pub points: usize,
+  points: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Display, Error)]

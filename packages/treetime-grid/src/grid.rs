@@ -82,11 +82,6 @@ impl Grid {
     Self::from_range_n_points(x_min, x_min + dx * span, n_points)
   }
 
-  pub fn from_range_dx(x_min: f64, x_max: f64, dx: f64, max_points: MaxGridPoints) -> Result<Self, Report> {
-    let n_points = Self::range_dx_point_count(x_min, x_max, dx, max_points)?;
-    Self::from_start_dx(x_min, dx, n_points)
-  }
-
   pub(crate) fn from_range_dx_anchored(
     x_min: f64,
     x_max: f64,

@@ -26,7 +26,7 @@ mod tests {
 
   #[test]
   fn test_amplitude_normalize_drops_the_level() -> Result<(), Report> {
-    let f = DistributionFunction::from_start_dx_values(0.0, 1.0, array![1.0, 0.0, 2.0])?.with_amplitude(5.0);
+    let f = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 0.0, 2.0])?.with_amplitude(5.0);
     let normalized = Distribution::Function(f).normalize()?;
     pretty_assert_abs_diff_eq!(array![1.0, 0.0, 2.0], normalized.y(), epsilon = 1e-15);
     Ok(())
@@ -97,7 +97,7 @@ mod tests {
         (start + GAUSSIAN_DX * i.to_f64_exact() - mean).powi(2) / (2.0 * sd * sd)
       });
       Ok(
-        DistributionFunction::from_start_dx_values(start, GAUSSIAN_DX, y)?
+        DistributionFunction::from_range_values((start, start + GAUSSIAN_DX * (n - 1).to_f64_exact()), y)?
           .with_left_extrap(BoundaryBehavior::Hard)
           .with_right_extrap(BoundaryBehavior::Hard),
       )

@@ -6,7 +6,7 @@ mod tests {
   use itertools::Itertools;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
+  use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_relative_eq;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -18,13 +18,17 @@ mod tests {
     let (start, end, shift) = (0.1, 135.431_597_963_692_52, -2026.5);
     let f = helpers::function((start, end), array![1.0, 0.0, 0.5, 2.0, 3.0], HARD, HARD)?.shift_time(shift)?;
     let profile = MassProfile::new(&f)?;
-    let total = profile.fractions(TailMass::Required).unwrap().total();
+    let fractions = profile.fractions(TailMass::Required).unwrap();
     pretty_assert_ulps_eq!(
       array![start + shift, end + shift],
       array![profile.x_min(), profile.x_max()],
       max_ulps = 0
     );
-    pretty_assert_ulps_eq!(total, profile.mass_between(start + shift, end + shift)?, max_ulps = 4);
+    pretty_assert_ulps_eq!(
+      fractions.total(),
+      fractions.mass_between(start + shift, end + shift)?,
+      max_ulps = 4
+    );
     Ok(())
   }
 
@@ -61,8 +65,9 @@ mod tests {
   fn test_mass_profile_regular_cell_mass_is_integral_of_linear_density(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
     let (y0, y1) = (0.3, 1.7);
     let profile = MassProfile::new(&helpers::function((0.0, 2.0), array![y0, y1], HARD, HARD)?)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
     let expected = helpers::linear_density_mass(2.0, (y0, y1), (a, b)) / (-y0).exp();
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, fractions.mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
 
@@ -85,14 +90,15 @@ mod tests {
     };
     let f = helpers::function((0.0, 3.0), y, HARD, right)?;
     let profile = MassProfile::new(&f)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
     let power = beta + 1.0;
     let below_hard_point = |t: f64| (-anchor_y).exp() * (3.0 - t).powf(power) / power;
     for (a, b) in [(2.0, 3.0), (2.0, 2.5), (2.6, 2.99), (2.999, 3.0)] {
       let expected = (below_hard_point(a) - below_hard_point(b)) / (-profile.y_peak()).exp();
-      pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-14);
+      pretty_assert_relative_eq!(expected, fractions.mass_between(a, b)?, max_relative = 1e-14);
     }
     let quadrature = helpers::gauss_legendre(|t| (-(f.interp(t).unwrap() - profile.y_peak())).exp(), (2.0, 3.0), 2000);
-    pretty_assert_relative_eq!(quadrature, profile.mass_between(2.0, 3.0)?, max_relative = 1e-13);
+    pretty_assert_relative_eq!(quadrature, fractions.mass_between(2.0, 3.0)?, max_relative = 1e-13);
     Ok(())
   }
 
@@ -146,7 +152,7 @@ mod tests {
     let geometric = -(-lambda * h * n.to_f64_exact()).exp_m1() / -(-lambda * h).exp_m1();
     let trapezoid = lambda * h * (geometric - f64::midpoint(1.0, (-3.0 * lambda).exp()));
     let expected = trapezoid + (-3.0 * lambda).exp();
-    pretty_assert_abs_diff_eq!(-expected.ln(), profile.neg_log_mass(total), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(-expected.ln(), profile.y_peak() - total.ln(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -162,7 +168,8 @@ mod tests {
   #[trace]
   fn test_mass_profile_piecewise_model_mass_between_matches_closed_form(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
     let profile = MassProfile::new(&helpers::piecewise_model()?)?;
-    pretty_assert_abs_diff_eq!(helpers::piecewise_mass(a, b), profile.mass_between(a, b)?, epsilon = 1e-15);
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+    pretty_assert_abs_diff_eq!(helpers::piecewise_mass(a, b), fractions.mass_between(a, b)?, epsilon = 1e-15);
     Ok(())
   }
 
@@ -299,7 +306,6 @@ mod tests {
   ) -> Result<(), Report> {
     let y = array![0.0, 0.0, 100.0, 100.0, 100.0, 100.0, 0.0, 0.0];
     let profile = MassProfile::new(&helpers::function((0.0, 7.0), y, HARD, HARD)?)?;
-    pretty_assert_relative_eq!(valley_width * (-100.0_f64).exp(), profile.mass_between(a, b)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(100.0 - valley_width.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
@@ -350,7 +356,8 @@ mod tests {
   #[trace]
   fn test_mass_profile_neg_log_mass_agrees_with_linear_mass_near_peak(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
     let profile = MassProfile::new(&helpers::piecewise_model()?)?;
-    pretty_assert_relative_eq!(-profile.mass_between(a, b)?.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+    pretty_assert_relative_eq!(-fractions.mass_between(a, b)?.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
 
@@ -393,6 +400,7 @@ mod tests {
   ) -> Result<(), Report> {
     let f = helpers::function(range, y.clone(), HARD, HARD)?;
     let profile = MassProfile::new(&f)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
     let x = f.grid_fn().x();
     let y_peak = y.iter().copied().fold(f64::INFINITY, f64::min);
     let cells: Vec<f64> = (0..y.len() - 1)
@@ -406,90 +414,15 @@ mod tests {
       .try_collect::<_, _, Report>()?;
     for (i, k) in (0..x.len()).tuple_combinations() {
       let expected: f64 = cells[i..k].iter().sum();
-      pretty_assert_relative_eq!(expected, profile.mass_between(x[i], x[k])?, max_relative = 1e-15);
+      pretty_assert_relative_eq!(expected, fractions.mass_between(x[i], x[k])?, max_relative = 1e-15);
     }
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::beyond_hard_point(        -1.5,  Side::Right, 0.0                                         )]
-  #[case::power_law_tail(           -0.5,  Side::Right, (-0.5_f64).exp() * 0.25                     )]
-  #[case::left_edge_from_tail(       0.0,  Side::Left,  (-0.5_f64).exp()                            )]
-  #[case::left_edge_from_grid(       0.0,  Side::Right, (-0.5_f64).exp()                            )]
-  #[case::rising_cell_middle(        0.5,  Side::Left,  f64::midpoint((-0.5_f64).exp(), 1.0)        )]
-  #[case::peak(                      1.0,  Side::Left,  1.0                                         )]
-  #[case::falling_cell_quarter(      1.25, Side::Right, 1.0 + (-1.5_f64).exp_m1() * 0.25             )]
-  #[case::right_edge(                2.0,  Side::Right, (-1.5_f64).exp()                            )]
-  #[case::soft_tail(                 3.0,  Side::Left,  (-1.5_f64).exp() * (-0.8_f64).exp()         )]
-  #[trace]
-  fn test_mass_profile_density_follows_the_cell_and_tail_laws(
-    #[case] x: f64,
-    #[case] side: Side,
-    #[case] density: f64,
-  ) -> Result<(), Report> {
-    let profile = MassProfile::new(&helpers::piecewise_model()?)?;
-    let fractions = profile.fractions(TailMass::Required).unwrap();
-    let total = helpers::piecewise_mass(-1.0, f64::INFINITY);
-    pretty_assert_ulps_eq!(density / total, fractions.density(x, side), max_ulps = 4);
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::outside_left(  0.0, Side::Left,  0.0)]
-  #[case::at_hard_point( 0.0, Side::Right, 1.0)]
-  #[case::inside(        0.5, Side::Left,  1.0)]
-  #[case::inside_right(  1.0, Side::Left,  1.0)]
-  #[case::outside_right( 1.0, Side::Right, 0.0)]
-  #[trace]
-  fn test_mass_profile_density_of_a_flat_hard_cell_is_one_sided_at_its_ends(
-    #[case] x: f64,
-    #[case] side: Side,
-    #[case] density: f64,
-  ) -> Result<(), Report> {
-    let flat_at_hard_point = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 0.0 });
-    let f = helpers::function((0.0, 1.0), array![f64::INFINITY, 0.0], flat_at_hard_point, HARD)?;
-    let profile = MassProfile::new(&f)?;
-    let fractions = profile.fractions(TailMass::Required).unwrap();
-    pretty_assert_ulps_eq!(density, fractions.density(x, side), max_ulps = 4);
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::flat_earlier_outside(       (0.0, Side::Left ), (0.0, Side::Left ), 0.0                )]
-  #[case::flat_earlier_at_hard_point( (0.0, Side::Left ), (0.0, Side::Right), 1.0                )]
-  #[case::flat_earlier_inside(        (0.0, Side::Left ), (0.5, Side::Left ), 1.0                )]
-  #[case::flat_later_outside(         (0.0, Side::Right), (3.0, Side::Right), 0.0                )]
-  #[case::flat_later_at_hard_point(   (0.0, Side::Right), (3.0, Side::Left ), 1.0                )]
-  #[case::flat_later_inside(          (0.0, Side::Right), (2.5, Side::Right), 1.0                )]
-  #[case::sublinear_at_hard_point(    (0.5, Side::Left ), (0.0, Side::Right), 0.0                )]
-  #[case::sublinear_inside(           (0.5, Side::Left ), (0.5, Side::Left ), 0.5_f64.sqrt()     )]
-  #[case::quadratic_at_hard_point(    (2.0, Side::Right), (3.0, Side::Left ), 0.0                )]
-  #[case::quadratic_inside(           (2.0, Side::Right), (2.5, Side::Right), 0.25               )]
-  #[trace]
-  fn test_mass_profile_density_of_a_hard_approach_tail_is_its_one_sided_limit_at_the_hard_point(
-    #[case] (b, tail_side): (f64, Side),
-    #[case] (x, side): (f64, Side),
-    #[case] density: f64,
-  ) -> Result<(), Report> {
-    let (left, right) = match tail_side {
-      Side::Left => (BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b }), HARD),
-      Side::Right => (HARD, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b })),
-    };
-    let f = helpers::function((1.0, 2.0), array![0.0, 0.0], left, right)?;
-    let profile = MassProfile::new(&f)?;
-    let fractions = profile.fractions(TailMass::Required).unwrap();
-    let total = 1.0 + 1.0 / (b + 1.0);
-    pretty_assert_ulps_eq!(density / total, fractions.density(x, side), max_ulps = 4);
     Ok(())
   }
 
   #[test]
   fn test_mass_profile_survival_of_a_uniform_cell_at_a_calendar_time_is_linear_between_its_represented_ends()
   -> Result<(), Report> {
-    let f = DistributionFunction::from_start_dx_values(2000.0, 1e-10, array![0.0, 0.0])?
+    let f = DistributionFunction::from_range_values((2000.0, 2000.0 + 1e-10), array![0.0, 0.0])?
       .with_left_extrap(HARD)
       .with_right_extrap(HARD);
     let profile = MassProfile::new(&f)?;

@@ -251,14 +251,11 @@ mod tests {
       node_time(&posterior, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
     };
 
-    let Distribution::Function(wide_function) = &wide_parent else {
-      return Err(eyre::eyre!("the wide parent must be a distribution function"));
+    let windowed = {
+      let t = Array1::linspace(2009.4, 2009.7, 13);
+      let y = t.mapv(|t: f64| 0.5 * ((t - 2009.0) / 3.0).powi(2));
+      Distribution::function(t, y)?
     };
-    let windowed = Distribution::Function(wide_function.resample_range_dx(
-      (2009.4, 2009.7),
-      wide_function.dx(),
-      MaxGridPoints::default(),
-    )?);
 
     pretty_assert_abs_diff_eq!(refine(wide_parent)?, refine(windowed)?, epsilon = 1e-9);
 
@@ -567,7 +564,7 @@ mod tests {
     if let Some(subtree) = subtree {
       set_time_distribution(&mut inputs, node_key, subtree);
     }
-    let branch = DistributionFunction::from_start_dx_values(0.0, 1.0, array![5e7, 0.0, 5e7])?
+    let branch = DistributionFunction::from_range_values((0.0, 2.0), array![5e7, 0.0, 5e7])?
       .with_left_extrap(BoundaryBehavior::Hard)
       .with_right_extrap(BoundaryBehavior::Hard);
     set_branch_distribution(&graph, &mut inputs, node_key, Distribution::Function(branch));
@@ -894,7 +891,7 @@ mod tests {
     ) -> Result<Distribution, Report> {
       let grid = Array1::linspace(x_min, x_max, n_points);
       let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
-      let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
+      let f = DistributionFunction::from_range_values((x_min, x_max), y)?
         .with_left_extrap(BoundaryBehavior::Hard)
         .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(f))
@@ -911,7 +908,7 @@ mod tests {
       let law = SoftTailLaw {
         slope: (x_min - mean) / sigma.powi(2),
       };
-      let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
+      let f = DistributionFunction::from_range_values((x_min, x_max), y)?
         .with_left_extrap(BoundaryBehavior::Linear(law))
         .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(f))

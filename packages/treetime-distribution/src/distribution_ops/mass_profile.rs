@@ -3,7 +3,6 @@ use crate::distribution_ops::scaled_mass::{CellSums, ScaledMass, scale_below};
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
-use std::cmp::Ordering;
 use std::sync::OnceLock;
 use treetime_grid::{BoundaryBehavior, CellEnd, EdgeCell, Grid, Side};
 use treetime_utils::array::ndarray::partition_point;
@@ -90,14 +89,6 @@ impl MassProfile {
 
   pub fn y_peak(&self) -> f64 {
     self.y_peak
-  }
-
-  pub fn neg_log_mass(&self, relative_mass: f64) -> f64 {
-    self.y_peak - relative_mass.ln()
-  }
-
-  pub fn mass_between(&self, a: f64, b: f64) -> Result<f64, Report> {
-    Ok(self.interval_mass(self.left, self.right, a, b)?.linear())
   }
 
   pub fn neg_log_mass_between(&self, a: f64, b: f64) -> Result<f64, Report> {
@@ -211,15 +202,6 @@ impl MassProfile {
     CellPosition { j, h, offset }
   }
 
-  fn grid_density(&self, x: f64, side: Side) -> f64 {
-    let at = self.locate(x);
-    if side == Side::Left && at.j > 0 && at.offset.from_left <= 0.0 {
-      let h = self.width(at.j - 1);
-      return self.cell(at.j - 1).density_at(h, Offset::end(h));
-    }
-    self.cell(at.j).density_at(at.h, at.offset)
-  }
-
   fn grid_mass_below(&self, x: f64) -> f64 {
     let at = self.locate(x);
     let cell = self.cell(at.j).mass_between(at.h, Offset::start(at.h), at.offset);
@@ -324,21 +306,6 @@ impl MassFractions<'_> {
     self.position_above(self.mass_above(upper) + q * self.total)
   }
 
-  pub fn density(&self, x: f64, side: Side) -> f64 {
-    let in_tail = |edge: f64, outward: Ordering, tail_side: Side| match x.total_cmp(&edge) {
-      Ordering::Equal => side == tail_side,
-      order => order == outward,
-    };
-    let density = if in_tail(self.profile.x_min(), Ordering::Less, Side::Left) {
-      self.left.density_at(x, side)
-    } else if in_tail(self.profile.x_max(), Ordering::Greater, Side::Right) {
-      self.right.density_at(x, side)
-    } else {
-      self.profile.grid_density(x, side)
-    };
-    density / self.total
-  }
-
   fn mass_below(&self, x: f64) -> f64 {
     let x_min = self.profile.x_min();
     let x_max = self.profile.x_max();
@@ -430,10 +397,6 @@ impl EdgeCellShape {
     ScaledMass::new(self.r_anchor - ln_mass, 1.0)
   }
 
-  fn density_at(self, at: Offset) -> f64 {
-    (self.law.ln_relative_density(self.distance(at)) - self.r_anchor).exp()
-  }
-
   fn offset_from(self, h: f64, end: Side, m: f64) -> f64 {
     let ln_mass = m.ln() + self.r_anchor;
     let distance = if end == self.edge_side {
@@ -507,43 +470,6 @@ impl Cell {
         power_law_mass(r_anchor, h, power, distance(lo).max(distance(hi)), width)
       },
       Cell::Edge(shape) => shape.mass_between(lo, hi),
-    }
-  }
-
-  fn density_at(self, h: f64, at: Offset) -> f64 {
-    match self {
-      Cell::Empty => 0.0,
-      Cell::Trapezoid { ra, rb } => {
-        if at.from_left <= 0.0 {
-          return (-ra).exp();
-        }
-        if at.from_right <= 0.0 {
-          return (-rb).exp();
-        }
-        let r_min = ra.min(rb);
-        let (qa, qb) = (scale_below(r_min, ra), scale_below(r_min, rb));
-        let q = if at.from_left <= at.from_right {
-          qa + (qb - qa) * (at.from_left / h)
-        } else {
-          qb + (qa - qb) * (at.from_right / h)
-        };
-        q * (-r_min).exp()
-      },
-      Cell::PowerLaw {
-        r_anchor,
-        power,
-        hard_end,
-      } => {
-        let (distance, from_anchor) = match hard_end {
-          Side::Left => (at.from_left, at.from_right),
-          Side::Right => (at.from_right, at.from_left),
-        };
-        if from_anchor <= 0.0 {
-          return (-r_anchor).exp();
-        }
-        (-r_anchor).exp() * (distance / h).powf(power - 1.0)
-      },
-      Cell::Edge(shape) => shape.density_at(at),
     }
   }
 
@@ -702,27 +628,6 @@ impl TailLaw {
       } => {
         let delta_near = self.outward(near, t_hard).clamp(0.0, delta_edge);
         power_law_mass(self.r_edge, delta_edge, power, delta_near, width)
-      },
-    }
-  }
-
-  fn density_at(self, x: f64, side: Side) -> f64 {
-    if self.r_edge.is_infinite() || self.outward(self.x_edge, x) < 0.0 {
-      return 0.0;
-    }
-    match self.kind {
-      TailKind::Zero => 0.0,
-      TailKind::Exponential { rate } => (-(self.r_edge + rate * self.outward(self.x_edge, x))).exp(),
-      TailKind::PowerLaw {
-        t_hard,
-        delta_edge,
-        power,
-      } => {
-        let delta = self.outward(x, t_hard);
-        if delta < 0.0 || (delta <= 0.0 && side == self.side) || delta_edge <= 0.0 {
-          return 0.0;
-        }
-        (-self.r_edge).exp() * (delta / delta_edge).min(1.0).powf(power - 1.0)
       },
     }
   }

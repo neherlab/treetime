@@ -71,12 +71,6 @@ impl HardApproachLaw {
     self.t_hard + (edge.t - self.t_hard) * (-(level - edge.y) / self.b).exp()
   }
 
-  pub fn mass(&self, edge: GridEdge) -> f64 {
-    let dt_edge = (edge.t - self.t_hard).abs();
-    let p_edge = (-edge.y).exp();
-    p_edge * dt_edge / (self.b + 1.0)
-  }
-
   #[must_use]
   pub fn scale_arg(&self, factor: f64) -> Self {
     HardApproachLaw {

@@ -42,11 +42,6 @@ impl GridFn {
     Self::from_grid_values(grid, y)
   }
 
-  pub fn from_start_dx_values(x_min: f64, dx: f64, y: Array1<f64>) -> Result<Self, Report> {
-    let grid = Grid::from_start_dx(x_min, dx, y.len())?;
-    Self::from_grid_values(grid, y)
-  }
-
   pub fn from_range_values((x_min, x_max): (f64, f64), y: Array1<f64>) -> Result<Self, Report> {
     let grid = Grid::from_range_n_points(x_min, x_max, y.len())?;
     Self::from_grid_values(grid, y)

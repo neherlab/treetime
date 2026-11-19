@@ -28,18 +28,6 @@ impl DistributionFunction {
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  #[cfg_attr(
-    dylint_lib = "custom",
-    allow(
-      pub_unused_in_workspace,
-      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
-    )
-  )]
-  pub fn from_start_dx_values(x_min: f64, dx: f64, y: Array1<f64>) -> Result<Self, Report> {
-    let grid_fn = GridFn::from_start_dx_values(x_min, dx, y)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
   pub fn from_grid_fn(grid_fn: GridFn) -> Self {
     Self {
       grid_fn,
@@ -178,18 +166,6 @@ impl DistributionFunction {
 
   pub(crate) fn resample_range_n_points(&self, x_range: (f64, f64), n_points: usize) -> Result<Self, Report> {
     let grid = Grid::from_range_n_points(x_range.0, x_range.1, n_points)?;
-    self.resample(&grid)
-  }
-
-  #[cfg_attr(
-    dylint_lib = "custom",
-    allow(
-      pub_unused_in_workspace,
-      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
-    )
-  )]
-  pub fn resample_range_dx(&self, x_range: (f64, f64), dx: f64, max_points: MaxGridPoints) -> Result<Self, Report> {
-    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
     self.resample(&grid)
   }
 

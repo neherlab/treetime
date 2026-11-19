@@ -27,9 +27,3 @@ impl Iterator for GridIter {
     (remaining, Some(remaining))
   }
 }
-
-impl ExactSizeIterator for GridIter {
-  fn len(&self) -> usize {
-    self.grid.len() - self.index
-  }
-}

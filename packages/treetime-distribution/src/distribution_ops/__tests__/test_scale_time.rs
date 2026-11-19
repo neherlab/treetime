@@ -78,7 +78,7 @@ mod tests {
       let t = Array1::linspace(0.1, 4.0, 391);
       let y = t.mapv(|t: f64| 1.5 * t - 2.0 * t.ln());
       Ok(
-        DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
+        DistributionFunction::from_range_values((0.1, 4.0), y)?
           .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))
           .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.5 })),
       )

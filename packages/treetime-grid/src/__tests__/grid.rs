@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::{Grid, GridFn, MaxGridPoints, coordinates_coincide};
+  use crate::{Grid, GridFn, MaxGridPoints, Side, coordinates_coincide};
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
@@ -123,8 +123,8 @@ mod tests {
   #[case::negative_dx(   (0.0,           -1.0),              "Grid spacing dx (-1.0) must be a finite positive number")]
   #[case::end_overflows( (1e308,         1e308),             "Grid x_max (inf) must be finite")]
   #[trace]
-  fn test_gridfn_from_start_dx_values_rejects_invalid_inputs(#[case] (x_min, dx): (f64, f64), #[case] expected: &str) {
-    assert_error!(GridFn::from_start_dx_values(x_min, dx, array![0.0, 1.0, 2.0]), expected);
+  fn test_grid_from_start_dx_rejects_invalid_inputs(#[case] (x_min, dx): (f64, f64), #[case] expected: &str) {
+    assert_error!(Grid::from_start_dx(x_min, dx, 3), expected);
   }
 
   #[rustfmt::skip]
@@ -136,8 +136,8 @@ mod tests {
   #[case::zero_dx(       (0.0,      1.0,           0.0),      "Grid spacing dx (0.0) must be a finite positive number")]
   #[case::reversed(      (1.0,      0.0,           0.1),      "x_max (0.0) must be greater than x_min (1.0)")]
   #[trace]
-  fn test_grid_from_range_dx_rejects_invalid_inputs(#[case] (x_min, x_max, dx): (f64, f64, f64), #[case] expected: &str) {
-    assert_error!(Grid::from_range_dx(x_min, x_max, dx, MaxGridPoints::default()), expected);
+  fn test_grid_from_range_dx_anchored_rejects_invalid_inputs(#[case] (x_min, x_max, dx): (f64, f64, f64), #[case] expected: &str) {
+    assert_error!(Grid::from_range_dx_anchored(x_min, x_max, dx, Side::Left, MaxGridPoints::default()), expected);
   }
 
   #[rustfmt::skip]

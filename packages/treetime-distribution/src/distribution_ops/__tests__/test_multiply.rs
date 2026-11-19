@@ -527,7 +527,7 @@ mod tests {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - mu) / sigma).powi(2)
       });
-      let f = DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
+      let f = DistributionFunction::from_range_values((x_min, x_max), y).unwrap();
       Distribution::Function(f)
     }
 
@@ -537,7 +537,7 @@ mod tests {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - peak_at) / sigma).powi(2)
       });
-      DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap()
+      DistributionFunction::from_range_values((x_min, x_max), y).unwrap()
     }
   }
 }

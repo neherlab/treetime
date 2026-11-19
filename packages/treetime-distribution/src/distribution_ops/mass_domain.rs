@@ -360,7 +360,7 @@ pub(crate) fn resample_to_mass_window(
   Ok(Distribution::Function(resampled))
 }
 
-pub(crate) fn refit_soft_tails(f: DistributionFunction) -> Result<DistributionFunction, Report> {
+fn refit_soft_tails(f: DistributionFunction) -> Result<DistributionFunction, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_left_extrap(BoundaryBehavior::Linear(law))

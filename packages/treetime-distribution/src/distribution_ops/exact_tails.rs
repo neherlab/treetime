@@ -64,11 +64,11 @@ impl IndexWindow {
     }
   }
 
-  pub(crate) fn len(self) -> usize {
+  fn len(self) -> usize {
     self.last - self.first + 1
   }
 
-  pub(crate) fn contains(self, i: usize) -> bool {
+  fn contains(self, i: usize) -> bool {
     (self.first..=self.last).contains(&i)
   }
 

@@ -213,7 +213,7 @@ mod tests {
         let m = t * SITES * REFERENCE_RATE;
         if k > 0.0 { m - k * m.ln() - (k - k * k.ln()) } else { m }
       });
-      let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
+      let f = DistributionFunction::from_range_values((start, end), y)?
         .with_left_extrap(BoundaryBehavior::Hard)
         .with_right_extrap(BoundaryBehavior::Hard);
       Ok(BranchLikelihood {

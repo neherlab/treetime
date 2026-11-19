@@ -70,10 +70,6 @@ impl SoftTailLaw {
     edge.t + outward * (level - edge.y) / rate
   }
 
-  pub fn mass(&self, y_edge: f64) -> f64 {
-    (-y_edge).exp() / self.slope.abs()
-  }
-
   #[must_use]
   pub fn compose_multiply(&self, other: &SoftTailLaw) -> SoftTailLaw {
     SoftTailLaw {

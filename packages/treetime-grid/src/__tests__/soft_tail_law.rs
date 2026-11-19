@@ -114,24 +114,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::unit_slope_unit_edge( 1.0,  0.0,                    1.0)]
-  #[case::half_slope(           0.5,  0.0,                    2.0)]
-  #[case::negative_slope_abs(  -0.5,  0.0,                    2.0)]
-  #[case::nonzero_edge(         1.0,  std::f64::consts::LN_2, 0.5)]
-  #[trace]
-  fn test_soft_tail_law_mass(#[case] slope: f64, #[case] y_edge: f64, #[case] expected: f64) {
-    let law = SoftTailLaw { slope };
-    pretty_assert_abs_diff_eq!(expected, law.mass(y_edge), epsilon = 1e-14);
-  }
-
-  #[test]
-  fn test_soft_tail_law_mass_flat_is_infinite() {
-    let law = SoftTailLaw { slope: 0.0 };
-    assert!(law.mass(2.0).is_infinite());
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
   #[case::both_decay(     0.8,  1.5,  2.3)]
   #[case::opposite_signs( 1.0, -0.4,  0.6)]
   #[case::with_flat(      0.7,  0.0,  0.7)]

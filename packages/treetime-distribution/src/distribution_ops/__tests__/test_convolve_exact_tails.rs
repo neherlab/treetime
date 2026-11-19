@@ -210,7 +210,7 @@ mod tests {
     ) -> Result<DistributionFunction, Report> {
       let y: Array1<f64> = (0..n).map(|i| neg_log(i, x_min + i.to_f64_exact() * dx)).collect();
       Ok(
-        DistributionFunction::from_start_dx_values(x_min, dx, y)?
+        DistributionFunction::from_range_values((x_min, x_min + dx * (n - 1).to_f64_exact()), y)?
           .with_left_extrap(BoundaryBehavior::Hard)
           .with_right_extrap(BoundaryBehavior::Hard),
       )

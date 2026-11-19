@@ -53,7 +53,7 @@ mod tests {
       .with_left_extrap(left)
       .with_right_extrap(right);
 
-    let actual = function.resample_range_dx((1.0, 3.0), 0.25, MaxGridPoints::default())?;
+    let actual = function.resample_range_n_points((1.0, 3.0), 9)?;
 
     assert_eq!(left, actual.left_extrap());
     assert_eq!(right, actual.right_extrap());
@@ -82,7 +82,7 @@ mod tests {
       .with_left_extrap(left)
       .with_right_extrap(right);
 
-    let actual = function.resample_range_dx((0.0, 4.0), 0.5, MaxGridPoints::default())?;
+    let actual = function.resample_range_n_points((0.0, 4.0), 9)?;
 
     pretty_assert_ulps_eq!(
       &expected,

@@ -103,7 +103,7 @@ mod tests {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - center) / sigma).powi(2)
       });
-      let f = DistributionFunction::from_start_dx_values(x_min, dx, y)
+      let f = DistributionFunction::from_range_values((x_min, center + width / 2.0), y)
         .unwrap()
         .with_left_extrap(SOFT)
         .with_right_extrap(BoundaryBehavior::Hard);

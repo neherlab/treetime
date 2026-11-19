@@ -17,7 +17,7 @@ use treetime_utils::array::ndarray::{max_or, min_or};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 
-pub(crate) const CONV_TRUST_FRACTION: f64 = 1e-13;
+const CONV_TRUST_FRACTION: f64 = 1e-13;
 
 const CONV_TAIL_MARGIN: usize = 3;
 

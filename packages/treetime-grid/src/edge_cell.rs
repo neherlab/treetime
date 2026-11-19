@@ -60,11 +60,11 @@ impl EdgeCell {
     self.eval_at_distance(self.distance(t))
   }
 
-  pub fn distance(&self, t: f64) -> f64 {
+  fn distance(&self, t: f64) -> f64 {
     (t - self.edge.t).abs() + self.law.offset
   }
 
-  pub fn position(&self, distance: f64) -> f64 {
+  fn position(&self, distance: f64) -> f64 {
     let inward = (self.anchor.t - self.edge.t).signum();
     self.edge.t + inward * (distance - self.law.offset)
   }
@@ -77,7 +77,7 @@ impl EdgeCell {
     self.distance(self.anchor.t)
   }
 
-  pub fn slope(&self) -> f64 {
+  fn slope(&self) -> f64 {
     let (d_edge, d_anchor) = (self.edge_distance(), self.anchor_distance());
     (self.edge.y - self.anchor.y + self.law.b * (d_edge / d_anchor).ln()) / (d_edge - d_anchor)
   }

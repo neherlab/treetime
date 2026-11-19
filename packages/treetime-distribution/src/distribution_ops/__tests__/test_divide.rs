@@ -212,11 +212,11 @@ mod tests {
   #[test]
   fn test_divide_function_by_function_soft_left_refits_hard_right_binds() {
     let dividend =
-      DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
+      DistributionFunction::from_range_values((2.0, 10.0), array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
         .unwrap()
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
         .with_right_extrap(BoundaryBehavior::Hard);
-    let divisor = DistributionFunction::from_start_dx_values(0.0, 1.0, Array1::from_elem(13, 2.0))
+    let divisor = DistributionFunction::from_range_values((0.0, 12.0), Array1::from_elem(13, 2.0))
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.25 }))
       .with_right_extrap(BoundaryBehavior::Hard);
@@ -281,11 +281,11 @@ mod tests {
   #[test]
   fn test_divide_function_by_function_divisor_error_truncation_yields_error_tails() {
     let dividend =
-      DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
+      DistributionFunction::from_range_values((2.0, 10.0), array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
         .unwrap()
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
         .with_right_extrap(BoundaryBehavior::Hard);
-    let divisor = DistributionFunction::from_start_dx_values(4.0, 1.0, array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
+    let divisor = DistributionFunction::from_range_values((4.0, 8.0), array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
     let actual = distribution_division(
       &Distribution::Function(dividend),
@@ -432,7 +432,7 @@ mod tests {
         t_hard: hard_end(side),
         b: exponent,
       });
-      let f = DistributionFunction::from_start_dx_values(0.0, 0.1, y).unwrap();
+      let f = DistributionFunction::from_range_values((0.0, 1.0), y).unwrap();
       match side {
         Side::Left => f.with_left_extrap(law).with_right_extrap(BoundaryBehavior::Hard),
         Side::Right => f.with_left_extrap(BoundaryBehavior::Hard).with_right_extrap(law),

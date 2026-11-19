@@ -286,7 +286,9 @@ pub(crate) mod tests {
       "the window of {width} needs more than 300 points at the cap"
     );
     assert_eq!(f64_to_usize_saturating((width / 0.02).ceil()) + 1, f.len());
-    let law = f.right_extrap().soft_law().expect("a soft right tail");
+    let BoundaryBehavior::Linear(law) = f.right_extrap() else {
+      panic!("a soft right tail, got {:?}", f.right_extrap());
+    };
     let t = fine.t();
     let edge = t
       .iter()
@@ -461,7 +463,7 @@ pub(crate) mod tests {
       let n_points = f64_to_usize_saturating((12.0 * sigma / dx).round()) + 1;
       let t = Array1::linspace(-6.0 * sigma, 6.0 * sigma, n_points);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
-      let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
+      let f = DistributionFunction::from_range_values((-6.0 * sigma, 6.0 * sigma), y)?;
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
@@ -473,7 +475,7 @@ pub(crate) mod tests {
     pub(super) fn two_gaussians(mu_a: f64, mu_b: f64, sigma: f64, n_points: usize) -> Result<Distribution, Report> {
       let t = Array1::linspace(mu_a - 6.0 * sigma, mu_b + 6.0 * sigma, n_points);
       let y = t.mapv(|t| ((t - mu_a).powi(2)).min((t - mu_b).powi(2)) / (2.0 * sigma * sigma));
-      let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
+      let f = DistributionFunction::from_range_values((mu_a - 6.0 * sigma, mu_b + 6.0 * sigma), y)?;
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
@@ -573,7 +575,7 @@ pub(crate) mod tests {
     pub(super) fn gaussian_grid(sigma: f64) -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(-6.0, 6.0, 241);
       let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
-      DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)
+      DistributionFunction::from_range_values((-6.0, 6.0), y)
     }
   }
 

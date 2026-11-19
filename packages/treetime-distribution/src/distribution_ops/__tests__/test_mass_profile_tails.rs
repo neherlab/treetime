@@ -83,7 +83,6 @@ mod tests {
       * (delta_near.powi(2) + delta_near * delta_far + delta_far.powi(2))
       / (3.0 * delta_edge * delta_edge);
     let profile = MassProfile::new(&f)?;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
@@ -134,14 +133,14 @@ mod tests {
     let total_shifted = shifted.fractions(TailMass::Required).unwrap().total();
     pretty_assert_ulps_eq!(total, total_shifted, max_ulps = 0);
     pretty_assert_ulps_eq!(
-      normalized.mass_between(-1.0, 1.3)?,
-      shifted.mass_between(-1.0, 1.3)?,
+      normalized.neg_log_mass_between(-1.0, 1.3)?,
+      shifted.neg_log_mass_between(-1.0, 1.3)?,
       max_ulps = 0
     );
     pretty_assert_ulps_eq!(1000.0, shifted.y_peak(), max_ulps = 0);
     pretty_assert_abs_diff_eq!(
       1000.0 - total.ln(),
-      shifted.neg_log_mass(total_shifted),
+      shifted.y_peak() - total_shifted.ln(),
       epsilon = 1e-15
     );
     Ok(())
@@ -160,7 +159,7 @@ mod tests {
   ) -> Result<(), Report> {
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope });
     let f = helpers::function((0.0, 1.0), array![0.0, 0.0], HARD, right)?;
-    pretty_assert_abs_diff_eq!(expected, MassProfile::new(&f)?.mass_between(a, b)?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(-expected.ln(), MassProfile::new(&f)?.neg_log_mass_between(a, b)?, epsilon = 1e-15);
     Ok(())
   }
 
@@ -196,7 +195,6 @@ mod tests {
       Side::Left => ((f64::NEG_INFINITY, 0.0), -1.0),
       Side::Right => ((1.0, f64::INFINITY), 2.0),
     };
-    pretty_assert_ulps_eq!(f64::INFINITY, profile.mass_between(beyond.0, beyond.1)?, max_ulps = 0);
     pretty_assert_ulps_eq!(f64::NEG_INFINITY, profile.neg_log_mass_between(beyond.0, beyond.1)?, max_ulps = 0);
     let fractions = profile.fractions(TailMass::ZeroWhereUndefined).unwrap();
     pretty_assert_abs_diff_eq!(1.0, fractions.total(), epsilon = 1e-15);
@@ -222,7 +220,6 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let profile = MassProfile::new(&helpers::growing_tail(side)?)?;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 1e-15, max_relative = 1e-15);
     Ok(())
   }
@@ -266,7 +263,6 @@ mod tests {
     let exponent = decay_rate * width;
     let expected = width * (1.0 - exponent / 2.0);
     let profile = MassProfile::new(&f)?;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
@@ -278,7 +274,6 @@ mod tests {
     let right = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard, b });
     let profile = MassProfile::new(&helpers::function((-1.0, 0.0), array![0.0, 0.0], HARD, right)?)?;
     let expected = width - width * width / t_hard + width.powi(3) / (3.0 * t_hard * t_hard);
-    pretty_assert_relative_eq!(expected, profile.mass_between(0.0, width)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(
       -expected.ln(),
       profile.neg_log_mass_between(0.0, width)?,
@@ -301,7 +296,6 @@ mod tests {
     let profile = MassProfile::new(&helpers::function(range, array![0.0, 0.0], left, right)?)?;
     let expected = 6.321_205_588_285_58e-309;
     let expected_neg_log = 709.654_883_787_553_1;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-13);
     pretty_assert_relative_eq!(
       expected_neg_log,
       profile.neg_log_mass_between(a, b)?,
@@ -315,13 +309,13 @@ mod tests {
     let f = helpers::function((0.0, 1.0), array![0.0, 2.0], BoundaryBehavior::Error, HARD)?;
     let profile = MassProfile::new(&f)?;
     assert_error!(
-      profile.mass_between(-0.5, 0.5),
+      profile.neg_log_mass_between(-0.5, 0.5),
       "Mass between -0.5 and 0.5 reaches below the grid edge 0, where the left side has no tail law"
     );
     let density_at_half = f64::midpoint(1.0, (-2.0_f64).exp());
     pretty_assert_abs_diff_eq!(
-      0.5 * f64::midpoint(1.0, density_at_half),
-      profile.mass_between(0.0, 0.5)?,
+      -(0.5 * f64::midpoint(1.0, density_at_half)).ln(),
+      profile.neg_log_mass_between(0.0, 0.5)?,
       epsilon = 1e-15
     );
     Ok(())
@@ -331,7 +325,7 @@ mod tests {
   fn test_mass_profile_unordered_bounds_are_error() -> Result<(), Report> {
     let f = helpers::function((0.0, 1.0), array![0.0, 2.0], HARD, HARD)?;
     assert_error!(
-      MassProfile::new(&f)?.mass_between(0.5, 0.25),
+      MassProfile::new(&f)?.neg_log_mass_between(0.5, 0.25),
       "Mass between 0.5 and 0.25 requires ordered bounds"
     );
     Ok(())

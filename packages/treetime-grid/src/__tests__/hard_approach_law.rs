@@ -5,7 +5,6 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -127,51 +126,6 @@ mod tests {
       "Hard-boundary power-law fit on the Left side needs at least two finite grid points off the boundary t_hard=0, found 1"
     );
     Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::power_b1((0.0, 1.0), 0.0,          1.0,                       0.5)]
-  #[case::power_b2((0.0, 2.0), 0.0,          1.0,                 1.0 / 3.0)]
-  #[case::flat(    (0.0, 0.0), 0.0,          0.5,                       0.5)]
-  #[case::anchored((0.0, 1.0), 2.0_f64.ln(), 1.0,                      0.25)]
-  #[trace]
-  fn test_hard_approach_law_mass(
-    #[case] (t_hard, b): (f64, f64),
-    #[case] y_edge: f64,
-    #[case] t_edge: f64,
-    #[case] expected: f64,
-  ) {
-    let law = HardApproachLaw { t_hard, b };
-    pretty_assert_abs_diff_eq!(expected, law.mass(GridEdge { t: t_edge, y: y_edge }), epsilon = 1e-14);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::b0(  0.0)]
-  #[case::b05( 0.5)]
-  #[case::b1(  1.0)]
-  #[case::b2(  2.0)]
-  #[case::b3(  3.0)]
-  #[trace]
-  fn test_hard_approach_law_mass_matches_quadrature(#[case] b: f64) {
-    const N: usize = 2_000_001;
-    let (t_hard, t_edge, y_edge) = (0.0, 1.3, 0.4);
-    let law = HardApproachLaw { t_hard, b };
-    let closed_form = law.mass(GridEdge { t: t_edge, y: y_edge });
-
-    let edge = GridEdge { t: t_edge, y: y_edge };
-    let dt = (t_edge - t_hard) / (N.to_f64_exact() - 1.0);
-    let quad: f64 = (0..N)
-      .map(|i| {
-        let u = t_hard + i.to_f64_exact() * dt;
-        let weight = if i == 0 || i == N - 1 { 0.5 } else { 1.0 };
-        let density = (-law.eval(edge, u)).exp();
-        weight * density * dt
-      })
-      .sum();
-
-    pretty_assert_abs_diff_eq!(closed_form, quad, epsilon = 1e-6);
   }
 
   #[rustfmt::skip]

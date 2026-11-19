@@ -1,6 +1,6 @@
 # Node dates move by up to 0.15 years when a time grid gains or loses one point
 
-A node date is the grid point with the highest posterior density: `fn DistributionFunction::likely_time()` takes the argmax of the stored ordinates [packages/treetime-distribution/src/distribution_core/function.rs#L259-L267](../../packages/treetime-distribution/src/distribution_core/function.rs#L259-L267) (the root takes the posterior median instead, [kb/decisions/timetree-root-time-at-posterior-median.md](../decisions/timetree-root-time-at-posterior-median.md)). For a weakly determined node the posterior is flat near its peak, and a small change of the grid moves the argmax far.
+A node date is the grid point with the highest posterior density: `fn DistributionFunction::likely_time()` takes the argmax of the stored ordinates [packages/treetime-distribution/src/distribution_core/function.rs#L212-L220](../../packages/treetime-distribution/src/distribution_core/function.rs#L212-L220) (the root takes the posterior median instead, [kb/decisions/timetree-root-time-at-posterior-median.md](../decisions/timetree-root-time-at-posterior-median.md)). For a weakly determined node the posterior is flat near its peak, and a small change of the grid moves the argmax far.
 
 ## Evidence
 

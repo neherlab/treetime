@@ -88,8 +88,8 @@ mod tests {
       let profile = MassProfile::new(&f).unwrap();
       let fractions = profile.fractions(TailMass::Required).unwrap();
       let [a, b, c] = helpers::sorted_positions(&f, cuts);
-      let whole = profile.mass_between(a, c).unwrap() / fractions.total();
-      let parts = (profile.mass_between(a, b).unwrap() + profile.mass_between(b, c).unwrap()) / fractions.total();
+      let whole = fractions.mass_between(a, c).unwrap() / fractions.total();
+      let parts = (fractions.mass_between(a, b).unwrap() + fractions.mass_between(b, c).unwrap()) / fractions.total();
       prop_assert_abs_diff_eq!(whole, parts, epsilon = 1e-15);
       let grid_point_rounding = helpers::position_ulp(&f) / fractions.total();
       prop_assert!(
@@ -140,7 +140,7 @@ mod tests {
 
     pub(super) fn dyadic_ordinates(f: &DistributionFunction) -> DistributionFunction {
       let y = f.y().mapv(|y| (y * 1_048_576.0).round() / 1_048_576.0);
-      DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), y)
+      DistributionFunction::from_range_values((f.x_min(), f.x_max()), y)
         .unwrap()
         .with_left_extrap(f.left_extrap())
         .with_right_extrap(f.right_extrap())
@@ -175,7 +175,9 @@ mod tests {
       )
         .prop_map(|(x_min, dx, y, left, right)| {
           let n = y.len();
-          let f = DistributionFunction::from_start_dx_values(x_min, dx, Array1::from_iter(y)).unwrap();
+          let f =
+            DistributionFunction::from_range_values((x_min, x_min + dx * (n - 1).to_f64_exact()), Array1::from_iter(y))
+              .unwrap();
           let left = match left {
             BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw { slope: -law.slope }),
             BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(HardApproachLaw {

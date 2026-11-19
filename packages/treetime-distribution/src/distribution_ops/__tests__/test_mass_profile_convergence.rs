@@ -25,7 +25,7 @@ pub(super) mod tests {
     let f = helpers::sampled((-8.0, 8.0), cells, |t| t * t / 2.0)?;
     let profile = MassProfile::new(&f)?;
     let total = profile.fractions(TailMass::Required).unwrap().total();
-    pretty_assert_abs_diff_eq!(-(2.0 * PI).sqrt().ln(), profile.neg_log_mass(total), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(-(2.0 * PI).sqrt().ln(), profile.y_peak() - total.ln(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -90,7 +90,7 @@ pub(super) mod tests {
           let f = sampled(range, cells, y)?;
           let profile = MassProfile::new(&f)?;
           let fractions = profile.fractions(TailMass::Required).unwrap();
-          Ok(error(&fractions, profile.neg_log_mass(fractions.total())))
+          Ok(error(&fractions, profile.y_peak() - fractions.total().ln()))
         })
         .try_collect()
     }

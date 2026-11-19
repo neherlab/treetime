@@ -82,7 +82,7 @@ mod tests {
   #[test]
   fn test_convolution_point_function_shifts_values_tail_laws_and_level() -> Result<(), Report> {
     let p = Distribution::point(3.0, 2.0);
-    let f = DistributionFunction::from_start_dx_values(1.0, 1.0, array![3.0, 1.0, 2.0, 4.0])?
+    let f = DistributionFunction::from_range_values((1.0, 4.0), array![3.0, 1.0, 2.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.5, b: 2.0 }))
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
       .with_amplitude(1.5);
@@ -94,7 +94,7 @@ mod tests {
       &FftPlans::new(),
     )?;
 
-    let expected = DistributionFunction::from_start_dx_values(4.0, 1.0, array![3.0, 1.0, 2.0, 4.0])?
+    let expected = DistributionFunction::from_range_values((4.0, 7.0), array![3.0, 1.0, 2.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.5, b: 2.0 }))
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
       .with_amplitude(3.5);
@@ -114,7 +114,7 @@ mod tests {
   #[test]
   fn test_convolution_range_function_covers_the_full_support() -> Result<(), Report> {
     let r = Distribution::range((2.0, 6.0), LN_2);
-    let f = DistributionFunction::from_start_dx_values(0.0, 2.0, Array1::zeros(6))?
+    let f = DistributionFunction::from_range_values((0.0, 10.0), Array1::zeros(6))?
       .with_left_extrap(BoundaryBehavior::Hard)
       .with_right_extrap(BoundaryBehavior::Hard);
 
@@ -695,8 +695,11 @@ mod tests {
     let dx = 1e-7;
     let num_points = 500;
     let values = Array1::zeros(num_points);
-    let dist_a = Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values.clone())?);
-    let dist_b = Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values)?);
+    let dist_a = Distribution::Function(DistributionFunction::from_range_values(
+      (0.0, 499.0 * dx),
+      values.clone(),
+    )?);
+    let dist_b = Distribution::Function(DistributionFunction::from_range_values((0.0, 499.0 * dx), values)?);
 
     let actual = distribution_convolution(&dist_a, &dist_b, MaxGridPoints::default(), &FftPlans::new())?;
 
@@ -714,7 +717,7 @@ mod tests {
     let dx = 1e-7;
     let n = 500;
     let func = Distribution::Function(
-      DistributionFunction::from_start_dx_values(0.0, dx, Array1::zeros(n))?
+      DistributionFunction::from_range_values((0.0, 499.0 * dx), Array1::zeros(n))?
         .with_left_extrap(BoundaryBehavior::Hard)
         .with_right_extrap(BoundaryBehavior::Hard),
     );
@@ -733,7 +736,7 @@ mod tests {
 
   #[test]
   fn test_convolution_operand_with_the_common_spacing_keeps_its_grid() -> Result<(), Report> {
-    let operand = DistributionFunction::from_start_dx_values(0.1, 0.1, array![3.0, 2.0, 1.0, 0.0])?;
+    let operand = DistributionFunction::from_range_values((0.1, 0.4), array![3.0, 2.0, 1.0, 0.0])?;
 
     let on_spacing = on_common_spacing(&operand, 0.25, MaxGridPoints::default())?;
 
@@ -743,7 +746,7 @@ mod tests {
 
   #[test]
   fn test_convolution_coarser_operand_is_resampled_to_the_common_spacing() -> Result<(), Report> {
-    let operand = DistributionFunction::from_start_dx_values(0.0, 0.25, array![3.0, 2.0, 1.0, 0.0, 0.5])?;
+    let operand = DistributionFunction::from_range_values((0.0, 1.0), array![3.0, 2.0, 1.0, 0.0, 0.5])?;
 
     let on_spacing = on_common_spacing(&operand, 0.1, MaxGridPoints::default())?;
 

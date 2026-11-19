@@ -7,7 +7,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_distribution::{BoundaryBehavior, Distribution};
-  use treetime_grid::MaxGridPoints;
+  use treetime_grid::{MaxGridPoints, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -82,7 +82,9 @@ mod tests {
       "right boundary must be a soft Linear tail, got {right:?}"
     );
 
-    let slope = right.soft_law().expect("a soft Linear tail carries a law").slope;
+    let BoundaryBehavior::Linear(SoftTailLaw { slope }) = right else {
+      panic!("a soft Linear tail carries a law, got {right:?}");
+    };
     assert!(
       slope > 0.0,
       "a decaying right tail must have positive neg-log slope, got {slope}"
@@ -318,7 +320,9 @@ mod tests {
     let Distribution::Function(function) = distribution.as_ref() else {
       panic!("branch-length distribution must be a Function");
     };
-    let slope = function.right_extrap().soft_law().expect("a soft Linear tail carries a law").slope;
+    let BoundaryBehavior::Linear(SoftTailLaw { slope }) = function.right_extrap() else {
+      panic!("a soft Linear tail carries a law, got {:?}", function.right_extrap());
+    };
     assert!(slope > 0.0, "the right tail must decay, got neg-log slope {slope}");
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");

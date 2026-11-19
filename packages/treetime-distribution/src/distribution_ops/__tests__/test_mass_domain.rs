@@ -221,7 +221,9 @@ mod tests {
         (windowed.left_extrap(), t[edge] + 2.0 * h)
       },
     };
-    let law = law.soft_law().expect("a soft side");
+    let BoundaryBehavior::Linear(law) = law else {
+      panic!("a soft side, got {law:?}");
+    };
     pretty_assert_abs_diff_eq!(mean_fit_position, law.slope, epsilon = 1e-12);
   }
 

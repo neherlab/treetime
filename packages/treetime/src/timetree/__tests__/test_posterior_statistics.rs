@@ -238,7 +238,7 @@ mod tests {
     #[case] right: BoundaryBehavior,
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::from_start_dx_values(start, STEP, y)?
+      DistributionFunction::from_range_values((start, start + STEP * (y.len() - 1).to_f64_exact()), y)?
         .with_left_extrap(left)
         .with_right_extrap(right),
     );
@@ -262,7 +262,7 @@ mod tests {
     #[case] y: Array1<f64>,
     #[case] max_interpolation_error: f64,
   ) -> Result<(), Report> {
-    let function = DistributionFunction::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
+    let function = DistributionFunction::from_range_values((CALENDAR_TIME, CALENDAR_TIME + 1e-10 * (y.len() - 1).to_f64_exact()), y)?
       .with_left_extrap(BoundaryBehavior::Hard)
       .with_right_extrap(BoundaryBehavior::Hard);
     let profile = MassProfile::new(&function)?;

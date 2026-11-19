@@ -200,7 +200,7 @@ mod tests {
     let dx = 10.0 / (n_points.to_f64_exact() - 1.0);
     let y = Array1::from_shape_fn(n_points, |i| x_min + i.to_f64_exact() * dx);
 
-    let dist_fn = treetime_distribution::DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
+    let dist_fn = treetime_distribution::DistributionFunction::from_range_values((x_min, 10.0), y).unwrap();
     let dist = Distribution::Function(dist_fn);
     let peak_time = dist.likely_time().unwrap().unwrap();
 

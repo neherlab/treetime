@@ -38,7 +38,7 @@ mod tests {
   #[case::near_the_edge(      0.3)]
   #[case::near_the_anchor(    0.9)]
   #[trace]
-  fn test_mass_fractions_in_the_edge_cell_invert_and_give_the_poisson_density(#[case] at: f64) -> Result<(), Report> {
+  fn test_mass_fractions_in_the_edge_cell_invert(#[case] at: f64) -> Result<(), Report> {
     let poisson = helpers::Poisson::one_mutation();
     let profile = MassProfile::new(&poisson.function()?)?;
     let fractions = profile.fractions(TailMass::Required).expect("the function has a finite mass");
@@ -52,11 +52,6 @@ mod tests {
 
     pretty_assert_relative_eq!(x, fractions.quantile(fractions.cdf(x)), max_relative = 1e-9);
     pretty_assert_relative_eq!(-x, mirrored.survival_inverse(mirrored.survival(-x)), max_relative = 1e-9);
-    pretty_assert_abs_diff_eq!(
-      poisson.cost(x),
-      -(fractions.density(x, Side::Left) * fractions.total()).ln(),
-      epsilon = 1e-15
-    );
     Ok(())
   }
 
@@ -74,9 +69,17 @@ mod tests {
       negated.right_extrap()
     );
     pretty_assert_relative_eq!(poisson.cost(x), negated.interp(-x)?, max_relative = 1e-12);
+    let profile = MassProfile::new(&f)?;
+    let negated_profile = MassProfile::new(&negated)?;
     pretty_assert_relative_eq!(
-      MassProfile::new(&f)?.mass_between(0.0, x)?,
-      MassProfile::new(&negated)?.mass_between(-x, 0.0)?,
+      profile
+        .fractions(TailMass::Required)
+        .expect("the function has a finite mass")
+        .mass_between(0.0, x)?,
+      negated_profile
+        .fractions(TailMass::Required)
+        .expect("the function has a finite mass")
+        .mass_between(-x, 0.0)?,
       max_relative = 1e-12
     );
     Ok(())
@@ -104,7 +107,10 @@ mod tests {
     assert!(distribution.eval(-0.5 * poisson.offset)?.is_infinite());
     assert_eq!(Some((0.0, f.x_max())), distribution.support_bounds());
     pretty_assert_ulps_eq!(0.0, mass_bounded_domain(&profile, 1e-6)?.0, max_ulps = 0);
-    pretty_assert_ulps_eq!(0.0, profile.mass_between(-poisson.h, 0.0)?, max_ulps = 0);
+    let fractions = profile
+      .fractions(TailMass::Required)
+      .expect("the function has a finite mass");
+    pretty_assert_ulps_eq!(0.0, fractions.mass_between(-poisson.h, 0.0)?, max_ulps = 0);
     Ok(())
   }
 

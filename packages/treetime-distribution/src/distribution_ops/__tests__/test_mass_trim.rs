@@ -35,7 +35,7 @@ mod tests {
     let trimmed = helpers::trim(input.clone())?;
 
     let expected =
-      DistributionFunction::from_start_dx_values(t[first], input.dx(), input.y().slice(s![first..=last]).to_owned())?
+      DistributionFunction::from_range_values((t[first], t[last]), input.y().slice(s![first..=last]).to_owned())?
         .with_left_extrap(BoundaryBehavior::Hard)
         .with_right_extrap(BoundaryBehavior::Hard);
     assert_eq!(expected, trimmed);
@@ -111,7 +111,9 @@ mod tests {
     let trimmed = helpers::trim(input.clone())?;
 
     pretty_assert_abs_diff_eq!(t[last], trimmed.x_max(), epsilon = 1e-12);
-    let law = trimmed.right_extrap().soft_law().expect("a soft right side");
+    let BoundaryBehavior::Linear(law) = trimmed.right_extrap() else {
+      panic!("a soft right side, got {:?}", trimmed.right_extrap());
+    };
     let trimmed_mass = fractions.mass_between(t[last], f64::INFINITY)?;
     pretty_assert_ulps_eq!((-input.y()[last]).exp() / trimmed_mass, law.slope, max_ulps = 8);
     let kept = fractions.total() - fractions.mass_between(f64::NEG_INFINITY, trimmed.x_min())?;
@@ -140,7 +142,9 @@ mod tests {
       (trimmed.x_min(), trimmed.left_extrap())
     };
     pretty_assert_abs_diff_eq!(cut, edge, epsilon = 1e-12);
-    let law = law.soft_law().expect("a soft side at the cut");
+    let BoundaryBehavior::Linear(law) = law else {
+      panic!("a soft side at the cut, got {law:?}");
+    };
     pretty_assert_ulps_eq!(expected.slope, law.slope, max_ulps = 8);
     pretty_assert_ulps_eq!(total, helpers::total_mass(&trimmed)?, max_ulps = 4);
     Ok(())
@@ -168,7 +172,9 @@ mod tests {
       (trimmed.x_min(), trimmed.left_extrap())
     };
     pretty_assert_abs_diff_eq!(cut, edge, epsilon = 1e-12);
-    let law = law.soft_law().expect("a soft side at the cut");
+    let BoundaryBehavior::Linear(law) = law else {
+      panic!("a soft side at the cut, got {law:?}");
+    };
     pretty_assert_ulps_eq!(expected.slope, law.slope, max_ulps = 8);
     let trimmed_total = helpers::total_mass(&trimmed)?;
     assert!(
@@ -212,7 +218,9 @@ mod tests {
     let trimmed = helpers::trim_at(input, 1e-3)?;
 
     pretty_assert_abs_diff_eq!(10.0, trimmed.x_max(), epsilon = 1e-12);
-    let law = trimmed.right_extrap().soft_law().expect("a soft right side");
+    let BoundaryBehavior::Linear(law) = trimmed.right_extrap() else {
+      panic!("a soft right side, got {:?}", trimmed.right_extrap());
+    };
     pretty_assert_ulps_eq!(1.0 / 6.0, law.slope, max_ulps = 8);
     pretty_assert_ulps_eq!(total, helpers::total_mass(&trimmed)?, max_ulps = 4);
     Ok(())
@@ -322,7 +330,7 @@ mod tests {
     pub(super) fn gaussian(x_min: f64, x_max: f64, n_points: usize) -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(x_min, x_max, n_points);
       Ok(
-        DistributionFunction::from_start_dx_values(x_min, t[1] - t[0], t.mapv(|t| 0.5 * t * t))?
+        DistributionFunction::from_range_values((x_min, x_max), t.mapv(|t| 0.5 * t * t))?
           .with_left_extrap(BoundaryBehavior::Hard)
           .with_right_extrap(BoundaryBehavior::Hard),
       )
@@ -373,14 +381,14 @@ mod tests {
 
     pub(super) fn flat_on_one_to_two(left: HardApproachLaw) -> Result<DistributionFunction, Report> {
       Ok(
-        DistributionFunction::from_start_dx_values(1.0, 0.5, array![0.0, 0.0, 0.0])?
+        DistributionFunction::from_range_values((1.0, 2.0), array![0.0, 0.0, 0.0])?
           .with_left_extrap(BoundaryBehavior::HardApproach(left))
           .with_right_extrap(BoundaryBehavior::Hard),
       )
     }
 
     pub(super) fn flat(y: f64, right: BoundaryBehavior) -> Distribution {
-      let f = DistributionFunction::from_start_dx_values(0.0, 1.0, array![y, y, y])
+      let f = DistributionFunction::from_range_values((0.0, 2.0), array![y, y, y])
         .map(|f| f.with_left_extrap(BoundaryBehavior::Hard).with_right_extrap(right))
         .unwrap();
       Distribution::Function(f)

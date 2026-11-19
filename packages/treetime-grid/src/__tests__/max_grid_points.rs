@@ -141,12 +141,12 @@ mod tests {
   #[case::exactly_the_limit((0.0, 999.0), 1.0, 1_000)]
   #[case::rounds_to_limit(  (0.0, 999.4), 1.0, 1_000)]
   #[trace]
-  fn test_max_grid_points_grid_from_range_dx_accepts(
+  fn test_max_grid_points_grid_from_range_dx_anchored_accepts(
     #[case] (x_min, x_max): (f64, f64),
     #[case] dx: f64,
     #[case] expected: usize,
   ) -> Result<(), Report> {
-    let grid = Grid::from_range_dx(x_min, x_max, dx, MaxGridPoints::new(1_000)?)?;
+    let grid = Grid::from_range_dx_anchored(x_min, x_max, dx, Side::Left, MaxGridPoints::new(1_000)?)?;
     assert_eq!(expected, grid.n_points());
     Ok(())
   }
@@ -157,13 +157,13 @@ mod tests {
   #[case::ratio_overflows(    (0.0, 1.0),      1e-320, "A grid over [0, 1] with spacing 1.0e-320 needs more points than the limit of 1000")]
   #[case::infinite_range(     (0.0, f64::MAX), 1e-10,  "A grid over [0, 1.79769e308] with spacing 1.0e-10 needs more points than the limit of 1000")]
   #[trace]
-  fn test_max_grid_points_grid_from_range_dx_rejects(
+  fn test_max_grid_points_grid_from_range_dx_anchored_rejects(
     #[case] (x_min, x_max): (f64, f64),
     #[case] dx: f64,
     #[case] expected: &str,
   ) {
     assert_error!(
-      Grid::from_range_dx(x_min, x_max, dx, MaxGridPoints::new(1_000).unwrap()),
+      Grid::from_range_dx_anchored(x_min, x_max, dx, Side::Left, MaxGridPoints::new(1_000).unwrap()),
       expected
     );
   }

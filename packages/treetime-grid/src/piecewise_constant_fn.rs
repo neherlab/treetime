@@ -27,16 +27,4 @@ impl PiecewiseConstantFn {
     let idx = partition_point(self.base.breakpoints(), |&bp| bp <= t);
     self.base.values()[idx]
   }
-
-  #[cfg_attr(
-    dylint_lib = "custom",
-    allow(
-      pub_unused_in_workspace,
-      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
-    )
-  )]
-  pub fn eval_left(&self, t: f64) -> f64 {
-    let idx = partition_point(self.base.breakpoints(), |&bp| bp < t);
-    self.base.values()[idx]
-  }
 }

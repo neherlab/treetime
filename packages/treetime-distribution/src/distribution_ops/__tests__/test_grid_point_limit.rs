@@ -26,21 +26,6 @@ mod tests {
   }
 
   #[test]
-  fn test_grid_point_limit_resample_range_dx_at_the_limit() -> Result<(), Report> {
-    let resampled = flat_function(0.0, 1000.0, 2).resample_range_dx((0.0, 999.0), 1.0, limit())?;
-    assert_eq!(1_000, resampled.len());
-    Ok(())
-  }
-
-  #[test]
-  fn test_grid_point_limit_resample_range_dx_above_the_limit() {
-    assert_error!(
-      flat_function(0.0, 1000.0, 2).resample_range_dx((0.0, 1000.0), 1.0, limit()),
-      ONE_ABOVE
-    );
-  }
-
-  #[test]
   fn test_grid_point_limit_convolution_operand_above_the_limit() {
     assert_error!(
       distribution_convolution(&flat(0.0, 999.0, 1_000), &flat(0.0, 1.0, 3), limit(), &FftPlans::new()),
