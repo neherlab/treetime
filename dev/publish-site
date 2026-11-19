@@ -14,6 +14,8 @@
 #   --routing <routing>   single-page-app stores each file under its path; pages stores each page without .html
 #   --prefix <folder>     Store the build below <folder>/, its root page also as <folder>, and its 404 page at the root
 #   --root-files <dir>    Files to store at the root of each folder after the build, such as versions.json
+#   --archive <file>      Read --dist and --root-files from this tar archive, which may hold only regular files and
+#                         directories below them
 #
 # Environment:
 #   AWS_S3_BUCKET                    Bucket of the host
@@ -44,7 +46,7 @@ main() {
     sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
   }
 
-  local dist="packages/app-web2/dist" folder="" routing="" prefix="" root_files="" names=()
+  local dist="packages/app-web2/dist" folder="" routing="" prefix="" root_files="" archive="" names=()
 
   # shfmt:off
   while (($# > 0)); do
@@ -53,7 +55,7 @@ main() {
       show_help
       exit 0
       ;;
-    --dist | --folder | --site | --routing | --prefix | --root-files)
+    --dist | --folder | --site | --routing | --prefix | --root-files | --archive)
       if (($# < 2)); then
         printf "Missing value of %s\n" "${1}" >&2
         exit 1
@@ -65,6 +67,7 @@ main() {
       --routing) routing="${2}" ;;
       --prefix) prefix="${2}" ;;
       --root-files) root_files="${2}" ;;
+      --archive) archive="${2}" ;;
       esac
       shift 2
       ;;
@@ -91,6 +94,24 @@ main() {
     printf "Invalid prefix: '%s' (expected a folder name such as dev or 1.0)\n" "${prefix}" >&2
     exit 1
   fi
+  if [[ -n "${archive}" ]]; then
+    local roots=("${dist}") root
+    if [[ -n "${root_files}" ]]; then
+      roots+=("${root_files}")
+    fi
+    for root in "${roots[@]}"; do
+      if [[ ! "${root}" =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$ ]]; then
+        printf "Invalid folder in the archive: '%s' (expected a relative path such as packages/app-web2/dist)\n" \
+          "${root}" >&2
+        exit 1
+      fi
+    done
+    UNPACK_DIR="$(mktemp -d)"
+    trap 'rm -rf "${UNPACK_DIR}"' EXIT
+    unpack_archive "${archive}" "${UNPACK_DIR}" "${roots[@]}"
+    dist="${UNPACK_DIR}/${dist}"
+    root_files="${root_files:+${UNPACK_DIR}/${root_files}}"
+  fi
   if [[ ! -f "${dist}/index.html" ]]; then
     printf "No build in %s: it has no index.html\n" "${dist}" >&2
     exit 1
@@ -98,6 +119,11 @@ main() {
   if [[ -n "${root_files}" && ! -d "${root_files}" ]]; then
     printf "No root files in %s: no such folder\n" "${root_files}" >&2
     exit 1
+  fi
+
+  check_tree "${dist}"
+  if [[ -n "${root_files}" ]]; then
+    check_tree "${root_files}"
   fi
 
   local targets=() sites=() name site
@@ -162,6 +188,49 @@ site_name() {
     sed -E 's/[^a-z0-9-]/-/g; s/^-+//' |
     cut -c1-63 |
     sed -E 's/-+$//'
+}
+
+# Unpack an archive into a directory after checking that it holds only regular files and directories below the roots.
+unpack_archive() {
+  local archive="${1}" dir="${2}"
+  shift 2
+  local entries names line name root inside
+  entries="$(tar --list --verbose --quoting-style=escape --file "${archive}")"
+  names="$(tar --list --quoting-style=escape --file "${archive}")"
+  if [[ -z "${names}" ]]; then
+    printf "%s is empty\n" "${archive}" >&2
+    return 1
+  fi
+  while IFS= read -r line; do
+    if [[ "${line:0:1}" != "-" && "${line:0:1}" != "d" ]]; then
+      printf "%s holds an entry that is neither a file nor a directory: %s\n" "${archive}" "${line}" >&2
+      return 1
+    fi
+  done <<<"${entries}"
+  while IFS= read -r name; do
+    name="${name%/}"
+    inside=false
+    for root in "$@"; do
+      if [[ "${name}" == "${root}" || "${name}" == "${root}/"* ]]; then
+        inside=true
+      fi
+    done
+    if [[ "${inside}" != true || "/${name}/" == */../* ]]; then
+      printf "%s holds an entry outside %s: %s\n" "${archive}" "$*" "${name}" >&2
+      return 1
+    fi
+  done <<<"${names}"
+  tar --extract --no-same-owner --file "${archive}" --directory "${dir}"
+}
+
+# Refuse links and special files, so that the upload reads only the files of the build.
+check_tree() {
+  local entry
+  entry="$(find -P "${1}" ! -type f ! -type d -print -quit)"
+  if [[ -n "${entry}" ]]; then
+    printf "%s is neither a file nor a directory\n" "${entry}" >&2
+    return 1
+  fi
 }
 
 # Collect the files of a build into two arrays, its pages (*.html) and every other file, without compressed copies.
@@ -245,6 +314,9 @@ content_type() {
   *.ico) printf "image/x-icon" ;;
   *.woff2) printf "font/woff2" ;;
   *.woff) printf "font/woff" ;;
+  *.ttf) printf "font/ttf" ;;
+  *.otf) printf "font/otf" ;;
+  *.pbf) printf "application/x-protobuf" ;;
   *.csv) printf "text/csv; charset=utf-8" ;;
   *.tsv) printf "text/tab-separated-values; charset=utf-8" ;;
   *.md) printf "text/markdown; charset=utf-8" ;;
@@ -252,6 +324,7 @@ content_type() {
   *.xml) printf "application/xml" ;;
   *.xz) printf "application/x-xz" ;;
   *.txt | *.nwk | *.nex | *.fasta | *.phylip | *.gff3 | *.vcf) printf "text/plain; charset=utf-8" ;;
+  *.pagefind | *.pf_fragment | *.pf_index | *.pf_meta) printf "application/octet-stream" ;;
   *) printf "application/octet-stream" ;;
   esac
 }
