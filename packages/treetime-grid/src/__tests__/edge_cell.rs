@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::*;
+  use crate::{BoundaryBehavior, CellEnd, EdgeCell, EdgeCellLaw, GridEdge, GridFn};
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_relative_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
@@ -341,7 +340,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use crate::{EdgeCell, EdgeCellLaw, GridEdge};
+    use eyre::Report;
+    use ndarray::{Array1, array};
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) struct Poisson {
       k: f64,

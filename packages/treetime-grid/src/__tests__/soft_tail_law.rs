@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::*;
+  use crate::{BoundaryBehavior, GridEdge, GridFn, Side, SoftTailLaw};
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;

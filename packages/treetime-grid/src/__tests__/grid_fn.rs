@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::negated;
-  use crate::MaxGridPoints;
-  use crate::*;
+  use crate::{
+    BoundaryBehavior, EdgeCellLaw, GridEdge, GridFn, HardApproachLaw, HardCell, MaxGridPoints, Side, SoftTailLaw,
+  };
   use eyre::Report;
   use ndarray::{Array1, array, s};
   use pretty_assertions::assert_eq;
