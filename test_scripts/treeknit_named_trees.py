@@ -13,18 +13,17 @@ segments the maximum compatible clades (MCCs): sets of leaves whose subtree topo
    separate nodes, one cycle at a time
 5. writes the trees with one name per identity
 
-Usage: python3 -I test_scripts/treeknit_named_trees.py <treeknit_dir> <output_dir>
+Usage: python3 -I test_scripts/treeknit_named_trees.py <treeknit_dir> <output_dir> <segment>...
+
+Each segment `<s>` reads `<treeknit_dir>/tree_<s>_resolved.nwk`, for example `ha na pb1 pb2`.
 """
 
-import itertools
 import json
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 from Bio import Phylo
-
-SEGMENTS = ["ha", "na", "pb1", "pb2"]
 
 
 def read_tree(directory, segment):
@@ -97,7 +96,7 @@ def find_cycle(trees, names):
         if start in state:
             continue
         state[start] = "open"
-        path, stack = [start], [iter(children[start])]
+        path, stack = [start], [iter(sorted(children[start]))]
         while stack:
             child = next(stack[-1], None)
             if child is None:
@@ -108,7 +107,7 @@ def find_cycle(trees, names):
             elif child not in state:
                 state[child] = "open"
                 path.append(child)
-                stack.append(iter(children[child]))
+                stack.append(iter(sorted(children[child])))
     return None
 
 
@@ -128,15 +127,17 @@ def break_cycles(trees, names):
 
 
 def main():
-    directory, out = Path(sys.argv[1]), Path(sys.argv[2])
+    directory, out, segments = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:]
     out.mkdir(parents=True, exist_ok=True)
-    trees = {segment: read_tree(directory, segment) for segment in SEGMENTS}
-    pairs = json.load(open(directory / "MCCs.json"))["MCC_dict"]
+    trees = {segment: read_tree(directory, segment) for segment in segments}
+    pairs = json.loads((directory / "MCCs.json").read_text())["MCC_dict"]
 
     identities = UnionFind()
     stats = {}
     for entry in pairs.values():
         a, b = (label.removeprefix("tree_") for label in entry["trees"])
+        if a not in trees or b not in trees:
+            continue
         leaf_mcc = {leaf: index for index, mcc in enumerate(entry["mccs"]) for leaf in mcc}
         mccs = {segment: assign_mccs(trees[segment][0], trees[segment][1], leaf_mcc) for segment in (a, b)}
         matched = unmatched = 0
