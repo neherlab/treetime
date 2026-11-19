@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Joint branch-length optimization of four influenza segments on a graph of segment trees (flu/h3n2/segments/100).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/flu/h3n2/segments/100/optimize.yaml --output-all tmp/examples/flu/h3n2/segments/100/optimize
+#
+# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments
+# reassorted. TreeTime merges them into one graph by node name: an ancestor that
+# several segments share has one name in every tree (../README.md).
+#
+# An edge that several segments share gets one length, fitted to the mutations of
+# all of them. Each segment has its own inferred GTR model and relative rate, so a
+# branch length is in substitutions per site averaged over all sites. The run writes
+# one Nexus tree per segment, `optimize.<i>.nexus`, with the names of the input
+# nodes.
+
+segment_trees:
+  - "tree_ha.nwk"
+  - "tree_na.nwk"
+  - "tree_pb1.nwk"
+  - "tree_pb2.nwk"
+segment_alignments:
+  - "aln_ha.fasta.xz"
+  - "aln_na.fasta.xz"
+  - "aln_pb1.fasta.xz"
+  - "aln_pb2.fasta.xz"

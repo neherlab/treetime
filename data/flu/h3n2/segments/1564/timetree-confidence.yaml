@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Dated graph of four influenza segment trees with date confidence intervals (flu/h3n2/segments/1564).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/flu/h3n2/segments/1564/timetree-confidence.yaml --output-all tmp/examples/flu/h3n2/segments/1564/timetree-confidence
+#
+# The HA, NA, PB1 and PB2 trees of these viruses differ where the segments
+# reassorted. TreeTime merges them into one graph by node name: an ancestor that
+# several segments share has one name in every tree (../README.md).
+#
+# A node that several segments share gets one date from the mutations of all of
+# them. A graph of segment trees runs at a fixed clock rate, keeps its roots and
+# polytomies, and runs without a coalescent prior, a clock filter and a rate
+# uncertainty (`clock_std_dev`). The node dates table covers every node of the
+# graph; Nexus and Auspice JSON are written once per segment.
+
+segment_trees:
+  - "tree_ha.nwk"
+  - "tree_na.nwk"
+  - "tree_pb1.nwk"
+  - "tree_pb2.nwk"
+segment_alignments:
+  - "aln_ha.fasta.xz"
+  - "aln_na.fasta.xz"
+  - "aln_pb1.fasta.xz"
+  - "aln_pb2.fasta.xz"
+metadata: "metadata.tsv"
+
+# Clock rate in substitutions per site per year, averaged over the sites of the
+# four segments. Each segment gets a relative rate, scaled to a mean of 1 over all
+# sites, so a branch length of the graph is in substitutions per site averaged over
+# all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2
+# builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:
+# HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment
+# widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.
+clock_rate: 0.0024
+
+# 90% date intervals of every node, in the node dates table.
+confidence: true

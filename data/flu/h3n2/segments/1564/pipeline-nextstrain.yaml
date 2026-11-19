@@ -1,0 +1,110 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain seasonal-flu H3N2 build on a graph of four segment trees, TreeTime part (flu/h3n2/segments/1564).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/flu/h3n2/segments/1564/pipeline-nextstrain.yaml --output-all tmp/examples/flu/h3n2/segments/1564/pipeline-nextstrain
+#
+# nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk, runs per
+# segment: `augur refine --keep-root --stochastic-resolve --timetree --clock-rate
+# <segment rate> --clock-std-dev <rate / 5> --coalescent const --date-confidence
+# --date-inference marginal --clock-filter-iqd 4` (lines 190-271), `augur
+# ancestral --inference joint --root-sequence <reference>` (lines 274-308) and
+# `augur traits --columns region --confidence` (lines 311-335). Before refine, it
+# removes the reference A/Wisconsin/67/2005 that roots the tree (lines 127-140) and
+# the tips whose date deviates from their inferred time by a z-score above 4
+# (lines 142-164).
+#
+# This pipeline dates the four segments together on one graph of segment trees
+# instead of one tree per segment, so a node that several segments share gets one
+# date. Each setting of the build maps to TreeTime v1 as far as segment graphs allow:
+#
+# - `optimize` fits the branch lengths jointly over the segments, with one GTR model
+#   and one relative rate per segment, and writes one Nexus tree per segment
+#   (`optimize.<i>.nexus`, in the order of `segment_trees`). The next steps read
+#   these trees by path, because a step output that is written once per segment
+#   resolves to several files, which a single reference cannot name
+# - `timetree` keeps the roots of the graph, as `--keep-root` does, and uses
+#   marginal dates with confidence intervals. It runs at one clock rate for all
+#   segments (see `vars`). Segment graphs reject the rate uncertainty, the
+#   coalescent prior and the clock filter. On the full set of 1564 viruses, the
+#   root-to-tip regression of each segment tree with its input root flags only old
+#   reference strains of 2004 and one HA sequence at 4 interquartile ranges (../README.md)
+# - The graph keeps A/Wisconsin/67/2005, a dated sample of 2005, because `prune`
+#   does not run on a graph of segment trees
+# - `ancestral` replaces the joint reconstruction of augur with marginal
+#   reconstruction with imputed tips, as `data/flu/h3n2/500/pipeline-nextstrain.yaml`
+#   does; v1 has no nucleotide root sequence input
+# - `mugration` reconstructs the region on the dated HA and NA trees
+#   (`timetree.1.nexus`, `timetree.2.nexus`), one tree at a time as `augur traits`
+#   does, because mugration does not run on a graph of segment trees
+
+vars:
+  # Clock rate in substitutions per site per year, averaged over the sites of the
+  # four segments. Each segment gets a relative rate, scaled to a mean of 1 over all
+  # sites, so a branch length of the graph is in substitutions per site averaged over
+  # all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2
+  # builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:
+  # HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment
+  # widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.
+  clock_rate: 0.0024
+
+steps:
+  - name: "optimize"
+    optimize:
+      segment_trees:
+        - "tree_ha.nwk"
+        - "tree_na.nwk"
+        - "tree_pb1.nwk"
+        - "tree_pb2.nwk"
+      segment_alignments:
+        - "aln_ha.fasta.xz"
+        - "aln_na.fasta.xz"
+        - "aln_pb1.fasta.xz"
+        - "aln_pb2.fasta.xz"
+
+  - name: "timetree"
+    timetree:
+      segment_trees:
+        - "{{ steps.optimize.output_all }}/optimize.1.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.2.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.3.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.4.nexus"
+      segment_alignments:
+        - "aln_ha.fasta.xz"
+        - "aln_na.fasta.xz"
+        - "aln_pb1.fasta.xz"
+        - "aln_pb2.fasta.xz"
+      metadata: "metadata.tsv"
+      clock_rate: "{{ vars.clock_rate }}"
+      confidence: true
+
+  - name: "ancestral"
+    ancestral:
+      segment_trees:
+        - "{{ steps.optimize.output_all }}/optimize.1.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.2.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.3.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.4.nexus"
+      segment_alignments:
+        - "aln_ha.fasta.xz"
+        - "aln_na.fasta.xz"
+        - "aln_pb1.fasta.xz"
+        - "aln_pb2.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+
+  - name: "mugration-region-ha"
+    mugration:
+      tree: "{{ steps.timetree.output_all }}/timetree.1.nexus"
+      metadata: "metadata.tsv"
+      attribute: "region"
+      confidence: true
+
+  - name: "mugration-region-na"
+    mugration:
+      tree: "{{ steps.timetree.output_all }}/timetree.2.nexus"
+      metadata: "metadata.tsv"
+      attribute: "region"
+      confidence: true
