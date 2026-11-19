@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "README.md",
-      "size": 24538
+      "size": 25259
     },
     {
       "path": "dengue/100/README.md",
@@ -55,6 +55,10 @@
     {
       "path": "dengue/20/timetree-gene-partitions.yaml",
       "size": 2073
+    },
+    {
+      "path": "dengue/20/timetree-partition-models.yaml",
+      "size": 1659
     },
     {
       "path": "dengue/20/tree.nwk",
@@ -1478,7 +1482,15 @@
     },
     {
       "path": "rsv/a/2000/README.md",
-      "size": 400
+      "size": 868
+    },
+    {
+      "path": "rsv/a/2000/aln-F.fasta.xz",
+      "size": 34356
+    },
+    {
+      "path": "rsv/a/2000/aln-G.fasta.xz",
+      "size": 36540
     },
     {
       "path": "rsv/a/2000/aln.fasta.xz",
@@ -1527,6 +1539,10 @@
     {
       "path": "rsv/a/2000/prune-collapse.yaml",
       "size": 837
+    },
+    {
+      "path": "rsv/a/2000/timetree-gene-alignments.yaml",
+      "size": 1514
     },
     {
       "path": "rsv/a/2000/timetree-skyline-confidence.yaml",
@@ -1627,6 +1643,14 @@
     {
       "path": "sc2/2844/optimize-gene-partitions.yaml",
       "size": 1434
+    },
+    {
+      "path": "sc2/2844/optimize-rate-categories.yaml",
+      "size": 1499
+    },
+    {
+      "path": "sc2/2844/optimize-shared-exchange-rates.yaml",
+      "size": 1213
     },
     {
       "path": "sc2/2844/pipeline-undated.yaml",
@@ -2597,6 +2621,24 @@
       }
     },
     {
+      "path": "dengue/20/timetree-partition-models.yaml",
+      "command": "timetree",
+      "title": "Dengue time tree with a simpler substitution model for the UTRs than for the coding region (dengue/20).",
+      "folder": "dengue/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dengue time tree with a simpler substitution model for the UTRs than for the coding region (dengue/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/dengue/20/timetree-partition-models.yaml --output-all tmp/examples/dengue/20/timetree-partition-models\n#\n# Each `partition` entry names its sites and its own substitution model. The coding\n# region, sites 97-10269 of the DENV2 reference NC_001474 (the CDS of\n# `annotation.gff3`), fits GTR (`model` left out means `infer`). The entry `utr`\n# names no sites, so it takes the remaining sites, the 5' and 3' UTRs, and uses\n# JC69, which has no parameters besides the relative rate of the partition. On\n# this tree of 20 genomes the 550 UTR sites carry about 130 of about 4500 expected\n# substitutions, so JC69 spends none of them on the five exchange rates and three\n# base frequencies of GTR. Named models can also take parameters: `model: \"hky85\"`\n# with `model_params: [\"kappa=4\"]`. The clock rate is estimated from the data;\n# `coalescent: opt` fits a constant coalescent time scale, and `seed` makes the\n# random order of the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\npartition:\n  - name: \"coding\"\n    sites: [\"97-10269\"]\n  - name: \"utr\"\n    model: \"jc69\"\npartition_rates: \"estimate\"\ncoalescent: \"opt\"\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "dengue/20/aln.fasta.xz"
+        ],
+        "metadata": [
+          "dengue/20/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/20/tree.nwk"
+        ]
+      }
+    },
+    {
       "path": "dengue/2000/ancestral.yaml",
       "command": "ancestral",
       "title": "Ancestral sequences with the default settings (dengue/2000).",
@@ -3554,6 +3596,25 @@
       }
     },
     {
+      "path": "rsv/a/2000/timetree-gene-alignments.yaml",
+      "command": "timetree",
+      "title": "Time tree from separate G and F gene alignments, one partition per file (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree from separate G and F gene alignments, one partition per file (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/rsv/a/2000/timetree-gene-alignments.yaml --output-all tmp/examples/rsv/a/2000/timetree-gene-alignments\n#\n# The glycoprotein genes G and F come as two alignment files, as gene builds and\n# gene sequencing studies produce them: `aln-G.fasta.xz` and `aln-F.fasta.xz` hold\n# the CDS columns of `aln.fasta.xz` (see `README.md`). The Nextstrain RSV workflow\n# builds G and F trees next to the genome tree (nextstrain/rsv@7d91d8f,\n# config/configfile.yaml lines 6-10). Each file is one partition with its own GTR\n# model and its own relative rate; the two partitions share the tree, the branch\n# lengths and the dates (kb/decisions/multi-alignment-partitions.md). Outputs with\n# sequence positions, such as the reconstructed sequences, are one file per\n# alignment in the coordinates of that file. The tree topology comes from the\n# genomes, because two genes alone resolve fewer clades. `seed` makes the random\n# order of the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln-G.fasta.xz\"\n  - \"aln-F.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln-G.fasta.xz",
+          "rsv/a/2000/aln-F.fasta.xz"
+        ],
+        "metadata": [
+          "rsv/a/2000/metadata.tsv"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
       "path": "rsv/a/2000/timetree-skyline-confidence.yaml",
       "command": "timetree",
       "title": "RSV-A time tree with a skyline coalescent and date intervals (rsv/a/2000).",
@@ -3625,6 +3686,39 @@
       "title": "Branch lengths with one partition per SARS-CoV-2 gene (sc2/2844).",
       "folder": "sc2/2844",
       "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with one partition per SARS-CoV-2 gene (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/sc2/2844/optimize-gene-partitions.yaml --output-all tmp/examples/sc2/2844/optimize-gene-partitions\n#\n# The genes of SARS-CoV-2 evolve at different speeds: the spike gene S, for example,\n# is under selection by the immune response. `partition_by: genes` makes one partition\n# for each CDS of the Wuhan-Hu-1 annotation and one for the noncoding sites. The\n# partitions share the branch lengths and, by default for this scheme, one set of\n# exchange rates and equilibrium frequencies, because the genes of one genome share\n# the mutation process; each partition fits its own relative rate. The model output\n# lists the rate of each gene (`mu`): on this tree ORF1b, which codes for the\n# polymerase, evolves slowest, and the noncoding sites, which include the genome ends\n# that are hard to sequence, fastest. A site in two CDSs belongs to the longer CDS, so\n# ORF9b, which lies inside N, gets no partition, and the run warns about it.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\nannotation:\n  - \"annotation.gff3\"\n\npartition_by: \"genes\"\n",
+      "inputs": {
+        "alignment": [
+          "sc2/2844/aln.fasta.xz"
+        ],
+        "annotation": [
+          "sc2/2844/annotation.gff3"
+        ],
+        "tree": [
+          "sc2/2844/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/2844/optimize-rate-categories.yaml",
+      "command": "optimize",
+      "title": "Branch lengths with the sites grouped by how often they change (sc2/2844).",
+      "folder": "sc2/2844",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with the sites grouped by how often they change (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/sc2/2844/optimize-rate-categories.yaml --output-all tmp/examples/sc2/2844/optimize-rate-categories\n#\n# `partition_by: rate-categories` counts, for each site, the branches of the input\n# tree with a Fitch parsimony change at that site, and puts the sites into three\n# partitions: `slow` (no change), `medium` (one change) and `fast` (two or more\n# changes). The partitions share the exchange rates and base frequencies and fit one\n# relative rate each (kb/decisions/multi-alignment-partitions.md). Like\n# `optimize-gamma.yaml`, this lets a few fast sites carry most substitutions, and\n# the run takes about a fifth of the time of the gamma example. The buckets come\n# from the same data and tree as the fit, so their rates are not independent\n# estimates: in a simulation with known site rates in that decision file, the\n# buckets made the tree 0.8 to 1.4 % too long. On this dataset the tree comes out\n# shorter than without partitions, while gamma makes it longer, so the two methods\n# are not interchangeable.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\npartition_by: \"rate-categories\"\n",
+      "inputs": {
+        "alignment": [
+          "sc2/2844/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/2844/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/2844/optimize-shared-exchange-rates.yaml",
+      "command": "optimize",
+      "title": "Gene partitions that share the exchange rates and fit their own base frequencies (sc2/2844).",
+      "folder": "sc2/2844",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Gene partitions that share the exchange rates and fit their own base frequencies (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/sc2/2844/optimize-shared-exchange-rates.yaml --output-all tmp/examples/sc2/2844/optimize-shared-exchange-rates\n#\n# `optimize-gene-partitions.yaml` gives every gene its own relative rate, and the\n# genes share the exchange rates and the base frequencies, the default of\n# `partition_by: genes`. Here `shared_params` keeps the shared exchange rates, the\n# mutation spectrum that all genes of the genome share, and lets every gene fit its\n# own base frequencies, because the composition differs between the genes. The\n# model output lists the frequencies of each gene\n# (kb/decisions/multi-alignment-partitions.md, section \"Shared model parameters\").\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\nannotation:\n  - \"annotation.gff3\"\n\npartition_by: \"genes\"\nshared_params:\n  - \"exchange-rates\"\n",
       "inputs": {
         "alignment": [
           "sc2/2844/aln.fasta.xz"
