@@ -2,8 +2,8 @@
 mod tests {
   use self::helpers::{flat, linear_with_soft_side, sides};
   use crate::__tests__::aliases::DistributionNegLog;
-  use crate::DistributionFunction;
   use crate::distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
+  use crate::{DistributionFormula, DistributionFunction};
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
@@ -26,10 +26,19 @@ mod tests {
 
   #[test]
   fn test_multiply_by_fn_rejects_formula() {
-    let formula = DistributionNegLog::Formula(crate::DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
+    let formula = DistributionNegLog::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
     assert_error!(
       distribution_multiply_by_fn(&formula, |_| Ok(1.0), flat),
       "distribution_multiply_by_fn requires a concrete Point, Range, or Function distribution"
+    );
+  }
+
+  #[test]
+  fn test_multiply_by_fn_rejects_a_weight_with_no_finite_value() {
+    let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
+    assert_error!(
+      distribution_multiply_by_fn(&neglog, |_| Ok(f64::INFINITY), flat),
+      "distribution_multiply_by_fn found no finite weight over the distribution grid"
     );
   }
 
@@ -168,8 +177,10 @@ mod tests {
     let DistributionNegLog::Function(rf) = actual else {
       panic!("expected a Function result");
     };
-    assert_eq!(BoundaryBehavior::Hard, rf.left_extrap());
-    assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
+    assert_eq!(
+      (BoundaryBehavior::Hard, BoundaryBehavior::Hard),
+      (rf.left_extrap(), rf.right_extrap())
+    );
   }
 
   mod helpers {

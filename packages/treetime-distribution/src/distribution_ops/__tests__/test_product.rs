@@ -3,7 +3,10 @@ mod tests {
   use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::distribution_ops::product::distribution_product;
+  use itertools::Itertools;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_utils::pretty_assert_ulps_eq;
 
@@ -41,15 +44,6 @@ mod tests {
   }
 
   #[test]
-  fn test_product_empty_factor_returns_empty() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
-    let b = DistributionPlain::function(array![0.0, 1.0, 2.0], array![3.0, 2.0, 1.0]).unwrap();
-
-    let actual = distribution_product(&[&a, &DistributionPlain::Empty, &b], MaxGridPoints::default()).unwrap();
-    assert_eq!(DistributionPlain::Empty, actual);
-  }
-
-  #[test]
   fn test_product_point_factor_samples_function() {
     let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
     let point = DistributionPlain::point(1.0, 2.0);
@@ -69,36 +63,45 @@ mod tests {
     assert_eq!(pairwise, nary);
   }
 
-  #[test]
-  fn test_product_endpoint_contact_returns_point() {
-    let a = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
-    let b = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
-
-    let actual = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap();
-    let expected = DistributionPlain::point(1.0, 15.0);
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_product_three_functions_single_point_intersection_returns_point() {
-    let a = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
-    let b = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
-    let c = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 1.0]).unwrap();
-
-    let actual = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap();
-    let expected = DistributionPlain::point(1.0, 60.0);
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_product_disjoint_hard_functions_returns_empty() {
-    let a = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
-    let b = DistributionPlain::function(array![5.0, 6.0, 7.0], array![3.0, 2.0, 1.0]).unwrap();
-
-    assert_eq!(
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::endpoint_contact_of_two((
+    vec![
+      DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap(),
+      DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap(),
+    ],
+    DistributionPlain::point(1.0, 15.0),
+  ))]
+  #[case::single_point_intersection_of_three((
+    vec![
+      DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap(),
+      DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap(),
+      DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 1.0]).unwrap(),
+    ],
+    DistributionPlain::point(1.0, 60.0),
+  ))]
+  #[case::empty_factor((
+    vec![
+      DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
       DistributionPlain::Empty,
-      distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap()
-    );
+      DistributionPlain::function(array![0.0, 1.0, 2.0], array![3.0, 2.0, 1.0]).unwrap(),
+    ],
+    DistributionPlain::Empty,
+  ))]
+  #[case::disjoint_hard_functions((
+    vec![
+      DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
+      DistributionPlain::function(array![5.0, 6.0, 7.0], array![3.0, 2.0, 1.0]).unwrap(),
+    ],
+    DistributionPlain::Empty,
+  ))]
+  #[trace]
+  fn test_product_degenerate_overlap_collapses_to_point_or_empty(
+    #[case] (factors, expected): (Vec<DistributionPlain>, DistributionPlain),
+  ) {
+    let factors = factors.iter().collect_vec();
+    let actual = distribution_product(&factors, MaxGridPoints::default()).unwrap();
+    assert_eq!(expected, actual);
   }
 
   #[test]

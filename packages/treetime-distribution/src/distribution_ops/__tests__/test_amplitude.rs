@@ -7,6 +7,7 @@ mod tests {
   use crate::policy::NegLog;
   use eyre::Report;
   use ndarray::{Array1, array};
+  use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, MaxGridPoints};
   use treetime_ops::FftPlans;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -33,14 +34,13 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_amplitude_repeak_of_no_probability_is_empty() -> Result<(), Report> {
-    let f = DistributionNegLog::function(array![0.0, 1.0, 2.0], Array1::from_elem(3, f64::INFINITY))?;
-    assert_eq!(DistributionNegLog::Empty, f.repeak()?);
-    assert_eq!(
-      DistributionNegLog::Empty,
-      DistributionNegLog::point(1.0, f64::INFINITY).repeak()?
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::function(DistributionNegLog::function(array![0.0, 1.0, 2.0], Array1::from_elem(3, f64::INFINITY)).unwrap())]
+  #[case::point(   DistributionNegLog::point(1.0, f64::INFINITY))]
+  #[trace]
+  fn test_amplitude_repeak_of_no_probability_is_empty(#[case] dist: DistributionNegLog) -> Result<(), Report> {
+    assert_eq!(DistributionNegLog::Empty, dist.repeak()?);
     Ok(())
   }
 
@@ -55,25 +55,26 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_amplitude_multiplication_adds_values() -> Result<(), Report> {
+  #[rstest]
+  #[trace]
+  fn test_amplitude_multiplication_adds_values(#[values(-1.0, 0.0, 0.25, 1.0)] t: f64) -> Result<(), Report> {
     let a = DistributionNegLog::Function(helpers::gaussian(0.0, 0.5)?.with_amplitude(2.0));
     let b = DistributionNegLog::Function(helpers::gaussian(0.5, 0.4)?.with_amplitude(-1.5));
     let product = distribution_multiplication(&a, &b, MaxGridPoints::default())?;
-    for t in [-1.0, 0.0, 0.25, 1.0] {
-      pretty_assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-15);
-    }
+    pretty_assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-15);
     Ok(())
   }
 
-  #[test]
-  fn test_amplitude_log_mass_of_point_and_range() -> Result<(), Report> {
-    pretty_assert_abs_diff_eq!(-0.7, DistributionNegLog::point(3.0, 0.7).log_mass()?, epsilon = 1e-15);
-    pretty_assert_abs_diff_eq!(
-      2.0_f64.ln() - 0.7,
-      DistributionNegLog::range((1.0, 3.0), 0.7).log_mass()?,
-      epsilon = 1e-15
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::point_is_minus_the_amplitude(  DistributionNegLog::point(3.0, 0.7),        -0.7)]
+  #[case::range_adds_the_log_width(      DistributionNegLog::range((1.0, 3.0), 0.7), 2.0_f64.ln() - 0.7)]
+  #[trace]
+  fn test_amplitude_log_mass_of_point_and_range(
+    #[case] dist: DistributionNegLog,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    pretty_assert_abs_diff_eq!(expected, dist.log_mass()?, epsilon = 1e-15);
     Ok(())
   }
 

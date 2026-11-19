@@ -2,9 +2,8 @@
 mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_multiplication;
-  use deser::Deserialize;
   use eyre::Report;
-  use helpers::neglog_to_plain_normalized;
+  use helpers::{GoldenInput, GoldenOutput, neglog_to_plain_normalized};
   use ndarray::Array1;
   use std::collections::BTreeMap;
   use std::path::Path;
@@ -48,25 +47,26 @@ mod tests {
     Ok(())
   }
 
-  #[derive(Deserialize)]
-  struct GoldenInput {
-    time_points: Vec<f64>,
-    child_neglog: Vec<f64>,
-    coalescent_neglog: Vec<f64>,
-  }
-
-  #[derive(Deserialize)]
-  struct GoldenOutput {
-    time_points: Vec<f64>,
-    probabilities_relative: Vec<f64>,
-    peak_position: f64,
-  }
-
   mod helpers {
     use crate::__tests__::aliases::{DistributionNegLog, DistributionPlain};
     use crate::Distribution;
     use crate::distribution_core::function::DistributionFunction;
+    use deser::Deserialize;
     use ndarray_stats::QuantileExt;
+
+    #[derive(Deserialize)]
+    pub(super) struct GoldenInput {
+      pub(super) time_points: Vec<f64>,
+      pub(super) child_neglog: Vec<f64>,
+      pub(super) coalescent_neglog: Vec<f64>,
+    }
+
+    #[derive(Deserialize)]
+    pub(super) struct GoldenOutput {
+      pub(super) time_points: Vec<f64>,
+      pub(super) probabilities_relative: Vec<f64>,
+      pub(super) peak_position: f64,
+    }
 
     pub(super) fn neglog_to_plain_normalized(distribution: &DistributionNegLog) -> DistributionPlain {
       let Distribution::Function(function) = distribution else {
@@ -97,7 +97,7 @@ mod tests {
       }
 
       #[test]
-      fn test_gm_neglog_normalization_helper_rejects_nonfinite_minimum() {
+      fn test_gm_neglog_normalization_helper_maps_zero_probability_to_empty() {
         let distribution = DistributionNegLog::function(
           array![0.0, 1.0, 2.0],
           array![f64::INFINITY, f64::INFINITY, f64::INFINITY],

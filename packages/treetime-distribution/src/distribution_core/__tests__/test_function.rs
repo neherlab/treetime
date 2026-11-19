@@ -17,27 +17,21 @@ mod tests {
   const SOFT_LEFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
   const SOFT_RIGHT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 });
 
-  #[test]
-  fn test_distribution_function_shift_y_shifts_values_and_preserves_tails() -> Result<(), Report> {
-    let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
-    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 });
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1004.0, 1000.0, 1003.0])?
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::soft_tail(    SOFT_LEFT)]
+  #[case::hard_approach(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }))]
+  #[trace]
+  fn test_distribution_function_shift_y_shifts_values_and_preserves_tail_laws(
+    #[case] left: BoundaryBehavior,
+  ) -> Result<(), Report> {
+    let f: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
       .with_left_extrap(left)?
-      .with_right_extrap(right)?;
+      .with_right_extrap(SOFT_RIGHT)?;
     let shifted = f.shift_y(-1000.0);
     pretty_assert_ulps_eq!(array![4.0, 0.0, 3.0], shifted.y());
     assert_eq!(left, shifted.left_extrap());
-    assert_eq!(right, shifted.right_extrap());
-    Ok(())
-  }
-
-  #[test]
-  fn test_distribution_function_shift_y_preserves_fitted_approach_law() -> Result<(), Report> {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
-    let f: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(law))?;
-    let shifted = f.shift_y(-1000.0);
-    assert_eq!(BoundaryBehavior::HardApproach(law), shifted.left_extrap());
+    assert_eq!(SOFT_RIGHT, shifted.right_extrap());
     Ok(())
   }
 
@@ -129,27 +123,27 @@ mod tests {
   }
 
   #[test]
-  fn test_distribution_function_interpolate() -> Result<(), Report> {
+  fn test_distribution_function_interp_is_linear_between_grid_points() -> Result<(), Report> {
     let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
-    pretty_assert_ulps_eq!(f.interp(1.5)?, 15.0);
+    pretty_assert_ulps_eq!(15.0, f.interp(1.5)?);
     Ok(())
   }
 
   #[test]
-  fn test_distribution_function_interpolate_many() -> Result<(), Report> {
+  fn test_distribution_function_interp_many_is_linear_between_grid_points() -> Result<(), Report> {
     let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
 
     let query = array![1.5, 2.25, 2.7];
     let expected = array![15.0, 22.5, 27.0];
 
-    pretty_assert_ulps_eq!(f.interp_many(&query)?, expected);
+    pretty_assert_ulps_eq!(expected, f.interp_many(&query)?);
     Ok(())
   }
 
   #[test]
   fn test_distribution_function_likely_time_plain_selects_max_ordinate() -> Result<(), Report> {
     let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![1.0, 5.0, 2.0, 4.0])?;
-    pretty_assert_ulps_eq!(f.likely_time()?.unwrap(), 1.0);
+    pretty_assert_ulps_eq!(1.0, f.likely_time()?.unwrap());
     Ok(())
   }
 
@@ -157,7 +151,7 @@ mod tests {
   fn test_distribution_function_likely_time_neglog_selects_min_ordinate() -> Result<(), Report> {
     let neg_log = array![1.0, 5.0, 2.0, 4.0].mapv(|p: f64| -p.ln());
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), neg_log)?;
-    pretty_assert_ulps_eq!(f.likely_time()?.unwrap(), 1.0);
+    pretty_assert_ulps_eq!(1.0, f.likely_time()?.unwrap());
     Ok(())
   }
 

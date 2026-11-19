@@ -2,6 +2,7 @@
 mod tests {
   use crate::{distribution_division, distribution_multiplication};
   use eyre::Report;
+  use helpers::{DistributionKind, GoldenInput, GoldenOutput, Operation};
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::path::Path;
@@ -27,20 +28,20 @@ mod tests {
     let input = &inputs[case_name];
     let expected = &outputs[case_name];
 
-    let left = input.left().to_distribution()?;
-    let right = input.right().to_distribution()?;
-    let actual = match input.operation() {
+    let left = input.left.to_distribution()?;
+    let right = input.right.to_distribution()?;
+    let actual = match input.operation {
       Operation::Divide => distribution_division(&left, &right, MaxGridPoints::default())?,
       Operation::Multiply => distribution_multiplication(&left, &right, MaxGridPoints::default())?,
     };
 
-    pretty_assert_eq!(expected.kind(), DistributionKind::from_distribution(&actual));
-    let [expected_start, expected_end] = expected.bounds();
+    pretty_assert_eq!(expected.kind, DistributionKind::from_distribution(&actual));
+    let [expected_start, expected_end] = expected.bounds;
     let (actual_start, actual_end) = actual.time_bounds().unwrap();
     pretty_assert_ulps_eq!(expected_start, actual_start, max_ulps = 4);
     pretty_assert_ulps_eq!(expected_end, actual_end, max_ulps = 4);
 
-    if let Some([expected_start_value, expected_end_value]) = expected.endpoint_values() {
+    if let Some([expected_start_value, expected_end_value]) = expected.endpoint_values {
       let actual = [actual.eval(expected_start)?, actual.eval(expected_end)?];
       pretty_assert_abs_diff_eq!(expected_start_value, actual[0], epsilon = 1e-12);
       pretty_assert_abs_diff_eq!(expected_end_value, actual[1], epsilon = 1e-12);
@@ -85,23 +86,9 @@ mod tests {
 
     #[derive(Deserialize)]
     pub(super) struct GoldenInput {
-      operation: Operation,
-      left: GoldenOperand,
-      right: GoldenOperand,
-    }
-
-    impl GoldenInput {
-      pub(super) fn operation(&self) -> Operation {
-        self.operation
-      }
-
-      pub(super) fn left(&self) -> &GoldenOperand {
-        &self.left
-      }
-
-      pub(super) fn right(&self) -> &GoldenOperand {
-        &self.right
-      }
+      pub(super) operation: Operation,
+      pub(super) left: GoldenOperand,
+      pub(super) right: GoldenOperand,
     }
 
     #[derive(Deserialize)]
@@ -128,25 +115,9 @@ mod tests {
 
     #[derive(Deserialize)]
     pub(super) struct GoldenOutput {
-      kind: DistributionKind,
-      bounds: [f64; 2],
-      endpoint_values: Option<[f64; 2]>,
-    }
-
-    impl GoldenOutput {
-      pub(super) fn kind(&self) -> DistributionKind {
-        self.kind
-      }
-
-      pub(super) fn bounds(&self) -> [f64; 2] {
-        self.bounds
-      }
-
-      pub(super) fn endpoint_values(&self) -> Option<[f64; 2]> {
-        self.endpoint_values
-      }
+      pub(super) kind: DistributionKind,
+      pub(super) bounds: [f64; 2],
+      pub(super) endpoint_values: Option<[f64; 2]>,
     }
   }
-
-  use helpers::{DistributionKind, GoldenInput, GoldenOutput, Operation};
 }

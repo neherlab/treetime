@@ -17,24 +17,26 @@ mod tests {
   type DistFnPlain = DistributionFunction<f64, Plain>;
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
 
-  #[test]
-  fn test_boundary_neglog_hard_left_returns_infinity() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left( Side::Left,  -1.0)]
+  #[case::right(Side::Right,  3.0)]
+  #[trace]
+  fn test_boundary_neglog_hard_side_is_zero_probability_outside_support(
+    #[case] side: Side,
+    #[case] t: f64,
+  ) -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
-    let f = f.with_left_extrap(BoundaryBehavior::Hard)?;
-    assert_eq!(f64::INFINITY, f.interp(-1.0)?);
+    let f = match side {
+      Side::Left => f.with_left_extrap(BoundaryBehavior::Hard)?,
+      Side::Right => f.with_right_extrap(BoundaryBehavior::Hard)?,
+    };
+    assert_eq!(f64::INFINITY, f.interp(t)?);
     Ok(())
   }
 
   #[test]
-  fn test_boundary_neglog_hard_right_returns_infinity() -> Result<(), Report> {
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
-    let f = f.with_right_extrap(BoundaryBehavior::Hard)?;
-    assert_eq!(f64::INFINITY, f.interp(3.0)?);
-    Ok(())
-  }
-
-  #[test]
-  fn test_boundary_plain_hard_allowed() -> Result<(), Report> {
+  fn test_boundary_plain_hard_sides_are_zero_outside_support() -> Result<(), Report> {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let f = f
       .with_left_extrap(BoundaryBehavior::Hard)?

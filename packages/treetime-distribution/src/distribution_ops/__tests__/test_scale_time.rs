@@ -5,6 +5,8 @@ mod tests {
   use crate::policy::NegLog;
   use eyre::Report;
   use ndarray::Array1;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -47,21 +49,28 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_scale_time_point_range_and_invalid_factor() -> Result<(), Report> {
-    assert_eq!(
-      DistributionNegLog::point(4.0, 0.5),
-      DistributionNegLog::point(2.0, 0.5).scale_time(2.0)?
-    );
-    assert_eq!(
-      DistributionNegLog::range((2.0, 6.0), 0.5),
-      DistributionNegLog::range((1.0, 3.0), 0.5).scale_time(2.0)?
-    );
-    assert_error!(
-      DistributionNegLog::point(2.0, 0.5).scale_time(0.0),
-      "Time scale factor must be positive, got 0"
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::point( DistributionNegLog::point(2.0, 0.5),        DistributionNegLog::point(4.0, 0.5))]
+  #[case::range( DistributionNegLog::range((1.0, 3.0), 0.5), DistributionNegLog::range((2.0, 6.0), 0.5))]
+  #[trace]
+  fn test_scale_time_multiplies_the_support_and_keeps_the_amplitude(
+    #[case] dist: DistributionNegLog,
+    #[case] expected: DistributionNegLog,
+  ) -> Result<(), Report> {
+    let actual = dist.scale_time(2.0)?;
+    assert_eq!(expected, actual);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero(     0.0,      "Time scale factor must be positive, got 0")]
+  #[case::negative(-2.0,      "Time scale factor must be positive, got -2")]
+  #[case::nan(      f64::NAN, "Time scale factor must be positive, got NaN")]
+  #[trace]
+  fn test_scale_time_rejects_a_factor_that_is_not_positive(#[case] factor: f64, #[case] expected: &str) {
+    assert_error!(DistributionNegLog::point(2.0, 0.5).scale_time(factor), expected);
   }
 
   mod helpers {

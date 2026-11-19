@@ -73,7 +73,7 @@ mod tests {
   #[expect(clippy::float_cmp, reason = "an exact tie of interval bounds selects the point case")]
   fn assert_intersection(actual: &DistributionPlain, (start, end): (f64, f64)) -> Result<(), TestCaseError> {
     if start > end {
-      prop_assert!(matches!(actual, DistributionPlain::Empty));
+      prop_assert_eq!(&DistributionPlain::Empty, actual);
     } else if start == end {
       let DistributionPlain::Point(point) = actual else {
         return Err(TestCaseError::fail(format!(

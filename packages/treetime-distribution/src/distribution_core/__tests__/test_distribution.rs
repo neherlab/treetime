@@ -9,22 +9,18 @@ mod tests {
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
-  #[test]
-  fn test_distribution_time_bounds_empty_is_none() {
-    assert_eq!(None, Distribution::<Plain>::Empty.time_bounds());
-  }
-
-  #[test]
-  fn test_distribution_time_bounds_point_is_degenerate_interval() {
-    assert_eq!(Some((1.0, 1.0)), Distribution::<Plain>::point(1.0, 5.0).time_bounds());
-  }
-
-  #[test]
-  fn test_distribution_time_bounds_range_spans_endpoints() {
-    assert_eq!(
-      Some((0.0, 2.0)),
-      Distribution::<Plain>::range((0.0, 2.0), 3.0).time_bounds()
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::empty(   Distribution::<Plain>::Empty,                                                                 None)]
+  #[case::point(   Distribution::<Plain>::point(1.0, 5.0),                                                       Some((1.0, 1.0)))]
+  #[case::range(   Distribution::<Plain>::range((0.0, 2.0), 3.0),                                                Some((0.0, 2.0)))]
+  #[case::function(Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap(), Some((0.0, 2.0)))]
+  #[trace]
+  fn test_distribution_time_bounds_span_the_support(
+    #[case] distribution: Distribution<Plain>,
+    #[case] expected: Option<(f64, f64)>,
+  ) {
+    assert_eq!(expected, distribution.time_bounds());
   }
 
   #[rustfmt::skip]
@@ -89,12 +85,6 @@ mod tests {
     let actual = Distribution::<Plain>::point(0.0, 5.0).eval(1e-17)?;
     pretty_assert_ulps_eq!(0.0, actual, max_ulps = 0);
     Ok(())
-  }
-
-  #[test]
-  fn test_distribution_time_bounds_function_spans_grid() {
-    let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap();
-    assert_eq!(Some((0.0, 2.0)), func.time_bounds());
   }
 
   #[rustfmt::skip]
@@ -163,22 +153,16 @@ mod tests {
     assert_eq!(once, twice);
   }
 
-  #[test]
-  fn test_distribution_neglog_normalize_point_maps_to_unit_probability() {
-    let expected = Distribution::<NegLog>::point(2.0, 0.0);
-    assert_eq!(
-      expected,
-      Distribution::<NegLog>::point(2.0, 1000.0).normalize().unwrap()
-    );
-  }
-
-  #[test]
-  fn test_distribution_neglog_normalize_range_maps_to_unit_probability() {
-    let expected = Distribution::<NegLog>::range((1.0, 3.0), 0.0);
-    assert_eq!(
-      expected,
-      Distribution::<NegLog>::range((1.0, 3.0), 1000.0).normalize().unwrap()
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::point(Distribution::<NegLog>::point(2.0, 1000.0),         Distribution::<NegLog>::point(2.0, 0.0))]
+  #[case::range(Distribution::<NegLog>::range((1.0, 3.0), 1000.0),  Distribution::<NegLog>::range((1.0, 3.0), 0.0))]
+  #[trace]
+  fn test_distribution_neglog_normalize_constant_maps_to_unit_probability(
+    #[case] distribution: Distribution<NegLog>,
+    #[case] expected: Distribution<NegLog>,
+  ) {
+    assert_eq!(expected, distribution.normalize().unwrap());
   }
 
   #[test]

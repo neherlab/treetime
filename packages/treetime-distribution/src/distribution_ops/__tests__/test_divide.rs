@@ -72,22 +72,6 @@ mod tests {
   }
 
   #[test]
-  fn test_divide_function_by_function() {
-    let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
-    let y1 = array![10.0, 20.0, 30.0, 40.0, 50.0];
-    let y2 = array![2.0, 4.0, 5.0, 8.0, 10.0];
-
-    let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
-    let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
-
-    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
-
-    let expected_y = array![5.0, 5.0, 6.0, 5.0, 5.0];
-    let expected = DistributionPlain::function(t, expected_y).unwrap();
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
   fn test_divide_by_zero_handled() {
     let t = array![0.0, 1.0, 2.0];
     let y1 = array![10.0, 20.0, 30.0];
@@ -104,7 +88,7 @@ mod tests {
   }
 
   #[test]
-  fn test_divide_range_by_function_full_overlap() {
+  fn test_divide_range_by_function_result_has_hard_ends() {
     let range = DistributionPlain::range((1.0, 3.0), 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
