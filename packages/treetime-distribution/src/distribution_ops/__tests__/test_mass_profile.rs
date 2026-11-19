@@ -45,7 +45,7 @@ mod tests {
   ) -> Result<(), Report> {
     let f = helpers::function((0.0, h), array![y0, y1], HARD, HARD)?;
     let profile = MassProfile::new(&f)?;
-    let actual = profile.neg_log_mass(profile.mass_between(0.0, h)?);
+    let actual = profile.y_peak() + profile.neg_log_mass_between(0.0, h)?;
     pretty_assert_abs_diff_eq!(-expected.ln(), actual, epsilon = 1e-15);
     Ok(())
   }

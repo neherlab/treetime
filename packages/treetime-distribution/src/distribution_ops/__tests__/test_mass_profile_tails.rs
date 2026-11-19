@@ -110,9 +110,12 @@ mod tests {
     let (tail_lo, tail_hi) = (a.max(1e-150) - 1e-150, b.max(1e-150) - 1e-150);
     let tail = (-800.0 - slope.ln() - slope * tail_lo).exp() * -(-slope * (tail_hi - tail_lo)).exp_m1();
     let expected = grid + tail;
-    let mass = profile.mass_between(a, b)?;
-    pretty_assert_relative_eq!(expected, mass, max_relative = 1e-13);
-    pretty_assert_abs_diff_eq!(-mass.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 1e-13);
+    let neg_log_tail = 800.0 + slope.ln() + slope * tail_lo - (-(-slope * (tail_hi - tail_lo)).exp_m1()).ln();
+    let neg_log_grid = -grid.ln();
+    let neg_log_expected =
+      neg_log_grid.min(neg_log_tail) - (-(neg_log_grid - neg_log_tail).abs()).exp().ln_1p();
+    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-13);
+    pretty_assert_abs_diff_eq!(neg_log_expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-13);
     if (a, b) == (0.0, f64::INFINITY) {
       let total = profile.fractions(TailMass::Required).unwrap().total();
       pretty_assert_relative_eq!(expected, total, max_relative = 1e-13);

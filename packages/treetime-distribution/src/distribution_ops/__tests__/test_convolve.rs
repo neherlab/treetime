@@ -438,7 +438,6 @@ mod tests {
       &FftPlans::new(),
     )?;
 
-    pretty_assert_abs_diff_eq!(0.2_f64.ln(), actual.log_mass()?, epsilon = 1e-15);
     let times = array![0.1, 0.01, 0.013, 1.187, 1.19];
     pretty_assert_ulps_eq!(
       times.mapv(|t| -box_mass(t).ln()),

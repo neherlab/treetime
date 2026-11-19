@@ -27,8 +27,8 @@ mod tests {
     let profile = MassProfile::new(&poisson.function()?)?;
     let (a, b) = (a * poisson.h, b * poisson.h);
 
-    let expected = poisson.mass_by_quadrature(a, b.min(poisson.h)) + poisson.second_cell_mass_to(b);
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-10);
+    let expected = -(poisson.mass_by_quadrature(a, b.min(poisson.h)) + poisson.second_cell_mass_to(b)).ln();
+    pretty_assert_abs_diff_eq!(expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-10);
     Ok(())
   }
 
