@@ -234,7 +234,12 @@ mod tests {
     };
     pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
     pretty_assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
-    assert!(result.likely_time().unwrap().is_some());
+    pretty_assert_ulps_eq!(
+      4.0,
+      result.likely_time().unwrap().unwrap(),
+      max_ulps = 4,
+      "argmax on the grid of step 0.08 of exp(-(t - 4)^2 / 8) (0.249 + 0.001 (10 - t)), N(4, 2^2) times the soft tail of a; ln p at 4.00 exceeds 3.92 by 4.9e-4 (bc -l)"
+    );
   }
 
   #[test]
@@ -259,8 +264,12 @@ mod tests {
     };
     pretty_assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
     pretty_assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
-    let peak = result.likely_time().unwrap().unwrap();
-    assert!(peak > 1985.0 && peak < 1995.0, "Peak at {peak}, expected near 1990");
+    pretty_assert_ulps_eq!(
+      1989.9,
+      result.likely_time().unwrap().unwrap(),
+      max_ulps = 4,
+      "argmax on the grid of step 0.1 of exp(-(t - 1990)^2 / 50) (exp(-1.125) + 0.001 (2001 - t)), the subtree message times the soft tail of the leaf message; ln p at 1989.9 exceeds 1990.0 by 9.8e-5 (bc -l)"
+    );
   }
 
   #[test]
@@ -329,7 +338,12 @@ mod tests {
     };
     pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
     pretty_assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
-    assert!(result.likely_time().unwrap().is_some());
+    pretty_assert_ulps_eq!(
+      5.3,
+      result.likely_time().unwrap().unwrap(),
+      max_ulps = 4,
+      "argmax on the grid of step 0.1 of N(5, 2^2) N(5.5, 1.5^2) = N(5.32, 1.44) up to a constant; ln p at 5.3 exceeds 5.4 by 2.1e-3"
+    );
   }
 
   #[test]
