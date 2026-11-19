@@ -30,6 +30,7 @@ cover about 90% of the true dates; cross-parent messages matter at nodes with se
 """
 
 import argparse
+import hashlib
 import json
 import lzma
 import re
@@ -101,6 +102,7 @@ def simulate(args):
         for rep in range(args.reps):
             out = args.data / case / f'rep{rep:02d}'
             if all((out / name).exists() for name in ('truth.json', *(f'{s}.kept.nwk' for s in SEGMENTS))):
+                check_seed(out, args.seed)
                 continue
             rng = np.random.default_rng([args.seed, list(CASES).index(case), rep])
             arg = simulate_arg(Constant(10.0), rng, list(SEGMENTS), rho)
@@ -144,8 +146,20 @@ def simulate(args):
                     newick(croot, cchildren, lambda n: mu * (arg.tau[cparent[n]] - arg.tau[n]) * factor[n])
                 )
                 truth['segments'][segment] = {'L': L, 'mu': mu, 'pi': pi.tolist(), 'W': w.tolist()}
+            truth['seed'] = args.seed
+            truth['files'] = {path.name: file_hash(path) for path in sorted(out.iterdir())}
             (out / 'truth.json').write_text(json.dumps(truth, indent=1))
             print(f'{out}: {arg.n_reassortments} reassortments', flush=True)
+
+
+def check_seed(rep_dir, seed):
+    recorded = json.loads((rep_dir / 'truth.json').read_text()).get('seed')
+    if recorded != seed:
+        sys.exit(f'{rep_dir} was simulated with seed {recorded}, not {seed}; simulate into a fresh --data directory')
+
+
+def file_hash(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def mean_clock_rate():
@@ -172,9 +186,13 @@ def node_dates(rep_dir):
 def write_metadata(rep_dir):
     path = rep_dir / 'metadata.tsv'
     if not path.exists():
-        tips = sorted(name for name in node_dates(rep_dir) if name.startswith('tip_'))
-        path.write_text('name\tdate\n' + ''.join(f'{tip}\t{tip_date(tip):.4f}\n' for tip in tips))
+        path.write_text(metadata_text(rep_dir))
     return path
+
+
+def metadata_text(rep_dir):
+    tips = sorted(name for name in node_dates(rep_dir) if name.startswith('tip_'))
+    return 'name\tdate\n' + ''.join(f'{tip}\t{tip_date(tip):.4f}\n' for tip in tips)
 
 
 def jobs(args):
@@ -680,17 +698,26 @@ def hidden_summary(dates, hidden):
 
 def export(args):
     """One replicate as an example dataset: per segment the collapsed tree (`tree_<segment>.nwk`) and the tip alignment
-    (`aln_<segment>.fasta.xz`), the tip dates (`metadata.tsv`), the true date of every node of the merged trees and its
+    (`aln_<segment>.fasta.xz`), the tip dates (`metadata.tsv`), the true date of every node of the input trees and its
     number of parents in the true graph without hidden nodes (`truth_nodes.tsv`), and the true model
-    (`truth_model.json`)."""
+    (`truth_model.json`). The replicate must come from `simulate` with the same seed, and every file that the export
+    reads must be the one that `simulate` wrote."""
     rep_dir = args.data / args.case / f'rep{args.rep:02d}'
+    check_seed(rep_dir, args.seed)
+    truth = json.loads((rep_dir / 'truth.json').read_text())
+    read = [f'{s}.{kind}' for s in SEGMENTS for kind in ('collapsed.nwk', 'full.nwk', 'time.nwk', 'tips.fasta.xz')]
+    if changed := [name for name in read if file_hash(rep_dir / name) != truth['files'].get(name)]:
+        sys.exit(f'{rep_dir}: {", ".join(changed)} differ from the files that simulate wrote; simulate into a fresh --data directory')
     args.out.mkdir(parents=True, exist_ok=True)
     for s in SEGMENTS:
         shutil.copyfile(rep_dir / f'{s}.collapsed.nwk', args.out / f'tree_{s}.nwk')
         shutil.copyfile(rep_dir / f'{s}.tips.fasta.xz', args.out / f'aln_{s}.fasta.xz')
-    shutil.copyfile(write_metadata(rep_dir), args.out / 'metadata.tsv')
-    truth = json.loads((rep_dir / 'truth.json').read_text())
-    model = {'clock_rate': mean_clock_rate(), **truth}
+    (args.out / 'metadata.tsv').write_text(metadata_text(rep_dir))
+    model = {
+        'seed': truth['seed'], 'case': args.case, 'rep': args.rep, 'clock_rate': mean_clock_rate(),
+        'reassortment_attempt_rate': truth['rho'], 'n_reassortments': truth['n_reassortments'],
+        'segments': truth['segments'],
+    }  # fmt: skip
     (args.out / 'truth_model.json').write_text(json.dumps(model, indent=1) + '\n')
     parents = {}
     for parent, child in graph_edges(rep_dir, 'full'):
