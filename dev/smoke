@@ -250,6 +250,8 @@ CLI_ROW_KEYS = frozenset({"variant", "args", "sandbox", "fail"})
 JOBS_COMMANDS = frozenset({"timetree", "ancestral", "clock", "mugration", "homoplasy", "optimize", "prune", "pipeline"})
 RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
 SEGMENTS_PLACEHOLDER = "{segments}"
+SEGMENT_OUTPUT_PLACEHOLDER = "{segment}"
+MIN_SEGMENTS = 2
 TREE_INPUT_FLAGS = frozenset({"--tree", "--alignment"})
 SEGMENT_ALIGNMENT_SUFFIXES = (".fasta", ".fasta.xz")
 MAX_DIFF_ITEMS = 20
@@ -512,10 +514,12 @@ def discover_datasets(root: Path, spec: CaseSpec) -> dict[str, Dataset]:
 
 
 def dataset_segments(directory: Path) -> tuple[Segment, ...]:
-  """The segments of a directory: the names with a tree and an alignment, in sorted order."""
+  """The segments of a directory: the names with a tree and an alignment, in sorted order. A directory with fewer than
+  two such pairs has no segments, because one tree is not a graph of segment trees."""
   names = sorted(path.name.removeprefix("tree_").removesuffix(".nwk") for path in directory.glob("tree_*.nwk"))
-  return tuple(Segment(f"tree_{name}.nwk", alignment) for name in names
-               if (alignment := segment_alignment(directory, name)) is not None)
+  segments = tuple(Segment(f"tree_{name}.nwk", alignment) for name in names
+                   if (alignment := segment_alignment(directory, name)) is not None)
+  return segments if len(segments) >= MIN_SEGMENTS else ()
 
 
 def segment_alignment(directory: Path, segment: str) -> str | None:
@@ -645,8 +649,19 @@ def make_case(command: str, row: dict, dataset: Dataset, spec: CaseSpec,
     tier=Tier(row["tier"]) if "tier" in row else size.tier,
     timeout_s=float(row.get("timeout", size.timeout_s * family.timeout_factor)), argv=("{bin}", command, *argv),
     expect=expectation[0], reason=expectation[1],
-    required_outputs=tuple(row.get("outputs", () if standalone else template.outputs)),
+    required_outputs=required_outputs(row.get("outputs", () if standalone else template.outputs), dataset, where),
   )
+
+
+def required_outputs(outputs: list[str] | tuple[str, ...], dataset: Dataset, where: str) -> tuple[str, ...]:
+  """Required outputs of a case. A name with `{segment}` stands for one file per segment of the dataset, numbered from 1
+  in segment order, as treetime numbers the per-segment outputs."""
+  if any(SEGMENT_OUTPUT_PLACEHOLDER in output for output in outputs) and not dataset.segments:
+    raise SmokeError(f"{where}: `outputs` use {SEGMENT_OUTPUT_PLACEHOLDER}, but {dataset.name} has no segments")
+  numbers = [str(number) for number in range(1, len(dataset.segments) + 1)]
+  return tuple(expanded for output in outputs
+               for expanded in ([output.replace(SEGMENT_OUTPUT_PLACEHOLDER, number) for number in numbers]
+                                if SEGMENT_OUTPUT_PLACEHOLDER in output else [output]))
 
 
 def merge_arguments(layers: list[list[str]], where: str) -> list[str]:

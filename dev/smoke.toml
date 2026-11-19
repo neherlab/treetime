@@ -6,7 +6,8 @@
 # Datasets are the directories under `data/` that hold a tree or segments. A tree dataset holds `tree.nwk`. A segment
 # dataset holds, per genome segment, `tree_<segment>.nwk` and `aln_<segment>.fasta` or `aln_<segment>.fasta.xz`; its
 # segments are the names with both files, in sorted order, so `tree_seg1_collapsed.nwk` without an alignment is not a
-# segment. A directory with both is a dataset of both kinds. The last path component of a dataset is the number of
+# segment. A segment dataset needs at least two segments. A directory with both kinds of input is a dataset of both
+# kinds. The last path component of a dataset is the number of
 # sequences, which gives the size class, the default tier and the default timeout; a dataset whose last component is
 # not a number, such as `toy/reassortment`, counts the sequences of its first alignment.
 #
@@ -149,7 +150,8 @@ selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,sequences,clock-mo
 #   selection   `--output-selection` value; replaces the command default
 #   standalone  true: `args` replaces the command template, its `selection` included, instead of following it;
 #               only for rows that must leave out a template flag
-#   outputs     replaces the command's required outputs
+#   outputs     replaces the command's required outputs; `{segment}` in a name stands for one file per segment,
+#               numbered from 1 in segment order (`timetree.{segment}.nexus`)
 #   tier        "quick" or "full"; replaces the tier of the size class
 #   timeout     seconds; replaces the timeout of the size class
 #   fail        the case is expected to exit with an error: a reason for every dataset of the row, or a table of
@@ -411,7 +413,12 @@ outputs = ["ancestral.mat.pb", "ancestral.mat.json"]
 [[ancestral]]
 variant = "segment-trees"
 args = "{segments}"
-outputs = ["ancestral.graph.json", "ancestral.1.sequences.fasta"]
+outputs = [
+  "ancestral.graph.json",
+  "ancestral.{segment}.nexus",
+  "ancestral.{segment}.node-data.json",
+  "ancestral.{segment}.sequences.fasta",
+]
 
 
 [[clock]]
@@ -819,7 +826,7 @@ selection = "all"
 [[optimize]]
 variant = "segment-trees"
 args = "{segments}"
-outputs = ["optimize.graph.json", "optimize.1.nexus"]
+outputs = ["optimize.graph.json", "optimize.{segment}.nexus"]
 
 
 [[prune]]
@@ -1224,30 +1231,12 @@ outputs = ["timetree.mat.pb", "timetree.mat.json"]
 [[timetree]]
 variant = "segment-trees"
 args = "{segments} --clock-rate={clock_rate}"
-outputs = ["timetree.graph.json", "timetree.dates.tsv"]
+outputs = ["timetree.graph.json", "timetree.dates.tsv", "timetree.{segment}.nexus", "timetree.{segment}.auspice.json"]
 
 [[timetree]]
 variant = "segment-trees-cross-parent-messages"
 args = "{segments} --clock-rate={clock_rate} --cross-parent-messages"
-outputs = ["timetree.graph.json", "timetree.dates.tsv"]
-
-[[timetree]]
-variant = "reject-segment-trees-without-clock-rate"
-datasets = ["toy/reassortment"]
-args = "{segments}"
-fail = "rejected: --segment-trees requires --clock-rate, because the clock rate of a graph of segment trees is not estimated (kb/issues/M-timetree-segment-graphs-fixed-clock-only.md)"
-
-[[timetree]]
-variant = "reject-segment-trees-coalescent"
-datasets = ["toy/reassortment"]
-args = "{segments} --clock-rate={clock_rate} --coalescent=opt"
-fail = "rejected: a graph of segment trees runs without a coalescent prior (kb/issues/M-timetree-segment-graphs-fixed-clock-only.md)"
-
-[[timetree]]
-variant = "reject-cross-parent-messages-without-segment-trees"
-datasets = ["flu/h3n2/20"]
-args = "--cross-parent-messages"
-fail = "rejected: --cross-parent-messages applies only with --segment-trees"
+outputs = ["timetree.graph.json", "timetree.dates.tsv", "timetree.{segment}.nexus", "timetree.{segment}.auspice.json"]
 
 
 # `treetime --help` and `treetime <subcommand> --help`; the printed text is compared with the baseline
