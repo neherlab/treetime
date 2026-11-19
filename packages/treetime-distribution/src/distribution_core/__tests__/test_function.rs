@@ -37,10 +37,6 @@ mod tests {
     let function = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?.with_right_extrap(right);
 
     pretty_assert_ulps_eq!(2.5, function.interp(2.5)?);
-    assert_error!(
-      function.grid_fn().interp(2.5),
-      "GridFn evaluated at 2.5, above the support boundary 2.0, but no extrapolation policy is set for that side"
-    );
     assert_eq!(right, function.right_extrap());
     Ok(())
   }

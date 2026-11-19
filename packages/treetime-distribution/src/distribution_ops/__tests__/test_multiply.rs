@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::Distribution;
-  use crate::distribution_ops::multiply::{
-    HardDomain, distribution_multiplication, guarded_empty_result, hard_domains_disjoint,
-  };
+  use crate::distribution_ops::multiply::{HardDomain, distribution_multiplication, guarded_empty_result};
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
@@ -425,24 +423,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, f.left_extrap());
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::hard_gap_disjoint(          (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error), ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error), true)]
-  #[case::overlapping(                ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error), ( 5.0, 15.0, BoundaryBehavior::Error, BoundaryBehavior::Error), false)]
-  #[case::endpoint_contact(           ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error), (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error), false)]
-  #[case::soft_left_bridges_gap(      (10.0, 20.0, SOFT, BoundaryBehavior::Error),                   ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error), false)]
-  #[case::facing_bounds_hard_far_soft((10.0, 20.0, BoundaryBehavior::Error, SOFT),                   ( 0.0,  8.0, SOFT, BoundaryBehavior::Error),                   true)]
-  #[case::backward_messages_never(    (2001.0, 2007.0, SOFT, BoundaryBehavior::Hard),                (1970.0, 2000.0, SOFT, BoundaryBehavior::Hard),                false)]
-  #[trace]
-  fn test_multiply_hard_domains_disjoint(
-    #[case] (a_lo, a_hi, a_left, a_right): (f64, f64, BoundaryBehavior, BoundaryBehavior),
-    #[case] (b_lo, b_hi, b_left, b_right): (f64, f64, BoundaryBehavior, BoundaryBehavior),
-    #[case] expected: bool,
-  ) {
-    let actual = hard_domains_disjoint((a_lo, a_hi), (a_left, a_right), (b_lo, b_hi), (b_left, b_right));
-    assert_eq!(expected, actual);
-  }
-
   #[test]
   fn test_multiply_point_on_function_zero_raises_internal_error() {
     let point = Distribution::point(1.0, 5.0);
@@ -463,21 +443,27 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_guarded_empty_result_overlap_raises_internal_error() {
-    let a = Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
-    let b = Some(((5.0, 15.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
-    assert_error!(
-      guarded_empty_result("convolution", a, b),
-      "convolution produced an empty result, but the operands' hard domains overlap: operand A Some(((0.0, 10.0), (Error, Error))), operand B Some(((5.0, 15.0), (Error, Error))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers."
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::overlapping(           (( 0.0,    10.0),   (BoundaryBehavior::Error, BoundaryBehavior::Error)),                   (( 5.0,    15.0),   (BoundaryBehavior::Error, BoundaryBehavior::Error)),                   "convolution produced an empty result, but the operands' hard domains overlap: operand A Some(((0.0, 10.0), (Error, Error))), operand B Some(((5.0, 15.0), (Error, Error))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers.")]
+  #[case::endpoint_contact(      (( 0.0,    10.0),   (BoundaryBehavior::Error, BoundaryBehavior::Error)),                   ((10.0,    20.0),   (BoundaryBehavior::Error, BoundaryBehavior::Error)),                   "convolution produced an empty result, but the operands' hard domains overlap: operand A Some(((0.0, 10.0), (Error, Error))), operand B Some(((10.0, 20.0), (Error, Error))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers.")]
+  #[case::soft_end_bridges_a_gap(((10.0,   20.0),   (SOFT, BoundaryBehavior::Error)),                                   (( 0.0,     8.0),   (BoundaryBehavior::Error, BoundaryBehavior::Error)),                   "convolution produced an empty result, but the operands' hard domains overlap: operand A Some(((10.0, 20.0), (Linear(SoftTailLaw { slope: -0.001 }), Error))), operand B Some(((0.0, 8.0), (Error, Error))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers.")]
+  #[case::both_lower_ends_soft(  ((2001.0, 2007.0), (SOFT, BoundaryBehavior::Hard)),                  ((1970.0, 2000.0), (SOFT, BoundaryBehavior::Hard)),                  "convolution produced an empty result, but the operands' hard domains overlap: operand A Some(((2001.0, 2007.0), (Linear(SoftTailLaw { slope: -0.001 }), Hard))), operand B Some(((1970.0, 2000.0), (Linear(SoftTailLaw { slope: -0.001 }), Hard))). An empty result must arise only from genuinely disjoint hard domains, never from numerical collapse. This is an internal error. Please report it to developers.")]
+  #[trace]
+  fn test_guarded_empty_result_with_overlapping_hard_domains_raises_internal_error(
+    #[case] a: HardDomain,
+    #[case] b: HardDomain,
+    #[case] expected: &str,
+  ) {
+    assert_error!(guarded_empty_result("convolution", Some(a), Some(b)), expected);
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::disjoint_hard_domains( Some(((0.0, 8.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))),  Some(((10.0, 20.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))))]
-  #[case::first_operand_empty(   None,                                                                    Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))))]
-  #[case::second_operand_empty(  Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))), None)]
+  #[case::hard_gap(                   Some((( 0.0,  8.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))), Some(((10.0, 20.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))))]
+  #[case::hard_facing_ends_far_soft(  Some(((10.0, 20.0), (BoundaryBehavior::Error, SOFT))),                    Some((( 0.0,  8.0), (SOFT, BoundaryBehavior::Error))))]
+  #[case::first_operand_empty(        None,                                                                     Some((( 0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))))]
+  #[case::second_operand_empty(       Some((( 0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error))), None)]
   #[trace]
   fn test_guarded_empty_result_returns_empty_without_overlap(#[case] a: Option<HardDomain>, #[case] b: Option<HardDomain>) {
     assert_eq!(

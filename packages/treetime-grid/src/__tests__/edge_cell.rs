@@ -66,9 +66,10 @@ mod tests {
   fn test_edge_cell_mass_matches_quadrature_for_any_slope(#[case] (b, edge_y): (f64, f64)) -> Result<(), Report> {
     let law = EdgeCellLaw { t_edge: 2.0, offset: 0.01, b };
     let cell = EdgeCell::new(law, GridEdge { t: 2.0, y: edge_y }, GridEdge { t: 2.5, y: 0.0 })?;
-    let (d_edge, d_anchor) = (cell.edge_distance(), cell.anchor_distance());
+    let (d_edge, d_anchor): (f64, f64) = (0.01, 0.51);
+    let slope = (edge_y + b * (d_edge / d_anchor).ln()) / (d_edge - d_anchor);
 
-    let expected = helpers::ln_quadrature(|d| cell.ln_relative_density(d), d_edge, d_anchor);
+    let expected = helpers::ln_quadrature(|d| b * (d / d_anchor).ln() - slope * (d - d_anchor), d_edge, d_anchor);
     pretty_assert_relative_eq!(expected, cell.ln_relative_mass(d_edge, d_anchor), epsilon = 1e-10, max_relative = 1e-10);
     Ok(())
   }

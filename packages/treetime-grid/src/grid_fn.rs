@@ -110,10 +110,6 @@ impl GridFn {
       .fold(self.y[0], |a, b| if a < b { a } else { b })
   }
 
-  pub fn interp(&self, xi: f64) -> Result<f64, Report> {
-    self.interp_with_extrap(xi, BoundaryBehavior::Error, BoundaryBehavior::Error)
-  }
-
   pub fn interp_with_extrap(
     &self,
     xi: f64,
@@ -395,7 +391,13 @@ impl GridFn {
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
     let y_new = (0..grid.n_points())
-      .map(|i| self.interp(grid.x_at(i).max(x_min).min(x_max)))
+      .map(|i| {
+        self.interp_with_extrap(
+          grid.x_at(i).max(x_min).min(x_max),
+          BoundaryBehavior::Error,
+          BoundaryBehavior::Error,
+        )
+      })
       .collect::<Result<Vec<f64>, Report>>()?;
     Self::from_grid_values(grid, Array1::from_vec(y_new))
   }

@@ -82,7 +82,7 @@ impl EdgeCell {
     (self.edge.y - self.anchor.y + self.law.b * (d_edge / d_anchor).ln()) / (d_edge - d_anchor)
   }
 
-  pub fn ln_relative_density(&self, distance: f64) -> f64 {
+  fn ln_relative_density(&self, distance: f64) -> f64 {
     self.anchor.y - self.eval_at_distance(distance)
   }
 

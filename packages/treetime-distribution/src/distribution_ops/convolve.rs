@@ -224,7 +224,7 @@ fn convolution_function_function(
   convolution_function_function_traced(a, b, max_points, fft_plans, &mut NoTrace)
 }
 
-pub(crate) fn convolution_function_function_traced(
+fn convolution_function_function_traced(
   a: &DistributionFunction,
   b: &DistributionFunction,
   max_points: MaxGridPoints,
@@ -293,7 +293,7 @@ pub(crate) fn convolution_function_function_traced(
   Ok(Distribution::Function(conv_distr))
 }
 
-pub(crate) fn on_common_spacing(
+fn on_common_spacing(
   operand: &DistributionFunction,
   other_dx: f64,
   max_points: MaxGridPoints,
@@ -597,3 +597,6 @@ struct ReconstructedConv {
   start_offset: usize,
   neg_log: Array1<f64>,
 }
+
+#[cfg(test)]
+mod __tests__;

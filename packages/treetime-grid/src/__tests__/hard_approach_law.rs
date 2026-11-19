@@ -171,7 +171,11 @@ mod tests {
       grid.interp_with_extrap(-0.5, behavior, BoundaryBehavior::Error)?,
       max_ulps = 0
     );
-    pretty_assert_abs_diff_eq!(0.0, grid.interp(1.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
+      0.0,
+      grid.interp_with_extrap(1.0, BoundaryBehavior::Error, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     Ok(())
   }
 

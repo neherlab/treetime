@@ -32,7 +32,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Error, BoundaryBehavior::Error)?;
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -54,7 +54,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Error, BoundaryBehavior::Error)?;
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -123,9 +123,9 @@ mod tests {
   #[case::left(-1.0, "GridFn evaluated at -1.0, below the support boundary 0.0, but no extrapolation policy is set for that side")]
   #[case::right(2.0, "GridFn evaluated at 2.0, above the support boundary 1.0, but no extrapolation policy is set for that side")]
   #[trace]
-  fn test_gridfn_interp_out_of_support_errors_by_default(#[case] query: f64, #[case] expected: &str) -> Result<(), Report> {
+  fn test_gridfn_interp_out_of_support_errors_without_an_extrapolation_policy(#[case] query: f64, #[case] expected: &str) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![2.0, 10.0])?;
-    assert_error!(grid_fn.interp(query), expected);
+    assert_error!(grid_fn.interp_with_extrap(query, BoundaryBehavior::Error, BoundaryBehavior::Error), expected);
     Ok(())
   }
 
@@ -209,7 +209,7 @@ mod tests {
     let y = t.mapv(|ti: f64| if ti < 10.0 { law(ti) } else { f64::INFINITY });
     let grid_fn = GridFn::from_range_values((0.0, 10.0), y)?;
 
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Error, BoundaryBehavior::Error)?;
 
     pretty_assert_abs_diff_eq!(law(query), actual, epsilon = 1e-9);
     Ok(())
@@ -244,7 +244,7 @@ mod tests {
     let y = array![f64::INFINITY, 2.0, 0.0, f64::INFINITY, f64::INFINITY];
     let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
 
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Error, BoundaryBehavior::Error)?;
 
     assert!(!actual.is_nan(), "interpolation at {query} returned NaN");
     if expected.is_infinite() {
@@ -306,7 +306,11 @@ mod tests {
       let hard_cell = grid_fn
         .hard_cell(cell, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
         .unwrap();
-      pretty_assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp(t)?, max_ulps = 0);
+      pretty_assert_ulps_eq!(
+        hard_cell.eval(t),
+        grid_fn.interp_with_extrap(t, BoundaryBehavior::Error, BoundaryBehavior::Error)?,
+        max_ulps = 0
+      );
     }
     Ok(())
   }

@@ -150,7 +150,11 @@ mod tests {
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?;
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
 
-    pretty_assert_abs_diff_eq!(2.0, grid.interp(2.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
+      2.0,
+      grid.interp_with_extrap(2.0, BoundaryBehavior::Error, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     pretty_assert_abs_diff_eq!(
       2.5,
       grid.interp_with_extrap(2.5, BoundaryBehavior::Error, right)?,
@@ -164,7 +168,11 @@ mod tests {
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![2.0, 3.0, 4.0])?;
     let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 });
 
-    pretty_assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
+      2.0,
+      grid.interp_with_extrap(0.0, BoundaryBehavior::Error, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     pretty_assert_abs_diff_eq!(
       2.5,
       grid.interp_with_extrap(-0.5, left, BoundaryBehavior::Error)?,

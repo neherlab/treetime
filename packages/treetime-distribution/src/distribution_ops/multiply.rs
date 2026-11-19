@@ -357,7 +357,7 @@ pub(crate) fn guarded_empty_result(
 
 pub(crate) type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
 
-pub(crate) fn hard_domains_disjoint(
+fn hard_domains_disjoint(
   a_bounds: (f64, f64),
   a_tails: (BoundaryBehavior, BoundaryBehavior),
   b_bounds: (f64, f64),
