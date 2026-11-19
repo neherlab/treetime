@@ -46,7 +46,7 @@ Sweeps are those of the first round; without cross-parent messages one sweep is 
 
 Comparison of three inputs with the same simulated data (commit `f16b1235a` changed no random draw): `kept`, the `full` trees with the hidden nodes as nodes of one child in every segment; `contracted`, the `full` trees without them, where an edge across a hidden node gets the sum of the perturbed lengths of its segment (the `timetree-full` variant); and `collapsed`. Fixed clock rate, `--confidence`, default message passing, 3 replicates per case. `validation/segments.py` writes the `kept` trees and runs `timetree-kept` and `joint-kept`.
 
-The runs use two binaries, because commit `c4c2b5e9a` changed the merge between `f16b1235a` and `873490a98`: `c06d8a04f` (the commit before it, which reproduces the `full` rows of the results above to the last digit) and `873490a98`. The first gives the comparison of the inputs; the second shows the current state.
+The runs use the binary of commit `c06d8a04f`, which reproduces the `full` rows of the results above to the last digit. Commit `c4c2b5e9a` changed the merge after it, and a later fix restored its rule (section Merge of trees that hold all their pass-through nodes). With the fix, the code gives the tables below to the last digit for `kept` and `contracted`, and the same `collapsed` dates as commit `873490a98`; `collapsed` differs from `c06d8a04f` by at most 0.002 years in bias and RMSE, through other commits.
 
 ### Results (commit `c06d8a04f`)
 
@@ -102,33 +102,17 @@ The largest shifts: `low/rep01` `node_0085` (age 36 years) -13.1 years, error -1
 ### Contraction of the input and contraction in the graph
 
 - **Same topology and scopes before the pass-through step**: contracting each hidden node in the graph of the `kept` trees, where every child takes over the parent edges whose segments it shares, gives the edges and scopes of the `contracted` trees in all 6 replicates. The lengths differ: the input sums the lengths of each segment and the merge then takes the mean over segments, while contraction in the merged graph would sum the means. Optimize refits the lengths, so this changes only its start
-- **Different after the pass-through step**: the merge (`insert_pass_through_nodes()`) sees other paths when the hidden nodes are present. After the merge, the contracted `kept` graph and the `contracted` graph differ by one edge in 1 of 6 replicates at `c06d8a04f` (`high/rep00`) and in 2 of 5 at `873490a98`. So a contraction inside TreeTime belongs before the merge, on each segment tree
+- **Different after the pass-through step**: the merge (`insert_pass_through_nodes()`) sees other paths when the hidden nodes are present. After the merge, the contracted `kept` graph and the `contracted` graph differ by one edge in 1 of 6 replicates (`high/rep00`). So a contraction inside TreeTime belongs before the merge, on each segment tree
 
-### Merge changes trees that hold all their pass-through nodes
+### Merge of trees that hold all their pass-through nodes
 
-The `full` and `kept` trees are the true local trees, with every node that a segment passes through where another segment branches, so the merge should insert no node. It still reroutes edges: a segment edge `X -> Y` whose other segments reach `Y` through a node `W` moves below `W`, which deletes a true parent edge of `Y` (a reassortment). At `c06d8a04f` this deletes 1 edge in `full` and 1 in `kept` over the 6 replicates; commit `c4c2b5e9a`, which lets the edge continue through nodes with one child in the segment's own input, deletes 5 in `full` (`high/rep01`, `high/rep02`, `low/rep02`; `high/rep00` fails before writing its graph) and 5 in `kept`. `validation/segments.py evaluate` lists these edges in the table Merged graphs of `summary.md`. With `c4c2b5e9a`:
+The `full` and `kept` trees are the true local trees, with every node that a segment passes through where another segment branches, so the merge should change no edge. It reroutes one edge in each form over the 6 replicates (`node_0132 -> node_0126` in `full` of `high/rep00`, `node_0017 -> node_0003` in `kept` of `high/rep02`): a segment edge `X -> Y` moves below a node `W` that the other segments put on the path and that the segment does not hold, which deletes a true parent edge of `Y`. Topology alone does not show that a reassortment separates the segment from `W` there ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)). `validation/segments.py evaluate` lists these edges in the table Merged graphs of `summary.md`.
 
-- `high/rep00` `contracted` fails: "Time inference needs a grid of 1804164 points, more than the limit of 1000000 ... when sending the time message forward to node 'node_0132'", with parent time distributions over [177.6, 2021.1] years; the merge reports 2 inserted nodes and 1 conflicting edge against 1 and 4 at `c06d8a04f`
-- `contracted` loses accuracy: RMSE at nodes with one parent 0.573 to 1.140 years (high, `rep01` and `rep02` only) and 0.216 to 0.317 years (low); `high/rep02` `node_0131` moves from -0.31 to -11.6 years, and in `low/rep02`, where the merge reroutes the s3 edge `node_0086 -> node_0080`, the parent `node_0088` of `node_0086` moves from +1.8 to +3.6 years
-- `collapsed` is unchanged to the last digit
+Commit `c4c2b5e9a` also let the edge continue through nodes with one child in the segment's own input, until a fix limited the chain to nodes that the merge inserted or attached a child to. A node with one child in the input is a node that the segment passes through towards another node, and the direct edge `X -> Y` states that the segment bypasses it. With the chain through such nodes, the merge rerouted 5 edges in each form (`high/rep01`, `high/rep02`, `low/rep02`), and:
 
-### Results (commit `873490a98`)
-
-`high/rep00` `contracted` fails (above), so the high rows hold `rep01` and `rep02`:
-
-| case | kind            | form       | nodes | bias (y) | RMSE (y) | coverage | median width (y) |
-| ---- | --------------- | ---------- | ----: | -------: | -------: | -------: | ---------------: |
-| high | one parent      | kept       |   173 |   -0.121 |    0.413 |    0.821 |            0.401 |
-| high | one parent      | contracted |   173 |   -0.188 |    1.140 |    0.821 |            0.392 |
-| high | one parent      | collapsed  |   173 |   -0.099 |    0.674 |    0.844 |            0.392 |
-| high | several parents | kept       |    21 |   -0.168 |    0.366 |    0.857 |            0.582 |
-| high | several parents | contracted |    21 |   -0.297 |    0.700 |    0.810 |            0.578 |
-| high | several parents | collapsed  |    21 |   -0.161 |    0.623 |    0.857 |            0.580 |
-| low  | one parent      | kept       |   238 |   -0.109 |    0.875 |    0.849 |            0.403 |
-| low  | one parent      | contracted |   238 |   -0.038 |    0.317 |    0.861 |            0.401 |
-| low  | one parent      | collapsed  |   238 |   -0.053 |    0.203 |    0.870 |            0.401 |
-
-Here `kept` beats `contracted` in `high`, because the merge defect hits `contracted` harder in these two replicates; the input forms compare correctly only at `c06d8a04f`.
+- `high/rep00` `contracted` failed: "Time inference needs a grid of 1804164 points, more than the limit of 1000000 ... when sending the time message forward to node 'node_0132'", with parent time distributions over [177.6, 2021.1] years
+- `contracted` lost accuracy: RMSE at nodes with one parent 0.573 to 1.140 years (high, `rep01` and `rep02` only) and 0.216 to 0.317 years (low); `high/rep02` `node_0131` moved from -0.31 to -11.6 years, and in `low/rep02`, where the merge rerouted the s3 edge `node_0086 -> node_0080`, the parent `node_0088` of `node_0086` moved from +1.8 to +3.6 years
+- `collapsed` was unchanged to the last digit
 
 ## Flu (four segments, 2839 nodes)
 
@@ -136,7 +120,7 @@ Here `kept` beats `contracted` in `high`, because the merge defect hits `contrac
 
 ## Open
 
-- **Merge of trees with pass-through nodes**: the merge reroutes true edges of inputs that already hold every pass-through node, more so since commit `c4c2b5e9a` (section Hidden nodes)
+- **Merge of trees with pass-through nodes**: the merge moves an edge of a segment below a node that the other segments put on its path and that the segment does not hold, also where a reassortment separates them; in the simulation this changes one edge per form over 6 replicates (section Hidden nodes)
 - **Hidden-node policy**: contraction of the input trees before the merge dates the other nodes as well as inputs without hidden nodes (section Hidden nodes)
 - **Sweep tolerance** (with `--cross-parent-messages`): the flu graph needs more than 20 sweeps in one round to reach 10^-4 of the date span
 - Clock rate estimation, coalescent prior, rooting and polytomy resolution on segment graphs: [kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md)
