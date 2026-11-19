@@ -6,16 +6,25 @@
 # `--output-all` chooses the output folder. From the repository root:
 #   treetime pipeline --config data/mpox/clade-ii/2000/pipeline-nextstrain.yaml --output-all tmp/examples/mpox/clade-ii/2000/pipeline-nextstrain
 #
-# nextstrain/mpox@8495d7b, build hmpxv1: `augur refine --timetree --root MK783032
-# MK783030 --keep-polytomies --clock-rate 5.7e-5 --clock-std-dev 2e-5 --coalescent opt
-# --date-confidence --divergence-units mutations --clock-filter-iqd 0`, `augur ancestral
-# --inference joint`, then `augur translate` of every CDS. The build has no trait step.
+# nextstrain/mpox@8495d7b, build hmpxv1 (`phylogenetic/defaults/hmpxv1/config.yaml`
+# L101-L106, `phylogenetic/rules/construct_phylogeny.smk` L89-L130): `augur refine
+# --timetree --root PP_000T4L2 PP_000T4J6 --keep-polytomies --clock-rate 5.7e-5
+# --clock-std-dev 2e-5 --coalescent opt --date-inference marginal --date-confidence
+# --divergence-units mutations --clock-filter-iqd 0`, `augur ancestral --inference
+# joint`, then `augur translate` of every CDS (`phylogenetic/rules/annotate_phylogeny.smk`
+# L23-L79). The build has no trait step (`traits.columns` is empty). The bundled
+# dataset uses MK783032 and MK783030 for the two outgroup tips
+# (`phylogenetic/example_data/metadata.tsv` L3-L4).
 #
 # Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
 # augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
-# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
-# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
-# polytomy resolution where the run resolves polytomies.
+# branch lengths as TreeTime 0.x does, and `clock_filter: 0` disables clock filtering.
+# With a zero threshold Augur skips the pruning step (augur@58f32904,
+# `augur/refine.py` L52-L62), so this pipeline keeps undated tips too.
+# Start with a prepared tree. Nextstrain cleans the tree before `augur refine` with
+# `phylogenetic/scripts/fix_tree.py` (branch-length optimization and reversion fixes).
+# `pipeline-nextstrain-new-tt.yaml` shows the separate workflow that uses TreeTime v1
+# for branch-length optimization.
 
 steps:
   - name: "timetree"

@@ -127,7 +127,7 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 | [`lassa/L/500/pipeline-nextstrain.yaml`](lassa/L/500/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` | Nextstrain lassa L segment build, TreeTime part |
 | [`mpox/clade-ii/2000/pipeline-full.yaml`](mpox/clade-ii/2000/pipeline-full.yaml) | `optimize` -> `ancestral` -> `timetree` -> `mugration` | All four analysis commands on 2000 clade II mpox genomes |
 | [`mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml`](mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml) | `optimize` -> `ancestral` -> `timetree` | Nextstrain mpox WIP/new_tt build with TreeTime v1 |
-| [`mpox/clade-ii/2000/pipeline-nextstrain.yaml`](mpox/clade-ii/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` | Nextstrain mpox hmpxv1 build, TreeTime part |
+| [`mpox/clade-ii/2000/pipeline-nextstrain.yaml`](mpox/clade-ii/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` | Nextstrain mpox hmpxv1 build with a fixed clock and two outgroup tips |
 | [`rsv/a/2000/pipeline-nextstrain.yaml`](rsv/a/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` -> `mugration` | Nextstrain rsv a genome build, TreeTime part |
 | [`sc2/2844/pipeline-undated.yaml`](sc2/2844/pipeline-undated.yaml) | `optimize` -> `ancestral` | SARS-CoV-2 branch-length optimization and ancestral reconstruction |
 | [`sc2/5100/pipeline-nextstrain.yaml`](sc2/5100/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` | Nextstrain ncov global build, TreeTime part |
