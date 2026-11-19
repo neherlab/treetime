@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Dengue time tree with one partition per gene (dengue/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/dengue/2000/timetree-gene-partitions.yaml --output-all tmp/examples/dengue/2000/timetree-gene-partitions
+#
+# The genes of the dengue genome evolve at different rates, and the untranslated
+# regions at both ends have constraints of their own. The setting
+# `partition_by: genes` makes one partition per CDS of `annotation.gff3` and one
+# partition `noncoding` of the other sites. The CDS are those of the DENV2
+# reference NC_001474 in nextstrain/dengue@b31c2b5
+# (phylogenetic/defaults/denv2/reference.gb), and the alignment columns are the
+# positions of that reference. The prM CDS `M` contains `pr`, so `pr` gets no
+# partition of its own. All partitions share the tree and the branch lengths;
+# each partition fits its own relative rate (`partition_rates: estimate`), and
+# the genes share one set of exchange rates and frequencies (the default of
+# the genes scheme). The rates of the partitions are in the model output.
+# The clock rate is estimated from the data; the Nextstrain denv2 genome build
+# fixes it at 0.00078 (phylogenetic/defaults/config_dengue.yaml line 36).
+# `coalescent: opt` fits a constant coalescent time scale, as the build does, and
+# `seed` makes the random order of the polytomy resolution reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "genbank_accession"
+alignment:
+  - "aln.fasta.xz"
+annotation:
+  - "annotation.gff3"
+
+partition_by: "genes"
+partition_rates: "estimate"
+coalescent: "opt"
+seed: 42
