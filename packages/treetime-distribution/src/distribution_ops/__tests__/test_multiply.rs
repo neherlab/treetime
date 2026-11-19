@@ -162,15 +162,24 @@ mod tests {
       panic!("Expected Function variant");
     };
 
-    let overlap_min = (0.0_f64 - 5.0).max(2.0 - 5.0);
-    let overlap_max = (0.0_f64 + 5.0).min(2.0 + 5.0);
-    assert!(overlap_min < overlap_max, "Distributions must overlap");
-
-    assert!(f.x_min() >= overlap_min - 0.1);
-    assert!(f.x_max() <= overlap_max + 0.1);
-
-    let likely = result.likely_time().unwrap().unwrap();
-    assert!((likely - 1.0).abs() < 0.2, "Product peak at {likely}, expected ~1.0");
+    pretty_assert_ulps_eq!(
+      -3.0,
+      f.x_min(),
+      max_ulps = 4,
+      "start of the hard support [2 - 5, 2 + 5] of N(2, 1), the inner start"
+    );
+    pretty_assert_ulps_eq!(
+      5.0,
+      f.x_max(),
+      max_ulps = 4,
+      "end of the hard support [0 - 5, 0 + 5] of N(0, 1), the inner end"
+    );
+    pretty_assert_ulps_eq!(
+      1.0,
+      result.likely_time().unwrap().unwrap(),
+      max_ulps = 4,
+      "mode of N(0, 1) N(2, 1) = N(1, 1/2) up to a constant; t = 1 = -3 + 40 * 0.1 is a node of the product grid"
+    );
   }
 
   #[test]
@@ -183,8 +192,12 @@ mod tests {
     };
     pretty_assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
     pretty_assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
-    let peak = result.likely_time().unwrap().unwrap();
-    assert!(peak > 5.5 && peak < 7.5, "Peak at {peak}, expected ~6.5");
+    pretty_assert_ulps_eq!(
+      6.5,
+      result.likely_time().unwrap().unwrap(),
+      max_ulps = 4,
+      "mode of N(5, 2^2) N(8, 2^2) = N(6.5, 2) up to a constant; t = 6.5 = 3 + 35 * 0.1 is a node of the product grid"
+    );
   }
 
   #[test]
