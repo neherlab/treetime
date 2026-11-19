@@ -58,6 +58,11 @@ mugration_attribute = "country"
 [families."flu/h3n2"]
 mugration_attribute = "location"
 
+# The site-weighted mean of the Nextstrain seasonal-flu rates of HA, NA, PB1 and PB2 (data/flu/h3n2/segments/README.md)
+[families."flu/h3n2/segments"]
+metadata_args = "--metadata-id-columns=strain"
+clock_rate = 0.0024
+
 [families."lassa/L"]
 metadata_args = "--metadata-id-columns=accession"
 mugration_attribute = "country"
