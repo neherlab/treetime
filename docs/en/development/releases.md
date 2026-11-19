@@ -60,22 +60,14 @@ docker run --rm --user="$(id -u):$(id -g)" --volume="$PWD:/data" --workdir=/data
 
 Run it from time to time and commit the file, so the images get the security fixes of their bases. The repository page on Docker Hub is edited by hand. The `docker` job logs in with `NEHERLAB_BOT_DOCKERHUB_USERNAME` and `NEHERLAB_BOT_DOCKERHUB_TOKEN`, the account that also pushes the build images, which needs write access to `neherlab/treetime`.
 
-## Web app deploys
+## Web app and docs deploys
 
-`.github/workflows/web.yml` builds the web2 app (`just build-web2`) on every push in the WebAssembly image (`CROSS_COMPILE=wasm32-unknown-emscripten`, see the WebAssembly image above) and uploads it with `dev/publish-web` to the preview host, a CloudFront distribution in front of an S3 bucket in the AWS account `preview-deployments` of neherlab. `just build-web2` compiles the single-threaded and the threaded module at the same time. `dev/publish-web` uploads the build to the first site and copies it to the other sites inside the bucket. Each upload goes to several sites:
+`.github/workflows/web.yml` builds the web app (`just build-web2` in the WebAssembly image) and `.github/workflows/docs.yml` builds the docs site (`just build-docs`) on every push and when a pull request opens or reopens. Each run builds once and hands the build to `.github/workflows/deploy-site.yml`, which uploads it with `dev/publish-site` under short-lived AWS credentials from GitHub OIDC:
 
-- `https://neherlab--treetime--commit-<short-sha>.previews.neherlab.click`: the commit
-- `https://neherlab--treetime--branch-<branch>.previews.neherlab.click`: the latest upload of the branch
-- `https://neherlab--treetime--pr-<number>.previews.neherlab.click`: the latest upload of each open pull request of the branch; the run adds or updates a comment with the link in the pull request
-- `https://treetime.neherlab.click`: the latest push to `rust`
+- **Production**: a push or a manual run on `rust`, the production branch, updates `https://treetime.neherlab.org` and `https://docs.treetime.neherlab.org/dev`, when the commit is still the head of `rust`
+- **Commit previews**: every push uploads `https://commit-<short-sha>.previews.treetime.neherlab.org` and `https://commit-<short-sha>.docs.previews.treetime.neherlab.org/dev`
+- **Branch and pull request previews**: a push that is still the head of its branch also updates the sites `branch-<branch>` and `pr-<number>` of each open pull request of the branch from this repository, and writes the links into a comment of each pull request. Opening or reopening a pull request updates its `pr-<number>` site. Pull requests from forks build without an upload
 
-Opening or reopening a pull request also starts a run, so a pull request gets its site without a new push. Pull requests from forks build without an upload, because workflows of forks get no secrets. The upload reads the access key, the region, the bucket, and the distribution from the organization secrets `PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID`, `PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY`, `PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION`, `PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET`, and `PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID`. `dev/publish-web --help` describes the stored files, their caching, and what the edge functions of the distribution do; the edge functions themselves are not in this repository.
+The production branch is the one value `refs/heads/rust` in `deploy-site.yml`. The repository secrets `TREETIME_WEB_AWS_*`, `TREETIME_DOCS_AWS_*`, `TREETIME_WEB_PREVIEWS_AWS_*`, and `TREETIME_DOCS_PREVIEWS_AWS_*` name the role, region, bucket, and distribution of each upload.
 
-## Docs deploys
-
-`.github/workflows/docs.yml` builds the docs site (`just build-docs`) on every push and uploads it with the same composite action as the web app (`.github/actions/publish-preview`). Each docs build is a version folder of its site, today only `dev`, the tip of `rust`:
-
-- `https://neherlab--treetime-docs--commit-<short-sha>.previews.neherlab.click/dev`, `...--branch-<branch>...`, and `...--pr-<number>...` (with a pull request comment marked `<!-- docs-preview -->`)
-- `https://docs.treetime.neherlab.click/dev`: the latest push to `rust`, from the bucket folder `treetime-docs`
-
-Each upload also stores the site root files of `dist-root/`: `versions.json`, the list of versions, and an `index` page that leads to the preferred version. The version select and the banner of every build read `/versions.json` at run time, so an older build learns about a newer version without a rebuild. `packages/app-docs/versions.json` is the source of the list; `TREETIME_DOCS_VERSION` names the version of a build (default `dev`), and the build fails when the list has no entry for it. Adding a release version means building the docs at the release tag with `TREETIME_DOCS_VERSION=<version>`, uploading with `dev/publish-web --prefix <version>`, and adding the entry, marked `preferred`, to `versions.json`.
+Each docs build is a version folder of its site, today only `dev`. Each upload also stores the site root files of `dist-root/`: `versions.json`, the list of versions, and an `index` page that leads to the preferred version. The version select and the banner of every build read `/versions.json` at run time, so an older build learns about a newer version without a rebuild. `packages/app-docs/versions.json` is the source of the list; `TREETIME_DOCS_VERSION` names the version of a build (default `dev`), and the build fails when the list has no entry for it. Adding a release version means building the docs at the release tag with `TREETIME_DOCS_VERSION=<version>`, uploading with `dev/publish-site --prefix <version>`, and adding the entry, marked `preferred`, to `versions.json`.

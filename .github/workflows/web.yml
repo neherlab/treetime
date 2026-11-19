@@ -1,13 +1,6 @@
+# Build the web app on the WebAssembly back end and deploy it with deploy-site.yml to https://treetime.neherlab.org
+# and to the preview sites https://<site>.previews.treetime.neherlab.org.
 name: "Web app"
-
-# Builds the web app on the WebAssembly back end (packages/app-web2) in the
-# image of the WebAssembly target (dev/docker/cross-wasm.dockerfile) and uploads
-# it with dev/publish-web to one site per commit, per branch, and per open pull
-# request of the branch, at <site>.previews.neherlab.click. Pushes to rust also
-# update https://treetime.neherlab.click. A push run publishes the sites of the
-# open pull requests of its branch, so a pull request triggers a run of its own
-# only when it is opened or reopened. Pull requests from forks build without an
-# upload, because they get no secrets.
 
 on:
   push:
@@ -15,71 +8,85 @@ on:
       - "**"
   pull_request:
     types:
-      - opened
-      - reopened
+      - "opened"
+      - "reopened"
   workflow_dispatch:
 
-permissions:
-  contents: read
-
-concurrency:
-  group: web-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  # A cancelled upload would leave treetime.neherlab.click between two versions.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/rust' }}
+permissions: {}
 
 defaults:
   run:
-    shell: bash -euo pipefail {0}
+    shell: "bash -euo pipefail {0}"
 
 env:
   CARGO_INCREMENTAL: "0"
-  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+  KACHE_STORE: "${{ github.workspace }}/.cache/kache"
   FORCE_COLOR: "1"
 
 jobs:
-  web:
-    name: "Build and upload the web app"
-    runs-on: ubuntu-24.04
+  build:
+    name: "Build the web app"
+    runs-on: "ubuntu-24.04"
     timeout-minutes: 90
     permissions:
-      contents: read
-      pull-requests: write
-
+      contents: "read"
+    concurrency:
+      group: "web-build-${{ github.event.pull_request.number || github.ref }}"
+      cancel-in-progress: true
     steps:
       - name: "Check out"
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: "${{ github.event.pull_request.head.sha || github.sha }}"
+          persist-credentials: false
 
       - name: "Prepare the build container"
-        uses: ./.github/actions/prepare
+        uses: "./.github/actions/prepare"
         with:
           image: "wasm32-unknown-emscripten"
           cache: "web2"
-          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-          dockerhub-token: ${{ github.event_name == 'push' && github.ref == 'refs/heads/rust' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+          dockerhub-username: "${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}"
+          dockerhub-token: "${{ github.event_name == 'push' && github.ref == 'refs/heads/rust' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}"
 
       - name: "Build"
         env:
           CROSS_COMPILE: "wasm32-unknown-emscripten"
-        run: dev/docker/run just build-web2
+        run: "dev/docker/run just build-web2"
 
-      - name: "Upload"
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: ./.github/actions/publish-preview
+      - name: "Pack the build"
+        run: "tar -cf site.tar packages/app-web2/dist"
+
+      - name: "Store the build"
+        uses: "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" # v7.0.1
         with:
-          dist: packages/app-web2/dist
-          site-prefix: "neherlab--treetime--"
-          production-site: treetime
-          label: "Web app"
-          comment-marker: "<!-- web-preview -->"
-          comment-title: "Web app"
-          aws-access-key-id: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY }}
-          aws-default-region: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION }}
-          aws-s3-bucket: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET }}
-          aws-cloudfront-distribution-id: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
-          github-token: ${{ github.token }}
-          commit: ${{ github.event.pull_request.head.sha || github.sha }}
-          branch: ${{ github.head_ref || github.ref_name }}
-          pr-number: ${{ github.event.pull_request.number }}
+          name: "web-site"
+          path: "site.tar"
+          if-no-files-found: "error"
+          retention-days: 7
+
+  deploy:
+    name: "Deploy the web app"
+    needs: "build"
+    if: "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
+    permissions:
+      contents: "read"
+      id-token: "write"
+      pull-requests: "write"
+    uses: "./.github/workflows/deploy-site.yml"
+    with:
+      name: "web"
+      title: "Web app"
+      artifact: "web-site"
+      dist: "packages/app-web2/dist"
+      routing: "single-page-app"
+      production-folder: "treetime.neherlab.org"
+      previews-folder: "previews.treetime.neherlab.org"
+    secrets:
+      PRODUCTION_AWS_ROLE_ARN: "${{ secrets.TREETIME_WEB_AWS_ROLE_ARN }}"
+      PRODUCTION_AWS_REGION: "${{ secrets.TREETIME_WEB_AWS_REGION }}"
+      PRODUCTION_AWS_S3_BUCKET: "${{ secrets.TREETIME_WEB_AWS_S3_BUCKET }}"
+      PRODUCTION_AWS_CLOUDFRONT_DISTRIBUTION_ID: "${{ secrets.TREETIME_WEB_AWS_CLOUDFRONT_DISTRIBUTION_ID }}"
+      PREVIEWS_AWS_ROLE_ARN: "${{ secrets.TREETIME_WEB_PREVIEWS_AWS_ROLE_ARN }}"
+      PREVIEWS_AWS_REGION: "${{ secrets.TREETIME_WEB_PREVIEWS_AWS_REGION }}"
+      PREVIEWS_AWS_S3_BUCKET: "${{ secrets.TREETIME_WEB_PREVIEWS_AWS_S3_BUCKET }}"
+      PREVIEWS_AWS_CLOUDFRONT_DISTRIBUTION_ID: "${{ secrets.TREETIME_WEB_PREVIEWS_AWS_CLOUDFRONT_DISTRIBUTION_ID }}"

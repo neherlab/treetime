@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [options] --folder <folder> --routing <routing>
+#
+# Upload a static build to the folder of a host in an S3 bucket, or to site folders below it, with one PutObject
+# request per file and site, then clear the CloudFront cache of the host and print the name of each site.
+#
+# Options:
+#   -h, --help            Show this help
+#   --dist <dir>          Build to upload (default: packages/app-web2/dist)
+#   --folder <folder>     Folder of the host in the bucket, its host name, such as example.org
+#   --site <name>         Upload to the site folder <folder>/<site> instead, where <site> is <name> as a DNS label:
+#                         lowercase, other characters than a-z, 0-9 and - as -, at most 63 characters; repeatable
+#   --routing <routing>   single-page-app stores each file under its path; pages stores each page without .html
+#   --prefix <folder>     Store the build below <folder>/, its root page also as <folder>, and its 404 page at the root
+#   --root-files <dir>    Files to store at the root of each folder after the build, such as versions.json
+#
+# Environment:
+#   AWS_S3_BUCKET                    Bucket of the host
+#   AWS_CLOUDFRONT_DISTRIBUTION_ID   Distribution of the host
+#   AWS credentials that may put objects into the folders and create and read invalidations of the distribution
+#
+# Examples:
+#   $0 --folder example.org --routing single-page-app
+#   $0 --folder previews.example.org --site commit-0123abc --site branch-main --routing single-page-app
+#   $0 --dist packages/app-docs/dist --folder docs.example.org --routing pages --prefix dev \
+#     --root-files packages/app-docs/dist-root
+#
+set -euo pipefail
+shopt -s inherit_errexit
+trap "exit" INT
+
+UPLOAD_JOBS=16
+
+# The largest object of one PutObject request, 5 GiB
+# (https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html).
+MAX_PUT_BYTES=$((5 * 1024 * 1024 * 1024))
+
+# Vite names an emitted file `assets/<name>-<hash>.<ext>`, with 8 characters of base64url as the hash.
+HASHED_NAME='-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$'
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  local dist="packages/app-web2/dist" folder="" routing="" prefix="" root_files="" names=()
+
+  # shfmt:off
+  while (($# > 0)); do
+    case "${1}" in
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --dist | --folder | --site | --routing | --prefix | --root-files)
+      if (($# < 2)); then
+        printf "Missing value of %s\n" "${1}" >&2
+        exit 1
+      fi
+      case "${1}" in
+      --dist) dist="${2}" ;;
+      --folder) folder="${2}" ;;
+      --site) names+=("${2}") ;;
+      --routing) routing="${2}" ;;
+      --prefix) prefix="${2}" ;;
+      --root-files) root_files="${2}" ;;
+      esac
+      shift 2
+      ;;
+    *)
+      printf "Unknown argument: %s. Run %s --help for usage\n" "${1}" "${0##*/}" >&2
+      exit 1
+      ;;
+    esac
+  done
+  # shfmt:on
+
+  : "${AWS_S3_BUCKET:?AWS_S3_BUCKET is not set}"
+  : "${AWS_CLOUDFRONT_DISTRIBUTION_ID:?AWS_CLOUDFRONT_DISTRIBUTION_ID is not set}"
+
+  if [[ ! "${folder}" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
+    printf "Invalid folder: '%s' (expected a host name such as example.org)\n" "${folder}" >&2
+    exit 1
+  fi
+  if [[ "${routing}" != single-page-app && "${routing}" != pages ]]; then
+    printf "Invalid routing: '%s' (expected single-page-app or pages)\n" "${routing}" >&2
+    exit 1
+  fi
+  if [[ -n "${prefix}" && ! "${prefix}" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
+    printf "Invalid prefix: '%s' (expected a folder name such as dev or 1.0)\n" "${prefix}" >&2
+    exit 1
+  fi
+  if [[ ! -f "${dist}/index.html" ]]; then
+    printf "No build in %s: it has no index.html\n" "${dist}" >&2
+    exit 1
+  fi
+  if [[ -n "${root_files}" && ! -d "${root_files}" ]]; then
+    printf "No root files in %s: no such folder\n" "${root_files}" >&2
+    exit 1
+  fi
+
+  local targets=() sites=() name site
+  for name in "${names[@]}"; do
+    site="$(site_name "${name}")"
+    if [[ ! "${site}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+      printf "Invalid site name: '%s' (as a DNS label: '%s')\n" "${name}" "${site}" >&2
+      exit 1
+    fi
+    sites+=("${site}")
+    targets+=("${folder}/${site}")
+  done
+  if ((${#targets[@]} == 0)); then
+    targets=("${folder}")
+  fi
+
+  local files=() pages=() root_other=() root_pages=()
+  build_files "${dist}" files pages
+  if [[ -n "${root_files}" ]]; then
+    build_files "${root_files}" root_other root_pages
+  fi
+
+  export DIST="${dist}" PREFIX="${prefix}" ROUTING="${routing}" AWS_S3_BUCKET HASHED_NAME MAX_PUT_BYTES
+  export -f put_file file_key put_object content_type cache_control
+
+  local target
+  for target in "${targets[@]}"; do
+    # The pages come after the other files, so a page never refers to a file that is not stored yet.
+    printf "Uploading %d files to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${target}" >&2
+    put_all "${target}" "${files[@]}"
+    put_all "${target}" "${pages[@]}"
+
+    if [[ -n "${prefix}" ]]; then
+      put_object "${target}" index.html "$(file_key "${prefix}.html")"
+      if [[ -f "${dist}/404.html" ]]; then
+        put_object "${target}" 404.html "$(file_key 404.html)"
+      fi
+    fi
+
+    if [[ -n "${root_files}" ]]; then
+      printf "Uploading %d root files to %s\n" "$((${#root_other[@]} + ${#root_pages[@]}))" "${target}" >&2
+      DIST="${root_files}" PREFIX="" put_all "${target}" "${root_other[@]}"
+      DIST="${root_files}" PREFIX="" put_all "${target}" "${root_pages[@]}"
+    fi
+  done
+
+  local invalidation
+  printf "Clearing the cache of %s\n" "${folder}" >&2
+  invalidation="$(aws cloudfront create-invalidation --distribution-id "${AWS_CLOUDFRONT_DISTRIBUTION_ID}" \
+    --paths "/*" --output text --query "Invalidation.Id")"
+  aws cloudfront wait invalidation-completed --distribution-id "${AWS_CLOUDFRONT_DISTRIBUTION_ID}" \
+    --id "${invalidation}"
+
+  if ((${#sites[@]} > 0)); then
+    printf "%s\n" "${sites[@]}"
+  fi
+}
+
+site_name() {
+  printf "%s" "${1}" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9-]/-/g; s/^-+//' |
+    cut -c1-63 |
+    sed -E 's/-+$//'
+}
+
+# Collect the files of a build into two arrays, its pages (*.html) and every other file, without compressed copies.
+build_files() {
+  local dir="${1}" file
+  local -n other_out="${2}" pages_out="${3}"
+  shopt -s globstar dotglob nullglob
+  pushd "${dir}" >/dev/null
+  for file in **; do
+    if [[ ! -f "${file}" ]] || is_compressed_copy "${file}"; then
+      continue
+    elif [[ "${file}" == *.html ]]; then
+      pages_out+=("${file}")
+    else
+      other_out+=("${file}")
+    fi
+  done
+  popd >/dev/null
+}
+
+is_compressed_copy() {
+  local file="${1}"
+  [[ ("${file}" == *.gz || "${file}" == *.br) && -f "${file%.*}" ]]
+}
+
+put_all() {
+  local folder="${1}"
+  shift
+  (($# > 0)) || return 0
+  # shellcheck disable=SC2016 # $1 and $2 expand in the child shell
+  printf "%s\0" "$@" |
+    xargs -0 -P "${UPLOAD_JOBS}" -I {} bash -c 'put_file "$1" "$2" || exit 255' _ "${folder}" {}
+}
+
+put_file() {
+  local folder="${1}" file="${2}" key
+  key="$(file_key "${file}")"
+  put_object "${folder}" "${file}" "${PREFIX:+${PREFIX}/}${key}"
+}
+
+file_key() {
+  if [[ "${ROUTING}" == pages ]]; then
+    printf "%s" "${1%.html}"
+  else
+    printf "%s" "${1}"
+  fi
+}
+
+# Store one file with one PutObject request; a file with a .gz copy in the build is stored as that copy.
+put_object() {
+  local folder="${1}" file="${2}" key="${3}"
+  local body="${DIST}/${file}" size
+  local args=(
+    --content-type "$(content_type "${file}")"
+    --cache-control "$(cache_control "${file}")"
+  )
+  if [[ -f "${body}.gz" ]]; then
+    body="${body}.gz"
+    args+=(--content-encoding gzip)
+  fi
+  size="$(wc -c <"${body}")"
+  if ((size > MAX_PUT_BYTES)); then
+    printf "%s has %d bytes, more than the %d bytes of one PutObject request\n" \
+      "${body}" "${size}" "${MAX_PUT_BYTES}" >&2
+    return 1
+  fi
+  aws s3api put-object --bucket "${AWS_S3_BUCKET}" --key "${folder}/${key}" --body "${body}" "${args[@]}" \
+    --output text --query ETag >/dev/null
+}
+
+content_type() {
+  case "${1##*/}" in
+  *.html) printf "text/html; charset=utf-8" ;;
+  *.js | *.mjs) printf "text/javascript; charset=utf-8" ;;
+  *.css) printf "text/css; charset=utf-8" ;;
+  *.json) printf "application/json" ;;
+  *.webmanifest) printf "application/manifest+json" ;;
+  *.wasm) printf "application/wasm" ;;
+  *.svg) printf "image/svg+xml" ;;
+  *.png) printf "image/png" ;;
+  *.ico) printf "image/x-icon" ;;
+  *.woff2) printf "font/woff2" ;;
+  *.woff) printf "font/woff" ;;
+  *.csv) printf "text/csv; charset=utf-8" ;;
+  *.tsv) printf "text/tab-separated-values; charset=utf-8" ;;
+  *.md) printf "text/markdown; charset=utf-8" ;;
+  *.yaml | *.yml) printf "application/yaml" ;;
+  *.xml) printf "application/xml" ;;
+  *.xz) printf "application/x-xz" ;;
+  *.txt | *.nwk | *.nex | *.fasta | *.phylip | *.gff3 | *.vcf) printf "text/plain; charset=utf-8" ;;
+  *) printf "application/octet-stream" ;;
+  esac
+}
+
+# Hashed files never change under their name; every other file is revalidated on each use.
+cache_control() {
+  if [[ "${1}" == assets/* && "${1##*/}" =~ ${HASHED_NAME} ]]; then
+    printf "public, max-age=31536000, immutable"
+  else
+    printf "no-cache"
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

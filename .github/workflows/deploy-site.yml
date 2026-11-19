@@ -1,0 +1,275 @@
+# Deploy a site build of the calling workflow: to its production host on a push to the production branch, and to the
+# preview sites of the commit, the branch, and the pull requests of the branch from this repository.
+name: "Deploy a site"
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: "Short name of the site, such as web; names the concurrency groups and the pull request comment"
+        type: string
+        required: true
+      title:
+        description: "Name of the site in the step summary and the pull request comment, such as Web app"
+        type: string
+        required: true
+      artifact:
+        description: "Artifact that holds site.tar, the build and its root files at their paths in the repository"
+        type: string
+        required: true
+      dist:
+        description: "Build folder in site.tar"
+        type: string
+        required: true
+      root-files:
+        description: "Folder in site.tar whose files go to the root of each host or site folder; none when empty"
+        type: string
+        default: ""
+      routing:
+        description: "Routing of dev/publish-site: single-page-app or pages"
+        type: string
+        required: true
+      prefix:
+        description: "Folder below the host or site folder that holds the build (dev/publish-site --prefix); none when empty"
+        type: string
+        default: ""
+      production-folder:
+        description: "Production host, also its folder in the production bucket"
+        type: string
+        required: true
+      previews-folder:
+        description: "Base host of the preview sites, also its folder in the preview bucket"
+        type: string
+        required: true
+    secrets:
+      PRODUCTION_AWS_ROLE_ARN:
+        required: true
+      PRODUCTION_AWS_REGION:
+        required: true
+      PRODUCTION_AWS_S3_BUCKET:
+        required: true
+      PRODUCTION_AWS_CLOUDFRONT_DISTRIBUTION_ID:
+        required: true
+      PREVIEWS_AWS_ROLE_ARN:
+        required: true
+      PREVIEWS_AWS_REGION:
+        required: true
+      PREVIEWS_AWS_S3_BUCKET:
+        required: true
+      PREVIEWS_AWS_CLOUDFRONT_DISTRIBUTION_ID:
+        required: true
+
+permissions: {}
+
+defaults:
+  run:
+    shell: "bash -euo pipefail {0}"
+
+jobs:
+  production:
+    name: "Production"
+    # The only place that names the production branch.
+    if: "github.event_name != 'pull_request' && github.ref == 'refs/heads/rust'"
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
+    concurrency:
+      group: "${{ inputs.name }}-production"
+      cancel-in-progress: false
+    steps:
+      - name: "Check out the publisher"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: "dev/publish-site"
+          sparse-checkout-cone-mode: false
+
+      - name: "Download the build"
+        uses: "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c" # v8.0.1
+        with:
+          name: "${{ inputs.artifact }}"
+
+      - name: "Unpack the build"
+        run: "tar -xf site.tar && rm site.tar"
+
+      # A rerun of an older run, or a run that a newer push overtook, uploads nothing, so it never replaces a newer build.
+      - name: "Check that the commit is the head of the branch"
+        id: "head"
+        run: |
+          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${GITHUB_REF_NAME}" | cut -f1)"
+          if [[ "${head}" == "${GITHUB_SHA}" ]]; then
+            echo "current=true" >>"${GITHUB_OUTPUT}"
+          else
+            echo "::notice::${GITHUB_REF_NAME} is at ${head}, not at ${GITHUB_SHA}: no production upload"
+          fi
+
+      - name: "Get AWS credentials"
+        if: "steps.head.outputs.current == 'true'"
+        uses: "aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd" # v6.3.0
+        with:
+          role-to-assume: "${{ secrets.PRODUCTION_AWS_ROLE_ARN }}"
+          role-session-name: "${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          aws-region: "${{ secrets.PRODUCTION_AWS_REGION }}"
+          mask-aws-account-id: true
+
+      - name: "Upload"
+        if: "steps.head.outputs.current == 'true'"
+        env:
+          AWS_S3_BUCKET: "${{ secrets.PRODUCTION_AWS_S3_BUCKET }}"
+          AWS_CLOUDFRONT_DISTRIBUTION_ID: "${{ secrets.PRODUCTION_AWS_CLOUDFRONT_DISTRIBUTION_ID }}"
+          TITLE: "${{ inputs.title }}"
+          DIST: "${{ inputs.dist }}"
+          ROOT_FILES: "${{ inputs.root-files }}"
+          ROUTING: "${{ inputs.routing }}"
+          PREFIX: "${{ inputs.prefix }}"
+          FOLDER: "${{ inputs.production-folder }}"
+        run: |
+          options=(--dist "${DIST}" --folder "${FOLDER}" --routing "${ROUTING}")
+          if [[ -n "${PREFIX}" ]]; then
+            options+=(--prefix "${PREFIX}")
+          fi
+          if [[ -n "${ROOT_FILES}" ]]; then
+            options+=(--root-files "${ROOT_FILES}")
+          fi
+          dev/publish-site "${options[@]}"
+          printf "## %s\n\n- https://%s%s\n" "${TITLE}" "${FOLDER}" "${PREFIX:+/${PREFIX}}" >>"${GITHUB_STEP_SUMMARY}"
+
+  previews:
+    name: "Previews"
+    # Pull requests from forks get no credentials.
+    if: "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
+      pull-requests: "write"
+    concurrency:
+      group: "${{ inputs.name }}-previews-${{ github.head_ref || github.ref_name }}"
+      cancel-in-progress: false
+    steps:
+      - name: "Check out the publisher"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+        with:
+          ref: "${{ github.event.pull_request.head.sha || github.sha }}"
+          persist-credentials: false
+          sparse-checkout: "dev/publish-site"
+          sparse-checkout-cone-mode: false
+
+      - name: "Download the build"
+        uses: "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c" # v8.0.1
+        with:
+          name: "${{ inputs.artifact }}"
+
+      - name: "Unpack the build"
+        run: "tar -xf site.tar && rm site.tar"
+
+      # The sites of the branch and its pull requests come only from the head of the branch, so an older run never
+      # replaces a newer build. A pull request run deploys only the site of its pull request.
+      - name: "Name the preview sites"
+        id: "sites"
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          BRANCH: "${{ github.head_ref || github.ref_name }}"
+          COMMIT: "${{ github.event.pull_request.head.sha || github.sha }}"
+          PR_NUMBER: "${{ github.event.pull_request.number }}"
+        run: |
+          sites=()
+          prs=()
+          if [[ -z "${PR_NUMBER}" ]]; then
+            sites+=("commit-${COMMIT::7}")
+          fi
+          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${BRANCH}" | cut -f1)"
+          if [[ "${head}" != "${COMMIT}" ]]; then
+            echo "::notice::${BRANCH} is at ${head}, not at ${COMMIT}: no branch and pull request previews"
+          elif [[ -n "${PR_NUMBER}" ]]; then
+            prs=("${PR_NUMBER}")
+          else
+            sites+=("branch-${BRANCH}")
+            prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open \
+              --json number,isCrossRepository --jq '.[] | select(.isCrossRepository | not) | .number')"
+            if [[ -n "${prs_text}" ]]; then
+              mapfile -t prs <<<"${prs_text}"
+            fi
+          fi
+          for pr in "${prs[@]}"; do
+            sites+=("pr-${pr}")
+          done
+          echo "sites=${sites[*]}" >>"${GITHUB_OUTPUT}"
+          echo "prs=${prs[*]}" >>"${GITHUB_OUTPUT}"
+
+      - name: "Get AWS credentials"
+        if: "steps.sites.outputs.sites != ''"
+        uses: "aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd" # v6.3.0
+        with:
+          role-to-assume: "${{ secrets.PREVIEWS_AWS_ROLE_ARN }}"
+          role-session-name: "${{ inputs.name }}-previews-${{ github.run_id }}-${{ github.run_attempt }}"
+          aws-region: "${{ secrets.PREVIEWS_AWS_REGION }}"
+          mask-aws-account-id: true
+
+      - name: "Upload"
+        if: "steps.sites.outputs.sites != ''"
+        env:
+          AWS_S3_BUCKET: "${{ secrets.PREVIEWS_AWS_S3_BUCKET }}"
+          AWS_CLOUDFRONT_DISTRIBUTION_ID: "${{ secrets.PREVIEWS_AWS_CLOUDFRONT_DISTRIBUTION_ID }}"
+          SITES: "${{ steps.sites.outputs.sites }}"
+          TITLE: "${{ inputs.title }}"
+          DIST: "${{ inputs.dist }}"
+          ROOT_FILES: "${{ inputs.root-files }}"
+          ROUTING: "${{ inputs.routing }}"
+          PREFIX: "${{ inputs.prefix }}"
+          FOLDER: "${{ inputs.previews-folder }}"
+        run: |
+          read -ra names <<<"${SITES}"
+          options=(--dist "${DIST}" --folder "${FOLDER}" --routing "${ROUTING}")
+          for name in "${names[@]}"; do
+            options+=(--site "${name}")
+          done
+          if [[ -n "${PREFIX}" ]]; then
+            options+=(--prefix "${PREFIX}")
+          fi
+          if [[ -n "${ROOT_FILES}" ]]; then
+            options+=(--root-files "${ROOT_FILES}")
+          fi
+          sites_text="$(dev/publish-site "${options[@]}")"
+          mapfile -t sites <<<"${sites_text}"
+          {
+            printf "## %s previews\n\n" "${TITLE}"
+            for site in "${sites[@]}"; do
+              printf -- "- https://%s.%s%s\n" "${site}" "${FOLDER}" "${PREFIX:+/${PREFIX}}"
+            done
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+      - name: "Comment the preview links on the pull requests"
+        if: "steps.sites.outputs.prs != ''"
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          PRS: "${{ steps.sites.outputs.prs }}"
+          COMMIT: "${{ github.event.pull_request.head.sha || github.sha }}"
+          PR_NUMBER: "${{ github.event.pull_request.number }}"
+          MARKER: "<!-- ${{ inputs.name }}-preview -->"
+          TITLE: "${{ inputs.title }}"
+          PREFIX: "${{ inputs.prefix }}"
+          FOLDER: "${{ inputs.previews-folder }}"
+        run: |
+          read -ra prs <<<"${PRS}"
+          path="${PREFIX:+/${PREFIX}}"
+          build="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          commit_line="Commit ${COMMIT::7} ([build](${build}))"
+          if [[ -z "${PR_NUMBER}" ]]; then
+            commit_line="Commit ${COMMIT::7}: https://commit-${COMMIT::7}.${FOLDER}${path} ([build](${build}))"
+          fi
+          for pr in "${prs[@]}"; do
+            body="$(printf "%s\n%s preview: https://pr-%s.%s%s\n\n%s\n" \
+              "${MARKER}" "${TITLE}" "${pr}" "${FOLDER}" "${path}" "${commit_line}")"
+            comment_ids="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
+              --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${MARKER}\"))) | .id")"
+            comment_id="${comment_ids%%$'\n'*}"
+            if [[ -n "${comment_id}" ]]; then
+              gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -f body="${body}" >/dev/null
+            else
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" -f body="${body}" >/dev/null
+            fi
+          done
