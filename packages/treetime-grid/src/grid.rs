@@ -6,7 +6,6 @@ use itertools::Itertools;
 use ndarray::Array1;
 use num_traits::ToPrimitive;
 use std::cmp::min;
-use std::fmt::Arguments;
 use std::ops::RangeInclusive;
 use treetime_utils::cast::{F64_EXACT_INTEGER_LIMIT, ToF64Exact, usize_to_u64};
 use treetime_utils::float_compare::within_epsilons_of_scale;
@@ -45,8 +44,13 @@ impl Grid {
     if x_max <= x_min {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
-    let span = exact_span(n_points, format_args!("over [{x_min:?}, {x_max:?}]"))?;
-    let dx = (x_max - x_min) / span;
+    if usize_to_u64(n_points) >= F64_EXACT_INTEGER_LIMIT {
+      return make_error!(
+        "Grid of {n_points} points over [{x_min:?}, {x_max:?}] has more points than {}, the largest count with exact coordinates",
+        MaxGridPoints::MAX
+      );
+    }
+    let dx = (x_max - x_min) / (n_points - 1).to_f64_exact();
     if !dx.is_finite() || dx <= 0.0 {
       return make_error!(
         "Grid of {n_points} points over [{x_min:?}, {x_max:?}] has spacing {dx:?}, which is not a finite positive number"
@@ -72,16 +76,6 @@ impl Grid {
     }
   }
 
-  pub(crate) fn from_start_dx(x_min: f64, dx: f64, n_points: usize) -> Result<Self, Report> {
-    ensure_finite("x_min", x_min)?;
-    ensure_spacing(dx)?;
-    if n_points < 2 {
-      return make_error!("Grid must have at least 2 points, got {n_points}");
-    }
-    let span = exact_span(n_points, format_args!("from {x_min:?} with spacing {dx:?}"))?;
-    Self::from_range_n_points(x_min, x_min + dx * span, n_points)
-  }
-
   pub(crate) fn from_range_dx_anchored(
     x_min: f64,
     x_max: f64,
@@ -90,12 +84,10 @@ impl Grid {
     max_points: MaxGridPoints,
   ) -> Result<Self, Report> {
     let n_points = Self::range_dx_point_count(x_min, x_max, dx, max_points)?;
+    let span = (n_points - 1).to_f64_exact();
     match anchor {
-      Side::Left => Self::from_start_dx(x_min, dx, n_points),
-      Side::Right => {
-        let span = exact_span(n_points, format_args!("over [{x_min:?}, {x_max:?}]"))?;
-        Self::from_range_n_points(x_max - dx * span, x_max, n_points)
-      },
+      Side::Left => Self::from_range_n_points(x_min, x_min + dx * span, n_points),
+      Side::Right => Self::from_range_n_points(x_max - dx * span, x_max, n_points),
     }
   }
 
@@ -254,14 +246,4 @@ fn ensure_spacing(dx: f64) -> Result<(), Report> {
   } else {
     make_error!("Grid spacing dx ({dx:?}) must be a finite positive number")
   }
-}
-
-fn exact_span(n_points: usize, extent: Arguments<'_>) -> Result<f64, Report> {
-  if usize_to_u64(n_points) >= F64_EXACT_INTEGER_LIMIT {
-    return make_error!(
-      "Grid of {n_points} points {extent} has more points than {}, the largest count with exact coordinates",
-      MaxGridPoints::MAX
-    );
-  }
-  Ok((n_points - 1).to_f64_exact())
 }

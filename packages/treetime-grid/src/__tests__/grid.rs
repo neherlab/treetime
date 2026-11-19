@@ -4,7 +4,8 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
-  use proptest::prelude::*;
+  use proptest::arbitrary::any;
+  use proptest::{prop_assert_eq, prop_assume, proptest};
   use rstest::rstest;
   use treetime_utils::assert_error;
 
@@ -14,25 +15,23 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::at_x_min(0.0, 1.0, 5, 0.0, 0)]
-  #[case::at_x_max(0.0, 1.0, 5, 4.0, 3)]
-  #[case::at_midpoint(0.0, 1.0, 5, 2.0, 2)]
-  #[case::between_0_1(0.0, 1.0, 5, 0.5, 0)]
-  #[case::between_1_2(0.0, 1.0, 5, 1.5, 1)]
-  #[case::below_min_small(0.0, 1.0, 5, -0.5, 0)]
-  #[case::below_min_large(0.0, 1.0, 5, -100.0, 0)]
-  #[case::below_positive_min(5.0, 1.0, 5, 4.0, 0)]
-  #[case::above_max_small(0.0, 1.0, 5, 4.5, 3)]
-  #[case::above_max_large(0.0, 1.0, 5, 100.0, 3)]
+  #[case::at_x_min(          (0.0, 4.0), 0.0,    0)]
+  #[case::at_x_max(          (0.0, 4.0), 4.0,    3)]
+  #[case::at_midpoint(       (0.0, 4.0), 2.0,    2)]
+  #[case::between_0_1(       (0.0, 4.0), 0.5,    0)]
+  #[case::between_1_2(       (0.0, 4.0), 1.5,    1)]
+  #[case::below_min_small(   (0.0, 4.0), -0.5,   0)]
+  #[case::below_min_large(   (0.0, 4.0), -100.0, 0)]
+  #[case::below_positive_min((5.0, 9.0), 4.0,    0)]
+  #[case::above_max_small(   (0.0, 4.0), 4.5,    3)]
+  #[case::above_max_large(   (0.0, 4.0), 100.0,  3)]
   #[trace]
   fn test_find_interval_index(
-    #[case] x_min: f64,
-    #[case] dx: f64,
-    #[case] n_points: usize,
+    #[case] (x_min, x_max): (f64, f64),
     #[case] query: f64,
     #[case] expected: usize,
   ) -> Result<(), Report> {
-    let grid = Grid::from_start_dx(x_min, dx, n_points)?;
+    let grid = Grid::from_range_n_points(x_min, x_max, 5)?;
     let actual = grid.find_interval_index(query);
     assert_eq!(expected, actual);
     Ok(())
@@ -100,14 +99,6 @@ mod tests {
   }
 
   #[test]
-  fn test_grid_from_start_dx_rejects_inexact_point_count() {
-    assert_error!(
-      Grid::from_start_dx(0.0, 1.0, (1 << 53) + 2),
-      "Grid of 9007199254740994 points from 0.0 with spacing 1.0 has more points than 9007199254740991, the largest count with exact coordinates"
-    );
-  }
-
-  #[test]
   #[should_panic(expected = "index 5 is outside the grid of 5 points")]
   fn test_grid_x_at_panics_past_the_last_point() {
     Grid::from_range_n_points(0.0, 1.0, 5).unwrap().x_at(5);
@@ -115,29 +106,25 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::nan_x_min(     (f64::NAN,      1.0),               "Grid x_min (NaN) must be finite")]
-  #[case::infinite_x_min((f64::INFINITY, 1.0),               "Grid x_min (inf) must be finite")]
-  #[case::nan_dx(        (0.0,           f64::NAN),          "Grid spacing dx (NaN) must be a finite positive number")]
-  #[case::infinite_dx(   (0.0,           f64::INFINITY),     "Grid spacing dx (inf) must be a finite positive number")]
-  #[case::zero_dx(       (0.0,           0.0),               "Grid spacing dx (0.0) must be a finite positive number")]
-  #[case::negative_dx(   (0.0,           -1.0),              "Grid spacing dx (-1.0) must be a finite positive number")]
-  #[case::end_overflows( (1e308,         1e308),             "Grid x_max (inf) must be finite")]
+  #[case::nan_x_min(             ((f64::NAN,          1.0),           0.1),      Side::Left,  "Grid x_min (NaN) must be finite")]
+  #[case::infinite_x_min(        ((f64::NEG_INFINITY, 1.0),           0.1),      Side::Left,  "Grid x_min (-inf) must be finite")]
+  #[case::nan_x_max(             ((0.0,               f64::NAN),      0.1),      Side::Left,  "Grid x_max (NaN) must be finite")]
+  #[case::infinite_x_max(        ((0.0,               f64::INFINITY), 0.1),      Side::Left,  "Grid x_max (inf) must be finite")]
+  #[case::nan_dx(                ((0.0,               1.0),           f64::NAN), Side::Left,  "Grid spacing dx (NaN) must be a finite positive number")]
+  #[case::infinite_dx(           ((0.0,               1.0),           f64::INFINITY), Side::Left, "Grid spacing dx (inf) must be a finite positive number")]
+  #[case::zero_dx(               ((0.0,               1.0),           0.0),      Side::Left,  "Grid spacing dx (0.0) must be a finite positive number")]
+  #[case::negative_dx(           ((0.0,               1.0),           -1.0),     Side::Left,  "Grid spacing dx (-1.0) must be a finite positive number")]
+  #[case::reversed(              ((1.0,               0.0),           0.1),      Side::Left,  "x_max (0.0) must be greater than x_min (1.0)")]
+  #[case::spacing_wider_than_range(((0.0,             0.4),           1.0),      Side::Left,  "Grid must have at least 2 points, got 1")]
+  #[case::left_anchored_end_overflows( ((0.0,         f64::MAX),      1e308),    Side::Left,  "Grid x_max (inf) must be finite")]
+  #[case::right_anchored_end_overflows(((-f64::MAX,   0.0),           1e308),    Side::Right, "Grid x_min (-inf) must be finite")]
   #[trace]
-  fn test_grid_from_start_dx_rejects_invalid_inputs(#[case] (x_min, dx): (f64, f64), #[case] expected: &str) {
-    assert_error!(Grid::from_start_dx(x_min, dx, 3), expected);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::nan_x_min(     (f64::NAN, 1.0,           0.1),      "Grid x_min (NaN) must be finite")]
-  #[case::infinite_x_max((0.0,      f64::INFINITY, 0.1),      "Grid x_max (inf) must be finite")]
-  #[case::nan_x_max(     (0.0,      f64::NAN,      0.1),      "Grid x_max (NaN) must be finite")]
-  #[case::nan_dx(        (0.0,      1.0,           f64::NAN), "Grid spacing dx (NaN) must be a finite positive number")]
-  #[case::zero_dx(       (0.0,      1.0,           0.0),      "Grid spacing dx (0.0) must be a finite positive number")]
-  #[case::reversed(      (1.0,      0.0,           0.1),      "x_max (0.0) must be greater than x_min (1.0)")]
-  #[trace]
-  fn test_grid_from_range_dx_anchored_rejects_invalid_inputs(#[case] (x_min, x_max, dx): (f64, f64, f64), #[case] expected: &str) {
-    assert_error!(Grid::from_range_dx_anchored(x_min, x_max, dx, Side::Left, MaxGridPoints::default()), expected);
+  fn test_grid_from_range_dx_anchored_rejects_invalid_inputs(
+    #[case] ((x_min, x_max), dx): ((f64, f64), f64),
+    #[case] anchor: Side,
+    #[case] expected: &str,
+  ) {
+    assert_error!(Grid::from_range_dx_anchored(x_min, x_max, dx, anchor, MaxGridPoints::default()), expected);
   }
 
   #[rustfmt::skip]
