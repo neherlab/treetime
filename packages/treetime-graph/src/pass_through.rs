@@ -45,15 +45,11 @@ impl<'a> SegmentTree<'a> {
     path
       .iter()
       .scan(ancestor, |up, &name| {
-        let continues = self.parent.get(name).is_some_and(|&(parent, _)| parent == *up) && self.is_open(name);
+        let continues = self.parent.get(name).is_some_and(|&(parent, _)| parent == *up) && self.merged.contains(name);
         *up = name;
         continues.then_some(())
       })
       .count()
-  }
-
-  fn is_open(&self, name: &str) -> bool {
-    self.merged.contains(name) || self.children.get(name).is_some_and(|children| children.len() == 1)
   }
 
   fn reroute(

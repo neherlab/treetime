@@ -413,7 +413,7 @@ mod tests {
   }
 
   #[test]
-  fn test_merge_trees_by_name_routes_an_edge_through_a_node_the_segment_passes_through_with_one_child()
+  fn test_merge_trees_by_name_keeps_an_edge_that_bypasses_a_node_the_segment_passes_through_with_one_child()
   -> Result<(), Report> {
     let trees = vec![
       TestTree::new("seg1", &[("X", "W", 0.1), ("W", "c", 0.1), ("W", "Y", 0.1)])?,
@@ -421,7 +421,7 @@ mod tests {
     ];
     let merged = merge(&trees)?;
     assert_eq!(
-      (0, vec![0, 1], Vec::<usize>::new()),
+      (1, vec![0], vec![1]),
       (
         merged.pass_through.conflicting_edges,
         segments_of(&merged, "W", "Y"),
