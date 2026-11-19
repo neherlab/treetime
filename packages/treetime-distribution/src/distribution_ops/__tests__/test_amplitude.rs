@@ -2,7 +2,7 @@
 mod tests {
   use crate::Distribution;
   use crate::DistributionFunction;
-  use crate::distribution_ops::convolve::distribution_convolution_fine;
+  use crate::distribution_ops::convolve::distribution_convolution;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use eyre::Report;
   use ndarray::{Array1, array};
@@ -46,7 +46,7 @@ mod tests {
   fn test_amplitude_convolution_adds_log_masses() -> Result<(), Report> {
     let a = Distribution::Function(helpers::gaussian(0.0, 0.5)?.with_amplitude(2.0));
     let b = Distribution::Function(helpers::gaussian(1.0, 0.3)?.with_amplitude(-1.5));
-    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default(), &FftPlans::new())?
+    let conv = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?
       .with_left_extrap(BoundaryBehavior::Hard)
       .with_right_extrap(BoundaryBehavior::Hard);
     pretty_assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-15);

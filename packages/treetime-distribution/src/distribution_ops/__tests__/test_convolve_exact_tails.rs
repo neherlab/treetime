@@ -188,7 +188,7 @@ mod tests {
     use crate::Distribution;
     use crate::distribution_core::function::DistributionFunction;
     use crate::distribution_ops::__tests__::test_edge_convolution::tests::helpers::ln_gauss_integral;
-    use crate::distribution_ops::convolve::{SampleTrace, convolution_function_function_fine_traced};
+    use crate::distribution_ops::convolve::{SampleTrace, convolution_function_function_traced};
     use eyre::Report;
     use itertools::Itertools;
     use ndarray::{Array1, Zip};
@@ -222,7 +222,7 @@ mod tests {
     ) -> Result<TracedConvolution, Report> {
       let mut sources = SourceRecorder::default();
       let result =
-        convolution_function_function_fine_traced(a, b, MaxGridPoints::default(), &FftPlans::new(), &mut sources)?;
+        convolution_function_function_traced(a, b, MaxGridPoints::default(), &FftPlans::new(), &mut sources)?;
       let result_x_start = a.x_min() + b.x_min();
       let Distribution::Function(result) = result else {
         return make_error!("the convolution of two grid functions must be a grid function, got {result}");

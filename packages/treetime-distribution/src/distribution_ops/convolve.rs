@@ -23,20 +23,6 @@ const CONV_TAIL_MARGIN: usize = 3;
 
 const CELLS_PER_RISE: f64 = 8.0;
 
-pub(crate) fn distribution_convolution_fine(
-  a: &Distribution,
-  b: &Distribution,
-  max_points: MaxGridPoints,
-  fft_plans: &FftPlans,
-) -> Result<Distribution, Report> {
-  match (a, b) {
-    (Distribution::Function(a), Distribution::Function(b)) => {
-      convolution_function_function_fine(a, b, max_points, fft_plans)
-    },
-    _ => distribution_convolution(a, b, max_points, fft_plans),
-  }
-}
-
 pub(crate) fn distribution_convolution(
   a: &Distribution,
   b: &Distribution,
@@ -235,23 +221,10 @@ fn convolution_function_function(
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
 ) -> Result<Distribution, Report> {
-  let coarse_dx = a.dx().max(b.dx());
-  match convolution_function_function_fine(a, b, max_points, fft_plans)? {
-    Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx, max_points),
-    other => Ok(other),
-  }
+  convolution_function_function_traced(a, b, max_points, fft_plans, &mut NoTrace)
 }
 
-fn convolution_function_function_fine(
-  a: &DistributionFunction,
-  b: &DistributionFunction,
-  max_points: MaxGridPoints,
-  fft_plans: &FftPlans,
-) -> Result<Distribution, Report> {
-  convolution_function_function_fine_traced(a, b, max_points, fft_plans, &mut NoTrace)
-}
-
-pub(crate) fn convolution_function_function_fine_traced(
+pub(crate) fn convolution_function_function_traced(
   a: &DistributionFunction,
   b: &DistributionFunction,
   max_points: MaxGridPoints,
@@ -337,19 +310,6 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
     (f64::NEG_INFINITY, f64::INFINITY),
     (BoundaryBehavior::Error, BoundaryBehavior::Error),
   ))
-}
-
-pub(super) fn coarsen_convolution(
-  conv_distr: DistributionFunction,
-  coarse_dx: f64,
-  max_points: MaxGridPoints,
-) -> Result<Distribution, Report> {
-  let range = conv_distr.x_max() - conv_distr.x_min();
-  let coarse_intervals = (range / coarse_dx).round();
-  if coarse_intervals.is_nan() || coarse_intervals < 1.0 {
-    return Ok(Distribution::Function(conv_distr));
-  }
-  Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx, max_points)?))
 }
 
 #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]

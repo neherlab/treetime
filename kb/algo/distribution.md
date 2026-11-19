@@ -73,7 +73,7 @@ v1: `multiply_many_lazy_normalize()` (`#multiply_many_lazy_normalize`) in [`pack
 
 Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and runs the first convolution and every tilt through one `treetime_ops::FftConvolver` on `realfft`, which integrates each overlap by the trapezoid rule ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). The direct and ndarray-conv implementations in `treetime-ops` apply the same rule; distribution code does not use them. Point distributions short-circuit to a shift.
 
-v1: `distribution_convolution()` (`#distribution_convolution`) in [`packages/treetime-distribution/src/distribution_ops/convolve.rs#L40-L69`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L40-L69).
+v1: `distribution_convolution()` (`#distribution_convolution`) in [`packages/treetime-distribution/src/distribution_ops/convolve.rs#L26-L55`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L26-L55).
 
 ---
 

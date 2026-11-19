@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(crate) mod tests {
   use crate::distribution_core::function::DistributionFunction;
-  use crate::distribution_ops::convolve::distribution_convolution_fine;
+  use crate::distribution_ops::convolve::distribution_convolution;
   use crate::distribution_ops::mass_domain::{peak_normalized_if_mass_sizable, trim_to_mass};
   use crate::{
     Distribution, MassProfile, MessageSpacing, TailMass, convolve_across_edge, convolve_forward_across_edge,
@@ -262,7 +262,7 @@ pub(crate) mod tests {
     let narrow_fine = gaussian_at(0.1, 0.001)?;
     let wide_coarse = gaussian_at(1.0, 0.02)?;
     let Distribution::Function(fine) =
-      distribution_convolution_fine(&narrow_fine, &wide_coarse, MaxGridPoints::default(), &FftPlans::new())?
+      distribution_convolution(&narrow_fine, &wide_coarse, MaxGridPoints::default(), &FftPlans::new())?
     else {
       panic!("expected a gridded convolution");
     };
@@ -398,7 +398,7 @@ pub(crate) mod tests {
   #[test]
   fn test_convolution_of_bimodal_operand_with_deep_valley_matches_its_oracles() -> Result<(), Report> {
     let (a, b) = (two_gaussians(20.0, 80.0, 1.0, 1441)?, gaussian(1.0)?);
-    let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
+    let conv = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
     let Distribution::Function(conv) = conv else {
       panic!("the convolution of two grid functions must be a grid function, got {conv}");
     };

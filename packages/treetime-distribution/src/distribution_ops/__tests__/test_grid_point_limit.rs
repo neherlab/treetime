@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution_ops::convolve::distribution_convolution_fine;
+  use crate::distribution_ops::convolve::distribution_convolution;
   use crate::distribution_ops::divide::distribution_division;
   use crate::distribution_ops::mass_domain::{SpacingLimit, resample_to_mass_window};
   use crate::distribution_ops::multiply::distribution_multiplication;
@@ -43,14 +43,14 @@ mod tests {
   #[test]
   fn test_grid_point_limit_convolution_operand_above_the_limit() {
     assert_error!(
-      distribution_convolution_fine(&flat(0.0, 999.0, 1_000), &flat(0.0, 1.0, 3), limit(), &FftPlans::new()),
+      distribution_convolution(&flat(0.0, 999.0, 1_000), &flat(0.0, 1.0, 3), limit(), &FftPlans::new()),
       "A grid over [0, 999] with spacing 0.5 needs 1999 points, more than the limit of 1000"
     );
   }
 
   #[test]
   fn test_grid_point_limit_convolution_result_at_the_limit() -> Result<(), Report> {
-    let result = distribution_convolution_fine(
+    let result = distribution_convolution(
       &flat(0.0, 499.0, 500),
       &flat(0.0, 500.0, 501),
       limit(),
@@ -63,7 +63,7 @@ mod tests {
   #[test]
   fn test_grid_point_limit_convolution_result_above_the_limit() {
     assert_error!(
-      distribution_convolution_fine(
+      distribution_convolution(
         &flat(0.0, 499.0, 500),
         &flat(0.0, 501.0, 502),
         limit(),

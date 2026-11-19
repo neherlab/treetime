@@ -1,6 +1,6 @@
 use crate::Distribution;
 use crate::DistributionFunction;
-use crate::distribution_ops::convolve::distribution_convolution_fine;
+use crate::distribution_ops::convolve::distribution_convolution;
 use crate::distribution_ops::mass_domain::{
   SpacingLimit, mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
   trim_to_mass, trim_with_profile,
@@ -229,7 +229,7 @@ impl WindowedConvolution {
   ) -> Result<Self, Report> {
     let cap = coarser_operand_spacing(a, b);
     let is_fft = cap.is_some();
-    let conv = distribution_convolution_fine(a, b, max_points, fft_plans)?;
+    let conv = distribution_convolution(a, b, max_points, fft_plans)?;
     let conv = if is_fft || has_no_soft_law(&conv, soft) {
       conv.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?
     } else {

@@ -222,7 +222,7 @@ A mass window (`fn mass_bounded_domain()`) moves only a `Linear` side inward, to
 
 ## Exact point and range convolution
 
-A date range $[a, b]$ convolved with a function $f$ is computed exactly from the mass model of $f$ (`fn convolution_range_function()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L91-L146](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L91-L146)):
+A date range $[a, b]$ convolved with a function $f$ is computed exactly from the mass model of $f$ (`fn convolution_range_function()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L77-L132](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L77-L132)):
 
 $$g(t) = A_r\,A_f \int_{t - b}^{t - a} f(s)\,ds$$
 
@@ -250,7 +250,7 @@ On `data/dengue/500` (325 of 457 tips with year-only dates) the runs take 6.7% m
 
 Two specific divergences from v0's distribution handling:
 
-1. **Convolution tail reconstruction.** v0 rebuilds convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) from the outermost trusted points. v1 reconstructs the same tails in `fn convolution_function_function_fine()`: the FFT runs on densities and is trusted only above a peak-relative floor (`1e-13`, matching v0), and the sub-floor tail is rebuilt by a two-point secant slope in costs, extended only where it decays away from support. Each operand's costs are converted to densities relative to its peak for the FFT (`struct PeakNormalizedOperand`) and the result back to costs. The inference passes then fit a per-message soft tail from the reconstructed grid (`fn Distribution::fit_soft_tail()`) and attach it as the message's out-of-support policy on the soft side, keeping the hard side `Hard`. That policy governs how the _following_ multiplication or division extends the support intersection.
+1. **Convolution tail reconstruction.** v0 rebuilds convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) from the outermost trusted points. v1 reconstructs the same tails in `fn convolution_function_function()`: the FFT runs on densities and is trusted only above a peak-relative floor (`1e-13`, matching v0), and the sub-floor tail is rebuilt by a two-point secant slope in costs, extended only where it decays away from support. Each operand's costs are converted to densities relative to its peak for the FFT (`struct PeakNormalizedOperand`) and the result back to costs. The inference passes then fit a per-message soft tail from the reconstructed grid (`fn Distribution::fit_soft_tail()`) and attach it as the message's out-of-support policy on the soft side, keeping the hard side `Hard`. That policy governs how the _following_ multiplication or division extends the support intersection.
 
 2. **Default out-of-support handling.** v0 returns effectively zero probability outside support as a soft value (`fill_value=1e10` in neg-log, i.e. $\exp(-10^{10})$). v1 returns `Error` by default, requiring an explicit tail opt-in.
 
@@ -278,7 +278,7 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 - [packages/treetime-distribution/src/distribution_ops/mass_profile.rs](../../packages/treetime-distribution/src/distribution_ops/mass_profile.rs): `struct MassProfile`, `struct MassFractions`, `enum TailMass`
 - [packages/treetime-distribution/src/distribution_ops/mass_domain.rs](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs): `fn log_mass()` (shape and tails plus amplitude), `fn mass_bounded_domain()`, `fn trim_with_profile()`
 - [packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs): `fn distribution_multiply_by_fn()` composes the soft tail laws with the outward slope of the weight and keeps the amplitude
-- [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs): `fn convolution_range_function()`, `fn convolution_point_function()`, `fn convolution_function_function_fine()`
+- [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs): `fn convolution_range_function()`, `fn convolution_point_function()`, `fn convolution_function_function()`
 
 ### Tail-aware arithmetic
 

@@ -4,7 +4,7 @@ mod tests {
   use crate::Distribution;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::__tests__::test_mass_profile_convergence::tests::helpers::assert_second_order;
-  use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution, on_common_spacing};
+  use crate::distribution_ops::convolve::{distribution_convolution, on_common_spacing};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, Axis, array, s};
@@ -12,7 +12,6 @@ mod tests {
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Normal};
   use std::f64::consts::{LN_2, PI};
-  use treetime_grid::grid::Grid;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, SoftTailLaw};
   use treetime_ops::FftPlans;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -625,8 +624,13 @@ mod tests {
 
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
-    assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
-    pretty_assert_abs_diff_eq!(neg_log(&array![0.125, 1.5, 1.5, 0.125]), actual.y(), epsilon = 1e-12);
+    assert_eq!(array![0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0], actual.t());
+    pretty_assert_abs_diff_eq!(
+      neg_log(&array![0.125, 0.75, 1.5, 1.5, 1.5, 0.75, 0.125]),
+      actual.y(),
+      epsilon = 1e-15,
+      "-ln of 0.5 times the trapezoid sums of [1, 2, 1] against b resampled to [1, 1, 1, 1, 1] at the spacing 0.5, with weight 1/4 on the single product at each end"
+    );
     Ok(())
   }
 
@@ -724,50 +728,6 @@ mod tests {
     let rise_cell = 2e-7 / 8.0;
     assert_eq!(1 + (n + 1) * 4, f.len());
     pretty_assert_abs_diff_eq!(rise_cell, f.dx(), epsilon = 1e-22);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coarsen_convolution_narrow_range_keeps_fine_grid() -> Result<(), Report> {
-    let fine = DistributionFunction::from_start_dx_values(0.0, 0.01, array![1.0, 0.0, 1.0])?;
-    assert_error!(
-      Grid::from_range_dx(0.0, 0.02, 1.0, MaxGridPoints::default()),
-      "Grid must have at least 2 points, got 1"
-    );
-
-    let actual = coarsen_convolution(fine.clone(), 1.0, MaxGridPoints::default())?;
-
-    assert_eq!(Distribution::Function(fine), actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coarsen_convolution_half_cell_range_resamples_to_two_points() -> Result<(), Report> {
-    let fine = DistributionFunction::from_start_dx_values(0.0, 0.25, array![1.0, 0.0, 1.0])?;
-    let expected_points = Grid::from_range_dx(0.0, 0.5, 1.0, MaxGridPoints::default())?.n_points();
-    assert_eq!(2, expected_points);
-
-    let Distribution::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
-      panic!("expected a Function result");
-    };
-
-    assert_eq!(expected_points, actual.len());
-    pretty_assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coarsen_convolution_wide_range_resamples_to_coarse_spacing() -> Result<(), Report> {
-    let fine = DistributionFunction::from_start_dx_values(0.0, 0.5, Array1::zeros(9))?;
-    let expected_points = Grid::from_range_dx(0.0, 4.0, 1.0, MaxGridPoints::default())?.n_points();
-    assert_eq!(5, expected_points);
-
-    let Distribution::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
-      panic!("expected a Function result");
-    };
-
-    assert_eq!(expected_points, actual.len());
-    pretty_assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
     Ok(())
   }
 
