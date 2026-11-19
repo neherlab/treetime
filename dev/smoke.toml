@@ -3,18 +3,27 @@
 # A case is one treetime invocation on one dataset. Its id is `<command>/<dataset>/<variant>`, for example
 # `timetree/flu/h3n2/20/coalescent`. `./dev/smoke --list` prints the ids this file produces.
 #
-# Datasets are the directories holding `data/**/tree.nwk`. Their last path component is the number of sequences,
-# which gives the size class, the default tier and the default timeout.
+# Datasets are the directories under `data/` that hold a tree or segments. A tree dataset holds `tree.nwk`. A segment
+# dataset holds, per genome segment, `tree_<segment>.nwk` and `aln_<segment>.fasta` or `aln_<segment>.fasta.xz`; its
+# segments are the names with both files, in sorted order, so `tree_seg1_collapsed.nwk` without an alignment is not a
+# segment. A directory with both is a dataset of both kinds. The last path component of a dataset is the number of
+# sequences, which gives the size class, the default tier and the default timeout; a dataset whose last component is
+# not a number, such as `toy/reassortment`, counts the sequences of its first alignment.
 #
 # Placeholders in arguments:
-#   {data}       the data directory, `data`
-#   {dataset}    the dataset directory, for example `{data}/flu/h3n2/20`
-#   {metadata}   the metadata file of the dataset (`metadata.tsv` or `metadata.tsv.xz`)
-#   {attribute}  the mugration attribute of the dataset family
-#   {out}        the output directory of the case
+#   {data}        the data directory, `data`
+#   {dataset}     the dataset directory, for example `{data}/flu/h3n2/20`
+#   {metadata}    the metadata file of the dataset (`metadata.tsv` or `metadata.tsv.xz`)
+#   {attribute}   the mugration attribute of the dataset family
+#   {clock_rate}  the clock rate of the dataset family
+#   {segments}    the segments of the dataset as `--segment-trees=<tree>` and `--segment-alignments=<alignment>`
+#                 flags, one of each per segment; a whole argument of a row
+#   {out}         the output directory of the case
 #
-# A command template that uses {metadata} or {attribute} runs only on datasets that have them. A row whose
-# `datasets` names such a dataset explicitly is an error when the dataset lacks them.
+# A row whose `args` hold {segments} runs only on segment datasets and leaves out the `--tree` and `--alignment` flags
+# of its command template; every other row runs only on tree datasets. A command template or row that uses
+# {metadata}, {attribute} or {clock_rate} runs only on datasets that have them. A row whose `datasets` names a dataset
+# that lacks an input of the row is an error.
 
 
 # Random seed of every case whose command template is `seeded`. Profile sampling and polytomy resolution draw
@@ -31,9 +40,12 @@ medium = { max_sequences = 500, tier = "full", timeout = 600 }
 large = { tier = "full", timeout = 1800 }
 
 
-# Dataset families, keyed by the dataset path without its size component. Every dataset needs a family.
+# Dataset families, keyed by the dataset path without its size component, or the whole path of a dataset without one.
+# Every dataset needs a family.
 #   metadata_args        added to every case whose command reads metadata, usually the taxon id column
 #   mugration_attribute  metadata column that mugration reconstructs; mugration skips families without one
+#   clock_rate           substitutions per site and year, for {clock_rate}: the true rate of simulated data, else the
+#                        documented rate of the data
 #   command_args         extra arguments per command
 #   timeout_factor       multiplies the size timeout, for long genomes
 [families.dengue]
@@ -63,9 +75,15 @@ mugration_attribute = "country"
 metadata_args = "--metadata-id-columns=strain"
 mugration_attribute = "country"
 
+[families."simulated/reassortment"]
+clock_rate = 0.00275556
+
 [families.tb]
 metadata_args = "--metadata-id-columns=strain"
 mugration_attribute = "cluster"
+
+[families."toy/reassortment"]
+clock_rate = 0.005
 
 [families.zika]
 mugration_attribute = "country"
@@ -382,6 +400,13 @@ datasets = ["flu/h3n2/20", "tb/20", "zika/20"]
 args = "--report-ambiguous"
 selection = "mat-pb,mat-json"
 outputs = ["ancestral.mat.pb", "ancestral.mat.json"]
+
+# A graph of segment trees merged by node name: one marginal reconstruction per segment on the shared graph. Plain
+# Newick holds one tree, so the per-segment outputs are numbered
+[[ancestral]]
+variant = "segment-trees"
+args = "{segments}"
+outputs = ["ancestral.graph.json", "ancestral.1.sequences.fasta"]
 
 
 [[clock]]
@@ -785,6 +810,12 @@ datasets = ["flu/h3n2/20"]
 args = "--representation=sparse"
 selection = "all"
 
+# Branch lengths of a graph of segment trees, shared by the segments that pass along an edge
+[[optimize]]
+variant = "segment-trees"
+args = "{segments}"
+outputs = ["optimize.graph.json", "optimize.1.nexus"]
+
 
 [[prune]]
 variant = "default"
@@ -1183,6 +1214,36 @@ args = "--report-ambiguous"
 selection = "mat-pb,mat-json"
 outputs = ["timetree.mat.pb", "timetree.mat.json"]
 
+# Dates of a graph of segment trees at the clock rate of the dataset family, with the default message passing and with
+# messages between the parents of a node
+[[timetree]]
+variant = "segment-trees"
+args = "{segments} --clock-rate={clock_rate}"
+outputs = ["timetree.graph.json", "timetree.dates.tsv"]
+
+[[timetree]]
+variant = "segment-trees-cross-parent-messages"
+args = "{segments} --clock-rate={clock_rate} --cross-parent-messages"
+outputs = ["timetree.graph.json", "timetree.dates.tsv"]
+
+[[timetree]]
+variant = "reject-segment-trees-without-clock-rate"
+datasets = ["toy/reassortment"]
+args = "{segments}"
+fail = "rejected: --segment-trees requires --clock-rate, because the clock rate of a graph of segment trees is not estimated (kb/issues/M-timetree-segment-graphs-fixed-clock-only.md)"
+
+[[timetree]]
+variant = "reject-segment-trees-coalescent"
+datasets = ["toy/reassortment"]
+args = "{segments} --clock-rate={clock_rate} --coalescent=opt"
+fail = "rejected: a graph of segment trees runs without a coalescent prior (kb/issues/M-timetree-segment-graphs-fixed-clock-only.md)"
+
+[[timetree]]
+variant = "reject-cross-parent-messages-without-segment-trees"
+datasets = ["flu/h3n2/20"]
+args = "--cross-parent-messages"
+fail = "rejected: --cross-parent-messages applies only with --segment-trees"
+
 
 # `treetime --help` and `treetime <subcommand> --help`; the printed text is compared with the baseline
 [help]
@@ -1272,26 +1333,4 @@ sandbox = true
 [[cli]]
 variant = "v0-ancestral"
 args = "ancestral --tree={data}/zika/20/tree.nwk --aln={data}/zika/20/aln.fasta.xz --gtr=JC69 --marginal --outdir={out} --rng-seed=42"
-sandbox = true
-
-# A graph of three segment trees with reassortments, merged by node name (data/toy/reassortment): one reconstruction
-# per segment, branch lengths shared across the segments, and dates at the clock rate of the toy graph
-[[cli]]
-variant = "segment-trees-ancestral"
-args = "ancestral --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --include-leaves --output-all={out}"
-sandbox = true
-
-[[cli]]
-variant = "segment-trees-optimize"
-args = "optimize --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --output-all={out}"
-sandbox = true
-
-[[cli]]
-variant = "segment-trees-timetree"
-args = "timetree --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --metadata={data}/toy/reassortment/metadata.tsv --clock-rate=0.005 --seed=42 --output-all={out}"
-sandbox = true
-
-[[cli]]
-variant = "segment-trees-timetree-cross-parent-messages"
-args = "timetree --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --metadata={data}/toy/reassortment/metadata.tsv --clock-rate=0.005 --cross-parent-messages --seed=42 --output-all={out}"
 sandbox = true

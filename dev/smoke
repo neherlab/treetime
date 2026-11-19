@@ -249,6 +249,9 @@ ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "standalone", 
 CLI_ROW_KEYS = frozenset({"variant", "args", "sandbox", "fail"})
 JOBS_COMMANDS = frozenset({"timetree", "ancestral", "clock", "mugration", "homoplasy", "optimize", "prune", "pipeline"})
 RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
+SEGMENTS_PLACEHOLDER = "{segments}"
+TREE_INPUT_FLAGS = frozenset({"--tree", "--alignment"})
+SEGMENT_ALIGNMENT_SUFFIXES = (".fasta", ".fasta.xz")
 MAX_DIFF_ITEMS = 20
 NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
 ERROR_LINE_RE = re.compile(r"error|panic|memory allocation", re.IGNORECASE)
@@ -487,24 +490,62 @@ def parse_size(name: str, table: dict) -> SizeClass:
 
 
 def parse_family(name: str, table: dict) -> Family:
-  check_keys(table, {"metadata_args", "mugration_attribute", "command_args", "timeout_factor"}, f"[families.{name}]")
+  check_keys(table, {"metadata_args", "mugration_attribute", "clock_rate", "command_args", "timeout_factor"},
+             f"[families.{name}]")
   command_args = {command: tuple(shlex.split(args)) for command, args in table.get("command_args", {}).items()}
-  return Family(tuple(shlex.split(table.get("metadata_args", ""))), table.get("mugration_attribute"), command_args,
-                float(table.get("timeout_factor", 1.0)))
+  clock_rate = table.get("clock_rate")
+  if clock_rate is not None and (isinstance(clock_rate, bool) or not isinstance(clock_rate, int | float)
+                                 or clock_rate <= 0):
+    raise SmokeError(f"[families.{name}] `clock_rate` must be a positive number, not {clock_rate!r}")
+  return Family(tuple(shlex.split(table.get("metadata_args", ""))), table.get("mugration_attribute"), clock_rate,
+                command_args, float(table.get("timeout_factor", 1.0)))
 
 
 def discover_datasets(root: Path, spec: CaseSpec) -> dict[str, Dataset]:
-  datasets = {}
-  for tree in sorted((root / DATA_DIR).glob("**/tree.nwk")):
-    directory = tree.parent
-    name = directory.relative_to(root / DATA_DIR).as_posix()
-    family = directory.parent.relative_to(root / DATA_DIR).as_posix()
-    if family not in spec.families:
-      raise SmokeError(f"Dataset {name} has no family: add [families.\"{family}\"] to {CASES_FILE}")
-    metadata = next((m.name for m in (directory / "metadata.tsv", directory / "metadata.tsv.xz") if m.exists()), None)
-    columns = read_tsv_header(directory / metadata) if metadata else frozenset()
-    datasets[name] = Dataset(name, size_class(spec, int(directory.name)), spec.families[family], metadata, columns)
-  return datasets
+  """Tree datasets hold `tree.nwk`; segment datasets hold `tree_<segment>.nwk` and `aln_<segment>.fasta[.xz]` pairs.
+  A directory with both is one dataset of both kinds."""
+  data = root / DATA_DIR
+  directories = {tree.parent for tree in data.glob("**/tree.nwk")} | {
+    tree.parent for tree in data.glob("**/tree_*.nwk") if dataset_segments(tree.parent)}
+  datasets = [read_dataset(data, directory, spec) for directory in sorted(directories)]
+  return {dataset.name: dataset for dataset in datasets}
+
+
+def dataset_segments(directory: Path) -> tuple[Segment, ...]:
+  """The segments of a directory: the names with a tree and an alignment, in sorted order."""
+  names = sorted(path.name.removeprefix("tree_").removesuffix(".nwk") for path in directory.glob("tree_*.nwk"))
+  return tuple(Segment(f"tree_{name}.nwk", alignment) for name in names
+               if (alignment := segment_alignment(directory, name)) is not None)
+
+
+def segment_alignment(directory: Path, segment: str) -> str | None:
+  candidates = (f"aln_{segment}{suffix}" for suffix in SEGMENT_ALIGNMENT_SUFFIXES)
+  return next((name for name in candidates if (directory / name).exists()), None)
+
+
+def read_dataset(data: Path, directory: Path, spec: CaseSpec) -> Dataset:
+  """A dataset whose last path component is a number has that many sequences and belongs to the family of its parent
+  directory; any other dataset counts the sequences of its first alignment and is a family of its own."""
+  name = directory.relative_to(data).as_posix()
+  segments = dataset_segments(directory)
+  sized = directory.name.isdigit()
+  family = (directory.parent if sized else directory).relative_to(data).as_posix()
+  if family not in spec.families:
+    raise SmokeError(f"Dataset {name} has no family: add [families.\"{family}\"] to {CASES_FILE}")
+  alignment = directory / (segments[0].alignment if segments else "aln.fasta.xz")
+  sequences = int(directory.name) if sized else count_sequences(alignment)
+  metadata = next((m.name for m in (directory / "metadata.tsv", directory / "metadata.tsv.xz") if m.exists()), None)
+  columns = read_tsv_header(directory / metadata) if metadata else frozenset()
+  return Dataset(name, size_class(spec, sequences), spec.families[family], metadata, columns,
+                 (directory / "tree.nwk").exists(), segments)
+
+
+def count_sequences(path: Path) -> int:
+  try:
+    with lzma.open(path, "rt") if path.suffix == ".xz" else path.open() as handle:
+      return sum(1 for line in handle if line.startswith(">"))
+  except OSError as error:
+    raise SmokeError(f"Cannot count the sequences of {path}: {error}") from error
 
 
 def size_class(spec: CaseSpec, sequences: int) -> Size:
@@ -539,11 +580,14 @@ def row_cases(command: str, row: dict, spec: CaseSpec, datasets: dict[str, Datas
 
 def row_arguments(command: str, row: dict, spec: CaseSpec) -> tuple[list[str], list[str], str]:
   """Template and row arguments before placeholders are resolved, each with its output selection, and the location
-  text. A standalone row has no template arguments."""
-  template = spec.commands[command]
+  text. A standalone row has no template arguments; a segment row drops the tree inputs of its template."""
+  template, where = spec.commands[command], f"[[{command}]] variant {row['variant']!r}"
   template_args = [] if row.get("standalone", False) else with_selection(template.args, template.selection)
   args = with_selection(row.get("args", ""), row.get("selection"))
-  return template_args, args, f"[[{command}]] variant {row['variant']!r}"
+  if SEGMENTS_PLACEHOLDER in args:
+    template_args = [token for flag, tokens in flag_groups(template_args, where) if flag not in TREE_INPUT_FLAGS
+                     for token in tokens]
+  return template_args, args, where
 
 
 def with_selection(args: str, selection: str | None) -> list[str]:
@@ -551,12 +595,13 @@ def with_selection(args: str, selection: str | None) -> list[str]:
 
 
 def select_datasets(selector: str | list[str], args: str, datasets: dict[str, Dataset], where: str) -> list[Dataset]:
-  """Datasets of a row: all of them or a size class, among those that provide the metadata the arguments use."""
+  """Datasets of a row: all of them or a size class, among those that provide the inputs the arguments use."""
   if isinstance(selector, list):
     if unknown := [name for name in selector if name not in datasets]:
       raise SmokeError(f"{where}: unknown datasets {', '.join(unknown)}")
     if lacking := [name for name in selector if not datasets[name].provides(args)]:
-      raise SmokeError(f"{where}: datasets {', '.join(lacking)} lack the metadata or attribute the arguments use")
+      raise SmokeError(f"{where}: datasets {', '.join(lacking)} lack the tree, segments, metadata, attribute or clock "
+                       "rate the arguments use")
     return [datasets[name] for name in selector]
   if selector != "all" and selector not in SIZE_NAMES:
     raise SmokeError(f"{where}: `datasets` must be \"all\", a size class ({', '.join(sorted(SIZE_NAMES))}), or a list")
@@ -582,10 +627,12 @@ def make_case(command: str, row: dict, dataset: Dataset, spec: CaseSpec,
   template_args, args, where = row_arguments(command, row, spec)
   metadata_args = [] if standalone or "{metadata}" not in template.args else list(family.metadata_args)
   family_args = metadata_args + list(family.command_args.get(command, ()))
+  args = [expanded for token in args
+          for expanded in (dataset.segment_args if token == SEGMENTS_PLACEHOLDER else [token])]
   tokens = merge_arguments([template_args, family_args, args], where)
   replacements = {
     "{dataset}": dataset.path, "{metadata}": f"{dataset.path}/{dataset.metadata}",
-    "{attribute}": dataset.attribute or "",
+    "{attribute}": dataset.attribute or "", "{clock_rate}": str(family.clock_rate or ""),
   }
   argv = [substitute(token, replacements) for token in tokens]
   placeholders = {match for token in argv for match in re.findall(r"\{[a-z_]+\}", token)}
@@ -1850,6 +1897,7 @@ class SizeClass:
 class Family:
   metadata_args: tuple[str, ...]
   mugration_attribute: str | None
+  clock_rate: float | None
   command_args: dict[str, tuple[str, ...]]
   timeout_factor: float
 
@@ -1868,10 +1916,18 @@ class Dataset:
   family: Family
   metadata: str | None
   metadata_columns: frozenset[str]
+  has_tree: bool
+  segments: tuple[Segment, ...]
 
   @property
   def path(self) -> str:
     return f"{{data}}/{self.name}"
+
+  @property
+  def segment_args(self) -> list[str]:
+    """The segment inputs as flags, one tree and one alignment per segment in the same order."""
+    return ([f"--segment-trees={self.path}/{segment.tree}" for segment in self.segments]
+            + [f"--segment-alignments={self.path}/{segment.alignment}" for segment in self.segments])
 
   @property
   def attribute(self) -> str | None:
@@ -1879,9 +1935,20 @@ class Dataset:
     return attribute if attribute is not None and attribute in self.metadata_columns else None
 
   def provides(self, template: str) -> bool:
-    """Whether the dataset has the metadata and attribute that a template uses."""
-    return ("{metadata}" not in template or self.metadata is not None) and (
-      "{attribute}" not in template or self.attribute is not None)
+    """Whether the dataset has the inputs that a template uses: the segments for `{segments}`, else the tree, and the
+    metadata, attribute and clock rate where the template names them."""
+    inputs = bool(self.segments) if SEGMENTS_PLACEHOLDER in template else self.has_tree
+    return inputs and ("{metadata}" not in template or self.metadata is not None) and (
+      "{attribute}" not in template or self.attribute is not None) and (
+      "{clock_rate}" not in template or self.family.clock_rate is not None)
+
+
+@dataclass(frozen=True)
+class Segment:
+  """A genome segment of a dataset: the file names of its tree and its alignment."""
+
+  tree: str
+  alignment: str
 
 
 @dataclass(frozen=True)
