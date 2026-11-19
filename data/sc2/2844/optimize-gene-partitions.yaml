@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch lengths with one partition per SARS-CoV-2 gene (sc2/2844).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/sc2/2844/optimize-gene-partitions.yaml --output-all tmp/examples/sc2/2844/optimize-gene-partitions
+#
+# The genes of SARS-CoV-2 evolve at different speeds: the spike gene S, for example,
+# is under selection by the immune response. `partition_by: genes` makes one partition
+# for each CDS of the Wuhan-Hu-1 annotation and one for the noncoding sites. The
+# partitions share the branch lengths and, by default for this scheme, one set of
+# exchange rates and equilibrium frequencies, because the genes of one genome share
+# the mutation process; each partition fits its own relative rate. The model output
+# lists the rate of each gene (`mu`): on this tree ORF1b, which codes for the
+# polymerase, evolves slowest, and the noncoding sites, which include the genome ends
+# that are hard to sequence, fastest. A site in two CDSs belongs to the longer CDS, so
+# ORF9b, which lies inside N, gets no partition, and the run warns about it.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+annotation:
+  - "annotation.gff3"
+
+partition_by: "genes"

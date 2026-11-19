@@ -76,6 +76,7 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | [`rsv/a/2000/timetree-skyline-confidence.yaml`](rsv/a/2000/timetree-skyline-confidence.yaml) | `timetree` | RSV-A time tree with a skyline coalescent and date intervals |
 | [`rsv/a/2000/timetree.yaml`](rsv/a/2000/timetree.yaml) | `timetree` | Time tree with the default settings |
 | [`sc2/2844/ancestral.yaml`](sc2/2844/ancestral.yaml) | `ancestral` | Marginal ancestral reconstruction on 2504 SARS-CoV-2 genomes |
+| [`sc2/2844/optimize-gene-partitions.yaml`](sc2/2844/optimize-gene-partitions.yaml) | `optimize` | Branch lengths with one partition per SARS-CoV-2 gene |
 | [`sc2/5100/ancestral.yaml`](sc2/5100/ancestral.yaml) | `ancestral` | Ancestral sequences with the default settings |
 | [`sc2/5100/clock-outgroup.yaml`](sc2/5100/clock-outgroup.yaml) | `clock` | Root-to-tip regression on the Wuhan-Hu-1 root |
 | [`sc2/5100/clock.yaml`](sc2/5100/clock.yaml) | `clock` | Root-to-tip regression with the default settings |
