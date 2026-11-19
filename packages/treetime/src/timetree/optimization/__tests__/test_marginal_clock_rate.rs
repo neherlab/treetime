@@ -91,28 +91,40 @@ mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::convex_to_the_bound(    1.0, false)]
-  #[case::maximum_past_the_probes(2.0, true )]
-  #[trace]
-  fn test_marginal_clock_rate_first_step_follows_the_slope_out_of_the_window_and_keeps_its_width(
-    #[case] reference: f64,
-    #[case] concave: bool,
-  ) -> Result<(), Report> {
-    let setup = helpers::cherry()?;
-    let window = RateWindow::initial();
-    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
+  #[test]
+  fn test_marginal_clock_rate_first_step_on_a_convex_curve_moves_to_the_bound_and_keeps_the_width() -> Result<(), Report>
+  {
+    let (reference, window) = (1.0, RateWindow::initial());
 
-    let target = if concave {
-      helpers::parabola_maximum(reference, window.half_width)
-    } else {
-      2.0_f64.ln()
-    };
+    let step = helpers::step_on(helpers::BRANCH_GRID_DX, reference, window)?;
+
+    let target = 2.0_f64.ln();
+    assert!(target > window.half_width);
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(
+      reference * (STEP_FRACTION * target).exp(),
+      step.clock_rate,
+      epsilon = 1e-15
+    );
+    assert_eq!(helpers::window(1.0, false), step.window);
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_clock_rate_first_step_follows_the_slope_to_a_maximum_past_the_probes_and_keeps_the_width()
+  -> Result<(), Report> {
+    let (reference, window) = (2.0, RateWindow::initial());
+
+    let step = helpers::step_on(helpers::BRANCH_GRID_DX, reference, window)?;
+
+    let target = helpers::parabola_maximum(reference, window.half_width);
     assert!(target > window.half_width && target <= 2.0_f64.ln());
     pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(reference * (STEP_FRACTION * target).exp(), step.clock_rate, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(
+      reference * (STEP_FRACTION * target).exp(),
+      step.clock_rate,
+      epsilon = 1e-12
+    );
     assert_eq!(helpers::window(1.0, false), step.window);
     Ok(())
   }
