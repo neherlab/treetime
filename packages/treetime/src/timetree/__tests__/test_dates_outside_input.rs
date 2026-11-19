@@ -22,7 +22,7 @@ mod tests {
   #[case::internal_after_last( [2010.0, 2011.2, 2012.5, 2012.0, 2013.25, 2008.0, 2000.0], Some(("Some final dates lie outside the input dates: 1 internal node dated after the latest input date 2013.00, by up to 0.25 years (X at 2013.25). The clock alone dates these nodes, as it does for the tips that the clock filter flagged and for their ancestors", vec_of_owned!["X"])))]
   #[case::both(                [2014.0, 2015.0, 2012.5, 2016.0, 2017.0, 2018.0, 2000.0], Some(("Some final dates lie outside the input dates: 3 tips dated outside the input date range of the tip, by up to 4.00 years (A at 2014.00, B at 2015.00, D at 2016.00); 2 internal nodes dated after the latest input date 2013.00, by up to 5.00 years (X at 2017.00, Y at 2018.00). The clock alone dates these nodes, as it does for the tips that the clock filter flagged and for their ancestors", vec_of_owned!["A", "B", "D", "X", "Y"])))]
   #[trace]
-  fn test_dates_outside_input_dates(
+  fn test_dates_outside_input_dates_flags_tips_outside_their_range_and_internal_nodes_after_the_last_date(
     #[case] node_dates: [f64; 7],
     #[case] expected: Option<(&str, Vec<String>)>,
   ) -> Result<(), Report> {

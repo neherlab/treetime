@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
+  use crate::gtr::gtr::GTR;
   use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::pretty_assert_ulps_eq;
@@ -11,7 +12,6 @@ mod tests {
   use rstest::rstest;
   use std::path::PathBuf;
   use std::sync::LazyLock;
-  use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
@@ -43,25 +43,17 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
 
-    let gtr_a = {
-      let nwk_parsed = nwk_read_file(&tree_path)?;
-      let names = nwk_parsed.names.clone();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, NUC_ALPHABET.clone(), leaf_seq_inputs(&graph, &names, aln.clone()))?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
+    let infer = || -> Result<GTR, Report> {
+      let nwk = nwk_read_file(&tree_path)?;
+      let fitch = create_fitch_partition(
+        &nwk.graph,
+        NUC_ALPHABET.clone(),
+        leaf_seq_inputs(&nwk.graph, &nwk.names, aln.clone()),
+      )?;
+      infer_gtr_fitch(&fitch, &nwk.graph, &branch_lengths_or_zero(&nwk.branch_lengths), &NoopProgress)
     };
-
-    let gtr_b = {
-      let nwk_parsed = nwk_read_file(&tree_path)?;
-      let names = nwk_parsed.names.clone();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, NUC_ALPHABET.clone(), leaf_seq_inputs(&graph, &names, aln))?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
-    };
+    let gtr_a = infer()?;
+    let gtr_b = infer()?;
 
     pretty_assert_ulps_eq!(gtr_a.mu(), gtr_b.mu(), epsilon = 1e-15);
     pretty_assert_ulps_eq!(gtr_a.pi(), gtr_b.pi(), epsilon = 1e-15);

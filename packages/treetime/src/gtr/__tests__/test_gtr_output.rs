@@ -25,9 +25,9 @@ mod tests {
       .cloned()
       .collect::<Vec<_>>();
     assert_eq!(vec!["model_type", "model_name", "mu", "pi", "W", "n_states"], fields);
-    assert_eq!(parsed["n_states"], 4);
-    assert_eq!(parsed["model_name"], "jc69");
-    assert_eq!(parsed["model_type"], "named");
+    assert_eq!(4, parsed["n_states"]);
+    assert_eq!("jc69", parsed["model_name"]);
+    assert_eq!("named", parsed["model_type"]);
     Ok(())
   }
 

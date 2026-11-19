@@ -1,18 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::cancel::NoopCancel;
-  use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
+  use crate::clock::pipeline::ClockParams;
   use crate::clock::prune_tips::PruneTips;
-  use crate::progress::{NoopProgress, RunWarning, RunWarningKind};
+  use crate::progress::{RunWarning, RunWarningKind};
   use crate::reroot::params::RerootSpec;
-  use crate::test_utils::{RecordingLog, dates_by_node, find_node_key_by_name};
+  use crate::test_utils::{RecordingLog, find_node_key_by_name};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeSet;
-  use treetime_primitives::date::DateConstraint;
   use treetime_utils::{assert_error, o, vec_of_owned};
 
   const CLOCK_FILTER_IQD: f64 = 3.0;
@@ -161,11 +158,19 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::CLOCK_TREE;
+    use crate::cancel::NoopCancel;
+    use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
     use crate::error::OperationError;
-    use crate::progress::LogSink;
+    use crate::progress::{LogSink, NoopProgress, RunWarning, RunWarningKind};
+    use crate::test_utils::dates_by_node;
+    use eyre::Report;
+    use itertools::Itertools;
+    use std::collections::BTreeSet;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
+    use treetime_primitives::date::DateConstraint;
+    use treetime_utils::{o, vec_of_owned};
 
     pub(super) fn run(params: &ClockParams, input: ClockInput, log: &dyn LogSink) -> Result<ClockOutput, Report> {
       pipeline::run(params, input, &NoopCancel, &NoopProgress, log).map_err(OperationError::into_report)

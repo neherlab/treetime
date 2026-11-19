@@ -8,6 +8,7 @@ mod tests {
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
+  use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -19,6 +20,10 @@ mod tests {
   use treetime_io::nwk::nwk_read;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,C:0.1)root;";
+
+  const MULTIFURCATION_NEWICK: &str = "((A:0.1,B:0.1,C:0.1)P:0.1,D:0.1)root;";
+
+  const NESTED_NEWICK: &str = "(((A:0.1,B:0.1)X:0.1,C:0.1)Y:0.1,D:0.1)root;";
 
   const DATE: f64 = 2020.0;
 
@@ -56,36 +61,6 @@ mod tests {
   }
 
   #[test]
-  fn test_bad_branches_internal_node_is_bad_when_all_children_are_bad() -> Result<(), Report> {
-    let actual = helpers::derived_by_name(TREE_NEWICK, &["C"], &[])?;
-
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "AB".to_owned() => true,
-      "B".to_owned() => true,
-      "C".to_owned() => false,
-      "root".to_owned() => false,
-    };
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_bad_branches_internal_node_with_its_own_date_is_never_bad() -> Result<(), Report> {
-    let actual = helpers::derived_by_name(TREE_NEWICK, &["C", "AB"], &[])?;
-
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "AB".to_owned() => false,
-      "B".to_owned() => true,
-      "C".to_owned() => false,
-      "root".to_owned() => false,
-    };
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
   fn test_bad_branches_dated_leaf_flagged_as_outlier_stays_bad() -> Result<(), Report> {
     let (graph, names) = helpers::tree(TREE_NEWICK)?;
     let constraints = helpers::dated(&graph, &names, &["A", "B", "C"]);
@@ -109,81 +84,23 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_bad_branches_multifurcation_is_good_when_one_of_its_children_is_good() -> Result<(), Report> {
-    let actual = helpers::derived_by_name("((A:0.1,B:0.1,C:0.1)P:0.1,D:0.1)root;", &["C", "D"], &[])?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::internal_node_with_only_bad_children(  (TREE_NEWICK,           vec!["C"],       vec![]),     btreemap! {"A" => true, "AB" => true,  "B" => true, "C" => false, "root" => false})]
+  #[case::internal_node_with_its_own_date(       (TREE_NEWICK,           vec!["C", "AB"], vec![]),     btreemap! {"A" => true, "AB" => false, "B" => true, "C" => false, "root" => false})]
+  #[case::internal_node_with_a_date_range(       (TREE_NEWICK,           vec![],          vec!["AB"]), btreemap! {"A" => true, "AB" => false, "B" => true, "C" => true,  "root" => false})]
+  #[case::root_with_nothing_dated_below(         (TREE_NEWICK,           vec![],          vec![]),     btreemap! {"A" => true, "AB" => true,  "B" => true, "C" => true,  "root" => true})]
+  #[case::multifurcation_with_one_good_child(    (MULTIFURCATION_NEWICK, vec!["C", "D"],  vec![]),     btreemap! {"A" => true, "B" => true, "C" => false, "D" => false, "P" => false, "root" => false})]
+  #[case::multifurcation_with_only_bad_children( (MULTIFURCATION_NEWICK, vec!["D"],       vec![]),     btreemap! {"A" => true, "B" => true, "C" => true,  "D" => false, "P" => true,  "root" => false})]
+  #[case::nested_dated_nodes_keep_ancestors_good((NESTED_NEWICK,         vec!["X", "Y"],  vec![]),     btreemap! {"A" => true, "B" => true, "C" => true,  "D" => true,  "X" => false, "Y" => false, "root" => false})]
+  #[trace]
+  fn test_bad_branches_node_is_bad_when_its_subtree_has_no_dated_node(
+    #[case] (newick, dated_names, ranged_names): (&str, Vec<&str>, Vec<&str>),
+    #[case] expected: BTreeMap<&str, bool>,
+  ) -> Result<(), Report> {
+    let derived = helpers::derived_by_name(newick, &dated_names, &ranged_names)?;
 
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "B".to_owned() => true,
-      "C".to_owned() => false,
-      "D".to_owned() => false,
-      "P".to_owned() => false,
-      "root".to_owned() => false,
-    };
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_bad_branches_multifurcation_is_bad_when_all_of_its_children_are_bad() -> Result<(), Report> {
-    let actual = helpers::derived_by_name("((A:0.1,B:0.1,C:0.1)P:0.1,D:0.1)root;", &["D"], &[])?;
-
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "B".to_owned() => true,
-      "C".to_owned() => true,
-      "D".to_owned() => false,
-      "P".to_owned() => true,
-      "root".to_owned() => false,
-    };
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_bad_branches_root_is_bad_when_nothing_below_it_is_dated() -> Result<(), Report> {
-    let actual = helpers::derived_by_name(TREE_NEWICK, &[], &[])?;
-
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "AB".to_owned() => true,
-      "B".to_owned() => true,
-      "C".to_owned() => true,
-      "root".to_owned() => true,
-    };
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_bad_branches_nested_dated_nodes_keep_every_ancestor_good() -> Result<(), Report> {
-    let actual = helpers::derived_by_name("(((A:0.1,B:0.1)X:0.1,C:0.1)Y:0.1,D:0.1)root;", &["X", "Y"], &[])?;
-
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "B".to_owned() => true,
-      "C".to_owned() => true,
-      "D".to_owned() => true,
-      "X".to_owned() => false,
-      "Y".to_owned() => false,
-      "root".to_owned() => false,
-    };
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_bad_branches_internal_node_with_a_date_range_is_never_bad() -> Result<(), Report> {
-    let actual = helpers::derived_by_name(TREE_NEWICK, &[], &["AB"])?;
-
-    let expected = btreemap! {
-      "A".to_owned() => true,
-      "AB".to_owned() => false,
-      "B".to_owned() => true,
-      "C".to_owned() => true,
-      "root".to_owned() => false,
-    };
+    let actual: BTreeMap<&str, bool> = derived.iter().map(|(name, bad)| (name.as_str(), *bad)).collect();
     assert_eq!(expected, actual);
     Ok(())
   }

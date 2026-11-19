@@ -77,17 +77,16 @@ mod tests {
   }
 
   #[test]
-  fn test_optimizer_settled_times_do_not_converge_while_polytomies_resolve() -> Result<(), Report> {
+  fn test_optimizer_n_resolved_prevents_convergence() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(5);
-    let settled = helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
       0,
-      2,
-      settled,
+      3,
+      NodeTimeChange::default(),
       &graph,
       &jc69_input_branch_model(1000),
       &inference,
@@ -100,7 +99,7 @@ mod tests {
     optimizer.record(
       0,
       0,
-      settled,
+      NodeTimeChange::default(),
       &graph,
       &jc69_input_branch_model(1000),
       &inference,
@@ -163,11 +162,8 @@ mod tests {
     assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(3, optimizer.i);
 
-    let trace = &optimizer.trace;
-    assert_eq!(3, trace.len());
-    assert_eq!(10, trace[0].n_diff);
-    assert_eq!(3, trace[1].n_diff);
-    assert_eq!(0, trace[2].n_diff);
+    let n_diffs: Vec<usize> = optimizer.trace.iter().map(|metrics| metrics.n_diff).collect();
+    assert_eq!(vec![10, 3, 0], n_diffs);
 
     Ok(())
   }
@@ -196,44 +192,6 @@ mod tests {
     assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(3, optimizer.i);
     assert_eq!(3, optimizer.trace.len());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimizer_n_resolved_prevents_convergence() -> Result<(), Report> {
-    let graph = helpers::empty_graph();
-    let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(5);
-
-    assert!(optimizer.next_iter(&NoopProgress).is_some());
-    optimizer.record(
-      0,
-      3,
-      NodeTimeChange::default(),
-      &graph,
-      &jc69_input_branch_model(1000),
-      &inference,
-      None,
-      helpers::fixed_clock(),
-      &NoopProgress,
-    )?;
-
-    assert!(optimizer.next_iter(&NoopProgress).is_some());
-    optimizer.record(
-      0,
-      0,
-      NodeTimeChange::default(),
-      &graph,
-      &jc69_input_branch_model(1000),
-      &inference,
-      None,
-      helpers::fixed_clock(),
-      &NoopProgress,
-    )?;
-
-    assert!(optimizer.next_iter(&NoopProgress).is_none());
-    assert_eq!(2, optimizer.i);
 
     Ok(())
   }

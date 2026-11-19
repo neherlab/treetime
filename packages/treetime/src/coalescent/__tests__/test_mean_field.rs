@@ -12,12 +12,9 @@ mod tests {
 
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
-  use treetime_graph::graph::Graph;
 
-  use treetime_graph::node_names::NodeNames;
   use treetime_grid::{Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   #[rustfmt::skip]
@@ -524,6 +521,18 @@ mod tests {
   }
 
   mod helpers {
+    use crate::clock::gaussian::NodeTimeGaussian;
+    use crate::coalescent::mean_field::{LineageExpectation, NodeSurvival};
+    use crate::test_utils::find_node_key_by_name;
+    use crate::timetree::inference::result::NodePosterior;
+    use eyre::Report;
+    use std::sync::Arc;
+    use treetime_distribution::{Distribution, NegLog};
+    use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::NodeMap;
+    use treetime_graph::node_names::NodeNames;
+    use treetime_io::nwk::nwk_read;
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn gaussian_cherry(
       mean: f64,
@@ -553,8 +562,6 @@ mod tests {
       let expectation = LineageExpectation::from_gaussian(&graph, &marginals, &tip_times, &excluded)?;
       Ok((graph, names, expectation))
     }
-
-    use super::*;
 
     pub(super) fn trapezoid_survival_integral(density: &[f64], a: f64, b: f64) -> f64 {
       let cells = density.len() - 1;

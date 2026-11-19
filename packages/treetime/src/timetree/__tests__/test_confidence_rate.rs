@@ -76,28 +76,29 @@ mod tests {
     pretty_assert_relative_eq!(upper, expected_upper, epsilon = 1e-4);
   }
 
-  #[test]
-  fn test_determine_rate_std_explicit_clock_std_dev_overrides_estimate() {
-    let result = determine_rate_std(Some(0.001), Some(2e-4)).unwrap();
-    pretty_assert_relative_eq!(result.unwrap(), 0.001);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::explicit_overrides_estimate((Some(1e-3), Some(2e-4)), Some(1e-3))]
+  #[case::falls_back_to_estimate(     (None,       Some(2e-4)), Some(2e-4))]
+  #[case::neither_given(              (None,       None),       None)]
+  #[trace]
+  fn test_determine_rate_std_prefers_the_explicit_clock_std_dev(
+    #[case] (clock_std_dev, estimated): (Option<f64>, Option<f64>),
+    #[case] expected: Option<f64>,
+  ) -> Result<(), Report> {
+    let actual = determine_rate_std(clock_std_dev, estimated)?;
+    assert_eq!(expected, actual);
+    Ok(())
   }
 
-  #[test]
-  fn test_determine_rate_std_rejects_negative() {
-    let result = determine_rate_std(Some(-0.001), None);
-    assert_error!(result, "--clock-std-dev must be positive, got -0.001");
-  }
-
-  #[test]
-  fn test_determine_rate_std_rejects_zero() {
-    let result = determine_rate_std(Some(0.0), None);
-    assert_error!(result, "--clock-std-dev must be positive, got 0");
-  }
-
-  #[test]
-  fn test_determine_rate_std_falls_back_to_estimate() {
-    let result = determine_rate_std(None, Some(2e-4)).unwrap();
-    pretty_assert_relative_eq!(result.unwrap(), 2e-4);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative(-0.001, "--clock-std-dev must be positive, got -0.001")]
+  #[case::zero(     0.0,   "--clock-std-dev must be positive, got 0")]
+  #[trace]
+  fn test_determine_rate_std_rejects_a_clock_std_dev_that_is_not_positive(#[case] clock_std_dev: f64, #[case] expected: &str) {
+    let result = determine_rate_std(Some(clock_std_dev), Some(2e-4));
+    assert_error!(result, expected);
   }
 
   #[test]

@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::test_utils::{empty_time_inference, find_node_key_by_name};
-  use crate::timetree::convergence::node_times::capture_node_times;
+  use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
   use eyre::Report;
   use treetime_graph::keymap;
 
   use pretty_assertions::assert_eq;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_capture_node_times_keeps_only_finite_committed_times() -> Result<(), Report> {
@@ -36,6 +37,45 @@ mod tests {
       key("root") => 2000.0,
     };
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_measure_node_time_change_compares_nodes_present_in_both_snapshots() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0,C:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names.clone();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+    let previous = keymap! {
+      key("A") => 2010.0,
+      key("B") => 2000.0,
+      key("I") => 1990.0,
+    };
+    let current = keymap! {
+      key("A") => 2012.0,
+      key("B") => 1996.0,
+      key("C") => 2020.0,
+    };
+
+    let NodeTimeChange { max, rms } = measure_node_time_change(&previous, &current);
+
+    assert_eq!(Some(4.0), max);
+    pretty_assert_ulps_eq!(10.0_f64.sqrt(), rms.expect("rms over the shared nodes"), max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_measure_node_time_change_is_empty_without_common_nodes() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names.clone();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+    let previous = keymap! { key("A") => 2010.0 };
+    let current = keymap! { key("B") => 2012.0 };
+
+    let actual = measure_node_time_change(&previous, &current);
+
+    assert_eq!(NodeTimeChange::default(), actual);
     Ok(())
   }
 }

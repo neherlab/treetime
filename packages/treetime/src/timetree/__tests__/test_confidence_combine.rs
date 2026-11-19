@@ -5,37 +5,31 @@ mod tests {
   use rstest::rstest;
   use treetime_utils::pretty_assert_relative_eq;
 
-  #[test]
-  fn test_combine_in_quadrature_no_contributions() {
-    let result = combine_in_quadrature(10.0, (5.0, 15.0), None, None);
-    pretty_assert_relative_eq!(result.0, 5.0);
-    pretty_assert_relative_eq!(result.1, 15.0);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_contribution_keeps_the_limits(  (5.0, 15.0), None,              None,              (5.0, 15.0))]
+  #[case::first_contribution_alone(          (0.0, 20.0), Some((8.0, 12.0)), None,              (8.0, 12.0))]
+  #[case::second_contribution_alone(         (0.0, 20.0), None,              Some((7.0, 13.0)), (7.0, 13.0))]
+  #[case::single_contribution_clipped(       (9.0, 11.0), Some((8.0, 12.0)), None,              (9.0, 11.0))]
+  #[case::combined_contributions_clipped(    (5.0, 15.0), Some((0.0, 20.0)), Some((0.0, 20.0)), (5.0, 15.0))]
+  #[trace]
+  fn test_combine_in_quadrature_takes_a_single_contribution_and_clips_to_the_limits(
+    #[case] limits: (f64, f64),
+    #[case] c1: Option<(f64, f64)>,
+    #[case] c2: Option<(f64, f64)>,
+    #[case] expected: (f64, f64),
+  ) {
+    let actual = combine_in_quadrature(10.0, limits, c1, c2);
+    pretty_assert_relative_eq!(expected.0, actual.0);
+    pretty_assert_relative_eq!(expected.1, actual.1);
   }
 
   #[test]
-  fn test_combine_in_quadrature_single_contribution() {
-    let result = combine_in_quadrature(10.0, (0.0, 20.0), Some((8.0, 12.0)), None);
-    pretty_assert_relative_eq!(result.0, 8.0);
-    pretty_assert_relative_eq!(result.1, 12.0);
-
-    let result = combine_in_quadrature(10.0, (0.0, 20.0), None, Some((7.0, 13.0)));
-    pretty_assert_relative_eq!(result.0, 7.0);
-    pretty_assert_relative_eq!(result.1, 13.0);
-  }
-
-  #[test]
-  fn test_combine_in_quadrature_quadrature() {
-    let result = combine_in_quadrature(10.0, (0.0, 20.0), Some((8.0, 12.0)), Some((7.0, 13.0)));
+  fn test_combine_in_quadrature_adds_the_deviations_of_both_contributions_in_quadrature() {
+    let actual = combine_in_quadrature(10.0, (0.0, 20.0), Some((8.0, 12.0)), Some((7.0, 13.0)));
     let expected_dev = (4.0_f64 + 9.0).sqrt();
-    pretty_assert_relative_eq!(result.0, 10.0 - expected_dev, epsilon = 1e-10);
-    pretty_assert_relative_eq!(result.1, 10.0 + expected_dev, epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_combine_in_quadrature_clipped_to_limits() {
-    let result = combine_in_quadrature(10.0, (5.0, 15.0), Some((0.0, 20.0)), Some((0.0, 20.0)));
-    pretty_assert_relative_eq!(result.0, 5.0);
-    pretty_assert_relative_eq!(result.1, 15.0);
+    pretty_assert_relative_eq!(10.0 - expected_dev, actual.0, epsilon = 1e-10);
+    pretty_assert_relative_eq!(10.0 + expected_dev, actual.1, epsilon = 1e-10);
   }
 
   #[rustfmt::skip]

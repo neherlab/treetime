@@ -39,17 +39,13 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_clock_set_chisq_fixed_rate_matches_zero_rate_formula() {
+  #[rstest]
+  #[case::zero_rate(0.0, 1.0)]
+  #[case::nonzero_rate(1.0, 0.25)]
+  #[trace]
+  fn test_clock_set_chisq_fixed_rate_matches_closed_form(#[case] rate: f64, #[case] expected: f64) {
     let cs = ClockSet::leaf_contribution(Some(0.0)).shift(1.0) + ClockSet::leaf_contribution(Some(1.0)).shift(3.0);
 
-    pretty_assert_ulps_eq!(cs.chisq_fixed_rate(0.0), 1.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_clock_set_chisq_fixed_rate_matches_nonzero_rate_formula() {
-    let cs = ClockSet::leaf_contribution(Some(0.0)).shift(1.0) + ClockSet::leaf_contribution(Some(1.0)).shift(3.0);
-
-    pretty_assert_ulps_eq!(cs.chisq_fixed_rate(1.0), 0.25, max_ulps = 4);
+    pretty_assert_ulps_eq!(expected, cs.chisq_fixed_rate(rate), max_ulps = 4);
   }
 }

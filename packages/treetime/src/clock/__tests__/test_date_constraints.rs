@@ -1,23 +1,18 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
+  use crate::clock::date_constraints::load_date_constraints;
   use crate::o;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
-  use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use eyre::Report;
-  use itertools::Itertools;
+  use helpers::{derived_bad_branches, exact, loaded, node_constraints, range};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::collections::BTreeSet;
-  use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::keymap;
-  use treetime_graph::node_names::NodeNames;
-
-  use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -41,7 +36,7 @@ mod tests {
       loaded("C", Some(Distribution::point(2020.75, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -66,7 +61,7 @@ mod tests {
       loaded("D", None),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -90,7 +85,7 @@ mod tests {
       loaded("C", Some(Distribution::point(2020.75, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -142,7 +137,7 @@ mod tests {
       loaded("C", Some(Distribution::point(2020.75, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -169,7 +164,7 @@ mod tests {
       loaded("D", None),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     let expected_bad_branches = btreemap! {
       o!("A") => false,
       o!("AB") => false,
@@ -211,7 +206,7 @@ mod tests {
       loaded("E", Some(Distribution::point(2020.75, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     let expected_bad_branches = btreemap! {
       o!("A") => true,
       o!("AB") => true,
@@ -270,7 +265,7 @@ mod tests {
       loaded("D", Some(Distribution::point(2020.75, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -307,7 +302,7 @@ mod tests {
       loaded("L5", None),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     let expected_bad_branches = btreemap! {
       o!("A") => true,
       o!("B") => true,
@@ -363,7 +358,7 @@ mod tests {
       loaded("L", None),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -389,7 +384,7 @@ mod tests {
       loaded("D", Some(Distribution::point(2021.0, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -415,7 +410,7 @@ mod tests {
       loaded("C", Some(Distribution::point(2020.75, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -439,12 +434,21 @@ mod tests {
       loaded("C", Some(Distribution::point(0.0, 0.0))),
       loaded("root", None),
     ];
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   mod helpers {
-    use super::*;
+    use crate::clock::date_constraints::DateConstraints;
+    use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
+    use eyre::Report;
+    use itertools::Itertools;
+    use std::collections::{BTreeMap, BTreeSet};
+    use std::sync::Arc;
+    use treetime_distribution::{Distribution, NegLog};
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node_names::NodeNames;
+    use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
 
     #[derive(Clone, Default, Debug, PartialEq)]
     pub(super) struct LoadedNode {
@@ -495,6 +499,4 @@ mod tests {
       })
     }
   }
-
-  use helpers::*;
 }

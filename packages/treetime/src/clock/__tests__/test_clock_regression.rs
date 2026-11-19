@@ -1,42 +1,23 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{ClockFitParams, ClockTree, fit_clock_model};
+  use crate::clock::clock_model::ClockRegression;
   use crate::clock::clock_set::ClockSet;
-  use crate::clock::clock_state::ClockInputs;
   use crate::clock::divergence::root_to_node_divergences;
   use crate::o;
   use crate::pretty_assert_abs_diff_eq;
-  use crate::progress::NoopProgress;
-  use crate::reroot::params::RerootParams;
-  use crate::test_utils::{leaf_times, reroot_and_fit_clock, root_clock_fit};
+  use crate::test_utils::root_clock_fit;
   use eyre::Report;
   use itertools::Itertools;
-  use maplit::btreemap;
-  use ndarray::{Array1, array};
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::node::GraphNodeKey;
+  use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
 
-  fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
-    let t: f64 = dates.values().sum();
-    let tsq: f64 = dates.values().map(|&x| x * x).sum();
-    let dt: f64 = div.iter().map(|(c, div)| div * dates[c]).sum();
-    let d: f64 = div.values().sum();
-    (dt * 4.0 - d * t) / (tsq * 4.0 - (t * t))
-  }
-
   #[test]
   fn test_clock_naive_rate() -> Result<(), Report> {
-    let dates = btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-    };
+    let dates = helpers::leaf_dates();
 
     let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
     let names = nwk_parsed.names.clone();
@@ -48,7 +29,7 @@ mod tests {
       .get_leaves()
       .map(|leaf| (names[leaf.key()].to_owned(), divergences[&leaf.key()]))
       .collect();
-    let naive_rate = compute_naive_rate(&dates, &divs);
+    let naive_rate = helpers::compute_naive_rate(&dates, &divs);
 
     let regression = helpers::root_regression(TREE_4, &dates)?;
     pretty_assert_abs_diff_eq!(naive_rate, regression.clock_rate(), epsilon = 1e-10);
@@ -117,12 +98,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_dateless_leaf_does_not_change_root_statistics() -> Result<(), Report> {
-    let dates = btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-    };
+    let dates = helpers::leaf_dates();
     let expected = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates)?;
     let actual = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates)?;
 
@@ -200,14 +176,7 @@ mod tests {
   fn test_clock_regression_points_refit_to_the_fitted_model(
     #[case] (keep_root, prev_clock_rate): (bool, Option<f64>),
   ) -> Result<(), Report> {
-    let dates = btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-      o!("E") => 2020.0,
-    };
-    let (model, points) = helpers::fit(TREE_5, &dates, &[], keep_root, prev_clock_rate)?;
+    let (model, points) = helpers::fit(TREE_5, &helpers::dates_5(), &[], keep_root, prev_clock_rate)?;
 
     let mut refit = ClockSet::default();
     for (_, date, div, _) in &points {
@@ -222,7 +191,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_points_flag_the_outliers() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
+    let (_, points) = helpers::fit(TREE_5, &helpers::dates_5(), &["E"], true, None)?;
 
     let flagged = points
       .iter()
@@ -235,7 +204,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_outliers_are_left_out_of_the_fit() -> Result<(), Report> {
-    let (model, _) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
+    let (model, _) = helpers::fit(TREE_5, &helpers::dates_5(), &["E"], true, None)?;
     let (model_without_e_date, _) = helpers::fit(TREE_5, &helpers::leaf_dates(), &[], true, None)?;
 
     pretty_assert_abs_diff_eq!(model_without_e_date.clock_rate(), model.clock_rate(), epsilon = 1e-12);
@@ -246,18 +215,39 @@ mod tests {
 
   const TREE_5: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.12,E:0.3)DE:0.07)CDE:0.05)root:0.01;";
 
-  fn dates_5() -> BTreeMap<String, f64> {
-    btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-      o!("E") => 2020.0,
-    }
-  }
-
   mod helpers {
-    use super::*;
+    use crate::clock::clock_model::{ClockModel, ClockRegression};
+    use crate::clock::clock_regression::{ClockFitParams, ClockTree, fit_clock_model};
+    use crate::clock::clock_state::ClockInputs;
+    use crate::o;
+    use crate::progress::NoopProgress;
+    use crate::reroot::params::RerootParams;
+    use crate::test_utils::{leaf_times, reroot_and_fit_clock, root_clock_fit};
+    use eyre::Report;
+    use itertools::Itertools;
+    use maplit::btreemap;
+    use ndarray::Array1;
+    use std::collections::{BTreeMap, BTreeSet};
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::nwk_read;
+
+    pub(super) fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
+      let t: f64 = dates.values().sum();
+      let tsq: f64 = dates.values().map(|&x| x * x).sum();
+      let dt: f64 = div.iter().map(|(c, div)| div * dates[c]).sum();
+      let d: f64 = div.values().sum();
+      (dt * 4.0 - d * t) / (tsq * 4.0 - (t * t))
+    }
+
+    pub(super) fn dates_5() -> BTreeMap<String, f64> {
+      btreemap! {
+        o!("A") => 2013.0,
+        o!("B") => 2022.0,
+        o!("C") => 2017.0,
+        o!("D") => 2005.0,
+        o!("E") => 2020.0,
+      }
+    }
 
     pub(super) fn leaf_dates() -> BTreeMap<String, f64> {
       btreemap! {

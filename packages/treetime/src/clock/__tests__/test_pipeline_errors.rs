@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::cancel::NoopCancel;
-  use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
+  use crate::clock::pipeline::{self, ClockInput, ClockParams};
   use crate::clock::prune_tips::PruneTips;
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
-  use crate::reroot::params::RerootSpec;
   use crate::test_utils::dates_by_node;
   use eyre::Report;
   use maplit::btreemap;
@@ -85,7 +84,17 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use crate::cancel::NoopCancel;
+    use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
+    use crate::clock::prune_tips::PruneTips;
+    use crate::error::OperationError;
+    use crate::progress::NoopProgress;
+    use crate::reroot::params::RerootSpec;
+    use crate::test_utils::dates_by_node;
+    use maplit::btreemap;
+    use treetime_io::nwk::nwk_read;
+    use treetime_primitives::date::DateConstraint;
+    use treetime_utils::o;
 
     const NEGATIVE_RATE_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
 

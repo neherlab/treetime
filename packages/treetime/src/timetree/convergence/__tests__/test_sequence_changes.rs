@@ -51,6 +51,17 @@ mod tests {
   }
 
   #[test]
+  fn test_count_sequence_changes_of_equal_snapshots_is_zero() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let [n0] = [(); 1].map(|()| graph.add_node());
+    let previous: AncestralStateSnapshot = keymap! { n0 => SeqOverlay::from(Seq::try_from_str("ACGT")?) };
+    let current: AncestralStateSnapshot = keymap! { n0 => SeqOverlay::from(Seq::try_from_str("ACGT")?) };
+
+    assert_eq!(0, count_sequence_changes(&[previous], &[current]));
+    Ok(())
+  }
+
+  #[test]
   fn test_count_sequence_changes_sums_over_partitions() -> Result<(), Report> {
     let mut graph = Graph::new();
     let [n0] = [(); 1].map(|()| graph.add_node());
@@ -64,21 +75,6 @@ mod tests {
     ];
 
     assert_eq!(3, count_sequence_changes(&previous, &current));
-    Ok(())
-  }
-
-  #[test]
-  fn test_count_sequence_changes_of_equal_snapshots_is_zero() -> Result<(), Report> {
-    let mut graph = Graph::new();
-    let [n0] = [(); 1].map(|()| graph.add_node());
-    let snapshot: AncestralStateSnapshot = keymap! {
-      n0 => SeqOverlay::from(Seq::try_from_str("ACGT")?),
-    };
-
-    assert_eq!(
-      0,
-      count_sequence_changes(std::slice::from_ref(&snapshot), std::slice::from_ref(&snapshot))
-    );
     Ok(())
   }
 

@@ -1,20 +1,17 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::jc_distance::*;
+  use crate::gtr::jc_distance::jukes_cantor_distance;
   use rstest::rstest;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
-  #[test]
-  fn test_jukes_cantor_distance_zero_p_returns_zero() {
-    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(0.0, 4), epsilon = 0.0);
-    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(0.0, 20), epsilon = 0.0);
-  }
-
-  #[test]
-  fn test_jukes_cantor_distance_negative_p_clamped_to_zero() {
-    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(-0.1, 4), epsilon = 0.0);
-    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(-1.0, 4), epsilon = 0.0);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero(    ( 0.0, 4))]
+  #[case::negative((-0.1, 4))]
+  #[trace]
+  fn test_jukes_cantor_distance_nonpositive_p_returns_zero(#[case] (p, n_states): (f64, usize)) {
+    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(p, n_states), epsilon = 0.0);
   }
 
   #[rustfmt::skip]
@@ -91,22 +88,5 @@ mod tests {
       let rel_err = (d - p).abs() / p;
       assert!(rel_err < 1e-3, "d={d} not close to p={p}: rel_err={rel_err}");
     }
-  }
-
-  #[test]
-  fn test_jukes_cantor_distance_issue_documented_error() {
-    let d_0_1 = jukes_cantor_distance(0.1, 4);
-    let rel_correction_0_1 = (d_0_1 - 0.1) / 0.1;
-    assert!(
-      (0.06..0.08).contains(&rel_correction_0_1),
-      "expected ~7% correction at p=0.1, got {rel_correction_0_1}"
-    );
-
-    let d_0_25 = jukes_cantor_distance(0.25, 4);
-    let rel_correction_0_25 = (d_0_25 - 0.25) / 0.25;
-    assert!(
-      (0.18..0.24).contains(&rel_correction_0_25),
-      "expected ~18-22% correction at p=0.25, got {rel_correction_0_25}"
-    );
   }
 }

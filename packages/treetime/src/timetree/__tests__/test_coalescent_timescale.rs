@@ -34,7 +34,7 @@ mod tests {
   #[case::substitutions_per_site(FixedTimescale::SubstitutionsPerSite(0.01), 1e-3, 10.0)]
   #[case::years_ignore_the_rate( FixedTimescale::Years(10.0),                1e-3, 10.0)]
   #[trace]
-  fn test_fixed_timescale_years_divides_substitutions_per_site_by_the_clock_rate(
+  fn test_fixed_timescale_years_converts_the_timescale_to_years(
     #[case] fixed: FixedTimescale,
     #[case] clock_rate: f64,
     #[case] expected: f64,
@@ -43,7 +43,7 @@ mod tests {
   }
 
   #[test]
-  fn test_pipeline_build_coalescent_output_disabled_returns_none() -> Result<(), Report> {
+  fn test_pipeline_build_coalescent_output_is_none_when_the_coalescent_is_disabled() -> Result<(), Report> {
     let timescale = CoalescentTimescale::constant(1.0);
     let params = SkylineParams {
       n_std: N_STD,
