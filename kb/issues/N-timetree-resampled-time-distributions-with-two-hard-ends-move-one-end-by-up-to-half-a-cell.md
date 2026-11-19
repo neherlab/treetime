@@ -32,3 +32,4 @@ The effect of these moves on the node dates is not measured alone. Keeping the s
 ## Related issues
 
 - [H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md](H-timetree-backward-messages-lose-accuracy-along-chains-of-zero-length-branches.md): the accuracy of backward messages along zero-length branches
+- [N-distribution-resampling-past-a-hard-end-moves-the-end-to-the-next-grid-point.md](N-distribution-resampling-past-a-hard-end-moves-the-end-to-the-next-grid-point.md): the resampling onto a grid that extends past a hard end, which moves that end outward
