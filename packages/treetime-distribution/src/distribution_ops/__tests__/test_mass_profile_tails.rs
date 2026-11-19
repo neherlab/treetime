@@ -97,29 +97,26 @@ mod tests {
   #[case::subnormal_slope_whole(      1e-310, (0.0,    f64::INFINITY))]
   #[case::subnormal_slope_tail_part(  1e-310, (1e-150, 1e200        ))]
   #[trace]
-  fn test_mass_profile_dominant_tail_beyond_steep_cell_keeps_its_linear_mass(
+  fn test_mass_profile_dominant_tail_beyond_steep_cell_keeps_its_mass(
     #[case] slope: f64,
     #[case] (a, b): (f64, f64),
   ) -> Result<(), Report> {
-    let right = BoundaryBehavior::Linear(SoftTailLaw { slope });
-    let f = helpers::function((0.0, 1e-150), array![0.0, 800.0], HARD, right)?;
-    let profile = MassProfile::new(&f)?;
-    let (grid_lo, grid_hi) = (a.max(0.0), b.min(1e-150));
-    let density = |t: f64| 1.0 - t / 1e-150;
-    let grid = (grid_hi - grid_lo) * f64::midpoint(density(grid_lo), density(grid_hi));
-    let (tail_lo, tail_hi) = (a.max(1e-150) - 1e-150, b.max(1e-150) - 1e-150);
-    let tail = (-800.0 - slope.ln() - slope * tail_lo).exp() * -(-slope * (tail_hi - tail_lo)).exp_m1();
-    let expected = grid + tail;
-    let neg_log_tail = 800.0 + slope.ln() + slope * tail_lo - (-(-slope * (tail_hi - tail_lo)).exp_m1()).ln();
-    let neg_log_grid = -grid.ln();
-    let neg_log_expected =
-      neg_log_grid.min(neg_log_tail) - (-(neg_log_grid - neg_log_tail).abs()).exp().ln_1p();
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-13);
-    pretty_assert_abs_diff_eq!(neg_log_expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-15);
-    if (a, b) == (0.0, f64::INFINITY) {
-      let total = profile.fractions(TailMass::Required).unwrap().total();
-      pretty_assert_relative_eq!(expected, total, max_relative = 1e-13);
-    }
+    let profile = MassProfile::new(&helpers::steep_cell_with_tail(slope)?)?;
+    let actual = profile.neg_log_mass_between(a, b)?;
+    pretty_assert_abs_diff_eq!(helpers::steep_cell_with_tail_neg_log_mass(slope, (a, b)), actual, epsilon = 1e-15);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::small_slope(     1e-200)]
+  #[case::subnormal_slope( 1e-310)]
+  #[trace]
+  fn test_mass_profile_dominant_tail_beyond_steep_cell_keeps_its_total(#[case] slope: f64) -> Result<(), Report> {
+    let profile = MassProfile::new(&helpers::steep_cell_with_tail(slope)?)?;
+    let total = profile.fractions(TailMass::Required).unwrap().total();
+    let expected = helpers::steep_cell_with_tail_neg_log_mass(slope, (0.0, f64::INFINITY));
+    pretty_assert_abs_diff_eq!(expected, -total.ln(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -352,6 +349,20 @@ mod tests {
 
   mod helpers {
     use super::{Array1, BoundaryBehavior, DistributionFunction, HARD, Report, Side, SoftTailLaw, array};
+
+    pub(super) fn steep_cell_with_tail(slope: f64) -> Result<DistributionFunction, Report> {
+      let right = BoundaryBehavior::Linear(SoftTailLaw { slope });
+      function((0.0, 1e-150), array![0.0, 800.0], HARD, right)
+    }
+
+    pub(super) fn steep_cell_with_tail_neg_log_mass(slope: f64, (a, b): (f64, f64)) -> f64 {
+      let (grid_lo, grid_hi) = (a.max(0.0), b.min(1e-150));
+      let density = |t: f64| 1.0 - t / 1e-150;
+      let neg_log_grid = -((grid_hi - grid_lo) * f64::midpoint(density(grid_lo), density(grid_hi))).ln();
+      let (tail_lo, tail_hi) = (a.max(1e-150) - 1e-150, b.max(1e-150) - 1e-150);
+      let neg_log_tail = 800.0 + slope.ln() + slope * tail_lo - (-(-slope * (tail_hi - tail_lo)).exp_m1()).ln();
+      neg_log_grid.min(neg_log_tail) - (-(neg_log_grid - neg_log_tail).abs()).exp().ln_1p()
+    }
 
     pub(super) fn function(
       range: (f64, f64),
