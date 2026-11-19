@@ -45,8 +45,8 @@ mod tests {
   ) -> Result<(), Report> {
     let f = helpers::function((0.0, h), array![y0, y1], HARD, HARD)?;
     let profile = MassProfile::new(&f)?;
-    let actual = (-profile.neg_log_mass(profile.mass_between(0.0, h)?)).exp();
-    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-15);
+    let actual = profile.neg_log_mass(profile.mass_between(0.0, h)?);
+    pretty_assert_abs_diff_eq!(-expected.ln(), actual, epsilon = 1e-15);
     Ok(())
   }
 
@@ -146,7 +146,7 @@ mod tests {
     let geometric = -(-lambda * h * n.to_f64_exact()).exp_m1() / -(-lambda * h).exp_m1();
     let trapezoid = lambda * h * (geometric - f64::midpoint(1.0, (-3.0 * lambda).exp()));
     let expected = trapezoid + (-3.0 * lambda).exp();
-    pretty_assert_abs_diff_eq!(expected, (-profile.neg_log_mass(total)).exp(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(-expected.ln(), profile.neg_log_mass(total), epsilon = 1e-15);
     Ok(())
   }
 

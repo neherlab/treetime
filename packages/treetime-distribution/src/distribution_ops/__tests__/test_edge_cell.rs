@@ -52,10 +52,10 @@ mod tests {
 
     pretty_assert_relative_eq!(x, fractions.quantile(fractions.cdf(x)), max_relative = 1e-9);
     pretty_assert_relative_eq!(-x, mirrored.survival_inverse(mirrored.survival(-x)), max_relative = 1e-9);
-    pretty_assert_relative_eq!(
-      (-poisson.cost(x)).exp(),
-      fractions.density(x, Side::Left) * fractions.total(),
-      max_relative = 1e-12
+    pretty_assert_abs_diff_eq!(
+      poisson.cost(x),
+      -(fractions.density(x, Side::Left) * fractions.total()).ln(),
+      epsilon = 1e-12
     );
     Ok(())
   }

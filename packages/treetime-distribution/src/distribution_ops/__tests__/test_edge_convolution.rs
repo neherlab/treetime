@@ -153,10 +153,10 @@ pub(crate) mod tests {
     };
     pretty_assert_ulps_eq!(2001.0, f.x_max(), max_ulps = 0);
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
-    let inside_last_cell = (-message.eval(2001.0 - f.dx() / 2.0)?).exp();
+    let inside_last_cell = message.eval(2001.0 - f.dx() / 2.0)?;
     assert!(
-      inside_last_cell > 0.0,
-      "density {inside_last_cell} inside the last cell"
+      inside_last_cell.is_finite(),
+      "finite cost {inside_last_cell} inside the last cell"
     );
     Ok(())
   }

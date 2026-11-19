@@ -112,7 +112,7 @@ mod tests {
     let expected = grid + tail;
     let mass = profile.mass_between(a, b)?;
     pretty_assert_relative_eq!(expected, mass, max_relative = 1e-13);
-    pretty_assert_relative_eq!(mass, (-profile.neg_log_mass_between(a, b)?).exp(), max_relative = 1e-13);
+    pretty_assert_abs_diff_eq!(-mass.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 1e-13);
     if (a, b) == (0.0, f64::INFINITY) {
       let total = profile.fractions(TailMass::Required).unwrap().total();
       pretty_assert_relative_eq!(expected, total, max_relative = 1e-13);

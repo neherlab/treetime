@@ -7,10 +7,10 @@ pub(super) mod tests {
   use ndarray::Array1;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Gamma, Normal};
-  use statrs::function::gamma::gamma;
+  use statrs::function::gamma::ln_gamma;
   use std::f64::consts::PI;
   use treetime_grid::{DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
-  use treetime_utils::pretty_assert_relative_eq;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   const CELLS: [usize; 4] = [100, 200, 400, 800];
   const CELLS_FINE: [usize; 4] = [800, 1600, 3200, 6400];
@@ -25,7 +25,7 @@ pub(super) mod tests {
     let f = helpers::sampled((-8.0, 8.0), cells, |t| t * t / 2.0)?;
     let profile = MassProfile::new(&f)?;
     let total = profile.fractions(TailMass::Required).unwrap().total();
-    pretty_assert_relative_eq!((2.0 * PI).sqrt(), (-profile.neg_log_mass(total)).exp(), max_relative = 1e-15);
+    pretty_assert_abs_diff_eq!(-(2.0 * PI).sqrt().ln(), profile.neg_log_mass(total), epsilon = 1e-15);
     Ok(())
   }
 
@@ -48,7 +48,7 @@ pub(super) mod tests {
   #[case::fast_rate(  2.5)]
   #[trace]
   fn test_mass_profile_exponential_total_converges_at_second_order(#[case] lambda: f64) -> Result<(), Report> {
-    let errors = helpers::errors(&CELLS, (0.0, 30.0), |t| lambda * t - lambda.ln(), |_, total| total - 1.0)?;
+    let errors = helpers::errors(&CELLS, (0.0, 30.0), |t| lambda * t - lambda.ln(), |_, neg_log_total| neg_log_total)?;
     helpers::assert_second_order(&errors);
     Ok(())
   }
@@ -63,8 +63,8 @@ pub(super) mod tests {
   fn test_mass_profile_gamma_shape_converges_at_second_order(#[case] x: Option<f64>) -> Result<(), Report> {
     let k = 3.0;
     let gamma_distribution = Gamma::new(k, 1.0)?;
-    let errors = helpers::errors(&CELLS_FINE, (0.0, 40.0), |t| t - (k - 1.0) * t.ln(), |fractions, total| match x {
-      None => total - gamma(k),
+    let errors = helpers::errors(&CELLS_FINE, (0.0, 40.0), |t| t - (k - 1.0) * t.ln(), |fractions, neg_log_total| match x {
+      None => neg_log_total + ln_gamma(k),
       Some(x) => fractions.cdf(x) - gamma_distribution.cdf(x),
     })?;
     helpers::assert_second_order(&errors);
@@ -87,8 +87,7 @@ pub(super) mod tests {
           let f = sampled(range, cells, y)?;
           let profile = MassProfile::new(&f)?;
           let fractions = profile.fractions(TailMass::Required).unwrap();
-          let total = (-profile.neg_log_mass(fractions.total())).exp();
-          Ok(error(&fractions, total))
+          Ok(error(&fractions, profile.neg_log_mass(fractions.total())))
         })
         .try_collect()
     }

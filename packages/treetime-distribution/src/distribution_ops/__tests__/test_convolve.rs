@@ -300,9 +300,8 @@ mod tests {
         let Distribution::Function(conv) = &actual else {
           panic!("expected a Function result, got {actual:?}");
         };
-        let density = conv.values().mapv(|v| (-v).exp());
-        let trapezoid_mass = conv.dx() * (density.sum() - f64::midpoint(density[0], density[density.len() - 1]));
-        Ok(trapezoid_mass - operand_mass(a) * operand_mass(b))
+        let expected_neg_log_mass = -(operand_mass(a) * operand_mass(b)).ln();
+        Ok(helpers::trapezoid_neg_log_mass(conv) - expected_neg_log_mass)
       })
       .try_collect::<_, _, Report>()?;
     assert_second_order(&errors);
@@ -339,9 +338,8 @@ mod tests {
         };
         Ok(match s {
           None => {
-            let density = conv.values().mapv(|v| (-v).exp());
-            let trapezoid_mass = conv.dx() * (density.sum() - f64::midpoint(density[0], density[density.len() - 1]));
-            trapezoid_mass - (1.0 - (-a * 4.0).exp()) * (1.0 - (-b * l_end).exp())
+            let expected_neg_log_mass = -((1.0 - (-a * 4.0).exp()) * (1.0 - (-b * l_end).exp())).ln();
+            helpers::trapezoid_neg_log_mass(conv) - expected_neg_log_mass
           },
           Some(s) => actual.eval(-s)? + (a * b / (b - a) * ((-a * s).exp() - (-b * s).exp())).ln(),
         })
@@ -499,7 +497,8 @@ mod tests {
           MaxGridPoints::default(),
           &FftPlans::new(),
         )?;
-        Ok(actual.log_mass()?.exp() - (range.1 - range.0) * function_mass)
+        let expected_neg_log_mass = -((range.1 - range.0) * function_mass).ln();
+        Ok(-actual.log_mass()? - expected_neg_log_mass)
       })
       .try_collect::<_, _, Report>()?;
     assert_second_order(&errors);
@@ -840,8 +839,16 @@ mod tests {
       })
     }
 
-    pub(super) fn neg_log(plain: &Array1<f64>) -> Array1<f64> {
-      plain.mapv(|p| -p.ln())
+    pub(super) fn trapezoid_neg_log_mass(f: &DistributionFunction) -> f64 {
+      let costs = f.values();
+      let peak = costs.iter().copied().fold(f64::INFINITY, f64::min);
+      let relative = costs.mapv(|cost| (peak - cost).exp());
+      let ends = f64::midpoint(relative[0], relative[relative.len() - 1]);
+      peak - ((relative.sum() - ends) * f.dx()).ln()
+    }
+
+    pub(super) fn neg_log(density: &Array1<f64>) -> Array1<f64> {
+      density.mapv(|p| -p.ln())
     }
 
     pub(super) fn exponential_box_density(lambda: f64, (a, b): (f64, f64), t: f64) -> f64 {
