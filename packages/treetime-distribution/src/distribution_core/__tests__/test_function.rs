@@ -61,6 +61,39 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard(
+    (HARD, HARD),
+    array![f64::INFINITY, f64::INFINITY,      3.0, 2.5, 2.0, 1.5, 1.0, f64::INFINITY,      f64::INFINITY],
+  )]
+  #[case::hard_approach(
+    (
+      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.25, b: 1.0 }),
+      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.75, b: 1.0 }),
+    ),
+    array![f64::INFINITY, 3.0 + 3.0_f64.ln(), 3.0, 2.5, 2.0, 1.5, 1.0, 1.0 + 3.0_f64.ln(), f64::INFINITY],
+  )]
+  #[trace]
+  fn test_function_resample_beyond_hard_ends_has_infinite_cost(
+    #[case] (left, right): (BoundaryBehavior, BoundaryBehavior),
+    #[case] expected: Array1<f64>,
+  ) -> Result<(), Report> {
+    let function = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.0, 1.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+
+    let actual = function.resample_range_dx((0.0, 4.0), 0.5, MaxGridPoints::default())?;
+
+    pretty_assert_ulps_eq!(
+      &expected,
+      actual.y(),
+      max_ulps = 4,
+      "cost +inf beyond a hard end; inside a hard-approach law the edge cost - ln(|t - t_hard| / |t_edge - t_hard|), which is the edge cost + ln 3 at 0.5 and 3.5; linear between the grid points"
+    );
+    Ok(())
+  }
+
   #[test]
   fn test_function_negate_arg_inplace_swaps_and_reflects_boundary_laws() -> Result<(), Report> {
     let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });

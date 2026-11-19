@@ -118,13 +118,7 @@ impl DistributionFunction {
   }
 
   pub(crate) fn interp_stored(&self, x: f64) -> Result<f64, Report> {
-    let val = self
-      .grid_fn
-      .interp_with_extrap(x, self.left_extrap, self.right_extrap)?;
-    if val == 0.0 && self.is_beyond_hard_boundary(x) {
-      return Ok(f64::INFINITY);
-    }
-    Ok(val)
+    self.grid_fn.interp_with_extrap(x, self.left_extrap, self.right_extrap)
   }
 
   pub(crate) fn interp_many_stored(&self, xs: &Array1<f64>) -> Result<Array1<f64>, Report> {
@@ -133,26 +127,6 @@ impl DistributionFunction {
       .map(|&q| self.interp_stored(q))
       .collect::<Result<Vec<f64>, Report>>()?;
     Ok(Array1::from_vec(values))
-  }
-
-  fn is_beyond_hard_boundary(&self, x: f64) -> bool {
-    let x_min = self.x_min();
-    let x_max = self.x_max();
-    if x < x_min {
-      return match self.left_extrap() {
-        BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => true,
-        BoundaryBehavior::HardApproach(law) => x < law.t_hard,
-        _ => false,
-      };
-    }
-    if x > x_max {
-      return match self.right_extrap() {
-        BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => true,
-        BoundaryBehavior::HardApproach(law) => x > law.t_hard,
-        _ => false,
-      };
-    }
-    false
   }
 
   pub fn left_extrap(&self) -> BoundaryBehavior {

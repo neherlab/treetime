@@ -321,7 +321,7 @@ mod tests {
     let left = BoundaryBehavior::HardEdgeCell(poisson.law());
 
     let actual = grid_fn.interp_with_extrap(-0.5 * poisson.offset, left, BoundaryBehavior::Hard)?;
-    pretty_assert_ulps_eq!(0.0, actual, max_ulps = 0);
+    pretty_assert_ulps_eq!(f64::INFINITY, actual, max_ulps = 0);
     assert!(!left.is_soft());
     Ok(())
   }

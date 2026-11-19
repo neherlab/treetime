@@ -265,11 +265,11 @@ impl GridFn {
       BoundaryBehavior::Linear(law) => Ok(law.eval(self.neg_log_edge(side), xi)),
       BoundaryBehavior::HardApproach(law) => {
         if (side == Side::Left && xi < law.t_hard) || (side == Side::Right && xi > law.t_hard) {
-          return Ok(0.0);
+          return Ok(f64::INFINITY);
         }
         Ok(law.eval(self.neg_log_edge(side), xi))
       },
-      BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => Ok(0.0),
+      BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => Ok(f64::INFINITY),
       BoundaryBehavior::Error => {
         let (side_word, bound) = match side {
           Side::Left => ("below", self.grid.x_min()),

@@ -87,24 +87,24 @@ mod tests {
   #[case::left((0.0, 1.0), array![2.0, 10.0], -1.0)]
   #[case::right((0.0, 1.0), array![2.0, 10.0], 2.0)]
   #[trace]
-  fn test_gridfn_interp_extrapolation_zero(
+  fn test_gridfn_interp_beyond_a_hard_end_is_an_infinite_cost(
     #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
-    pretty_assert_ulps_eq!(0.0, actual, max_ulps = 4);
+    pretty_assert_ulps_eq!(f64::INFINITY, actual, max_ulps = 0);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
   #[case::below_a_unit_grid_within_rounding(   (0.0,    1.0),    -4e-16,         2.0)]
-  #[case::below_a_unit_grid_beyond_rounding(   (0.0,    1.0),    -2e-15,         0.0)]
-  #[case::below_a_small_grid_beyond_rounding(  (0.0,    1e-6),   -1e-17,         0.0)]
+  #[case::below_a_unit_grid_beyond_rounding(   (0.0,    1.0),    -2e-15,         f64::INFINITY)]
+  #[case::below_a_small_grid_beyond_rounding(  (0.0,    1e-6),   -1e-17,         f64::INFINITY)]
   #[case::above_a_date_grid_within_rounding(   (2000.0, 2010.0), 2010.0 + 1e-12, 10.0)]
-  #[case::above_a_date_grid_beyond_rounding(   (2000.0, 2010.0), 2010.0 + 1e-11, 0.0)]
+  #[case::above_a_date_grid_beyond_rounding(   (2000.0, 2010.0), 2010.0 + 1e-11, f64::INFINITY)]
   #[trace]
   fn test_gridfn_interp_just_outside_the_grid_is_the_boundary_value_within_rounding_of_the_grid_magnitude(
     #[case] x_range: (f64, f64),
