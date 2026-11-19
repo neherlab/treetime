@@ -65,9 +65,9 @@ mod tests {
   fn test_mass_profile_regular_cell_mass_is_integral_of_linear_density(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
     let (y0, y1) = (0.3, 1.7);
     let profile = MassProfile::new(&helpers::function((0.0, 2.0), array![y0, y1], HARD, HARD)?)?;
-    let fractions = profile.fractions(TailMass::Required).unwrap();
-    let expected = helpers::linear_density_mass(2.0, (y0, y1), (a, b)) / (-y0).exp();
-    pretty_assert_relative_eq!(expected, fractions.mass_between(a, b)?, max_relative = 1e-15);
+    let expected = -helpers::linear_density_mass(2.0, (y0, y1), (a, b)).ln();
+    let actual = profile.y_peak() + profile.neg_log_mass_between(a, b)?;
+    pretty_assert_relative_eq!(expected, actual, max_relative = 1e-15);
     Ok(())
   }
 
@@ -80,7 +80,11 @@ mod tests {
   #[case::linear_fitted(    1.0, false)]
   #[case::fractional_fitted(2.5, false)]
   #[trace]
-  fn test_mass_profile_hard_cell_holds_mass_of_its_power_law(#[case] beta: f64, #[case] stored: bool) -> Result<(), Report> {
+  fn test_mass_profile_hard_cell_holds_mass_of_its_power_law(
+    #[case] beta: f64,
+    #[case] stored: bool,
+    #[values((2.0, 3.0), (2.0, 2.5), (2.6, 2.99), (2.999, 3.0))] interval: (f64, f64),
+  ) -> Result<(), Report> {
     let anchor_y = 0.4;
     let y = array![anchor_y - beta * 3.0_f64.ln(), anchor_y - beta * 2.0_f64.ln(), anchor_y, f64::INFINITY];
     let right = if stored {
@@ -88,17 +92,13 @@ mod tests {
     } else {
       HARD
     };
-    let f = helpers::function((0.0, 3.0), y, HARD, right)?;
-    let profile = MassProfile::new(&f)?;
-    let fractions = profile.fractions(TailMass::Required).unwrap();
+    let profile = MassProfile::new(&helpers::function((0.0, 3.0), y, HARD, right)?)?;
+    let (a, b) = interval;
     let power = beta + 1.0;
-    let below_hard_point = |t: f64| (-anchor_y).exp() * (3.0 - t).powf(power) / power;
-    for (a, b) in [(2.0, 3.0), (2.0, 2.5), (2.6, 2.99), (2.999, 3.0)] {
-      let expected = (below_hard_point(a) - below_hard_point(b)) / (-profile.y_peak()).exp();
-      pretty_assert_relative_eq!(expected, fractions.mass_between(a, b)?, max_relative = 1e-14);
-    }
-    let quadrature = helpers::gauss_legendre(|t| (-(f.interp(t).unwrap() - profile.y_peak())).exp(), (2.0, 3.0), 2000);
-    pretty_assert_relative_eq!(quadrature, fractions.mass_between(2.0, 3.0)?, max_relative = 1e-13);
+    let below_hard_point = |t: f64| (3.0 - t).powf(power) / power;
+    let expected = anchor_y - (below_hard_point(a) - below_hard_point(b)).ln();
+    let actual = profile.y_peak() + profile.neg_log_mass_between(a, b)?;
+    pretty_assert_relative_eq!(expected, actual, max_relative = 1e-15);
     Ok(())
   }
 
@@ -354,10 +354,11 @@ mod tests {
   #[case::across_soft_tail(    (1.5,  4.0  ))]
   #[case::whole_finite_span(   (-1.0, 10.0 ))]
   #[trace]
-  fn test_mass_profile_neg_log_mass_agrees_with_linear_mass_near_peak(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
+  fn test_mass_profile_piecewise_model_neg_log_mass_matches_closed_form(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
     let profile = MassProfile::new(&helpers::piecewise_model()?)?;
-    let fractions = profile.fractions(TailMass::Required).unwrap();
-    pretty_assert_relative_eq!(-fractions.mass_between(a, b)?.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
+    let expected = -helpers::piecewise_mass(a, b).ln();
+    let actual = profile.y_peak() + profile.neg_log_mass_between(a, b)?;
+    pretty_assert_relative_eq!(expected, actual, max_relative = 1e-15);
     Ok(())
   }
 
@@ -436,9 +437,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::{
-      Array1, BoundaryBehavior, DistributionFunction, HardApproachLaw, Report, SoftTailLaw, ToF64Exact, array,
-    };
+    use super::{Array1, BoundaryBehavior, DistributionFunction, HardApproachLaw, Report, SoftTailLaw, array};
 
     pub(super) fn function(
       range: (f64, f64),
@@ -468,26 +467,6 @@ mod tests {
     pub(super) fn linear_density_mass_of_right_end(h: f64, (ya, yb): (f64, f64), distance: f64) -> f64 {
       let (pa, pb) = ((-ya).exp(), (-yb).exp());
       distance * f64::midpoint(pb + (pa - pb) * (distance / h), pb)
-    }
-
-    pub(super) fn gauss_legendre(f: impl Fn(f64) -> f64, (a, b): (f64, f64), panels: usize) -> f64 {
-      let nodes = [
-        (-(0.6_f64).sqrt(), 5.0 / 9.0),
-        (0.0, 8.0 / 9.0),
-        ((0.6_f64).sqrt(), 5.0 / 9.0),
-      ];
-      let width = (b - a) / panels.to_f64_exact();
-      (0..panels)
-        .map(|i| {
-          let center = a + width * (i.to_f64_exact() + 0.5);
-          nodes
-            .iter()
-            .map(|(node, weight)| weight * f(center + node * width / 2.0))
-            .sum::<f64>()
-            * width
-            / 2.0
-        })
-        .sum()
     }
 
     pub(super) fn piecewise_model() -> Result<DistributionFunction, Report> {
