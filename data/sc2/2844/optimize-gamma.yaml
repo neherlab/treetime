@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch lengths with discrete gamma rate variation across sites (sc2/2844).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/sc2/2844/optimize-gamma.yaml --output-all tmp/examples/sc2/2844/optimize-gamma
+#
+# Most sites of a SARS-CoV-2 genome never change on a tree of a few years, while a
+# few sites change many times. `gamma_categories: 4` lets each site evolve in one of
+# four rate categories of equal probability, whose rates follow a gamma distribution
+# with a fitted shape (`gamma.shape` in the model output; a shape below 1 means that
+# most sites are slow and a few fast). Four categories are the default of the `+G`
+# model of IQ-TREE, whose GTR+G fit gave the branch lengths of `tree.nwk` (see
+# `README.md`). The run takes about ten minutes, many times longer than optimize
+# without rate variation (kb/decisions/discrete-gamma-rate-variation.md).
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+
+gamma_categories: 4
