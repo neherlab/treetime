@@ -63,3 +63,16 @@ Branch lengths equal the difference of node times, so a shared edge has the same
 - **Reading**: merging the three trees by node name must give the edges and scopes of `graph.tsv`
 - **Reconstruction**: per segment, Fitch and marginal reconstruction on the combined graph must give the same states, mutations, and log-likelihood as a run on that segment's tree alone; `truth_*.fasta` measures accuracy
 - **Time trees**: the true node dates are in `nodes.tsv`
+
+## Examples
+
+Each `*.yaml` file is a config of one command or a pipeline; its header gives the command line that runs it. The examples read the collapsed trees (`tree_seg*_collapsed.nwk`), as tree inference writes them, and date the graph at its clock rate of 0.005 substitutions per site and year.
+
+| File | Command | Content |
+| --- | --- | --- |
+| `ancestral.yaml` | `ancestral` | Marginal ancestral sequences per segment on the merged graph |
+| `ancestral-parsimony.yaml` | `ancestral` | Ancestral sequences per segment by Fitch parsimony |
+| `optimize.yaml` | `optimize` | Branch lengths shared by the segments that pass along an edge |
+| `timetree.yaml` | `timetree` | Node dates with their 90% regions |
+| `timetree-cross-parent-messages.yaml` | `timetree` | Node dates with messages between the parents of a node |
+| `pipeline-optimized-graph.yaml` | `pipeline` | Branch lengths, then ancestral sequences and dates on the optimized graph |

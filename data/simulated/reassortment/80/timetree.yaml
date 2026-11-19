@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Dated graph of four segment trees with reassortments at the true clock rate (simulated/reassortment/80).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/simulated/reassortment/80/timetree.yaml --output-all tmp/examples/simulated/reassortment/80/timetree
+#
+# `segment_trees` lists one tree per genome segment and `segment_alignments` the
+# alignment of each segment in the same order. TreeTime merges the trees into one
+# graph by node name: a node named in several trees is one node, and a node whose
+# segments descend from different parents has several parents.
+#
+# The input is a simulated reassortment graph with a known truth (README.md): 80
+# samples, four segments with their own rate and GTR model, and 27
+# reassortments. The trees are the collapsed segment trees with the true node
+# names, as tree inference followed by an ideal matching of the nodes across the
+# trees would give them.
+#
+# `timetree` optimizes the branch lengths of the graph, then dates every node,
+# also the nodes with several parents. A graph of segment trees needs a fixed
+# clock rate (`clock_rate`) and keeps its roots; it runs without a coalescent
+# prior. `confidence` adds the 90% region of every node date to the dates table.
+#
+# The clock rate is the true rate of the simulation: the mean of the four segment
+# rates weighted by segment length (README.md, `truth_model.json`).
+#
+# Every node date, with its region, is in the dates table (`dates`); the
+# reconstructed sequences of a dated graph are not written yet.
+
+segment_trees:
+  - "tree_s1.nwk"
+  - "tree_s2.nwk"
+  - "tree_s3.nwk"
+  - "tree_s4.nwk"
+segment_alignments:
+  - "aln_s1.fasta.xz"
+  - "aln_s2.fasta.xz"
+  - "aln_s3.fasta.xz"
+  - "aln_s4.fasta.xz"
+metadata: "metadata.tsv"
+
+clock_rate: 0.00275556
+confidence: true
+
+# A fixed seed makes the random steps of the run repeat exactly.
+seed: 42
+
+output_selection:
+  - "nexus"
+  - "auspice"
+  - "dates"
+  - "model"
+  - "graph-json"

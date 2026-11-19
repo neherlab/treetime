@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Optimize the branch lengths of a graph of segment trees, then reconstruct and date it (simulated/reassortment/80).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/simulated/reassortment/80/pipeline-optimized-graph.yaml --output-all tmp/examples/simulated/reassortment/80/pipeline-optimized-graph
+#
+# Step 1 fits the branch lengths of the merged graph; steps 2 and 3 read its
+# per-segment trees and reconstruct the ancestral sequences and date the nodes on
+# the optimized graph. The trees flow through `{{ steps.optimize.output_all }}`
+# and the numbered Nexus file of each segment: a reference such as
+# `{{ steps.optimize.outputs.nexus }}` names one file, and a step on a graph of
+# segment trees writes one file per segment
+# (kb/issues/M-pipeline-segment-outputs-unreachable-through-output-references.md).
+#
+# The input is a simulated reassortment graph with a known truth (README.md): 80
+# samples, four segments with their own rate and GTR model, and 27
+# reassortments. The trees are the collapsed segment trees with the true node
+# names, as tree inference followed by an ideal matching of the nodes across the
+# trees would give them.
+#
+# The clock rate is the true rate of the simulation: the mean of the four segment
+# rates weighted by segment length (README.md, `truth_model.json`).
+#
+# `vars` holds the values that several steps share: the clock rate as a typed
+# number, and the alignments in the order of the trees.
+
+vars:
+  clock_rate: 0.00275556
+  alignments:
+    - "aln_s1.fasta.xz"
+    - "aln_s2.fasta.xz"
+    - "aln_s3.fasta.xz"
+    - "aln_s4.fasta.xz"
+
+steps:
+  # Fit the branch lengths of the merged graph.
+  - name: "optimize"
+    optimize:
+      segment_trees:
+        - "tree_s1.nwk"
+        - "tree_s2.nwk"
+        - "tree_s3.nwk"
+        - "tree_s4.nwk"
+      segment_alignments: "{{ vars.alignments }}"
+      output_selection:
+        - "nexus"
+        - "model"
+        - "graph-json"
+
+  # Marginal ancestral sequences on the optimized graph.
+  - name: "ancestral"
+    ancestral:
+      segment_trees:
+        - "{{ steps.optimize.output_all }}/optimize.1.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.2.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.3.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.4.nexus"
+      segment_alignments: "{{ vars.alignments }}"
+      method_anc: "marginal"
+      output_selection:
+        - "nexus"
+        - "node-data"
+        - "sequences"
+        - "model"
+        - "graph-json"
+
+  # Date the optimized graph at the clock rate from `vars`.
+  - name: "timetree"
+    timetree:
+      segment_trees:
+        - "{{ steps.optimize.output_all }}/optimize.1.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.2.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.3.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.4.nexus"
+      segment_alignments: "{{ vars.alignments }}"
+      metadata: "metadata.tsv"
+      clock_rate: "{{ vars.clock_rate }}"
+      confidence: true
+      seed: 42
+      output_selection:
+        - "nexus"
+        - "auspice"
+        - "dates"
+        - "model"
+        - "graph-json"

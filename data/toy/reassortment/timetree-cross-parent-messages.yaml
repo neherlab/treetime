@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Dated graph of three segment trees with messages between the parents of a node (toy/reassortment).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/toy/reassortment/timetree-cross-parent-messages.yaml --output-all tmp/examples/toy/reassortment/timetree-cross-parent-messages
+#
+# `segment_trees` lists one tree per genome segment and `segment_alignments` the
+# alignment of each segment in the same order. TreeTime merges the trees into one
+# graph by node name: a node named in several trees is one node, and a node whose
+# segments descend from different parents has several parents.
+#
+# The input is the hand-made graph of README.md: 10 samples, three segments, two
+# reassortants with segments from different parents. The trees are the collapsed
+# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they
+# leave out the nodes that a segment only passes through, and the merge inserts
+# these nodes again where the other segments place them.
+#
+# With `cross_parent_messages`, the message that a node sends to one of its
+# parents also carries the messages of its other parents, so the time passes
+# iterate on the loops of the graph until the dates converge. Without it (the
+# default, `timetree.yaml`), the message to a parent carries the subtree alone.
+# Compare the two dates tables to see how much the loops of this graph matter.
+#
+# The clock rate is that of the toy graph: its node dates are 2000 + 200 times
+# the divergence from the root (README.md), so 0.005 substitutions per site and
+# year.
+#
+# Every node date, with its region, is in the dates table (`dates`); the
+# reconstructed sequences of a dated graph are not written yet.
+
+segment_trees:
+  - "tree_seg1_collapsed.nwk"
+  - "tree_seg2_collapsed.nwk"
+  - "tree_seg3_collapsed.nwk"
+segment_alignments:
+  - "aln_seg1.fasta"
+  - "aln_seg2.fasta"
+  - "aln_seg3.fasta"
+metadata: "metadata.tsv"
+
+clock_rate: 0.005
+confidence: true
+cross_parent_messages: true
+
+# A fixed seed makes the random steps of the run repeat exactly.
+seed: 42
+
+output_selection:
+  - "nexus"
+  - "auspice"
+  - "dates"
+  - "model"
+  - "graph-json"

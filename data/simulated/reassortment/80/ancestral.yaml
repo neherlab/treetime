@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
+
+# Marginal ancestral sequences of four genome segments on a graph with reassortments (simulated/reassortment/80).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime ancestral --config data/simulated/reassortment/80/ancestral.yaml --output-all tmp/examples/simulated/reassortment/80/ancestral
+#
+# `segment_trees` lists one tree per genome segment and `segment_alignments` the
+# alignment of each segment in the same order. TreeTime merges the trees into one
+# graph by node name: a node named in several trees is one node, and a node whose
+# segments descend from different parents has several parents.
+#
+# The input is a simulated reassortment graph with a known truth (README.md): 80
+# samples, four segments with their own rate and GTR model, and 27
+# reassortments. The trees are the collapsed segment trees with the true node
+# names, as tree inference followed by an ideal matching of the nodes across the
+# trees would give them.
+#
+# Each segment is reconstructed on its own tree of the graph, with its own GTR
+# model fitted from the data. An edge that several segments share gets the mean
+# of their input branch lengths.
+#
+# Plain Newick holds one tree, so the outputs are the files written once per
+# segment, numbered in the order of the lists, and the whole graph (`graph-json`).
+
+segment_trees:
+  - "tree_s1.nwk"
+  - "tree_s2.nwk"
+  - "tree_s3.nwk"
+  - "tree_s4.nwk"
+segment_alignments:
+  - "aln_s1.fasta.xz"
+  - "aln_s2.fasta.xz"
+  - "aln_s3.fasta.xz"
+  - "aln_s4.fasta.xz"
+
+method_anc: "marginal"
+
+output_selection:
+  - "nexus"
+  - "node-data"
+  - "sequences"
+  - "model"
+  - "graph-json"

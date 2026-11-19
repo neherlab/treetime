@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Optimize the branch lengths of a graph of segment trees, then reconstruct and date it (toy/reassortment).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/toy/reassortment/pipeline-optimized-graph.yaml --output-all tmp/examples/toy/reassortment/pipeline-optimized-graph
+#
+# Step 1 fits the branch lengths of the merged graph; steps 2 and 3 read its
+# per-segment trees and reconstruct the ancestral sequences and date the nodes on
+# the optimized graph. The trees flow through `{{ steps.optimize.output_all }}`
+# and the numbered Nexus file of each segment: a reference such as
+# `{{ steps.optimize.outputs.nexus }}` names one file, and a step on a graph of
+# segment trees writes one file per segment
+# (kb/issues/M-pipeline-segment-outputs-unreachable-through-output-references.md).
+#
+# The input is the hand-made graph of README.md: 10 samples, three segments, two
+# reassortants with segments from different parents. The trees are the collapsed
+# segment trees (`tree_seg*_collapsed.nwk`), as tree inference writes them: they
+# leave out the nodes that a segment only passes through, and the merge inserts
+# these nodes again where the other segments place them.
+#
+# The clock rate is that of the toy graph: its node dates are 2000 + 200 times
+# the divergence from the root (README.md), so 0.005 substitutions per site and
+# year.
+#
+# `vars` holds the values that several steps share: the clock rate as a typed
+# number, and the alignments in the order of the trees.
+
+vars:
+  clock_rate: 0.005
+  alignments:
+    - "aln_seg1.fasta"
+    - "aln_seg2.fasta"
+    - "aln_seg3.fasta"
+
+steps:
+  # Fit the branch lengths of the merged graph.
+  - name: "optimize"
+    optimize:
+      segment_trees:
+        - "tree_seg1_collapsed.nwk"
+        - "tree_seg2_collapsed.nwk"
+        - "tree_seg3_collapsed.nwk"
+      segment_alignments: "{{ vars.alignments }}"
+      output_selection:
+        - "nexus"
+        - "model"
+        - "graph-json"
+
+  # Marginal ancestral sequences on the optimized graph.
+  - name: "ancestral"
+    ancestral:
+      segment_trees:
+        - "{{ steps.optimize.output_all }}/optimize.1.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.2.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.3.nexus"
+      segment_alignments: "{{ vars.alignments }}"
+      method_anc: "marginal"
+      output_selection:
+        - "nexus"
+        - "node-data"
+        - "sequences"
+        - "model"
+        - "graph-json"
+
+  # Date the optimized graph at the clock rate from `vars`.
+  - name: "timetree"
+    timetree:
+      segment_trees:
+        - "{{ steps.optimize.output_all }}/optimize.1.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.2.nexus"
+        - "{{ steps.optimize.output_all }}/optimize.3.nexus"
+      segment_alignments: "{{ vars.alignments }}"
+      metadata: "metadata.tsv"
+      clock_rate: "{{ vars.clock_rate }}"
+      confidence: true
+      seed: 42
+      output_selection:
+        - "nexus"
+        - "auspice"
+        - "dates"
+        - "model"
+        - "graph-json"
