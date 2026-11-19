@@ -6,21 +6,25 @@
 # `--output-all` chooses the output folder. From the repository root:
 #   treetime pipeline --config data/zika/86/pipeline-nextstrain.yaml --output-all tmp/examples/zika/86/pipeline-nextstrain
 #
-# nextstrain/zika@12de10f: `augur refine --timetree --coalescent opt --date-confidence
-# --clock-filter-iqd 4`, `augur ancestral --inference joint`, `augur traits --columns
-# region country --confidence --sampling-bias-correction 3`. The country step also
-# writes the coordinates of each country (`../country_lat_longs.tsv`), so Auspice
-# shows the countries on a map.
+# nextstrain/zika@12de10f: `augur refine --timetree --coalescent opt
+# --date-inference marginal --date-confidence --clock-filter-iqd 4`,
+# `augur ancestral --inference joint`, `augur traits --columns region country
+# --confidence --branch-labels region --sampling-bias-correction 3`
+# (phylogenetic/defaults/config.yaml lines 27-42). This example uses the bundled
+# 2013-2016 samples. The country step adds coordinates from
+# `../country_lat_longs.tsv` so Auspice can show the countries on a map.
 #
 # augur refine removes the tips that its clock filter flags, and the tips without a
-# usable date. TreeTime only flags them by default; `prune_filtered_tips` and
-# `prune_undated_tips` remove the same tips.
+# usable date. `prune_filtered_tips` and `prune_undated_tips` enable that removal
+# in TreeTime v1. The two programs can flag different tips because Augur filters
+# on the input branch lengths, before the time-tree run.
 #
-# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
-# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
-# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
-# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
-# polytomy resolution where the run resolves polytomies.
+# TreeTime v1 reports date intervals with `confidence`; its date assignment differs
+# from Augur's marginal date assignment. The ancestral step uses marginal nucleotide
+# reconstruction with imputed tips in place of joint reconstruction. This example
+# omits protein translation and region branch labels. `no_indels` omits the indel term
+# from branch lengths, as in TreeTime 0.x. `seed` makes TreeTime's stochastic
+# polytomy resolution reproducible.
 
 steps:
   - name: "timetree"

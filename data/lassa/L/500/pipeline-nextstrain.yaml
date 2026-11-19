@@ -7,19 +7,21 @@
 #   treetime pipeline --config data/lassa/L/500/pipeline-nextstrain.yaml --output-all tmp/examples/lassa/L/500/pipeline-nextstrain
 #
 # nextstrain/lassa@8bd66e3, segment l: `augur refine --timetree --coalescent opt
-# --date-confidence --root mid_point --clock-rate 0.00078` (no clock filter),
+# --date-inference marginal --date-confidence --root mid_point --clock-rate 0.00078`
+# (no clock filter), then
 # `augur ancestral --inference joint`, `augur traits --columns country --confidence`.
 # The workflow config takes the clock rate from Ehichioya et al. 2019, "Phylogeography
 # of Lassa virus in Nigeria", J Virol 93:e00929-19, doi:10.1128/JVI.00929-19
-# (phylogenetic/defaults/config.yaml line 36). `reroot: midpoint` roots the tree at
-# the middle of its longest tip-to-tip path, as `--root mid_point` does. TreeTime resolves polytomies at random, so `seed` makes
-# the run reproducible; augur resolves them greedily.
+# (phylogenetic/defaults/config.yaml lines 33-47). `reroot: midpoint` roots the
+# tree at the middle of its longest tip-to-tip path. The workflow uses the same
+# settings for S, but fits each segment on its own tree and alignment.
 #
-# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
-# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
-# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
-# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
-# polytomy resolution where the run resolves polytomies.
+# TreeTime v1 reports date intervals with `confidence`; its date assignment differs
+# from Augur's marginal date assignment. The ancestral step uses marginal nucleotide
+# reconstruction with imputed tips in place of joint reconstruction and does not
+# reconstruct proteins. `clock_filter: 0.0` disables TreeTime's default filter.
+# `no_indels` omits the indel term from branch lengths, as in TreeTime 0.x.
+# `seed` makes TreeTime's stochastic polytomy resolution reproducible.
 
 vars:
   metadata_id_columns:

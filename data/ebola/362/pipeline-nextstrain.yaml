@@ -6,15 +6,21 @@
 # `--output-all` chooses the output folder. From the repository root:
 #   treetime pipeline --config data/ebola/362/pipeline-nextstrain.yaml --output-all tmp/examples/ebola/362/pipeline-nextstrain
 #
-# nextstrain/ebola@cc08e16, build ebov/west-africa-2014: `augur refine --timetree
-# --coalescent skyline --date-confidence` (no clock filter), `augur ancestral
-# --inference joint`, `augur traits --columns country division --confidence`.
+# nextstrain/ebola@cc08e16, build ebov/west-africa-2014:
+# `augur refine --timetree --date-inference marginal --coalescent skyline
+# --date-confidence` (no clock filter), `augur ancestral` (joint by default),
+# and `augur traits --columns country division --confidence`
+# (phylogenetic/defaults/config.yaml lines 118-125, 157-164 and 186-189).
+# This example uses the bundled outbreak samples and the same alignment for
+# dating and nucleotide reconstruction. The workflow uses its masked alignment
+# for dating and its unmasked alignment for ancestral reconstruction.
 #
-# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
-# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
-# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
-# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
-# polytomy resolution where the run resolves polytomies.
+# TreeTime v1 reports date intervals with `confidence`; its date assignment differs
+# from Augur's marginal date assignment. The ancestral step uses marginal nucleotide
+# reconstruction with imputed tips in place of joint reconstruction and does not
+# reconstruct proteins. `clock_filter: 0.0` disables TreeTime's default filter.
+# `no_indels` omits the indel term from branch lengths, as in TreeTime 0.x.
+# `seed` makes TreeTime's stochastic polytomy resolution reproducible.
 
 steps:
   - name: "timetree"

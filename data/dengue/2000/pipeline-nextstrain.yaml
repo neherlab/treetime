@@ -7,8 +7,12 @@
 #   treetime pipeline --config data/dengue/2000/pipeline-nextstrain.yaml --output-all tmp/examples/dengue/2000/pipeline-nextstrain
 #
 # nextstrain/dengue@b31c2b5, build denv2/genome: `augur refine --timetree --clock-rate
-# 0.00078 --coalescent const --date-confidence --clock-filter-iqd 4`, `augur ancestral
-# --inference joint`, `augur traits --columns country region serotype_genbank
+# 0.00078 --coalescent const --date-inference marginal --date-confidence
+# --clock-filter-iqd 4` (phylogenetic/defaults/config_dengue.yaml lines 28-42 and
+# phylogenetic/rules/construct_phylogeny.smk lines 68-87). The rate is specific to
+# the DENV2 genome build; the DENV2 E-gene build uses 0.00072 and its own tree and
+# alignment. The workflow runs `augur ancestral --inference joint` and
+# `augur traits --columns country region serotype_genbank
 # --confidence --sampling-bias-correction 3`. Every sequence is DENV2, so the serotype
 # has one state and has no trait step here: TreeTime stops on a trait with one state,
 # while augur gives it to every node (`data/dengue/2000/mugration-serotype.yaml`,
@@ -22,11 +26,11 @@
 # fixed clock rate:
 # kb/issues/M-clock-filter-kept-tips-differ-from-augur-refine-which-filters-without-the-clock-rate.md.
 #
-# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
-# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
-# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
-# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
-# polytomy resolution where the run resolves polytomies.
+# TreeTime v1 reports date intervals with `confidence`; its date assignment differs
+# from Augur's marginal date assignment. The ancestral step uses marginal nucleotide
+# reconstruction with imputed tips in place of joint reconstruction and does not
+# reconstruct proteins. `no_indels` omits the indel term from branch lengths, as in
+# TreeTime 0.x. `seed` makes TreeTime's stochastic polytomy resolution reproducible.
 
 vars:
   metadata_id_columns:
