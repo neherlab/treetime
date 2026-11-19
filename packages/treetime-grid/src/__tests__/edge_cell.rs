@@ -70,7 +70,7 @@ mod tests {
     let slope = (edge_y + b * (d_edge / d_anchor).ln()) / (d_edge - d_anchor);
 
     let expected = helpers::ln_quadrature(|d| b * (d / d_anchor).ln() - slope * (d - d_anchor), d_edge, d_anchor);
-    pretty_assert_relative_eq!(expected, cell.ln_relative_mass(d_edge, d_anchor), epsilon = 1e-10, max_relative = 1e-10);
+    pretty_assert_relative_eq!(expected, cell.ln_relative_mass(d_edge, d_anchor), max_relative = 1e-13);
     Ok(())
   }
 

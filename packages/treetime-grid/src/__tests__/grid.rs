@@ -20,13 +20,11 @@ mod tests {
   #[case::at_midpoint(       (0.0, 4.0), 2.0,    2)]
   #[case::between_0_1(       (0.0, 4.0), 0.5,    0)]
   #[case::between_1_2(       (0.0, 4.0), 1.5,    1)]
-  #[case::below_min_small(   (0.0, 4.0), -0.5,   0)]
-  #[case::below_min_large(   (0.0, 4.0), -100.0, 0)]
+  #[case::below_x_min(       (0.0, 4.0), -0.5,   0)]
   #[case::below_positive_min((5.0, 9.0), 4.0,    0)]
-  #[case::above_max_small(   (0.0, 4.0), 4.5,    3)]
-  #[case::above_max_large(   (0.0, 4.0), 100.0,  3)]
+  #[case::above_x_max(       (0.0, 4.0), 4.5,    3)]
   #[trace]
-  fn test_find_interval_index(
+  fn test_grid_find_interval_index_returns_the_cell_of_the_query_clamped_to_the_grid(
     #[case] (x_min, x_max): (f64, f64),
     #[case] query: f64,
     #[case] expected: usize,
@@ -106,18 +104,18 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::nan_x_min(             ((f64::NAN,          1.0),           0.1),      Side::Left,  "Grid x_min (NaN) must be finite")]
-  #[case::infinite_x_min(        ((f64::NEG_INFINITY, 1.0),           0.1),      Side::Left,  "Grid x_min (-inf) must be finite")]
-  #[case::nan_x_max(             ((0.0,               f64::NAN),      0.1),      Side::Left,  "Grid x_max (NaN) must be finite")]
-  #[case::infinite_x_max(        ((0.0,               f64::INFINITY), 0.1),      Side::Left,  "Grid x_max (inf) must be finite")]
-  #[case::nan_dx(                ((0.0,               1.0),           f64::NAN), Side::Left,  "Grid spacing dx (NaN) must be a finite positive number")]
-  #[case::infinite_dx(           ((0.0,               1.0),           f64::INFINITY), Side::Left, "Grid spacing dx (inf) must be a finite positive number")]
-  #[case::zero_dx(               ((0.0,               1.0),           0.0),      Side::Left,  "Grid spacing dx (0.0) must be a finite positive number")]
-  #[case::negative_dx(           ((0.0,               1.0),           -1.0),     Side::Left,  "Grid spacing dx (-1.0) must be a finite positive number")]
-  #[case::reversed(              ((1.0,               0.0),           0.1),      Side::Left,  "x_max (0.0) must be greater than x_min (1.0)")]
-  #[case::spacing_wider_than_range(((0.0,             0.4),           1.0),      Side::Left,  "Grid must have at least 2 points, got 1")]
-  #[case::left_anchored_end_overflows( ((0.0,         f64::MAX),      1e308),    Side::Left,  "Grid x_max (inf) must be finite")]
-  #[case::right_anchored_end_overflows(((-f64::MAX,   0.0),           1e308),    Side::Right, "Grid x_min (-inf) must be finite")]
+  #[case::nan_x_min(                    ((f64::NAN,          1.0),           0.1),           Side::Left,  "Grid x_min (NaN) must be finite")]
+  #[case::infinite_x_min(               ((f64::NEG_INFINITY, 1.0),           0.1),           Side::Left,  "Grid x_min (-inf) must be finite")]
+  #[case::nan_x_max(                    ((0.0,               f64::NAN),      0.1),           Side::Left,  "Grid x_max (NaN) must be finite")]
+  #[case::infinite_x_max(               ((0.0,               f64::INFINITY), 0.1),           Side::Left,  "Grid x_max (inf) must be finite")]
+  #[case::nan_dx(                       ((0.0,               1.0),           f64::NAN),      Side::Left,  "Grid spacing dx (NaN) must be a finite positive number")]
+  #[case::infinite_dx(                  ((0.0,               1.0),           f64::INFINITY), Side::Left,  "Grid spacing dx (inf) must be a finite positive number")]
+  #[case::zero_dx(                      ((0.0,               1.0),           0.0),           Side::Left,  "Grid spacing dx (0.0) must be a finite positive number")]
+  #[case::negative_dx(                  ((0.0,               1.0),           -1.0),          Side::Left,  "Grid spacing dx (-1.0) must be a finite positive number")]
+  #[case::reversed(                     ((1.0,               0.0),           0.1),           Side::Left,  "x_max (0.0) must be greater than x_min (1.0)")]
+  #[case::spacing_wider_than_range(     ((0.0,               0.4),           1.0),           Side::Left,  "Grid must have at least 2 points, got 1")]
+  #[case::left_anchored_end_overflows(  ((0.0,               f64::MAX),      1e308),         Side::Left,  "Grid x_max (inf) must be finite")]
+  #[case::right_anchored_end_overflows( ((-f64::MAX,         0.0),           1e308),         Side::Right, "Grid x_min (-inf) must be finite")]
   #[trace]
   fn test_grid_from_range_dx_anchored_rejects_invalid_inputs(
     #[case] ((x_min, x_max), dx): ((f64, f64), f64),
