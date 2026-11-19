@@ -130,7 +130,8 @@ jobs:
       - name: "Check that the commit is the head of the branch"
         id: "head"
         run: |
-          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "${GITHUB_REF}" | cut -f1)"
+          head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "${GITHUB_REF}" |
+            awk -F '\t' -v ref="${GITHUB_REF}" '$2 == ref { print $1 }')"
           if [[ "${head}" == "${GITHUB_SHA}" ]]; then
             echo "current=true" >>"${GITHUB_OUTPUT}"
           else
@@ -223,7 +224,8 @@ jobs:
             fi
           else
             sites+=("commit-${COMMIT::7}")
-            head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${BRANCH}" | cut -f1)"
+            head="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "refs/heads/${BRANCH}" |
+              awk -F '\t' -v ref="refs/heads/${BRANCH}" '$2 == ref { print $1 }')"
             if [[ "${head}" == "${COMMIT}" ]]; then
               sites+=("branch-${BRANCH}")
               prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open --limit 1000 \
@@ -318,6 +320,13 @@ jobs:
             commit_line="Commit ${COMMIT::7}: https://commit-${COMMIT::7}.${FOLDER}${path} ([build](${build}))"
           fi
           for pr in "${prs[@]}"; do
+            # A rerun of this job alone must not write the links of an older commit.
+            state="$(gh pr view "${pr}" --repo "${GITHUB_REPOSITORY}" \
+              --json state,isCrossRepository,headRefOid --jq '"\(.state) \(.isCrossRepository) \(.headRefOid)"')"
+            if [[ "${state}" != "OPEN false ${COMMIT}" ]]; then
+              echo "::notice::Pull request ${pr} is not open at ${COMMIT} (${state}): no comment"
+              continue
+            fi
             body="$(printf "%s\n%s preview: https://pr-%s.%s%s\n\n%s\n" \
               "${MARKER}" "${TITLE}" "${pr}" "${FOLDER}" "${path}" "${commit_line}")"
             comment_ids="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
