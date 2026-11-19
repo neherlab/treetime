@@ -8,7 +8,7 @@ Mass sizing governs the final extent: `fn rewindow_to_mass()` resamples the pilo
 
 ## Measured gap to v0
 
-`test_gm_runner_marginal_dense` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L30-L32](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L30-L32) runs at `epsilon = 1e-1` and cites this issue: v1 dense node times differ from v0 by up to 0.070 years on `flu_h3n2_20` (`NODE_0000017`, both indel policies). The gaps of the other datasets are in [N-timetree-gm-runner-dataset-cases-disabled.md](N-timetree-gm-runner-dataset-cases-disabled.md).
+`test_gm_runner_marginal_dense` [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L30-L32`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L30-L32) runs at `epsilon = 1e-1` and cites this issue: v1 dense node times differ from v0 by up to 0.070 years on `flu_h3n2_20` (`NODE_0000017`, both indel policies). The gaps of the other datasets are in [N-timetree-gm-runner-dataset-cases-disabled.md](N-timetree-gm-runner-dataset-cases-disabled.md).
 
 > [!IMPORTANT]
 > **Investigation required.** No measurement shows that the uniform pilot grid causes these gaps. Isolate the cause before the grid decision below, for example by running the dense test with a finer or a v0-shaped pilot grid and comparing the gap.

@@ -8,7 +8,7 @@ Remaining test quality issues: unsourced and symmetric-model tests, and weak ass
 
 ### propagate_raw_per_site tests use a symmetric model and unsourced expected values
 
-[packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17), [#L73](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L73)
+[`packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17`](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17), [#L73](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L73)
 
 Both test functions use JC69 with per-site rates, whose transition matrix is symmetric ($P(t) = P(t)^T$). The forward (`transpose = false`) and backward (`transpose = true`) tests therefore produce identical expected values and cannot detect a defect in the `transpose` handling of `fn propagate_raw_per_site()` [packages/treetime/src/partition/marginal/sparse/message.rs#L137](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137). The expected values are hardcoded literals with no stated source ([#L39-L56](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L39-L56), [#L95-L112](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L95-L112)), so whether they were captured from the system under test is unknown.
 
@@ -20,7 +20,7 @@ Fix:
 
 ### Skyline optimizer tests check structure only
 
-[packages/treetime/src/coalescent/__tests__/test_skyline.rs](../../packages/treetime/src/coalescent/__tests__/test_skyline.rs)
+[`packages/treetime/src/coalescent/__tests__/test_skyline.rs`](../../packages/treetime/src/coalescent/__tests__/test_skyline.rs)
 
 Two star-tree tests check exact values: `test_skyline_constant_tc_of_a_star_tree_is_the_kingman_estimate` compares the constant Tc and its log-likelihood with the closed-form Kingman estimate, and `test_skyline_merger_rate_and_span_of_a_star_tree_follow_the_lineage_count` checks the merger rate against the lineage count. The tests of `optimize_skyline()` assert only segment counts, finite log-likelihoods, positive Tc values, the comparison with constant Tc, and scale invariance. No test compares the multi-segment Tc trajectory with known values.
 
@@ -47,7 +47,7 @@ Cross-mode validation: v0 has no sparse mode, so dense oracle is the only availa
 
 ### Maximum grid point tests compare error text through `unwrap_err()`
 
-- [packages/treetime-grid/src/__tests__/max_grid_points.rs#L41-L42](../../packages/treetime-grid/src/__tests__/max_grid_points.rs#L41-L42): `test_max_grid_points_from_str_rejects` compares `MaxGridPoints::from_str(text).unwrap_err().to_string()` with the expected message
+- [`packages/treetime-grid/src/__tests__/max_grid_points.rs#L41-L42`](../../packages/treetime-grid/src/__tests__/max_grid_points.rs#L41-L42): `test_max_grid_points_from_str_rejects` compares `MaxGridPoints::from_str(text).unwrap_err().to_string()` with the expected message
 - [packages/app-server/src/bin/treetime-server.rs#L190-L192](../../packages/app-server/src/bin/treetime-server.rs#L190-L192): `test_treetime_server_max_grid_points_out_of_range_fails` compares `ServerArgs::try_parse_from(..).unwrap_err().to_string()` with the expected message
 
 Both tests panic without a message when the call succeeds. `assert_error!` of `packages/treetime-utils/src/testing/assert.rs` checks the `Err` and the exact message in one assertion and reports an unexpected `Ok`.

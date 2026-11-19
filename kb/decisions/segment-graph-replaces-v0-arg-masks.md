@@ -18,7 +18,7 @@ Consequences in v0:
 
 - **Merge by node name**: a name that occurs in several trees is one graph node, a parent-child pair that occurs in several trees is one edge, and the merge inserts the nodes that a segment only passes through ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name))
 - **Edge scopes**: each edge carries a set of segments, and each site has at most one parent at every node ([packages/treetime-graph/src/scope.rs](../../packages/treetime-graph/src/scope.rs))
-- **Exact reconstruction per segment**: the Fitch and marginal passes send each site only along the edges that carry it, so every site sees its own tree, and each segment gives the same sequences, mutations and log-likelihood as a run on its own tree, also with gamma rate categories and with several partitions per segment ([packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs](../../packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs))
+- **Exact reconstruction per segment**: the Fitch and marginal passes send each site only along the edges that carry it, so every site sees its own tree, and each segment gives the same sequences, mutations and log-likelihood as a run on its own tree, also with gamma rate categories and with several partitions per segment ([`packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs`](../../packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs))
 - **Shared parameters**: an edge that several segments carry has one length, fitted to all of them, and a node has one date for all segments ([timetree-segment-graph-loopy-message-passing.md](timetree-segment-graph-loopy-message-passing.md))
 
 ## Consequences

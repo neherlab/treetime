@@ -14,7 +14,7 @@ Code: `fn propagate_distributions_backward_on_graph` [packages/treetime/src/time
 
 ## Accuracy
 
-Maximum CDF error against the exact posterior on a grid ([packages/treetime/src/timetree/inference/__tests__/test_reassortment_passes.rs](../../packages/treetime/src/timetree/inference/__tests__/test_reassortment_passes.rs), values from [kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)):
+Maximum CDF error against the exact posterior on a grid ([`packages/treetime/src/timetree/inference/__tests__/test_reassortment_passes.rs`](../../packages/treetime/src/timetree/inference/__tests__/test_reassortment_passes.rs), values from [kb/algo/timetree.md](../algo/timetree.md#graphs-with-several-parents)):
 
 | graph                  | with cross-parent messages | subtree alone (default) |
 | ---------------------- | -------------------------- | ----------------------- |

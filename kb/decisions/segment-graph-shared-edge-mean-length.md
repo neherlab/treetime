@@ -8,7 +8,7 @@ Code: `fn merge_trees_by_name` [packages/treetime-graph/src/merge_by_name.rs](..
 
 ## Effect on results
 
-- **`ancestral` with input branch lengths**: every segment is reconstructed with the mean length on its shared edges, not with the length of its own tree. Where the lengths of the trees differ, a segment's sequences, mutations and log-likelihood can differ from a run on its own tree. The toy graph of the tests has trees that agree on every shared length, so its segments match their own runs exactly ([packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs](../../packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs))
+- **`ancestral` with input branch lengths**: every segment is reconstructed with the mean length on its shared edges, not with the length of its own tree. Where the lengths of the trees differ, a segment's sequences, mutations and log-likelihood can differ from a run on its own tree. The toy graph of the tests has trees that agree on every shared length, so its segments match their own runs exactly ([`packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs`](../../packages/treetime/src/ancestral/__tests__/test_pipeline_segment_graph.rs))
 - **`optimize` and `timetree`**: they fit one length per shared edge to all segments that carry it, so the mean is only the starting point ([kb/reports/2026-11-15-segment-validation-optimize.md](../reports/2026-11-15-segment-validation-optimize.md))
 - **Pass-through nodes**: when the merge routes a segment's edge through nodes of another segment, it splits that segment's length over the new edges in proportion to the other segment's lengths before the mean is taken ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name))
 

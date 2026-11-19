@@ -1,6 +1,6 @@
 # Dense GTR golden master compares only the filtered root state, not v0 output
 
-The dense GTR golden master capture script does not capture pure v0 output. It reimplements v0's `nij`/`Ti` accumulation, then applies v1's uninformative-root filter to `root_state` [packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L160-L166](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L160-L166): a root position counts only when the maximum of its profile is above `1/n + 1e-10`. It calls `GTR.infer()` directly [packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L174-L179](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L174-L179) instead of `tt.infer_gtr()`, to avoid v0's unfiltered `root_state`.
+The dense GTR golden master capture script does not capture pure v0 output. It reimplements v0's `nij`/`Ti` accumulation, then applies v1's uninformative-root filter to `root_state` [`packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L160-L166`](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L160-L166): a root position counts only when the maximum of its profile is above `1/n + 1e-10`. It calls `GTR.infer()` directly [`packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L174-L179`](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture#L174-L179) instead of `tt.infer_gtr()`, to avoid v0's unfiltered `root_state`.
 
 The Python filter is an independent reimplementation of the Rust filter (`fn is_profile_informative()` [packages/treetime/src/gtr/infer_gtr/common.rs#L245-L248](../../packages/treetime/src/gtr/infer_gtr/common.rs#L245-L248), applied in [packages/treetime/src/partition/marginal/shared/data.rs#L40-L48](../../packages/treetime/src/partition/marginal/shared/data.rs#L40-L48)), so `test_gm_infer_gtr_dense` catches a defect in v1's filter code. It does not check v0 parity: no test compares v1 dense GTR inference with the unfiltered `root_state` that v0 computes. The decision [kb/decisions/gtr-uninformative-root-state-filtering.md](../decisions/gtr-uninformative-root-state-filtering.md) records the size of that divergence only from a measurement made before the capture script was changed (about 29% shift in W matrix elements on `lassa_L_50`); after the change all real datasets pass at 1e-6, so the golden master no longer shows the divergence the decision introduces.
 
@@ -8,8 +8,8 @@ Dense partitions always filter: `DenseInputs` is built with `filter_uninformativ
 
 ## Affected code
 
-- Capture script: [packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture)
-- Tests: [packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs)
+- Capture script: [`packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture`](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture)
+- Tests: [`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs)
 - Decision that introduced the filter: [kb/decisions/gtr-uninformative-root-state-filtering.md](../decisions/gtr-uninformative-root-state-filtering.md)
 
 ## Fix direction

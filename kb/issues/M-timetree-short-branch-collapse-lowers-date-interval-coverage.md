@@ -7,7 +7,7 @@
 
 Before the timetree loop, `timetree` collapses each non-root internal edge shorter than $0.1/L$ whose states equal the states of its parent, as v0 does (`fn collapse_short_internal_edges()` in [packages/treetime/src/optimize/topology/collapse.rs](../../packages/treetime/src/optimize/topology/collapse.rs), called from [packages/treetime/src/timetree/pre_loop.rs](../../packages/treetime/src/timetree/pre_loop.rs)). The collapse is on by default; `--no-collapse-short-branches` turns it off.
 
-On simulated data the collapse makes the 90% date intervals of the internal nodes too narrow. The test `test_sim_timetree_date_intervals_cover_the_true_dates` ([packages/treetime/src/timetree/__tests__/test_sim_timetree_recovery.rs](../../packages/treetime/src/timetree/__tests__/test_sim_timetree_recovery.rs)) runs the standard simulated cell at the true $T_c$ and clock rate, and requires the fraction of true internal node dates inside their interval to be $0.9 \pm 0.03$:
+On simulated data the collapse makes the 90% date intervals of the internal nodes too narrow. The test `test_sim_timetree_date_intervals_cover_the_true_dates` ([`packages/treetime/src/timetree/__tests__/test_sim_timetree_recovery.rs`](../../packages/treetime/src/timetree/__tests__/test_sim_timetree_recovery.rs)) runs the standard simulated cell at the true $T_c$ and clock rate, and requires the fraction of true internal node dates inside their interval to be $0.9 \pm 0.03$:
 
 - With the collapse, paired by clade over the internal nodes that survive it: coverage 0.834; error mean -0.065527, standard deviation 0.114811, n 20446, interval of the mean [-0.068008, -0.063045]. The test fails
 - Without the collapse: the test passes

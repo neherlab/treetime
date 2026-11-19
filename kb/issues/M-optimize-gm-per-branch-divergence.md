@@ -6,7 +6,7 @@ The optimize golden-master fixture `packages/treetime/src/optimize/__tests__/__f
 
 ## Evidence
 
-`test_gm_optimize_per_branch` in [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L100](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L100) is `#[ignore]`'d with this issue path in the ignore reason. It runs Brent with `IndelPolicy::Include`. `./dev/docker/run just test-rs --run-ignored only test_gm_optimize_per_branch` reproduces the divergence. The test stops at the first divergent branch, so the full list of divergent branches is not known. CI checks only the summed length within 5% (`test_gm_optimize`, [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48)).
+`test_gm_optimize_per_branch` in [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L100`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50-L100) is `#[ignore]`'d with this issue path in the ignore reason. It runs Brent with `IndelPolicy::Include`. `./dev/docker/run just test-rs --run-ignored only test_gm_optimize_per_branch` reproduces the divergence. The test stops at the first divergent branch, so the full list of divergent branches is not known. CI checks only the summed length within 5% (`test_gm_optimize`, [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L23-L48)).
 
 ## Likely contributors
 
