@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch lengths with one relative rate per RSV-A gene (rsv/a/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/rsv/a/2000/optimize-gene-partitions.yaml --output-all tmp/examples/rsv/a/2000/optimize-gene-partitions
+#
+# Fit gene-specific rates on one genome tree. The bundled reference annotation
+# defines the partitions: the longer M2-1 CDS takes sites shared with M2-2, and
+# sites outside a CDS form a noncoding partition. The gene scheme shares nucleotide
+# frequencies and exchange rates across partitions and fits a relative rate per partition
+# (kb/decisions/multi-alignment-partitions.md). The Nextstrain RSV G and F builds
+# instead infer separate trees on gene alignments.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+annotation:
+  - "annotation.gff3"
+
+partition_by: "genes"

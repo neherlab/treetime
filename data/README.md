@@ -70,6 +70,7 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | [`rsv/a/2000/clock.yaml`](rsv/a/2000/clock.yaml) | `clock` | Root-to-tip regression with the default settings |
 | [`rsv/a/2000/homoplasy.yaml`](rsv/a/2000/homoplasy.yaml) | `homoplasy` | Homoplasies with the default settings |
 | [`rsv/a/2000/mugration-country.yaml`](rsv/a/2000/mugration-country.yaml) | `mugration` | Ancestral sampling country |
+| [`rsv/a/2000/optimize-gene-partitions.yaml`](rsv/a/2000/optimize-gene-partitions.yaml) | `optimize` | Shared branch lengths with a separate relative rate for each annotated gene |
 | [`rsv/a/2000/optimize.yaml`](rsv/a/2000/optimize.yaml) | `optimize` | Branch-length optimization with the default settings |
 | [`rsv/a/2000/prune-collapse.yaml`](rsv/a/2000/prune-collapse.yaml) | `prune` | Tree cleanup: short, empty, and shared-mutation branches |
 | [`rsv/a/2000/timetree-skyline-confidence.yaml`](rsv/a/2000/timetree-skyline-confidence.yaml) | `timetree` | RSV-A time tree with a skyline coalescent and date intervals |
@@ -128,7 +129,7 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 | [`mpox/clade-ii/2000/pipeline-full.yaml`](mpox/clade-ii/2000/pipeline-full.yaml) | `optimize` -> `ancestral` -> `timetree` -> `mugration` | All four analysis commands on 2000 clade II mpox genomes |
 | [`mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml`](mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml) | `optimize` -> `ancestral` -> `timetree` | Nextstrain mpox WIP/new_tt build with TreeTime v1 |
 | [`mpox/clade-ii/2000/pipeline-nextstrain.yaml`](mpox/clade-ii/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` | Nextstrain mpox hmpxv1 build with a fixed clock and two outgroup tips |
-| [`rsv/a/2000/pipeline-nextstrain.yaml`](rsv/a/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` -> `mugration` | Nextstrain rsv a genome build, TreeTime part |
+| [`rsv/a/2000/pipeline-nextstrain.yaml`](rsv/a/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` -> `mugration` | Nextstrain RSV-A genome build with clock-filtered and undated tips removed |
 | [`sc2/2844/pipeline-undated.yaml`](sc2/2844/pipeline-undated.yaml) | `optimize` -> `ancestral` | SARS-CoV-2 branch-length optimization and ancestral reconstruction |
 | [`sc2/5100/pipeline-nextstrain.yaml`](sc2/5100/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` | Nextstrain ncov global build, TreeTime part |
 | [`zika/20/pipeline-dated-geography.yaml`](zika/20/pipeline-dated-geography.yaml) | `timetree` -> `mugration` | Phylodynamics + phylogeography in one file: time tree, then ancestral geography |
