@@ -156,16 +156,8 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c2_overlapping_with_tails() {
-    let a = Distribution::Function(
-      helpers::make_function(0.0, 10.0, 101, 5.0, 2.0)
-        .with_left_extrap(SOFT)
-        .unwrap(),
-    );
-    let b = Distribution::Function(
-      helpers::make_function(3.0, 13.0, 101, 8.0, 2.0)
-        .with_left_extrap(SOFT)
-        .unwrap(),
-    );
+    let a = Distribution::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(SOFT));
+    let b = Distribution::Function(helpers::make_function(3.0, 13.0, 101, 8.0, 2.0).with_left_extrap(SOFT));
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
@@ -176,11 +168,7 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c3_disjoint_one_constant_left() {
-    let a = Distribution::Function(
-      helpers::make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(SOFT)
-        .unwrap(),
-    );
+    let a = Distribution::Function(helpers::make_function(10.0, 20.0, 101, 15.0, 3.0).with_left_extrap(SOFT));
     let b = Distribution::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
@@ -201,16 +189,12 @@ mod tests {
     let leaf_msg = Distribution::Function(
       helpers::make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
         .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let subtree_msg = Distribution::Function(
       helpers::make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
         .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let result = distribution_multiplication(&leaf_msg, &subtree_msg, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
@@ -229,9 +213,7 @@ mod tests {
   #[test]
   fn test_multiply_tail_c5_disjoint_hard_tail() {
     let a = Distribution::Function(
-      helpers::make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+      helpers::make_function(10.0, 20.0, 101, 15.0, 3.0).with_left_extrap(BoundaryBehavior::Hard),
     );
     let b = Distribution::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
     let actual = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
@@ -240,11 +222,7 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c6_endpoint_contact_with_constant() {
-    let a = Distribution::Function(
-      helpers::make_function(5.0, 10.0, 51, 7.5, 2.0)
-        .with_left_extrap(SOFT)
-        .unwrap(),
-    );
+    let a = Distribution::Function(helpers::make_function(5.0, 10.0, 51, 7.5, 2.0).with_left_extrap(SOFT));
     let b = Distribution::Function(helpers::make_function(0.0, 5.0, 51, 2.5, 2.0));
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
@@ -256,11 +234,7 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c7_contained_with_tails() {
-    let outer = Distribution::Function(
-      helpers::make_function(0.0, 20.0, 201, 10.0, 5.0)
-        .with_left_extrap(SOFT)
-        .unwrap(),
-    );
+    let outer = Distribution::Function(helpers::make_function(0.0, 20.0, 201, 10.0, 5.0).with_left_extrap(SOFT));
     let inner = Distribution::Function(helpers::make_function(5.0, 15.0, 101, 10.0, 3.0));
     let result = distribution_multiplication(&outer, &inner, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
@@ -275,16 +249,12 @@ mod tests {
     let a = Distribution::Function(
       helpers::make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let b = Distribution::Function(
       helpers::make_function(3.0, 8.0, 51, 5.5, 1.5)
         .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
@@ -302,11 +272,7 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_commutative() {
-    let a = Distribution::Function(
-      helpers::make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(SOFT)
-        .unwrap(),
-    );
+    let a = Distribution::Function(helpers::make_function(10.0, 20.0, 101, 15.0, 3.0).with_left_extrap(SOFT));
     let b = Distribution::Function(helpers::make_function(0.0, 8.0, 101, 4.0, 2.0));
     let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let ba = distribution_multiplication(&b, &a, MaxGridPoints::default()).unwrap();
@@ -385,8 +351,8 @@ mod tests {
     #[case] b_left: BoundaryBehavior,
     #[case] expected_left: BoundaryBehavior,
   ) {
-    let a = Distribution::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
-    let b = Distribution::Function(helpers::make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
+    let a = Distribution::Function(helpers::make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left));
+    let b = Distribution::Function(helpers::make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left));
 
     let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let Distribution::Function(fab) = &ab else {
@@ -406,13 +372,11 @@ mod tests {
   fn test_multiply_function_function_composes_soft_tails() {
     let a = Distribution::Function(
       helpers::make_function(0.0, 10.0, 101, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.002 }))
-        .unwrap(),
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.002 })),
     );
     let b = Distribution::Function(
       helpers::make_function(2.0, 12.0, 101, 7.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.003 }))
-        .unwrap(),
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.003 })),
     );
 
     let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
@@ -432,14 +396,10 @@ mod tests {
     let law_b = HardApproachLaw { t_hard: 0.0, b: 2.0 };
 
     let a = Distribution::Function(
-      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::HardApproach(law_a))
-        .unwrap(),
+      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0).with_left_extrap(BoundaryBehavior::HardApproach(law_a)),
     );
     let b = Distribution::Function(
-      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::HardApproach(law_b))
-        .unwrap(),
+      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0).with_left_extrap(BoundaryBehavior::HardApproach(law_b)),
     );
 
     assert_error!(
@@ -453,15 +413,10 @@ mod tests {
     let law = HardApproachLaw { t_hard: 0.0, b: 1.5 };
 
     let a = Distribution::Function(
-      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::HardApproach(law))
-        .unwrap(),
+      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0).with_left_extrap(BoundaryBehavior::HardApproach(law)),
     );
-    let b = Distribution::Function(
-      helpers::make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
+    let b =
+      Distribution::Function(helpers::make_function(1.0, 10.0, 91, 5.0, 2.0).with_left_extrap(BoundaryBehavior::Hard));
 
     let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let Distribution::Function(f) = &result else {
@@ -559,8 +514,8 @@ mod tests {
     fn soft_message(range: (f64, f64), n: usize, peak_at: f64, sigma: f64) -> Result<Distribution, Report> {
       let y = Array1::linspace(range.0, range.1, n).mapv(|x| 0.5 * ((x - peak_at) / sigma).powi(2));
       let f = DistributionFunction::from_range_values(range, y)?
-        .with_left_extrap(SOFT)?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(SOFT)
+        .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(f))
     }
 

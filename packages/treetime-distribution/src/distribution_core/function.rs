@@ -152,14 +152,16 @@ impl DistributionFunction {
     self.grid_fn.edge_cell(cell, self.left_extrap, self.right_extrap)
   }
 
-  pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  #[must_use]
+  pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Self {
     self.left_extrap = behavior;
-    Ok(self)
+    self
   }
 
-  pub fn with_right_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  #[must_use]
+  pub fn with_right_extrap(mut self, behavior: BoundaryBehavior) -> Self {
     self.right_extrap = behavior;
-    Ok(self)
+    self
   }
 
   fn resample(&self, grid: &Grid) -> Result<Self, Report> {
@@ -295,10 +297,10 @@ impl DistributionFunction {
 
   pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     let law = SoftTailLaw::fit(&self.grid_fn, side, n_fit)?;
-    match side {
+    Ok(match side {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
-    }
+    })
   }
 }
 

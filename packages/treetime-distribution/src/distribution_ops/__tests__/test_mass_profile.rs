@@ -138,8 +138,8 @@ mod tests {
     let t = Array1::linspace(0.0, 3.0, n);
     let y = t.mapv(|ti| -lambda.ln() + lambda * ti);
     let f = DistributionFunction::from_range_values((0.0, 3.0), y)?
-      .with_left_extrap(HARD)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }))?;
+      .with_left_extrap(HARD)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }));
     let profile = MassProfile::new(&f)?;
     let total = profile.fractions(TailMass::Required).unwrap().total();
     let h = 3.0 / (n - 1).to_f64_exact();
@@ -490,8 +490,8 @@ mod tests {
   fn test_mass_profile_survival_of_a_uniform_cell_at_a_calendar_time_is_linear_between_its_represented_ends()
   -> Result<(), Report> {
     let f = DistributionFunction::from_start_dx_values(2000.0, 1e-10, array![0.0, 0.0])?
-      .with_left_extrap(HARD)?
-      .with_right_extrap(HARD)?;
+      .with_left_extrap(HARD)
+      .with_right_extrap(HARD);
     let profile = MassProfile::new(&f)?;
     let fractions = profile.fractions(TailMass::Required).unwrap();
     let (start, end) = (f.x_min(), f.x_max());
@@ -511,9 +511,11 @@ mod tests {
       left: BoundaryBehavior,
       right: BoundaryBehavior,
     ) -> Result<DistributionFunction, Report> {
-      DistributionFunction::from_range_values(range, y)?
-        .with_left_extrap(left)?
-        .with_right_extrap(right)
+      Ok(
+        DistributionFunction::from_range_values(range, y)?
+          .with_left_extrap(left)
+          .with_right_extrap(right),
+      )
     }
 
     pub(super) fn linear_density_mass(h: f64, (ya, yb): (f64, f64), (lo, hi): (f64, f64)) -> f64 {

@@ -15,7 +15,7 @@ mod tests {
   fn test_multiply_by_fn_constant_is_uniform_shift() {
     let neglog = Distribution::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
     let actual = distribution_multiply_by_fn(&neglog, |_| Ok(10.0), flat).unwrap();
-    pretty_assert_abs_diff_eq!(array![14.0, 10.0, 13.0], actual.y().unwrap(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(array![14.0, 10.0, 13.0], actual.y(), epsilon = 1e-15);
   }
 
   #[test]
@@ -155,9 +155,7 @@ mod tests {
     let input = DistributionFunction::from_arrays(&t, y)
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
     let actual =
       distribution_multiply_by_fn(&Distribution::Function(input), |ti: f64| Ok(0.5 * ti), sides(0.5, 0.5)).unwrap();
 
@@ -193,8 +191,8 @@ mod tests {
       let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| slope * ti))?;
       let soft = BoundaryBehavior::Linear(SoftTailLaw { slope });
       let f = match side {
-        Side::Left => f.with_left_extrap(soft)?.with_right_extrap(BoundaryBehavior::Hard)?,
-        Side::Right => f.with_left_extrap(BoundaryBehavior::Hard)?.with_right_extrap(soft)?,
+        Side::Left => f.with_left_extrap(soft).with_right_extrap(BoundaryBehavior::Hard),
+        Side::Right => f.with_left_extrap(BoundaryBehavior::Hard).with_right_extrap(soft),
       };
       Ok(Distribution::Function(f))
     }

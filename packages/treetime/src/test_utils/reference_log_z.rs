@@ -218,11 +218,11 @@ impl NodeFactors<'_> {
     }
   }
 
-  fn neg_log(self, key: GraphNodeKey, n_children: usize, time: f64) -> Result<f64, Report> {
+  fn neg_log(self, key: GraphNodeKey, n_children: usize, time: f64) -> f64 {
     match self {
-      Self::None => Ok(0.0),
+      Self::None => 0.0,
       Self::Prior(prior) => prior.node_contribution(key, n_children, time),
-      Self::Analytic(factor) => Ok(factor(key, n_children, time)),
+      Self::Analytic(factor) => factor(key, n_children, time),
     }
   }
 }
@@ -319,7 +319,7 @@ fn leaf_subtree(
   }
   Ok(Subtree::Leaf {
     index: to_isize_floor(index),
-    log_factor: -input.factors.neg_log(key, 0, date)?,
+    log_factor: -input.factors.neg_log(key, 0, date),
   })
 }
 
@@ -433,7 +433,7 @@ fn branch_window(branch: &BranchTime, spacing: f64, fraction: f64) -> Result<Gri
 fn node_window(
   key: GraphNodeKey,
   messages: &[ChildMessage<'_>],
-  factor: impl Fn(f64) -> Result<f64, Report>,
+  factor: impl Fn(f64) -> f64,
   factor_breaks: &[f64],
   spacing: f64,
   fraction: f64,
@@ -454,10 +454,9 @@ fn node_window(
   let log_values: Array1<f64> = (first..=last)
     .map(|index| {
       let messages: f64 = windows.iter().map(|window| window.log_sample(index)).sum();
-      Ok(messages - factor(index.to_f64_exact())?)
+      messages - factor(index.to_f64_exact())
     })
-    .collect::<Result<Vec<f64>, Report>>()?
-    .into();
+    .collect();
   let log_values_at = |x: f64| -> Result<(f64, f64), Report> {
     let (true_log, outer_log) = messages.iter().try_fold((0.0, 0.0), |(true_sum, outer_sum), message| {
       let (true_log, outer_log) = match &message.leaf {
@@ -466,7 +465,7 @@ fn node_window(
       };
       Ok::<_, Report>((true_sum + true_log, outer_sum + outer_log))
     })?;
-    let factor = factor(x)?;
+    let factor = factor(x);
     Ok((true_log - factor, outer_log - factor))
   };
   let young_edged = windows

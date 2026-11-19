@@ -169,7 +169,7 @@ pub(crate) fn multiply_functions(
       let left_tail = compose_product_tail(Side::Left, ordered.iter().map(|f| f.left_extrap()))?;
       let right_tail = compose_product_tail(Side::Right, ordered.iter().map(|f| f.right_extrap()))?;
       let function = DistributionFunction::from_range_values(bounds, values)?.with_amplitude(amplitude);
-      let function = with_settled_tails(function, left_tail, right_tail)?;
+      let function = with_settled_tails(function, left_tail, right_tail);
       Ok(Distribution::Function(function))
     },
   }
@@ -244,20 +244,20 @@ fn with_composed_tails(
 ) -> Result<DistributionFunction, Report> {
   let left = compose_multiplication_tail(Side::Left, a_tails.0, b_tails.0)?;
   let right = compose_multiplication_tail(Side::Right, a_tails.1, b_tails.1)?;
-  with_settled_tails(function, left, right)
+  Ok(with_settled_tails(function, left, right))
 }
 
 pub(super) fn with_settled_tails(
   function: DistributionFunction,
   left: BoundaryBehavior,
   right: BoundaryBehavior,
-) -> Result<DistributionFunction, Report> {
+) -> DistributionFunction {
   let settled = |tail: BoundaryBehavior, edge: f64| match tail {
     BoundaryBehavior::HardEdgeCell(law) if !function.grid_fn().coincides(law.t_edge, edge) => BoundaryBehavior::Hard,
     other => other,
   };
   let (left, right) = (settled(left, function.x_min()), settled(right, function.x_max()));
-  function.with_left_extrap(left)?.with_right_extrap(right)
+  function.with_left_extrap(left).with_right_extrap(right)
 }
 
 fn compose_multiplication_tail(

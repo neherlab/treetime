@@ -131,11 +131,11 @@ fn divide_function_by_function(
       let function = apply_division_tail(function, Side::Left, dividend_domain, divisor_domain)?;
       let function = apply_division_tail(function, Side::Right, dividend_domain, divisor_domain)?;
       let function = match left_end.and_then(SharedHardEnd::tail) {
-        Some(tail) => function.with_left_extrap(tail)?,
+        Some(tail) => function.with_left_extrap(tail),
         None => function,
       };
       let function = match right_end.and_then(SharedHardEnd::tail) {
-        Some(tail) => function.with_right_extrap(tail)?,
+        Some(tail) => function.with_right_extrap(tail),
         None => function,
       };
       Ok(Distribution::Function(function))
@@ -236,7 +236,7 @@ fn apply_division_tail(
     Side::Left => (tail, function.right_extrap()),
     Side::Right => (function.left_extrap(), tail),
   };
-  with_settled_tails(function, left, right)
+  Ok(with_settled_tails(function, left, right))
 }
 
 fn division_side_tail(side: Side, dividend: HardDomain, divisor: HardDomain) -> Result<DivisionSideTail, Report> {

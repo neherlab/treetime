@@ -159,13 +159,13 @@ mod tests {
 
     {
       let time_dist = node_time_distribution(&backward, leaf_a_key).expect("leaf A should have time distribution");
-      let expected = Distribution::point(date_a, coalescent_model.node_contribution(leaf_a_key, 0, date_a)?);
+      let expected = Distribution::point(date_a, coalescent_model.node_contribution(leaf_a_key, 0, date_a));
       assert_eq!(&expected, time_dist.as_ref());
     }
 
     {
       let time_dist = node_time_distribution(&backward, leaf_b_key).expect("leaf B should have time distribution");
-      let expected = Distribution::point(date_b, coalescent_model.node_contribution(leaf_b_key, 0, date_b)?);
+      let expected = Distribution::point(date_b, coalescent_model.node_contribution(leaf_b_key, 0, date_b));
       assert_eq!(&expected, time_dist.as_ref());
     }
 
@@ -236,8 +236,8 @@ mod tests {
     let n_children = 2;
     for &time in grid.iter().skip(1) {
       let added = (with.eval(time)? - with.eval(reference)?) - (without.eval(time)? - without.eval(reference)?);
-      let expected = model.node_contribution(internal_key, n_children, time)?
-        - model.node_contribution(internal_key, n_children, reference)?;
+      let expected = model.node_contribution(internal_key, n_children, time)
+        - model.node_contribution(internal_key, n_children, reference);
       pretty_assert_abs_diff_eq!(added, expected, epsilon = 1e-9);
     }
     Ok(())
@@ -445,7 +445,7 @@ mod tests {
       let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
       let dist = node_time_distribution(&backward, internal).expect("internal node should have a time distribution");
       Ok((
-        dist.y()?,
+        dist.y(),
         dist.likely_time()?.expect("distribution should have a likely_time"),
       ))
     };

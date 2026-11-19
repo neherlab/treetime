@@ -178,8 +178,8 @@ impl InputBranchLikelihood {
       slope: self.slope(max_branch_length) * branch_rate,
     };
     let distribution_fn = DistributionFunction::from_grid_fn(f)
-      .with_left_extrap(self.start(branch_rate))?
-      .with_right_extrap(BoundaryBehavior::Linear(right_tail))?;
+      .with_left_extrap(self.start(branch_rate))
+      .with_right_extrap(BoundaryBehavior::Linear(right_tail));
     Ok(Arc::new(Distribution::Function(distribution_fn)))
   }
 

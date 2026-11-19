@@ -183,9 +183,7 @@ mod tests {
     let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| rate * (10.0 - ti)))
       .unwrap()
       .with_left_extrap(left)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
     let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
     pretty_assert_ulps_eq!(10.0, hi, max_ulps = 0);
     if let Some(edge) = expected_lo {
@@ -206,9 +204,7 @@ mod tests {
     let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| 0.5 * ti * ti))
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -6.0 }))
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }));
     let (lo, hi) = (-3.2345, 3.2345);
 
     let windowed = helpers::as_function(
@@ -253,9 +249,7 @@ mod tests {
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Hard)
-        .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
-        .unwrap()
     }
 
     pub(super) fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction {
@@ -265,9 +259,7 @@ mod tests {
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Linear(left))
-        .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
-        .unwrap()
     }
 
     pub(super) fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction {
@@ -276,9 +268,7 @@ mod tests {
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
       f.with_left_extrap(BoundaryBehavior::Hard)
-        .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
-        .unwrap()
     }
   }
 }

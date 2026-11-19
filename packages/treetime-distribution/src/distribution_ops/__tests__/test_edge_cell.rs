@@ -384,9 +384,11 @@ mod tests {
       pub(super) fn function(&self) -> Result<DistributionFunction, Report> {
         let x_max = self.h * CELLS.to_f64_exact();
         let y = Array1::linspace(0.0, x_max, CELLS + 1).mapv(|x| self.cost(x));
-        DistributionFunction::from_range_values((0.0, x_max), y)?
-          .with_left_extrap(BoundaryBehavior::HardEdgeCell(self.law()))?
-          .with_right_extrap(BoundaryBehavior::Hard)
+        Ok(
+          DistributionFunction::from_range_values((0.0, x_max), y)?
+            .with_left_extrap(BoundaryBehavior::HardEdgeCell(self.law()))
+            .with_right_extrap(BoundaryBehavior::Hard),
+        )
       }
 
       pub(super) fn mass_by_quadrature(&self, a: f64, b: f64) -> f64 {
@@ -426,9 +428,11 @@ mod tests {
     pub(super) fn line(poisson: &Poisson, left: BoundaryBehavior) -> Result<DistributionFunction, Report> {
       let f = poisson.function()?;
       let line = f.t().mapv(|t| 2.0 + 5.0 * t);
-      DistributionFunction::from_range_values((f.x_min(), f.x_max()), line)?
-        .with_left_extrap(left)?
-        .with_right_extrap(BoundaryBehavior::Hard)
+      Ok(
+        DistributionFunction::from_range_values((f.x_min(), f.x_max()), line)?
+          .with_left_extrap(left)
+          .with_right_extrap(BoundaryBehavior::Hard),
+      )
     }
 
     pub(super) fn cell_offsets(h: f64) -> Array1<f64> {

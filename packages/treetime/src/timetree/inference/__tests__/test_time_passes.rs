@@ -192,10 +192,10 @@ mod tests {
     let distribution = posterior.distribution.as_deref().expect("A must have a posterior");
     let log_mass = distribution.log_mass()?;
     let support = distribution.time_bounds().expect("A must have a support");
-    let oracle_log_z = tip.oracle_log_mass(support)?;
+    let oracle_log_z = tip.oracle_log_mass(support);
     for time in distribution.t() {
       let actual = distribution.eval(time)? + log_mass;
-      let expected = tip.oracle_neglog_density(time)? + oracle_log_z;
+      let expected = tip.oracle_neglog_density(time) + oracle_log_z;
       pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     }
     Ok(())
@@ -209,10 +209,10 @@ mod tests {
 
     let distribution = posterior.distribution.as_deref().expect("A must have a posterior");
     let start = distribution.time_bounds().expect("A must have a support").0;
-    let offset = distribution.eval(start)? - tip.oracle_neglog_density(start)?;
+    let offset = distribution.eval(start)? - tip.oracle_neglog_density(start);
     for time in distribution.t() {
       let actual = distribution.eval(time)?;
-      let expected = tip.oracle_neglog_density(time)? + offset;
+      let expected = tip.oracle_neglog_density(time) + offset;
       pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-9);
     }
     Ok(())
@@ -413,11 +413,11 @@ mod tests {
         Ok(posterior.remove(self.tip()).expect("A must have a posterior"))
       }
 
-      pub(super) fn oracle_neglog_density(&self, time: f64) -> Result<f64, Report> {
-        Ok(TIP_BRANCH_DECAY * (time - ROOT_DATE) + self.prior.node_contribution(self.tip(), 0, time)?)
+      pub(super) fn oracle_neglog_density(&self, time: f64) -> f64 {
+        TIP_BRANCH_DECAY * (time - ROOT_DATE) + self.prior.node_contribution(self.tip(), 0, time)
       }
 
-      pub(super) fn oracle_log_mass(&self, (start, end): (f64, f64)) -> Result<f64, Report> {
+      pub(super) fn oracle_log_mass(&self, (start, end): (f64, f64)) -> f64 {
         let h = (end - start) / ORACLE_INTERVALS.to_f64_exact();
         let simpson_sum = (0..=ORACLE_INTERVALS)
           .map(|i| {
@@ -428,10 +428,10 @@ mod tests {
             } else {
               2.0
             };
-            Ok(weight * (-self.oracle_neglog_density(start + h * i.to_f64_exact())?).exp())
+            weight * (-self.oracle_neglog_density(start + h * i.to_f64_exact())).exp()
           })
-          .sum::<Result<f64, Report>>()?;
-        Ok((simpson_sum * h / 3.0).ln())
+          .sum::<f64>();
+        (simpson_sum * h / 3.0).ln()
       }
     }
 

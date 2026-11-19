@@ -21,7 +21,7 @@ where
   let times = distribution.t();
   let (ordinates, amplitude) = match distribution {
     Distribution::Function(f) => (f.y().clone(), f.amplitude()),
-    Distribution::Empty | Distribution::Point(..) | Distribution::Range(..) => (distribution.y()?, 0.0),
+    Distribution::Empty | Distribution::Point(..) | Distribution::Range(..) => (distribution.y(), 0.0),
   };
 
   let weights: Array1<f64> = times.iter().map(|&t| weight(t)).collect::<Result<_, Report>>()?;
@@ -34,8 +34,8 @@ where
 
   let result: Distribution = if let Distribution::Function(f) = distribution {
     let combined_fn = DistributionFunction::from_grid_fn(f.grid_fn().with_values(combined)?)
-      .with_left_extrap(weighted_tail_law(f, Side::Left, &outward_slope)?)?
-      .with_right_extrap(weighted_tail_law(f, Side::Right, &outward_slope)?)?;
+      .with_left_extrap(weighted_tail_law(f, Side::Left, &outward_slope)?)
+      .with_right_extrap(weighted_tail_law(f, Side::Right, &outward_slope)?);
     Distribution::Function(combined_fn.with_amplitude(amplitude))
   } else {
     Distribution::function(times, combined)?

@@ -36,8 +36,8 @@ mod tests {
 
     let expected =
       DistributionFunction::from_start_dx_values(t[first], input.dx(), input.y().slice(s![first..=last]).to_owned())?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard);
     assert_eq!(expected, trimmed);
     assert!(
       fractions.cdf(trimmed.x_min()) <= TRIM_EPS,
@@ -183,8 +183,8 @@ mod tests {
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
     let valley = -(1e-10_f64).ln();
     let input = DistributionFunction::from_range_values((0.0, 4.0), array![0.0, 1000.0, 1000.0, 1000.0, valley])?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(right)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(right);
     let total = 0.5 + 1.5e-10;
     pretty_assert_ulps_eq!(total, helpers::total_mass(&input)?, max_ulps = 4);
 
@@ -204,8 +204,8 @@ mod tests {
       _ => 10.0,
     }));
     let input = DistributionFunction::from_range_values((0.0, 15.0), y)?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
     let total = 5.0 + 11.0 * (-10.0_f64).exp();
     pretty_assert_ulps_eq!(total, helpers::total_mass(&input)?, max_ulps = 4);
 
@@ -256,8 +256,8 @@ mod tests {
   ) -> Result<(), Report> {
     let x_max = (y.len() - 1).to_f64_exact();
     let input = DistributionFunction::from_range_values((0.0, x_max), y)?
-      .with_left_extrap(left)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(left)
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let trimmed = helpers::trim_at(input.clone(), eps)?;
 
@@ -318,14 +318,16 @@ mod tests {
 
     pub(super) fn gaussian(x_min: f64, x_max: f64, n_points: usize) -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(x_min, x_max, n_points);
-      DistributionFunction::from_start_dx_values(x_min, t[1] - t[0], t.mapv(|t| 0.5 * t * t))?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)
+      Ok(
+        DistributionFunction::from_start_dx_values(x_min, t[1] - t[0], t.mapv(|t| 0.5 * t * t))?
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard),
+      )
     }
 
     pub(super) fn with_fitted_right_tail(f: DistributionFunction) -> Result<DistributionFunction, Report> {
       let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
-      f.with_right_extrap(BoundaryBehavior::Linear(law))
+      Ok(f.with_right_extrap(BoundaryBehavior::Linear(law)))
     }
 
     pub(super) fn plateau(soft: Side) -> DistributionFunction {
@@ -343,8 +345,7 @@ mod tests {
       };
       let y = Array1::from_iter((0..=20).map(|i| if peak.contains(&i) { 0.0 } else { 20.0 }));
       DistributionFunction::from_range_values((0.0, 20.0), y)
-        .and_then(|f| f.with_left_extrap(left))
-        .and_then(|f| f.with_right_extrap(right))
+        .map(|f| f.with_left_extrap(left).with_right_extrap(right))
         .unwrap()
     }
 
@@ -363,21 +364,21 @@ mod tests {
         ),
       };
       DistributionFunction::from_range_values((0.0, 4.0), y)
-        .and_then(|f| f.with_left_extrap(left))
-        .and_then(|f| f.with_right_extrap(right))
+        .map(|f| f.with_left_extrap(left).with_right_extrap(right))
         .unwrap()
     }
 
     pub(super) fn flat_on_one_to_two(left: HardApproachLaw) -> Result<DistributionFunction, Report> {
-      DistributionFunction::from_start_dx_values(1.0, 0.5, array![0.0, 0.0, 0.0])?
-        .with_left_extrap(BoundaryBehavior::HardApproach(left))?
-        .with_right_extrap(BoundaryBehavior::Hard)
+      Ok(
+        DistributionFunction::from_start_dx_values(1.0, 0.5, array![0.0, 0.0, 0.0])?
+          .with_left_extrap(BoundaryBehavior::HardApproach(left))
+          .with_right_extrap(BoundaryBehavior::Hard),
+      )
     }
 
     pub(super) fn flat(y: f64, right: BoundaryBehavior) -> Distribution {
       let f = DistributionFunction::from_start_dx_values(0.0, 1.0, array![y, y, y])
-        .and_then(|f| f.with_left_extrap(BoundaryBehavior::Hard))
-        .and_then(|f| f.with_right_extrap(right))
+        .map(|f| f.with_left_extrap(BoundaryBehavior::Hard).with_right_extrap(right))
         .unwrap();
       Distribution::Function(f)
     }

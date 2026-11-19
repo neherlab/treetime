@@ -300,9 +300,7 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_trimmed_posterior_keeps_the_quadrature_bound_past_its_cut() {
     let (t0, rate) = (2015.0, 2.0);
-    let trimmed = laplace(t0, rate, BoundaryBehavior::Hard)
-      .with_left_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+    let trimmed = laplace(t0, rate, BoundaryBehavior::Hard).with_left_extrap(BoundaryBehavior::Hard);
     let mut graph = Graph::new();
     let mut names = NodeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
@@ -400,8 +398,10 @@ mod tests {
       let half_width = 1.0 / rate;
       let y = Array1::linspace(t0 - half_width, t0 + half_width, 3).mapv(|x| rate * (x - t0).abs());
       DistributionFunction::from_range_values((t0 - half_width, t0 + half_width), y)
-        .and_then(|f| f.with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate })))
-        .and_then(|f| f.with_right_extrap(right))
+        .map(|f| {
+          f.with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate }))
+            .with_right_extrap(right)
+        })
         .expect("Laplace fixture is a valid distribution function")
     }
 

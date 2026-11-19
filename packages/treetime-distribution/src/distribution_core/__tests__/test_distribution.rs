@@ -77,8 +77,8 @@ mod tests {
     #[case] expected: (f64, f64),
   ) -> Result<(), Report> {
     let function = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 0.0, 1.0])?
-      .with_left_extrap(left)?
-      .with_right_extrap(right)?;
+      .with_left_extrap(left)
+      .with_right_extrap(right);
     assert_eq!(Some(expected), Distribution::Function(function).support_bounds());
     Ok(())
   }

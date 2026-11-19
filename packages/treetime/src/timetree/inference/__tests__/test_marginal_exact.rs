@@ -347,14 +347,11 @@ mod tests {
         let index = |date: f64| f64_to_usize_saturating(((date - ORACLE_START) / step).round());
         let (last_x, last_y) = (index(end_x), index(end_y));
         let tip = |name: &str| TIPS_4.iter().find(|(tip, _)| *tip == name).expect("tip must exist").1;
-        let prior_of = |name: &str| -> Result<Vec<f64>, Report> {
+        let prior_of = |name: &str| -> Vec<f64> {
           let key = self.tree.key(name);
-          grid
-            .iter()
-            .map(|&t| self.prior.node_contribution(key, 2, t).map(|f| -f))
-            .collect()
+          grid.iter().map(|&t| -self.prior.node_contribution(key, 2, t)).collect()
         };
-        let (prior_x, prior_y, prior_r) = (prior_of("X")?, prior_of("Y")?, prior_of("R")?);
+        let (prior_x, prior_y, prior_r) = (prior_of("X"), prior_of("Y"), prior_of("R"));
         let factor_x = rescaled_exp(
           (0..n)
             .map(|i| {

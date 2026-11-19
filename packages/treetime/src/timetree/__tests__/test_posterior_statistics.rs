@@ -104,8 +104,8 @@ mod tests {
     let rate = 100.0;
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 1.0), Array1::zeros(11))?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?,
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate })),
     );
 
     let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
@@ -158,8 +158,8 @@ mod tests {
     let (anchor_y, b) = (0.4, 2.5);
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 3.0), array![anchor_y, anchor_y, anchor_y, f64::INFINITY])?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b }))?,
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b })),
     );
 
     let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
@@ -188,8 +188,8 @@ mod tests {
   fn test_posterior_survival_is_flat_across_an_interior_gap_only_up_to_the_level_spacing() -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 5.0), array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0])?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?,
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
 
     let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
@@ -204,8 +204,8 @@ mod tests {
   fn test_posterior_survival_follows_a_long_soft_tail_of_a_narrow_posterior() -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 0.01), Array1::zeros(11))?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?,
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 })),
     );
 
     let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
@@ -239,8 +239,8 @@ mod tests {
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::from_start_dx_values(start, STEP, y)?
-        .with_left_extrap(left)?
-        .with_right_extrap(right)?,
+        .with_left_extrap(left)
+        .with_right_extrap(right),
     );
 
     let survival = NodeSurvival::of_posterior(&distribution)?.unwrap();
@@ -263,8 +263,8 @@ mod tests {
     #[case] max_interpolation_error: f64,
   ) -> Result<(), Report> {
     let function = DistributionFunction::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Hard);
     let profile = MassProfile::new(&function)?;
     let fractions = profile.fractions(TailMass::Required).unwrap();
 
@@ -289,8 +289,8 @@ mod tests {
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values(range, y)?
-        .with_left_extrap(left)?
-        .with_right_extrap(right)?,
+        .with_left_extrap(left)
+        .with_right_extrap(right),
     );
     assert_error!(posterior_survival(&distribution, &survival_levels()), message);
     Ok(())
@@ -359,8 +359,8 @@ mod tests {
       right: BoundaryBehavior,
     ) -> Result<Distribution, Report> {
       let function = DistributionFunction::from_range_values(range, array![0.0, 0.0])?
-        .with_left_extrap(left)?
-        .with_right_extrap(right)?;
+        .with_left_extrap(left)
+        .with_right_extrap(right);
       Ok(Distribution::Function(function))
     }
   }

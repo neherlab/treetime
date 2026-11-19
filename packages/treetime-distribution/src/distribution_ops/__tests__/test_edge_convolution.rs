@@ -98,8 +98,8 @@ pub(crate) mod tests {
   #[test]
   fn test_edge_convolution_point_keeps_steep_soft_law_without_window() -> Result<(), Report> {
     let steep = DistributionFunction::from_range_values((0.0, 1.0), Array1::zeros(2))?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1e6 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1e6 }));
 
     let message = convolve_across_edge(
       &Distribution::point(0.0, 0.0),
@@ -166,12 +166,12 @@ pub(crate) mod tests {
   -> Result<(), Report> {
     let t = Array1::<f64>::linspace(0.0, 2.0, 41);
     let branch = DistributionFunction::from_range_values((0.0, 2.0), t.mapv(|t| 4.0 * (t - 1.8).powi(2)))?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }));
     let t = Array1::<f64>::linspace(2000.0, 2000.99, 23);
     let subtree = DistributionFunction::from_range_values((2000.0, 2000.99), t.mapv(|t| 50.0 * (t - 2000.9).powi(2)))?
-      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -10.0 }))?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -10.0 }))
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let message = convolve_across_edge(
       &Distribution::Function(subtree.clone()),
@@ -462,8 +462,8 @@ pub(crate) mod tests {
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
-        .with_left_extrap(BoundaryBehavior::Linear(left))?
-        .with_right_extrap(BoundaryBehavior::Linear(right))?;
+        .with_left_extrap(BoundaryBehavior::Linear(left))
+        .with_right_extrap(BoundaryBehavior::Linear(right));
       Ok(Distribution::Function(f))
     }
 
@@ -474,8 +474,8 @@ pub(crate) mod tests {
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
-        .with_left_extrap(BoundaryBehavior::Linear(left))?
-        .with_right_extrap(BoundaryBehavior::Linear(right))?;
+        .with_left_extrap(BoundaryBehavior::Linear(left))
+        .with_right_extrap(BoundaryBehavior::Linear(right));
       Ok(Distribution::Function(f))
     }
 
@@ -554,16 +554,16 @@ pub(crate) mod tests {
       let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       let f = f
-        .with_left_extrap(BoundaryBehavior::Linear(left))?
-        .with_right_extrap(BoundaryBehavior::Linear(right))?;
+        .with_left_extrap(BoundaryBehavior::Linear(left))
+        .with_right_extrap(BoundaryBehavior::Linear(right));
       Ok(Distribution::Function(f))
     }
 
     pub(super) fn branch(left: BoundaryBehavior, x_min: f64) -> Result<Distribution, Report> {
       let t = Array1::linspace(x_min, x_min + 2.0, 41);
       let f = DistributionFunction::from_range_values((x_min, x_min + 2.0), t.mapv(|t| 4.0 * (t - 0.5).powi(2)))?
-        .with_left_extrap(left)?
-        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))?;
+        .with_left_extrap(left)
+        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }));
       Ok(Distribution::Function(f))
     }
 

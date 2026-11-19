@@ -143,9 +143,7 @@ mod tests {
       DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), y)
         .unwrap()
         .with_left_extrap(f.left_extrap())
-        .unwrap()
         .with_right_extrap(f.right_extrap())
-        .unwrap()
     }
 
     pub(super) fn sorted_positions(f: &DistributionFunction, cuts: [f64; 3]) -> [f64; 3] {
@@ -190,7 +188,7 @@ mod tests {
             }),
             other => other,
           };
-          f.with_left_extrap(left).unwrap().with_right_extrap(right).unwrap()
+          f.with_left_extrap(left).with_right_extrap(right)
         })
     }
 

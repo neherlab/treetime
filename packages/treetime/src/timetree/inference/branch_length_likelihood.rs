@@ -72,8 +72,8 @@ pub(crate) fn compute_branch_length_distribution(
   };
 
   let distribution_fn = DistributionFunction::from_grid_fn(f)
-    .with_left_extrap(left_boundary)?
-    .with_right_extrap(right_boundary)?;
+    .with_left_extrap(left_boundary)
+    .with_right_extrap(right_boundary);
 
   let distribution = Distribution::Function(distribution_fn);
   let distribution = rewindow_to_mass(&distribution, EPS, n_grid_points, max_points)?;

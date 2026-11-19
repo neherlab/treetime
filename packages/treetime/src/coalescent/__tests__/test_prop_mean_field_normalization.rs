@@ -63,7 +63,7 @@ mod tests {
         .graph
         .get_nodes()
         .map(|node| prior.node_contribution(node.key(), node.outbound().len(), dates[&node.key()]))
-        .sum::<Result<f64, Report>>()?;
+        .sum::<f64>();
       Ok(FactorSums {
         kingman: kingman_neg_log_density(&simulated_node_ages(&tree), tc)?,
         normalized_factors: factors - prior.log_normalization(),

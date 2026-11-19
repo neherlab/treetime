@@ -91,9 +91,7 @@ mod tests {
     let f = DistributionFunction::from_start_dx_values(x_min, dx, y)
       .unwrap()
       .with_left_extrap(SOFT)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
     Distribution::Function(f)
   }
 

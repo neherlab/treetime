@@ -5,7 +5,7 @@ use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::mass_domain::log_mass;
 use crate::distribution_ops::negate::distribution_negation;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, array};
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use std::fmt::Debug;
@@ -75,24 +75,24 @@ impl Distribution {
   pub fn t(&self) -> Array1<f64> {
     match self {
       Self::Empty => {
-        ndarray::array![]
+        array![]
       },
       Self::Point(p) => {
-        ndarray::array![p.t()]
+        array![p.t()]
       },
       Self::Range(r) => {
-        ndarray::array![r.start(), r.end()]
+        array![r.start(), r.end()]
       },
       Self::Function(f) => f.t().to_owned(),
     }
   }
 
-  pub fn y(&self) -> Result<Array1<f64>, Report> {
+  pub fn y(&self) -> Array1<f64> {
     match self {
-      Self::Point(p) => Ok(ndarray::array![p.amplitude()]),
-      Self::Range(r) => Ok(ndarray::array![r.amplitude(), r.amplitude()]),
-      Self::Function(f) => Ok(f.values()),
-      Self::Empty => Ok(ndarray::array![]),
+      Self::Point(p) => array![p.amplitude()],
+      Self::Range(r) => array![r.amplitude(), r.amplitude()],
+      Self::Function(f) => f.values(),
+      Self::Empty => array![],
     }
   }
 
@@ -140,17 +140,17 @@ impl Distribution {
     }
   }
 
-  pub(crate) fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  pub(crate) fn with_left_extrap(self, behavior: BoundaryBehavior) -> Self {
     match self {
-      Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
-      other => Ok(other),
+      Self::Function(f) => Self::Function(f.with_left_extrap(behavior)),
+      other => other,
     }
   }
 
-  pub(crate) fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  pub(crate) fn with_right_extrap(self, behavior: BoundaryBehavior) -> Self {
     match self {
-      Self::Function(f) => Ok(Self::Function(f.with_right_extrap(behavior)?)),
-      other => Ok(other),
+      Self::Function(f) => Self::Function(f.with_right_extrap(behavior)),
+      other => other,
     }
   }
 

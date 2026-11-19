@@ -568,8 +568,8 @@ mod tests {
       set_time_distribution(&mut inputs, node_key, subtree);
     }
     let branch = DistributionFunction::from_start_dx_values(0.0, 1.0, array![5e7, 0.0, 5e7])?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Hard);
     set_branch_distribution(&graph, &mut inputs, node_key, Distribution::Function(branch));
 
     let posterior = run_forward_pass(&graph, &inputs, &names)?;
@@ -890,8 +890,8 @@ mod tests {
       let grid = Array1::linspace(x_min, x_max, n_points);
       let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(f))
     }
 
@@ -907,8 +907,8 @@ mod tests {
         slope: (x_min - mean) / sigma.powi(2),
       };
       let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
-        .with_left_extrap(BoundaryBehavior::Linear(law))?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(BoundaryBehavior::Linear(law))
+        .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(f))
     }
 

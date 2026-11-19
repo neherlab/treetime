@@ -35,7 +35,7 @@ mod tests {
     pretty_assert_ulps_eq!(Array1::from_vec(expected.time_points.clone()), actual.t(), max_ulps = 4);
     pretty_assert_abs_diff_eq!(
       Array1::from_vec(expected.probabilities_relative.clone()).mapv(|p| -p.ln()),
-      actual.y()?,
+      actual.y(),
       epsilon = 1e-11,
       "costs relative to the peak are -ln of the v0 probabilities relative to the peak; v0 rounds its underflow rescaling to 7.3e-12 nats",
     );

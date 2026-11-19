@@ -19,7 +19,7 @@ mod tests {
           .prior
           .node_contribution(key, node.outbound().len(), state.node_dates[&key])
       })
-      .sum::<Result<f64, Report>>()?;
+      .sum::<f64>();
 
     let expected = kingman_neg_log_density(&simulated_node_ages(&state.case.tree), state.tc)?;
     pretty_assert_abs_diff_eq!(expected, factors - state.prior.log_normalization(), epsilon = 1e-9);

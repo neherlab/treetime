@@ -124,7 +124,7 @@ impl CoalescentTimescale {
       pair_integral: i_seg,
       mergers: m_seg,
     } = expectation.segment_statistics(&boundaries);
-    expected_log_likelihood(&i_seg, &m_seg, self.schedule.values().as_slice().unwrap_or_default())
+    expected_log_likelihood(&i_seg, &m_seg, self.schedule.values())
   }
 
   pub(crate) fn constant(tc: f64) -> Self {

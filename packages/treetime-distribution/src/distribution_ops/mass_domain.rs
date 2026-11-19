@@ -75,8 +75,8 @@ pub(crate) fn trim_with_profile(dist: Distribution, profile: &MassProfile, eps: 
   let right = cuts.cut_side(Side::Right, window.upper)?;
   let trimmed = DistributionFunction::from_grid_fn(f.grid_fn().slice(window.first..=window.end)?)
     .with_amplitude(f.amplitude())
-    .with_left_extrap(left)?
-    .with_right_extrap(right)?;
+    .with_left_extrap(left)
+    .with_right_extrap(right);
   Ok(Distribution::Function(trimmed))
 }
 
@@ -363,13 +363,13 @@ pub(crate) fn resample_to_mass_window(
 pub(crate) fn refit_soft_tails(f: DistributionFunction) -> Result<DistributionFunction, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-    f.with_left_extrap(BoundaryBehavior::Linear(law))?
+    f.with_left_extrap(BoundaryBehavior::Linear(law))
   } else {
     f
   };
   let f = if matches!(f.right_extrap(), BoundaryBehavior::Linear(_)) {
     let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
-    f.with_right_extrap(BoundaryBehavior::Linear(law))?
+    f.with_right_extrap(BoundaryBehavior::Linear(law))
   } else {
     f
   };
@@ -383,13 +383,13 @@ fn soft_tails_at_window_edges(
 ) -> Result<DistributionFunction, Report> {
   let resampled = if matches!(resampled.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = window_edge_tail_law(input, &resampled, Side::Left, lo)?;
-    resampled.with_left_extrap(BoundaryBehavior::Linear(law))?
+    resampled.with_left_extrap(BoundaryBehavior::Linear(law))
   } else {
     resampled
   };
   let resampled = if matches!(resampled.right_extrap(), BoundaryBehavior::Linear(_)) {
     let law = window_edge_tail_law(input, &resampled, Side::Right, hi)?;
-    resampled.with_right_extrap(BoundaryBehavior::Linear(law))?
+    resampled.with_right_extrap(BoundaryBehavior::Linear(law))
   } else {
     resampled
   };

@@ -54,9 +54,7 @@ mod tests {
       DistributionFunction::from_arrays(&array![1.0, 2.0, 3.0], array![8.0, 5.0, 6.0])
         .unwrap()
         .with_left_extrap(BoundaryBehavior::Hard)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     assert_eq!(expected, actual);
   }
@@ -152,9 +150,7 @@ mod tests {
     let divisor = Distribution::function(array![1.0, 2.0, 3.0], array![0.1, 0.0, 0.1])
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
 
@@ -187,9 +183,7 @@ mod tests {
     let divisor = Distribution::function(array![1.0, 2.0, 3.0], array![2.0, 2.0, 2.0])
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }));
 
     let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
     let Distribution::Function(actual) = actual else {
@@ -221,15 +215,11 @@ mod tests {
       DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
         .unwrap()
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap();
+        .with_right_extrap(BoundaryBehavior::Hard);
     let divisor = DistributionFunction::from_start_dx_values(0.0, 1.0, Array1::from_elem(13, 2.0))
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.25 }))
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let actual = distribution_division(
       &Distribution::Function(dividend),
@@ -268,15 +258,11 @@ mod tests {
     let dividend = DistributionFunction::from_range_values(dividend_bounds, Array1::from_elem(11, 6.0))
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
     let divisor = DistributionFunction::from_range_values((2.0, 3.0), Array1::from_elem(11, 2.0))
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let actual = distribution_division(
       &Distribution::Function(dividend),
@@ -298,9 +284,7 @@ mod tests {
       DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
         .unwrap()
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap();
+        .with_right_extrap(BoundaryBehavior::Hard);
     let divisor = DistributionFunction::from_start_dx_values(4.0, 1.0, array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
     let actual = distribution_division(
@@ -324,14 +308,12 @@ mod tests {
       .unwrap()
       .fit_soft_tail(Side::Left, DEFAULT_TAIL_FIT_POINTS)
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
     let b = DistributionFunction::from_arrays(&grid, array![2.0, 1.5, 1.0, 0.5, 0.0, 0.5, 1.0, 1.5, 2.0])
       .unwrap()
       .fit_soft_tail(Side::Left, DEFAULT_TAIL_FIT_POINTS)
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let product = distribution_multiplication(
       &Distribution::Function(a.clone()),
@@ -395,17 +377,13 @@ mod tests {
 
   #[test]
   fn test_divide_function_by_function_shared_hard_end_on_different_grids_stays_defined() {
-    let dividend = power_law_to_hard_end(Side::Right, 2.0, 0.7)
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+    let dividend = power_law_to_hard_end(Side::Right, 2.0, 0.7).with_right_extrap(BoundaryBehavior::Hard);
     let t = Array1::linspace(0.3, 1.0, 8);
     let y = t.mapv(|t: f64| if t < 1.0 { -(1.0 - t).ln() } else { f64::INFINITY });
     let divisor = DistributionFunction::from_arrays(&t, y)
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let actual = distribution_division(
       &Distribution::Function(dividend),
@@ -456,16 +434,8 @@ mod tests {
       });
       let f = DistributionFunction::from_start_dx_values(0.0, 0.1, y).unwrap();
       match side {
-        Side::Left => f
-          .with_left_extrap(law)
-          .unwrap()
-          .with_right_extrap(BoundaryBehavior::Hard)
-          .unwrap(),
-        Side::Right => f
-          .with_left_extrap(BoundaryBehavior::Hard)
-          .unwrap()
-          .with_right_extrap(law)
-          .unwrap(),
+        Side::Left => f.with_left_extrap(law).with_right_extrap(BoundaryBehavior::Hard),
+        Side::Right => f.with_left_extrap(BoundaryBehavior::Hard).with_right_extrap(law),
       }
     }
 

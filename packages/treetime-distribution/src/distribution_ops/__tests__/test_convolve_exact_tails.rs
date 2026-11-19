@@ -209,9 +209,11 @@ mod tests {
       neg_log: impl Fn(usize, f64) -> f64,
     ) -> Result<DistributionFunction, Report> {
       let y: Array1<f64> = (0..n).map(|i| neg_log(i, x_min + i.to_f64_exact() * dx)).collect();
-      DistributionFunction::from_start_dx_values(x_min, dx, y)?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)
+      Ok(
+        DistributionFunction::from_start_dx_values(x_min, dx, y)?
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard),
+      )
     }
 
     pub(super) fn traced_convolution(

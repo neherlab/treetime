@@ -238,11 +238,11 @@ impl WindowedConvolution {
     let conv = match soft {
       Side::Left => {
         let end = hard_end(&conv, Side::Right);
-        conv.with_right_extrap(end)?
+        conv.with_right_extrap(end)
       },
       Side::Right => {
         let end = hard_end(&conv, Side::Left);
-        conv.with_left_extrap(end)?
+        conv.with_left_extrap(end)
       },
     };
     let Distribution::Function(conv) = conv else {

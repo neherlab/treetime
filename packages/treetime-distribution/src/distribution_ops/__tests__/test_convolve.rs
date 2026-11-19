@@ -70,8 +70,8 @@ mod tests {
   fn test_convolution_point_function_shifts_values_tail_laws_and_level() -> Result<(), Report> {
     let p = Distribution::point(3.0, 2.0);
     let f = DistributionFunction::from_start_dx_values(1.0, 1.0, array![3.0, 1.0, 2.0, 4.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.5, b: 2.0 }))?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))?
+      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.5, b: 2.0 }))
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
       .with_amplitude(1.5);
 
     let actual = distribution_convolution(
@@ -82,8 +82,8 @@ mod tests {
     )?;
 
     let expected = DistributionFunction::from_start_dx_values(4.0, 1.0, array![3.0, 1.0, 2.0, 4.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.5, b: 2.0 }))?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))?
+      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.5, b: 2.0 }))
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
       .with_amplitude(3.5);
     assert_eq!(Distribution::Function(expected), actual);
     Ok(())
@@ -111,8 +111,8 @@ mod tests {
   fn test_convolution_range_function_covers_the_full_support() -> Result<(), Report> {
     let r = Distribution::range((2.0, 6.0), LN_2);
     let f = DistributionFunction::from_start_dx_values(0.0, 2.0, Array1::zeros(6))?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let actual = distribution_convolution(
       &r,
@@ -148,8 +148,8 @@ mod tests {
   fn test_convolution_range_exponential_matches_the_trapezoid_model() -> Result<(), Report> {
     let (lambda, range) = (1.5_f64, (1.0, 2.0));
     let f = function_on((0.0, 4.0), 17, |t| lambda * t - lambda.ln())?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }));
     let model = PiecewiseLinear::of(&f, lambda);
 
     let actual = distribution_convolution(
@@ -193,8 +193,8 @@ mod tests {
       .iter()
       .map(|&cells| {
         let f = function_on((0.0, 4.0), cells + 1, |t| lambda * t - lambda.ln())?
-          .with_left_extrap(BoundaryBehavior::Hard)?
-          .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }))?;
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: lambda }));
         let actual = distribution_convolution(
           &Distribution::range(range, 0.0),
           &Distribution::Function(f),
@@ -222,8 +222,8 @@ mod tests {
       .iter()
       .map(|&cells| {
         let f = function_on((-8.0, 8.0), cells + 1, |x| x * x / 2.0 + (2.0 * PI).sqrt().ln())?
-          .with_left_extrap(BoundaryBehavior::Hard)?
-          .with_right_extrap(BoundaryBehavior::Hard)?;
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard);
         let actual = distribution_convolution(
           &Distribution::range((a, b), 0.0),
           &Distribution::Function(f),
@@ -247,8 +247,8 @@ mod tests {
     let (a, b) = (1.5_f64, 4.0_f64);
     let exponential = |rate: f64, cells: usize| -> Result<Distribution, Report> {
       let f = function_on((0.0, 4.0), cells + 1, |x| rate * x - rate.ln())?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?;
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }));
       Ok(Distribution::Function(f))
     };
     let errors: Vec<f64> = [32, 64, 128, 256]
@@ -269,8 +269,8 @@ mod tests {
     let (a, b, end) = (1.5_f64, 4.0_f64, 4.0_f64);
     let exponential = |rate: f64, cells: usize| -> Result<Distribution, Report> {
       let f = function_on((0.0, end), cells + 1, |x| rate * x - rate.ln())?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(f))
     };
     let operand_mass = |rate: f64| 1.0 - (-rate * end).exp();
@@ -310,11 +310,11 @@ mod tests {
       .map(|&(cells, branch_cells, h)| {
         let l_end = 4.0 + 0.3 * h;
         let subtree = function_on((-4.0, 0.0), cells + 1, |t| -a * t - a.ln())?
-          .with_left_extrap(BoundaryBehavior::Hard)?
-          .with_right_extrap(BoundaryBehavior::Hard)?;
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard);
         let branch = function_on((0.0, l_end), branch_cells + 1, |l| b * l - b.ln())?
-          .with_left_extrap(BoundaryBehavior::Hard)?
-          .with_right_extrap(BoundaryBehavior::Hard)?;
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard);
         let actual = distribution_convolution(
           &Distribution::Function(subtree),
           &Distribution::Function(branch).negate()?,
@@ -340,8 +340,8 @@ mod tests {
   #[test]
   fn test_convolution_range_function_carries_both_amplitudes() -> Result<(), Report> {
     let f = function_on((0.0, 3.0), 7, |t| t)?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
     let model = PiecewiseLinear::of(&f, 1.0);
     let height = 3.0_f64;
     let f = f.with_amplitude(-2.0_f64.ln());
@@ -371,8 +371,8 @@ mod tests {
   #[test]
   fn test_convolution_range_function_keeps_far_tail_mass_against_large_amplitude() -> Result<(), Report> {
     let f = DistributionFunction::from_range_values((0.0, 1000.0), array![0.0, 1000.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
     let r = Distribution::range((0.0, 1.0), -1000.0);
 
     let actual = distribution_convolution(
@@ -391,8 +391,8 @@ mod tests {
   #[test]
   fn test_convolution_range_function_box_narrower_than_spacing() -> Result<(), Report> {
     let f = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
     let model = PiecewiseLinear::of(&f, 1.0);
 
     let actual = distribution_convolution(
@@ -415,8 +415,8 @@ mod tests {
   #[test]
   fn test_convolution_range_function_end_cells_rise_linearly_from_the_support_ends() -> Result<(), Report> {
     let f = DistributionFunction::from_range_values((0.0, 1.0), array![0.0, 0.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Hard);
     let box_mass = |t: f64| (t.min(1.0) - (t - 0.2).max(0.0)).max(0.0);
 
     let actual = distribution_convolution(
@@ -447,8 +447,8 @@ mod tests {
     #[case] range_amplitude: f64,
   ) -> Result<(), Report> {
     let f = DistributionFunction::from_range_values(support, Array1::from_elem(n_points, y))?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Hard);
     let range_log_mass = (range.1 - range.0).ln() - range_amplitude;
     let function_log_mass = (support.1 - support.0).ln() - y;
 
@@ -469,8 +469,8 @@ mod tests {
       .iter()
       .map(|&cells| {
         let f = function_on((0.0, 2.0), cells + 1, |t| lambda * t)?
-          .with_left_extrap(BoundaryBehavior::Hard)?
-          .with_right_extrap(BoundaryBehavior::Hard)?;
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard);
         let function_mass = Distribution::Function(f.clone()).log_mass()?.exp();
         let actual = distribution_convolution(
           &Distribution::range(range, 0.0),
@@ -497,8 +497,8 @@ mod tests {
     #[case] expected_t: Array1<f64>,
   ) -> Result<(), Report> {
     let f = DistributionFunction::from_range_values(range, y)?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Hard);
 
     let actual = distribution_convolution(
       &Distribution::range((0.0, 0.2), 0.0),
@@ -524,8 +524,8 @@ mod tests {
   fn test_convolution_range_negated_branch_ends_at_range_end() -> Result<(), Report> {
     let t = Array1::linspace(0.1, 2.1, 21);
     let branch = DistributionFunction::from_range_values((0.1, 2.1), t.mapv(|t: f64| t - 2.0 * t.ln()))?
-      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
     let negated = Distribution::Function(branch).negate()?;
     let r = Distribution::range((2000.0, 2001.0), 0.0);
 
@@ -555,8 +555,8 @@ mod tests {
   fn test_convolution_point_negated_branch_ends_at_the_point() -> Result<(), Report> {
     let date = 2026.0 + 3.0 / 365.0;
     let branch = function_on((0.0, 135.431_597_963_692_52), 5, |t| t)?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
     let negated = Distribution::Function(branch).negate()?;
 
     let actual = distribution_convolution(
@@ -581,7 +581,7 @@ mod tests {
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
     assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
-    pretty_assert_abs_diff_eq!(neg_log(&array![0.25, 2.0, 2.5, 0.5]), actual.y()?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(neg_log(&array![0.25, 2.0, 2.5, 0.5]), actual.y(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -620,7 +620,7 @@ mod tests {
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
     assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
-    pretty_assert_abs_diff_eq!(neg_log(&array![0.125, 1.5, 1.5, 0.125]), actual.y()?, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(neg_log(&array![0.125, 1.5, 1.5, 0.125]), actual.y(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -632,7 +632,7 @@ mod tests {
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
 
     assert_eq!(array![6.0, 7.0], actual.t());
-    pretty_assert_abs_diff_eq!(array![3.0, 4.0], actual.y()?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(array![3.0, 4.0], actual.y(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -674,7 +674,7 @@ mod tests {
     assert_eq!(array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0], actual.t());
     pretty_assert_abs_diff_eq!(
       neg_log(&array![0.0075, 0.065, 0.15, 0.065, 0.0075]),
-      actual.y()?,
+      actual.y(),
       epsilon = 1e-12
     );
     Ok(())
@@ -705,8 +705,8 @@ mod tests {
     let n = 500;
     let func = Distribution::Function(
       DistributionFunction::from_start_dx_values(0.0, dx, Array1::zeros(n))?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?,
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let range = Distribution::range((0.0, 2e-7), 0.0);
 

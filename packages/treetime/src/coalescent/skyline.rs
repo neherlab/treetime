@@ -3,6 +3,7 @@ use crate::make_error;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
+use itertools::izip;
 use ndarray::{Array1, Array2, array};
 use ndarray_linalg::layout::MatrixLayout;
 use ndarray_linalg::{SolveTridiagonal, Tridiagonal};
@@ -62,7 +63,7 @@ pub(crate) fn optimize_skyline(
     Array1::from(boundaries[1..boundaries.len() - 1].to_vec()),
     tc_values.clone(),
   );
-  let log_likelihood = expected_log_likelihood(&i_seg, &m_seg, tc_values.as_slice().unwrap_or_default());
+  let log_likelihood = expected_log_likelihood(&i_seg, &m_seg, &tc_values);
 
   progress_info!(
     log,
@@ -90,13 +91,10 @@ pub(crate) fn optimize_skyline(
   })
 }
 
-pub(crate) fn expected_log_likelihood(i_seg: &[f64], m_seg: &[f64], tc_values: &[f64]) -> LogLh {
+pub(crate) fn expected_log_likelihood(i_seg: &[f64], m_seg: &[f64], tc_values: &Array1<f64>) -> LogLh {
   LogLh::new(
-    -i_seg
-      .iter()
-      .zip(m_seg)
-      .zip(tc_values)
-      .map(|((&i, &m), &tc)| i / tc + m * tc.ln())
+    -izip!(i_seg, m_seg, tc_values)
+      .map(|(&i, &m, &tc)| i / tc + m * tc.ln())
       .sum::<f64>(),
   )
 }

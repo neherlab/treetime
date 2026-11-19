@@ -210,8 +210,8 @@ mod tests {
         if k > 0.0 { m - k * m.ln() - (k - k * k.ln()) } else { m }
       });
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard);
       Ok(BranchLikelihood {
         distribution: Some(Arc::new(Distribution::Function(f))),
         time_length: Some(mean_time),
@@ -241,7 +241,7 @@ mod tests {
         Ok(NegLogPieces { x, y })
       };
       let contribution = |name: &str, n_children: usize, t: f64| -> Result<f64, Report> {
-        model.map_or(Ok(0.0), |m| m.node_contribution(setup.keys[name], n_children, t))
+        Ok(model.map_or(0.0, |m| m.node_contribution(setup.keys[name], n_children, t)))
       };
       let kinks: Vec<f64> = PRIOR_TIMES.iter().map(|&(_, t)| t).collect();
       let leaf_cost = TIPS

@@ -26,7 +26,6 @@ getset = { workspace = true }
 itertools = { workspace = true }
 ndarray = { workspace = true }
 ndarray-stats = { workspace = true }
-num = { workspace = true }
 ordered-float = { workspace = true }
 strum_macros = { workspace = true }
 

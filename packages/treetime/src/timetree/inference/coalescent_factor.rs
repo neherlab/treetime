@@ -21,7 +21,7 @@ pub(crate) fn apply_coalescent_prior(
   }
   distribution_multiply_by_fn(
     &distribution,
-    |time| model.node_contribution(key, n_children, time),
+    |time| Ok(model.node_contribution(key, n_children, time)),
     |side, edge| model.node_contribution_outward_slope(key, n_children, side, edge),
   )
 }
@@ -41,15 +41,15 @@ pub(crate) fn apply_leaf_coalescent_factor(
       let values = Array1::from_elem(n_points, distribution.eval(start)?);
       Distribution::Function(
         DistributionFunction::from_range_values((start, end), values)?
-          .with_left_extrap(BoundaryBehavior::Hard)?
-          .with_right_extrap(BoundaryBehavior::Hard)?,
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .with_right_extrap(BoundaryBehavior::Hard),
       )
     },
     _ => distribution,
   };
   distribution_multiply_by_fn(
     &distribution,
-    |time| model.node_contribution(key, 0, time),
+    |time| Ok(model.node_contribution(key, 0, time)),
     |side, edge| model.node_contribution_outward_slope(key, 0, side, edge),
   )
 }

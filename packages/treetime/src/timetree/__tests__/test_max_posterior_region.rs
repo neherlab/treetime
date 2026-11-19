@@ -262,8 +262,8 @@ mod tests {
   fn test_max_posterior_region_inside_hard_cells_inverts_their_power_law() -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((-1.0, 1.0), array![f64::INFINITY, 0.0, f64::INFINITY])?
-        .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -1.0, b: 1.0 }))?
-        .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 1.0, b: 1.0 }))?,
+        .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -1.0, b: 1.0 }))
+        .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 1.0, b: 1.0 })),
     );
 
     let region = grid_region(&distribution, 0.9)?;
@@ -292,8 +292,8 @@ mod tests {
   fn test_max_posterior_region_jump_at_plateau_level_ends_inside_the_plateau() -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 7.0), array![1.0, 0.0, 5.0, 0.5, 0.5, 0.5, 0.5, 30.0])?
-        .with_left_extrap(HARD)?
-        .with_right_extrap(HARD)?,
+        .with_left_extrap(HARD)
+        .with_right_extrap(HARD),
     );
 
     let region = grid_region(&distribution, 0.9)?;
@@ -319,8 +319,8 @@ mod tests {
   fn test_max_posterior_region_zero_density_gap_is_crossed_inside_the_next_component() -> Result<(), Report> {
     let function =
       DistributionFunction::from_range_values((0.0, 6.0), array![1.0, 0.0, 1.0, f64::INFINITY, 0.1, 0.1, 1.0])?
-        .with_left_extrap(HARD)?
-        .with_right_extrap(HARD)?;
+        .with_left_extrap(HARD)
+        .with_right_extrap(HARD);
 
     let region = grid_region(&Distribution::Function(function.clone()), 0.9)?;
 
@@ -373,8 +373,8 @@ mod tests {
     let y: Array1<f64> = chain!(once(20.0), repeat_n(0.0, 21), once(20.0)).collect();
     let distribution = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 22.0), y)?
-        .with_left_extrap(HARD)?
-        .with_right_extrap(HARD)?,
+        .with_left_extrap(HARD)
+        .with_right_extrap(HARD),
     );
 
     let region = grid_region(&distribution, 0.9)?;
@@ -533,8 +533,7 @@ mod tests {
       let distribution = |range: (f64, f64)| {
         Distribution::Function(
           DistributionFunction::from_range_values(range, y.clone())
-            .and_then(|f| f.with_left_extrap(HARD))
-            .and_then(|f| f.with_right_extrap(HARD))
+            .map(|f| f.with_left_extrap(HARD).with_right_extrap(HARD))
             .unwrap(),
         )
       };
@@ -569,8 +568,8 @@ mod tests {
     ) -> Result<Distribution, Report> {
       let y = grid(range.0, range.1, n_points).mapv(neglog);
       let function = DistributionFunction::from_range_values(range, y)?
-        .with_left_extrap(left)?
-        .with_right_extrap(right)?;
+        .with_left_extrap(left)
+        .with_right_extrap(right);
       Ok(Distribution::Function(function))
     }
 

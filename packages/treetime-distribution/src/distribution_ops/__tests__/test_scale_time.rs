@@ -77,9 +77,11 @@ mod tests {
     pub(super) fn branch_like() -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(0.1, 4.0, 391);
       let y = t.mapv(|t: f64| 1.5 * t - 2.0 * t.ln());
-      DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
-        .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))?
-        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.5 }))
+      Ok(
+        DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
+          .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))
+          .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.5 })),
+      )
     }
   }
 }

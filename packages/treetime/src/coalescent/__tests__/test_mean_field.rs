@@ -34,7 +34,7 @@ mod tests {
 
     let reference = 2005.0;
     for t in [1960.0, 1995.0, 2004.0, 2009.9] {
-      let actual = prior.node_contribution(root, 2, t)? - prior.node_contribution(root, 2, reference)?;
+      let actual = prior.node_contribution(root, 2, t) - prior.node_contribution(root, 2, reference);
       pretty_assert_abs_diff_eq!((reference - t) / tc, actual, epsilon = 1e-9);
     }
     Ok(())
@@ -68,7 +68,7 @@ mod tests {
       let node = graph
         .get_node(find_node_key_by_name(&graph, &names, name).expect("node must exist"))
         .expect("node must exist");
-      factors += prior.node_contribution(node.key(), node.outbound().len(), time)?;
+      factors += prior.node_contribution(node.key(), node.outbound().len(), time);
     }
 
     pretty_assert_abs_diff_eq!(kingman_neg_log_density, factors - prior.log_normalization(), epsilon = 1e-9);
@@ -91,9 +91,7 @@ mod tests {
     let graph = parsed.graph;
     let prior = point_coalescent_prior(&graph, &names, &[("A", 2010.0), ("B", 2010.0), ("root", 2000.0)], tc)?;
     let key = find_node_key_by_name(&graph, &names, name).expect("node must exist");
-    let secant = |a: f64, b: f64| -> Result<f64, Report> {
-      Ok((prior.node_contribution(key, n_children, b)? - prior.node_contribution(key, n_children, a)?) / (b - a))
-    };
+    let secant = |a: f64, b: f64| (prior.node_contribution(key, n_children, b) - prior.node_contribution(key, n_children, a)) / (b - a);
 
     let actual = (
       prior.node_contribution_outward_slope(key, n_children, Side::Left, 1950.0),
@@ -101,8 +99,8 @@ mod tests {
     );
 
     assert_eq!((left, right), actual);
-    pretty_assert_abs_diff_eq!(secant(1900.0, 1950.0)?, actual.0, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(secant(2050.0, 2100.0)?, actual.1, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(secant(1900.0, 1950.0), actual.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(secant(2050.0, 2100.0), actual.1, epsilon = 1e-12);
     Ok(())
   }
 
@@ -153,14 +151,13 @@ mod tests {
     ];
     let prior = point_coalescent_prior(&graph, &names, &times, 1.0)?;
     let internal = find_node_key_by_name(&graph, &names, "I").expect("I must exist");
-    let slope = |a: f64, b: f64| -> Result<f64, Report> {
-      Ok((prior.node_contribution(internal, 2, b)? - prior.node_contribution(internal, 2, a)?) / (b - a))
-    };
+    let slope =
+      |a: f64, b: f64| (prior.node_contribution(internal, 2, b) - prior.node_contribution(internal, 2, a)) / (b - a);
 
-    pretty_assert_abs_diff_eq!(1.0 - 3.0, slope(2006.0, 2012.0)?, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(2013.2, 2013.8)?, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(1.0 - 1.0, slope(2014.2, 2014.8)?, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(1990.0, 2000.0)?, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 3.0, slope(2006.0, 2012.0), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(2013.2, 2013.8), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 1.0, slope(2014.2, 2014.8), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(1990.0, 2000.0), epsilon = 1e-12);
     Ok(())
   }
 
@@ -207,8 +204,8 @@ mod tests {
     let graph = parsed.graph;
     let unit_box_with_tail_mass_one = Distribution::Function(
       DistributionFunction::from_range_values((-1.0, 0.0), array![0.0, 0.0])?
-        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?
-        .with_right_extrap(BoundaryBehavior::Hard)?,
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let expectation = helpers::expectation(
       &graph,
@@ -235,8 +232,8 @@ mod tests {
     let rate = 0.2;
     let root = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 1.0), tent.mapv(|p| -p.ln()))?
-        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate }))?
-        .with_right_extrap(BoundaryBehavior::Hard)?,
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate }))
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let expectation = helpers::expectation(&graph, &names, &[("A", 2.0), ("B", 2.0)], &[("root", root)])?;
     let boundaries = Array1::linspace(-110.0, 1.0, 2221).to_vec();
@@ -272,8 +269,8 @@ mod tests {
     let density = [1.0, 3.0, 2.0, 4.0, 1.0];
     let root = Distribution::Function(
       DistributionFunction::from_range_values((0.0, 4.0), Array1::from_iter(density.map(|p: f64| -p.ln())))?
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Hard)?,
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .with_right_extrap(BoundaryBehavior::Hard),
     );
     let step = 0.5;
     let expectation = helpers::expectation(&graph, &names, &[("A", step), ("B", 3.0)], &[("root", root)])?;
@@ -367,13 +364,13 @@ mod tests {
       tc,
     )?;
     let root = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
-    let slope = |x: f64| -> Result<f64, Report> {
+    let slope = |x: f64| {
       let h = 1e-3;
-      Ok((prior.node_contribution(root, 2, x + h)? - prior.node_contribution(root, 2, x - h)?) / (2.0 * h))
+      (prior.node_contribution(root, 2, x + h) - prior.node_contribution(root, 2, x - h)) / (2.0 * h)
     };
 
-    pretty_assert_abs_diff_eq!(-2.0 / tc, slope(1995.0)?, epsilon = 1e-9);
-    pretty_assert_abs_diff_eq!(-2.0 / tc, slope(2005.0)?, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(-2.0 / tc, slope(1995.0), epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(-2.0 / tc, slope(2005.0), epsilon = 1e-9);
     Ok(())
   }
 
@@ -411,8 +408,8 @@ mod tests {
     for (name, n_children) in [("root", 2), ("N", 2), ("A", 0)] {
       for x in [1995.0, 2003.0, 2007.0] {
         pretty_assert_abs_diff_eq!(
-          fresh.node_contribution(key(name), n_children, x)?,
-          extended.node_contribution(key(name), n_children, x)?,
+          fresh.node_contribution(key(name), n_children, x),
+          extended.node_contribution(key(name), n_children, x),
           epsilon = 1e-12
         );
       }

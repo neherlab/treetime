@@ -140,8 +140,8 @@ fn convolution_range_function(
     );
   }
   let g = DistributionFunction::from_grid_fn(GridFn::from_grid_values(grid, y)?)
-    .with_left_extrap(left.result_tail())?
-    .with_right_extrap(right.result_tail())?;
+    .with_left_extrap(left.result_tail())
+    .with_right_extrap(right.result_tail());
   Ok(Distribution::Function(g.with_amplitude(r.amplitude() + f.amplitude())))
 }
 

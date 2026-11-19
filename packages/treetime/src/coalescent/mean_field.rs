@@ -111,7 +111,7 @@ impl CoalescentPrior {
     self.expectation.step
   }
 
-  pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> Result<f64, Report> {
+  pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> f64 {
     let weight = 1.0 - n_children.to_f64_exact();
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
     let own = self.own_integral_at(key, x);
@@ -121,11 +121,9 @@ impl CoalescentPrior {
     } else {
       0.0
     };
-    Ok(
-      0.5 * weight * (weight - 1.0) * self.inverse_tc_integral_at(x) + weight * self.expected_integral_at(x)
-        - weight * own_weight * own
-        + merger,
-    )
+    0.5 * weight * (weight - 1.0) * self.inverse_tc_integral_at(x) + weight * self.expected_integral_at(x)
+      - weight * own_weight * own
+      + merger
   }
 
   pub(crate) fn node_contribution_outward_slope(

@@ -114,8 +114,8 @@ mod tests {
         b: mutations,
       };
       let function = DistributionFunction::from_range_values((0.0, x_max), y)?
-        .with_left_extrap(BoundaryBehavior::HardEdgeCell(law))?
-        .with_right_extrap(BoundaryBehavior::Hard)?;
+        .with_left_extrap(BoundaryBehavior::HardEdgeCell(law))
+        .with_right_extrap(BoundaryBehavior::Hard);
       Ok(Distribution::Function(function))
     }
 

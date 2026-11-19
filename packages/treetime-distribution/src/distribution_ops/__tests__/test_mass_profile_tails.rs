@@ -356,9 +356,11 @@ mod tests {
       left: BoundaryBehavior,
       right: BoundaryBehavior,
     ) -> Result<DistributionFunction, Report> {
-      DistributionFunction::from_range_values(range, y)?
-        .with_left_extrap(left)?
-        .with_right_extrap(right)
+      Ok(
+        DistributionFunction::from_range_values(range, y)?
+          .with_left_extrap(left)
+          .with_right_extrap(right),
+      )
     }
 
     pub(super) fn growing_tail(side: Side) -> Result<DistributionFunction, Report> {
