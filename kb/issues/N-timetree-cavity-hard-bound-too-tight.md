@@ -21,7 +21,7 @@ The backward pass keeps the message of every child: `NodeBackward.to_parents` ho
 This is a forward-pass structural change, out of scope for the division operator itself.
 
 > [!WARNING]
-> **Needs review.** Since the commit `refactor(timetree): run the time passes on tree scans and free posterior grids early`, the forward tree scan hands the backward data of each node only to the forward step of that node ([packages/treetime/src/timetree/inference/forward_pass.rs#L39-L43](../../packages/treetime/src/timetree/inference/forward_pass.rs#L39-L43), [packages/treetime/src/timetree/inference/forward_pass.rs#L99](../../packages/treetime/src/timetree/inference/forward_pass.rs#L99)). The forward step of a child therefore does not see the messages of its siblings, which the "all but one" product needs. Check how the step can receive them before acting on the paragraph above.
+> **Needs review.** Since the commit `refactor(timetree): run the time passes on tree scans and free posterior grids early`, the forward tree scan hands the backward data of each node only to the forward step of that node ([packages/treetime/src/timetree/inference/forward_pass.rs#L60-L63](../../packages/treetime/src/timetree/inference/forward_pass.rs#L60-L63)). The forward step of a child therefore does not see the messages of its siblings, which the "all but one" product needs. Check how the step can receive them before acting on the paragraph above.
 
 > [!IMPORTANT]
 > **Decision required.** The exact cavity costs grid multiplications and memory that the division does not, and the division matches v0. Options:
