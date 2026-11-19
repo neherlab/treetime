@@ -1,6 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::*;
+  use crate::{
+    AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
+    AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotations, AugurNodeDataJsonClock,
+    AugurNodeDataJsonGeneratedBy, AugurNodeDataJsonRefine, AugurNodeDataJsonRefineMeta, AugurNodeDataJsonRefineNode,
+    AugurNodeDataJsonTraitModel, AugurNodeDataJsonTraits, AugurNodeDataJsonTraitsMeta, AugurNodeDataJsonTraitsNode,
+  };
+  use deser_value::value;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -58,11 +64,7 @@ mod tests {
     assert!(json.contains("\"sequence\": \"ACGT\""));
 
     let roundtrip: AugurNodeDataJsonAncestral = json_read_str(&json).unwrap();
-    assert_eq!(2, roundtrip.nodes.len());
-    assert_eq!(Vec::<String>::new(), roundtrip.nodes["root"].muts);
-    assert_eq!(Some("ACGT".to_owned()), roundtrip.nodes["root"].sequence);
-    assert_eq!(vec!["A1T", "C3G"], roundtrip.nodes["tip_A"].muts);
-    assert_eq!(Some("0000".to_owned()), roundtrip.metadata.mask);
+    assert_eq!(data, roundtrip);
   }
 
   #[test]
@@ -128,8 +130,8 @@ mod tests {
         "root".to_owned() => AugurNodeDataJsonTraitsNode {
           fields: btreemap! {
             "region".to_owned() => deser_value::Value::from("North America".to_owned()),
-            "region_confidence".to_owned() => deser_value::value!({"North America": 0.95, "Oceania": 0.05}),
-            "region_entropy".to_owned() => deser_value::value!(0.286),
+            "region_confidence".to_owned() => value!({"North America": 0.95, "Oceania": 0.05}),
+            "region_entropy".to_owned() => value!(0.286),
           },
         },
       },
@@ -142,40 +144,6 @@ mod tests {
   }
 
   #[test]
-  fn test_roundtrip_ancestral() {
-    let data = AugurNodeDataJsonAncestral {
-      generated_by: Some(AugurNodeDataJsonGeneratedBy {
-        program: "augur".to_owned(),
-        version: "25.0.0".to_owned(),
-      }),
-      metadata: AugurNodeDataJsonAncestralMeta {
-        annotations: None,
-        reference: None,
-        mask: None,
-        other: btreemap! {},
-      },
-      nodes: btreemap! {
-        "node1".to_owned() => AugurNodeDataJsonAncestralNode {
-          muts: vec!["A5C".to_owned()],
-          sequence: None,
-          aa_muts: None,
-          aa_sequences: None,
-          other: btreemap! {},
-        },
-      },
-    };
-
-    let json = json_write_str(&data, JsonPretty(false)).unwrap();
-    let roundtrip: AugurNodeDataJsonAncestral = json_read_str(&json).unwrap();
-
-    assert_eq!(
-      data.generated_by.unwrap().program,
-      roundtrip.generated_by.unwrap().program
-    );
-    assert_eq!(data.nodes["node1"].muts, roundtrip.nodes["node1"].muts);
-  }
-
-  #[test]
   fn test_forward_compat_unknown_fields() {
     let json = r#"{
       "generated_by": {"program": "augur", "version": "99.0.0"},
@@ -185,11 +153,8 @@ mod tests {
     }"#;
 
     let parsed: AugurNodeDataJsonAncestral = json_read_str(json).unwrap();
-    assert_eq!(parsed.nodes["n1"].other["extra_field"], deser_value::value!(42));
-    assert_eq!(
-      parsed.metadata.other["future_top_level_key"],
-      deser_value::value!("preserved")
-    );
+    assert_eq!(value!(42), parsed.nodes["n1"].other["extra_field"]);
+    assert_eq!(value!("preserved"), parsed.metadata.other["future_top_level_key"]);
   }
 
   #[test]

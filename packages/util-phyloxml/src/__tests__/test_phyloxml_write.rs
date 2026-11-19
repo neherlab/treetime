@@ -1,15 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::types::Phyloxml;
-  use crate::{phyloxml_read, phyloxml_write};
+  use crate::phyloxml_read;
+  use helpers::write_to_string;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-
-  fn write_to_string(doc: &Phyloxml) -> String {
-    let mut buf = Vec::new();
-    phyloxml_write(&mut buf, doc).unwrap();
-    String::from_utf8(buf).unwrap()
-  }
 
   #[test]
   fn test_phyloxml_write_emits_declaration_indent_and_order() {
@@ -24,5 +18,16 @@ mod tests {
         </phylogeny>
       </phyloxml>"#};
     assert_eq!(expected, actual);
+  }
+
+  mod helpers {
+    use crate::phyloxml_write;
+    use crate::types::Phyloxml;
+
+    pub(super) fn write_to_string(doc: &Phyloxml) -> String {
+      let mut buf = Vec::new();
+      phyloxml_write(&mut buf, doc).unwrap();
+      String::from_utf8(buf).unwrap()
+    }
   }
 }

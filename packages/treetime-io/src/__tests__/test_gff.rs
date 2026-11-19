@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::gff::*;
+  use crate::gff::{
+    GffCdsAnnotation, GffCdsFeature, GffCdsSegment, GffPhase, GffSequenceRegion, GffStrand, gff3_cds_read,
+    resolve_cds_name,
+  };
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

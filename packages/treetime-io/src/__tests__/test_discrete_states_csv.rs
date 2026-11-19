@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::csv::default_name_candidates;
-  use crate::discrete_states_csv::*;
+  use crate::discrete_states_csv::discrete_attrs_read;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;

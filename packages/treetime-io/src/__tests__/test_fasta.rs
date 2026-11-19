@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::fasta::{FastaRecord, fasta_read, fasta_write_record};
+  use crate::fasta::{fasta_read, fasta_write_record};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-  use treetime_primitives::{AlphabetLike, AsciiChar, Seq};
+  use treetime_primitives::Seq;
   use treetime_utils::assert_error;
 
   #[test]
@@ -57,12 +57,14 @@ mod tests {
     fasta_write_record(&mut buf, "a", Some("first sample"), &Seq::try_from_str("ACGT")?)?;
     fasta_write_record(&mut buf, "b", None, &Seq::try_from_str("TT")?)?;
 
-    assert_eq!(">a first sample\nACGT\n>b\nTT\n", String::from_utf8(buf)?);
+    let expected = ">a first sample\nACGT\n>b\nTT\n";
+    assert_eq!(expected, String::from_utf8(buf)?);
     Ok(())
   }
 
   mod helpers {
-    use super::*;
+    use crate::fasta::FastaRecord;
+    use treetime_primitives::{AlphabetLike, AsciiChar, Seq};
 
     pub(super) struct Nuc;
 
