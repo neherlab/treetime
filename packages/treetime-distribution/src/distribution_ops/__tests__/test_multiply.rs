@@ -454,6 +454,16 @@ mod tests {
   }
 
   #[test]
+  fn test_multiply_point_function_samples_the_function_at_the_point() {
+    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let point = Distribution::point(1.0, 2.0);
+
+    let actual = distribution_multiplication(&function, &point, MaxGridPoints::default()).unwrap();
+    let expected = Distribution::point(1.0, 2.0 + 2.0);
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
   fn test_multiply_disjoint_points_return_empty() {
     let a = Distribution::point(1.0, 2.0);
     let b = Distribution::point(5.0, 3.0);

@@ -32,13 +32,23 @@ mod tests {
   }
 
   #[test]
-  fn test_product_point_factor_samples_function() {
-    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
-    let point = Distribution::point(1.0, 2.0);
+  fn test_product_multiplies_the_function_group_with_the_other_factors() {
+    let a = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let range = Distribution::range((1.0, 3.0), 0.5);
+    let b = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
-    let actual = distribution_product(&[&function, &point], MaxGridPoints::default()).unwrap();
-    let expected = Distribution::point(1.0, 2.0 + 2.0);
-    assert_eq!(expected, actual);
+    let actual = distribution_product(&[&a, &range, &b], MaxGridPoints::default()).unwrap();
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+
+    pretty_assert_ulps_eq!(array![1.0, 2.0, 3.0], actual.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(
+      array![4.5, 5.5, 6.5],
+      actual.y(),
+      max_ulps = 4,
+      "the function costs 1 + t and 2 add to 3 + t, and the range adds its cost 0.5 on its support [1, 3]"
+    );
   }
 
   #[rustfmt::skip]
