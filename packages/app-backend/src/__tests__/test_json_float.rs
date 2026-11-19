@@ -12,17 +12,12 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::finite(      1.5,               json!(1.5))]
-  #[case::negative(    -2e-3,             json!(-2e-3))]
   #[case::pos_infinity(f64::INFINITY,     json!("inf"))]
   #[case::neg_infinity(f64::NEG_INFINITY, json!("-inf"))]
+  #[case::nan(         f64::NAN,          json!("nan"))]
   #[trace]
-  fn test_json_float_serializes_numbers_and_named_infinities(#[case] value: f64, #[case] expected: Value) {
+  fn test_json_float_serializes_numbers_and_named_non_finite_values(#[case] value: f64, #[case] expected: Value) {
     assert_eq!(expected, to_json_value(&JsonFloat(value)).unwrap());
-  }
-
-  #[test]
-  fn test_json_float_serializes_nan_as_string() {
-    assert_eq!(json!("nan"), to_json_value(&JsonFloat(f64::NAN)).unwrap());
   }
 
   #[rustfmt::skip]

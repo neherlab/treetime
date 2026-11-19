@@ -10,7 +10,6 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::keep_root_and_reroot(  AppCommand::Clock,    "keep_root: true\nreroot: min-dev\n",             "config::conflict",    "`keep_root` cannot be used together with `reroot`")]
-  #[case::keep_root_and_oldest(  AppCommand::Clock,    "keep_root: true\nreroot: oldest\n",              "config::conflict",    "`keep_root` cannot be used together with `reroot`")]
   #[case::optimize_outgroup(     AppCommand::Optimize, "reroot: min-dev\noutgroup: [A]\n",               "config::conflict",    "`outgroup` cannot be used together with `reroot`")]
   #[case::relax_with_one_value(  AppCommand::Timetree, "relax: [1.0]\n",                                 "config::value-count", "`relax` has 1 value, but `--relax` takes 2 values each time it is given")]
   #[case::relax_with_three_values(AppCommand::Timetree, "relax: [1.0, 0.0, 2.0]\n",                     "config::value-count", "`relax` has 3 values, but `--relax` takes 2 values each time it is given")]

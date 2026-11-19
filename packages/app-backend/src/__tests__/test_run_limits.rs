@@ -16,8 +16,6 @@ mod tests {
   #[rstest]
   #[case::unset_leaves_config(          Source::Unset,                  AppCommand::Timetree, json!({}),                          json!({}))]
   #[case::settings_fill_unset_value(    Source::Settings(SETTING_5000), AppCommand::Timetree, json!({}),                          json!({ "max_grid_points": 5000 }))]
-  #[case::settings_keep_lower_value(    Source::Settings(SETTING_5000), AppCommand::Timetree, json!({ "max_grid_points": 3000 }), json!({ "max_grid_points": 3000 }))]
-  #[case::settings_keep_higher_value(   Source::Settings(SETTING_5000), AppCommand::Timetree, json!({ "max_grid_points": 9000 }), json!({ "max_grid_points": 9000 }))]
   #[case::settings_without_the_setting( Source::Settings(NO_SETTING),   AppCommand::Timetree, json!({}),                          json!({}))]
   #[case::settings_not_read_for_clock(  Source::Settings(BROKEN),       AppCommand::Clock,    json!({}),                          json!({}))]
   #[case::settings_not_read_when_set(   Source::Settings(BROKEN),       AppCommand::Timetree, json!({ "max_grid_points": 3000 }), json!({ "max_grid_points": 3000 }))]

@@ -281,11 +281,10 @@ pub(super) mod tests {
     let nodes = actual["nodes"]
       .as_array()
       .expect("graph.json must carry the node topology");
-    assert!(!nodes.is_empty());
     let edges = actual["edges"]
       .as_array()
       .expect("graph.json must carry the edge topology");
-    assert!(!edges.is_empty());
+    assert_eq!((3, 2), (nodes.len(), edges.len()));
 
     Ok(())
   }

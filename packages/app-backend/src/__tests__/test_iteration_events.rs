@@ -119,7 +119,7 @@ mod tests {
       "log_lh_coal": "inf",
       "clock_rate": 0.001,
       }),
-      to_json_value(&&event).unwrap()
+      to_json_value(&event).unwrap()
     );
   }
 

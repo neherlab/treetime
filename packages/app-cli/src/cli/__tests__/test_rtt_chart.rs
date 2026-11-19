@@ -4,9 +4,6 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::clock::clock_model::ClockModel;
-  use treetime::clock::rtt::ClockRegressionResult;
-  use treetime_utils::io::json::json_read_str;
 
   #[test]
   fn test_rtt_chart_text_writes_table_then_chart() {
@@ -64,7 +61,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use indoc::indoc;
+    use treetime::clock::clock_model::ClockModel;
+    use treetime::clock::rtt::ClockRegressionResult;
+    use treetime_utils::io::json::json_read_str;
 
     pub(super) fn clock_model() -> ClockModel {
       json_read_str(indoc! {r#"{

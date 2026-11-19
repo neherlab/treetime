@@ -11,7 +11,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::trait_with_two_states(  ("country",    "categorical", 2),  MUTED[..2].to_vec())]
+  #[case::trait_with_one_state(   ("country",    "categorical", 1),  MUTED[..1].to_vec())]
   #[case::trait_with_nine_states( ("country",    "categorical", 9),  MUTED.to_vec())]
   #[case::trait_with_ten_states(  ("country",    "categorical", 10), vec![])]
   #[case::genotype(               ("gt",         "categorical", 2),  vec![])]

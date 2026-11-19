@@ -1,14 +1,17 @@
 #[cfg(test)]
 mod tests {
   use crate::command::config_from_settings;
+  use crate::runs::record::RunRecord;
   use crate::runs::store::{RunStore, default_title};
   use app_commands::command::AppCommand;
-  use chrono::{FixedOffset, TimeZone};
+  use chrono::{FixedOffset, Local, TimeZone};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
+  use std::collections::BTreeSet;
   use std::fs;
   use tempfile::tempdir;
+  use treetime_utils::io::json::json_read_str;
 
   #[rustfmt::skip]
   #[rstest]
@@ -41,6 +44,30 @@ mod tests {
     assert_eq!(
       vec![record.id],
       store.list().unwrap().into_iter().map(|run| run.id).collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_store_create_writes_run_json_without_leftover_files() {
+    let root = tempdir().unwrap();
+    let store = RunStore::open(root.path()).unwrap();
+    let record = store
+      .create(config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap())
+      .unwrap();
+    let dir = store.run_dir(&record.id);
+    let names: Vec<String> = fs::read_dir(&dir)
+      .unwrap()
+      .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+      .collect::<BTreeSet<_>>()
+      .into_iter()
+      .collect();
+    let reread: RunRecord = json_read_str(fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
+    assert_eq!(
+      (
+        vec!["inputs", "out", "run.json"],
+        default_title(&record.created_at.with_timezone(&Local))
+      ),
+      (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
     );
   }
 }

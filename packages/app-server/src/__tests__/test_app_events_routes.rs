@@ -8,7 +8,7 @@ mod tests {
   use serde_json::{Value, json};
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_app_events_report_run_changes_with_their_stale_paths() {
+  async fn test_app_events_routes_report_run_changes_with_their_stale_paths() {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
     let id = create_deferred(&test).await;
@@ -74,7 +74,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_app_events_resume_from_an_event_by_query_or_last_event_id() {
+  async fn test_app_events_routes_resume_from_an_event_by_query_or_last_event_id() {
     let test = app();
     let mut live = open_app_events(&test, "", None).await;
     for _ in 0..3 {
@@ -107,7 +107,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_app_events_resync_when_the_event_is_not_in_the_log() {
+  async fn test_app_events_routes_resync_when_the_event_is_not_in_the_log() {
     let test = app();
     let mut live = open_app_events(&test, "", None).await;
     create_deferred(&test).await;
@@ -148,7 +148,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_app_event_stale_paths_are_paths_or_path_prefixes_of_the_api() {
+  async fn test_app_events_routes_stale_paths_are_paths_or_path_prefixes_of_the_api() {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
     let id = create_deferred(&test).await;

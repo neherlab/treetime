@@ -5,10 +5,9 @@ mod tests {
   use crate::job::{JobEvent, JobId, TerminalEvent};
   use crate::runs::events::{RunEvent, read_events};
   use crate::runs::manager::RunManager;
-  use crate::runs::record::{CreateRunRequest, RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
-  use crate::runs::store::{RunStore, default_title};
+  use crate::runs::record::{CreateRunRequest, RunStatus, StartRunRequest, UpdateRunRequest};
   use app_commands::command::AppCommand;
-  use chrono::{Local, TimeDelta, Utc};
+  use chrono::{TimeDelta, Utc};
   use helpers::{GatedReader, accept, clock_config, create, event_types, terminal_status, timetree_config};
   use maplit::btreeset;
   use parking_lot::Mutex;
@@ -22,7 +21,6 @@ mod tests {
   use treetime::o;
   use treetime::progress::{RunWarning, RunWarningKind};
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::json_read_str;
 
   #[test]
   fn test_manager_run_records_its_lifecycle_and_outputs() {
@@ -619,30 +617,6 @@ mod tests {
       );
     }
     assert_eq!(runs.store().out_dir(&created.id), runs.out_dir(&created.id).unwrap());
-  }
-
-  #[test]
-  fn test_manager_store_writes_run_json_atomically() {
-    let root = tempdir().unwrap();
-    let store = RunStore::open(root.path()).unwrap();
-    let record = store
-      .create(config_from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap())
-      .unwrap();
-    let dir = store.run_dir(&record.id);
-    let names: Vec<String> = fs::read_dir(&dir)
-      .unwrap()
-      .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-      .collect::<BTreeSet<_>>()
-      .into_iter()
-      .collect();
-    let reread: RunRecord = json_read_str(fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
-    assert_eq!(
-      (
-        vec!["inputs", "out", "run.json"],
-        default_title(&record.created_at.with_timezone(&Local))
-      ),
-      (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
-    );
   }
 
   #[test]

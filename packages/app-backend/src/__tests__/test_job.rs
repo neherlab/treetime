@@ -184,24 +184,31 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_job_id_rejects_unsafe_characters() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::unsafe_characters("../x".to_owned())]
+  #[case::empty(            String::new())]
+  #[case::too_long(         "a".repeat(129))]
+  #[trace]
+  fn test_job_id_rejects_invalid_ids(#[case] id: String) {
     assert_error!(
-      JobId::parse("../x"),
-      "invalid job id `../x`: expected 1 to 128 ASCII letters, digits, `-` or `_`"
+      JobId::parse(&id),
+      format!("invalid job id `{id}`: expected 1 to 128 ASCII letters, digits, `-` or `_`")
     );
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::traversal(r#""../../etc""#, "invalid job id `../../etc`: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
-  #[case::slash(    r#""a/b""#,       "invalid job id `a/b`: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
-  #[case::empty(    r#""""#,          "invalid job id ``: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
-  #[trace]
-  fn test_job_id_deserialization_rejects_invalid_ids(#[case] json: &str, #[case] expected: &str) {
+  #[test]
+  fn test_job_id_accepts_the_longest_id() {
+    let id = "a".repeat(128);
+    assert_eq!(id.as_str(), JobId::parse(&id).unwrap().as_str());
+  }
+
+  #[test]
+  fn test_job_id_deserialization_rejects_an_invalid_id() {
     assert_error!(
-      json_read_str::<JobId>(json),
-      format!("When parsing JSON: Unexpected: invalid value: {expected} at line 1 column 1")
+      json_read_str::<JobId>(r#""../../etc""#),
+      "When parsing JSON: Unexpected: invalid value: invalid job id `../../etc`: expected 1 to 128 ASCII letters, \
+       digits, `-` or `_` at line 1 column 1"
     );
   }
 

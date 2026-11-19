@@ -5,24 +5,29 @@ mod tests {
   use helpers::{message, terminal};
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::sync::Arc;
   use tempfile::tempdir;
   use treetime_utils::assert_error;
 
-  #[test]
-  fn test_events_are_numbered_and_persisted() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::from_the_start(0, vec![(0, false), (1, false), (2, true)])]
+  #[case::from_an_offset(2, vec![(2, true)])]
+  #[trace]
+  fn test_events_are_numbered_and_persisted(#[case] from: u64, #[case] expected: Vec<(u64, bool)>) {
     let dir = tempdir().unwrap();
     let path = dir.path().join("events.jsonl");
     let log = EventLog::open(&path).unwrap();
     log.append(message("a")).unwrap();
     log.append(message("b")).unwrap();
     log.append(terminal()).unwrap();
-    let persisted: Vec<(u64, bool)> = read_events(&path, 0)
+    let persisted: Vec<(u64, bool)> = read_events(&path, from)
       .unwrap()
       .iter()
       .map(|event| (event.seq, matches!(event.event, JobEvent::Terminal { .. })))
       .collect();
-    assert_eq!(vec![(0, false), (1, false), (2, true)], persisted);
+    assert_eq!(expected, persisted);
   }
 
   #[test]

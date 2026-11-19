@@ -8,7 +8,8 @@ mod tests {
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-  use std::panic::catch_unwind;
+  use std::any::Any;
+  use std::panic::{catch_unwind, panic_any};
   use treetime_utils::{make_report, o, vec_of_owned};
 
   #[rustfmt::skip]
@@ -57,23 +58,21 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_error_response_from_panic_keeps_the_panic_message() {
-    let payload = catch_unwind(|| panic!("index {} out of range", 3)).unwrap_err();
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::formatted_message( catch_unwind(|| panic!("index {} out of range", 3)).unwrap_err(), vec_of_owned!["index 3 out of range"])]
+  #[case::static_message(    catch_unwind(|| panic!("static message")).unwrap_err(),           vec_of_owned!["static message"])]
+  #[case::payload_not_a_text(catch_unwind(|| panic_any(1_u8)).unwrap_err(),                     vec![])]
+  #[trace]
+  fn test_error_response_from_panic_keeps_the_panic_message(
+    #[case] payload: Box<dyn Any + Send>,
+    #[case] causes: Vec<String>,
+  ) {
     let expected = ErrorResponse {
       code: ErrorCode::InternalError,
-      message: "the back end stopped the operation after an internal error".to_owned(),
-      causes: vec!["index 3 out of range".to_owned()],
+      message: o!("the back end stopped the operation after an internal error"),
+      causes,
     };
     assert_eq!(expected, ErrorResponse::from_panic(payload.as_ref()));
-  }
-
-  #[test]
-  fn test_error_response_from_panic_with_a_static_message() {
-    let payload = catch_unwind(|| panic!("static message")).unwrap_err();
-    assert_eq!(
-      vec!["static message".to_owned()],
-      ErrorResponse::from_panic(payload.as_ref()).causes
-    );
   }
 }

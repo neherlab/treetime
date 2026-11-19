@@ -105,39 +105,27 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_tree_output_mat_rejects_missing_reference() -> Result<(), Report> {
-    let mutation = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), 0_usize, c(b'T'))?);
-    let error = mat_mutation(&mutation, None, &Alphabet::new(AlphabetName::Nuc)?, "A")
-      .expect_err("MAT must require a global reference");
-    assert!(error.to_string().contains("requires a root nucleotide reference"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mat_rejects_reference_lookup_out_of_range() -> Result<(), Report> {
-    let mutation = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), 1_usize, c(b'T'))?);
-    let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
-      .expect_err("MAT must check the reference length");
-    assert!(error.to_string().contains("outside the root nucleotide reference"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mat_rejects_coordinate_above_i32() -> Result<(), Report> {
-    let position = usize::try_from(i32::MAX)?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::missing_reference(   (0,                                    None),      "Node 'A' has nucleotide mutations, but UShER MAT requires a root nucleotide reference")]
+  #[case::outside_reference(   (1,                                    Some("A")), "Node 'A' mutation position 2 is outside the root nucleotide reference of length 1")]
+  #[case::coordinate_above_i32((usize::try_from(i32::MAX).unwrap(), Some("A")), "Node 'A' mutation position 2147483648 exceeds the UShER MAT i32 coordinate range: number too large to fit in target type")]
+  #[trace]
+  fn test_tree_output_mat_rejects_position_without_reference_coordinate(
+    #[case] (position, reference): (usize, Option<&str>),
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
     let mutation = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), position, c(b'T'))?);
-    let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
-      .expect_err("MAT must check its coordinate range");
-    assert!(error.to_string().contains("exceeds the UShER MAT i32 coordinate range"));
+    let result = mat_mutation(&mutation, reference, &Alphabet::new(AlphabetName::Nuc)?, "A");
+    assert_error!(result, expected);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::root_reference(("N", b'A', b'T'), "root reference nucleotide 'N'")]
-  #[case::parent(        ("A", b'N', b'T'), "parent nucleotide 'N'")]
-  #[case::child_gap(     ("A", b'A', b'.'), "child nucleotide '.'")]
+  #[case::root_reference(("N", b'A', b'T'), "Node 'A' has root reference nucleotide 'N', but UShER MAT accepts only A, C, G, or T")]
+  #[case::parent(        ("A", b'N', b'T'), "Node 'A' has parent nucleotide 'N', but UShER MAT accepts only A, C, G, or T")]
+  #[case::child_gap(     ("A", b'A', b'.'), "Node 'A' has child nucleotide '.', but UShER MAT accepts only A, C, G, T, IUPAC ambiguity codes, or N: Character '.' is not in the alphabet")]
   #[trace]
   fn test_tree_output_mat_rejects_noncanonical_nucleotide(
     #[case] (reference, parent, child): (&str, u8, u8),
@@ -147,8 +135,8 @@ mod tests {
       MutationTrack::Nucleotide,
       Sub::new(c(parent), 0_usize, c(child))?,
     );
-    let error = mat_mutation(&mutation, Some(reference), &Alphabet::new(AlphabetName::Nuc)?, "A").expect_err("MAT must reject a reference, parent, or child nucleotide it cannot encode");
-    assert!(error.to_string().contains(expected));
+    let result = mat_mutation(&mutation, Some(reference), &Alphabet::new(AlphabetName::Nuc)?, "A");
+    assert_error!(result, expected);
     Ok(())
   }
 
@@ -173,36 +161,26 @@ mod tests {
 
   #[test]
   fn test_tree_output_all_mat_models_preserve_embedded_newick_lengths() -> Result<(), Report> {
-    let documents = all_mat_documents()?;
-    assert_eq!(6, documents.len());
-    assert!(documents.iter().all(|document| {
-      document.node_mutations.len() == 4
-        && document
+    let actual = all_mat_documents()?
+      .iter()
+      .map(|document| {
+        let topology = topology_from(&document.newick)?;
+        let mutation_counts: Vec<usize> = document
           .node_mutations
           .iter()
-          .all(|mutations| mutations.mutation.is_empty())
-    }));
+          .map(|mutations| mutations.mutation.len())
+          .collect();
+        let lengths = [
+          branch_length(&topology, "A")?,
+          branch_length(&topology, "B")?,
+          branch_length(&topology, "C")?,
+        ];
+        Ok((mutation_counts, lengths))
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
 
-    for (command, document) in ["ancestral", "optimize", "prune", "clock", "mugration", "timetree"]
-      .into_iter()
-      .zip(documents)
-    {
-      let topology = topology_from(&document.newick)?;
-      assert_eq!(None, branch_length(&topology, "A")?, "{command}: {}", document.newick);
-      assert_eq!(
-        Some(0.0),
-        branch_length(&topology, "B")?,
-        "{command}: {}",
-        document.newick
-      );
-      assert_eq!(
-        Some(0.5),
-        branch_length(&topology, "C")?,
-        "{command}: {}",
-        document.newick
-      );
-    }
-
+    let expected = vec![(vec![0_usize; 4], [None, Some(0.0), Some(0.5)]); 6];
+    assert_eq!(expected, actual);
     Ok(())
   }
 
