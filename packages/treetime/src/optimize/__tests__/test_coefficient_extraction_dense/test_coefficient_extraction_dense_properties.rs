@@ -4,73 +4,44 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::partition::optimize::dense::get_coefficients;
-  use ndarray::array;
+  use ndarray::{Array1, Axis, array};
   use rstest::rstest;
-
-  #[test]
-  fn test_coefficients_produce_valid_likelihood_at_zero() {
-    let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
-
-    let parent = array![[0.5, 0.3, 0.1, 0.1]];
-    let child = array![[0.4, 0.4, 0.1, 0.1]];
-    let msg_to_parent = make_dense_seq_dis(parent);
-    let msg_to_child = make_dense_seq_dis(child);
-
-    let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
-
-    let metrics = evaluate_dense_contribution(&contribution, 0.0, true).expect("valid branch length");
-
-    assert!(metrics.log_lh.value().is_finite(), "log-LH should be finite");
-  }
-
-  #[test]
-  fn test_coefficients_likelihood_decreases_for_mismatch_at_zero() {
-    let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
-
-    let match_parent = array![[1.0, 0.0, 0.0, 0.0]];
-    let match_child = array![[1.0, 0.0, 0.0, 0.0]];
-    let match_contribution = get_coefficients(
-      &make_dense_seq_dis(match_parent),
-      &make_dense_seq_dis(match_child),
-      &gtr,
-    );
-    let match_metrics = evaluate_dense_contribution(&match_contribution, 0.0, true).expect("valid branch length");
-
-    let mismatch_parent = array![[1.0, 0.0, 0.0, 0.0]];
-    let mismatch_child = array![[0.0, 1.0, 0.0, 0.0]];
-    let mismatch_contribution = get_coefficients(
-      &make_dense_seq_dis(mismatch_parent),
-      &make_dense_seq_dis(mismatch_child),
-      &gtr,
-    );
-    let mismatch_metrics = evaluate_dense_contribution(&mismatch_contribution, 0.0, true).expect("valid branch length");
-
-    assert!(
-      match_metrics.log_lh.value() > mismatch_metrics.log_lh.value(),
-      "matching states should have higher log-LH at zero branch length"
-    );
-  }
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tiny(    0.001)]
-  #[case::small(   0.01 )]
-  #[case::moderate( 0.1 )]
-  #[case::large(   1.0  )]
+  #[case::zero_partial_overlap(0.0,   array![0.5, 0.3, 0.1, 0.1], array![0.4, 0.4, 0.1, 0.1])]
+  #[case::zero_match(          0.0,   array![1.0, 0.0, 0.0, 0.0], array![1.0, 0.0, 0.0, 0.0])]
+  #[case::tiny(                0.001, array![0.7, 0.1, 0.1, 0.1], array![0.1, 0.7, 0.1, 0.1])]
+  #[case::moderate(            0.1,   array![0.7, 0.1, 0.1, 0.1], array![0.1, 0.7, 0.1, 0.1])]
+  #[case::large(               1.0,   array![0.7, 0.1, 0.1, 0.1], array![0.1, 0.7, 0.1, 0.1])]
+  #[case::mismatch(            0.1,   array![1.0, 0.0, 0.0, 0.0], array![0.0, 1.0, 0.0, 0.0])]
   #[trace]
-  fn test_coefficients_support_positive_branch_length(#[case] branch_length: f64) {
+  fn test_coefficients_likelihood_matches_jc69_transition_probabilities(
+    #[case] branch_length: f64,
+    #[case] parent: Array1<f64>,
+    #[case] child: Array1<f64>,
+  ) {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
-
-    let parent = array![[0.7, 0.1, 0.1, 0.1]];
-    let child = array![[0.1, 0.7, 0.1, 0.1]];
-    let msg_to_parent = make_dense_seq_dis(parent);
-    let msg_to_child = make_dense_seq_dis(child);
-
-    let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
+    let overlap = parent.dot(&child);
+    let contribution = get_coefficients(
+      &make_dense_seq_dis(parent.insert_axis(Axis(0))),
+      &make_dense_seq_dis(child.insert_axis(Axis(0))),
+      &gtr,
+    );
 
     let metrics = evaluate_dense_contribution(&contribution, branch_length, true).expect("valid branch length");
-    assert!(metrics.log_lh.value().is_finite(), "log-LH should be finite");
-    assert!(metrics.derivative.is_finite(), "derivative should be finite");
-    assert!(metrics.second_derivative.is_finite(), "second_derivative should be finite");
+
+    let decay = (-4.0 / 3.0 * branch_length).exp();
+    let site_lh = 0.25 + decay * (overlap - 0.25);
+    let site_lh_derivative = -4.0 / 3.0 * decay * (overlap - 0.25);
+    let site_lh_second_derivative = 16.0 / 9.0 * decay * (overlap - 0.25);
+    pretty_assert_abs_diff_eq!(site_lh.ln(), metrics.log_lh.value(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(site_lh_derivative / site_lh, metrics.derivative, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(
+      site_lh_second_derivative / site_lh - (site_lh_derivative / site_lh).powi(2),
+      metrics.second_derivative,
+      epsilon = 1e-12
+    );
   }
 }

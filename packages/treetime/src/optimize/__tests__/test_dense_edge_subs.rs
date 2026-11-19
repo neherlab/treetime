@@ -10,13 +10,13 @@ mod tests {
   use crate::test_utils::dense_partition_with_constant_leaves;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
-  use indoc::indoc;
+  use helpers::divergent_alignment;
+  use itertools::Itertools;
   use treetime_graph::keymap;
 
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::LogLh;
@@ -189,39 +189,17 @@ mod tests {
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.key();
-      let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key)?;
-      for sub in &subs {
-        assert!(
-          recon.partition.alphabet.is_canonical(sub.reff()),
-          "parent state must be canonical: {sub:?}"
-        );
-        assert!(
-          recon.partition.alphabet.is_canonical(sub.qry()),
-          "child state must be canonical: {sub:?}"
-        );
-      }
-    }
+    let alphabet = &recon.partition.alphabet;
+    let non_canonical_subs = graph
+      .get_edges()
+      .map(|edge_ref| recon.partition.edge_subs(&recon.node_states, &graph, edge_ref.key()))
+      .collect::<Result<Vec<_>, Report>>()?
+      .into_iter()
+      .flatten()
+      .filter(|sub| !alphabet.is_canonical(sub.reff()) || !alphabet.is_canonical(sub.qry()))
+      .collect_vec();
+    assert_eq!(Vec::<Sub>::new(), non_canonical_subs);
     Ok(())
-  }
-
-  fn divergent_alignment() -> Result<Vec<FastaRecord>, Report> {
-    let alphabet = Alphabet::default();
-    fasta_read(
-      indoc! {r#"
-        >A
-        ACGTACGTACGTACGT
-        >B
-        ACGTACGTACGTACGA
-        >C
-        ACGTACGTACGTACGG
-        >D
-        ACGTACGTACGTACGC
-      "#}
-      .as_bytes(),
-      &alphabet,
-    )
   }
 
   mod helpers {
@@ -229,6 +207,27 @@ mod tests {
     use crate::partition::marginal::posterior_states::most_likely_state;
     use crate::partition::storage::dense::DenseNodeState;
     use crate::seq::mutation::Sub;
+    use eyre::Report;
+    use indoc::indoc;
+    use treetime_io::fasta::{FastaRecord, fasta_read};
+
+    pub(super) fn divergent_alignment() -> Result<Vec<FastaRecord>, Report> {
+      let alphabet = Alphabet::default();
+      fasta_read(
+        indoc! {r#"
+          >A
+          ACGTACGTACGTACGT
+          >B
+          ACGTACGTACGTACGA
+          >C
+          ACGTACGTACGTACGG
+          >D
+          ACGTACGTACGTACGC
+        "#}
+        .as_bytes(),
+        &alphabet,
+      )
+    }
 
     pub(super) fn diff_map_states(
       alphabet: &Alphabet,

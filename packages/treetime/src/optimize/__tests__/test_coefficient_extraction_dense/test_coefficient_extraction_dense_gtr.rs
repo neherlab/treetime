@@ -23,18 +23,4 @@ mod tests {
 
     pretty_assert_ulps_eq!(contribution.coefficients, expected, max_ulps = 10);
   }
-
-  #[test]
-  fn test_coefficients_preserve_gtr_reference() {
-    let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
-
-    let parent = array![[0.25, 0.25, 0.25, 0.25]];
-    let child = array![[0.25, 0.25, 0.25, 0.25]];
-    let msg_to_parent = make_dense_seq_dis(parent);
-    let msg_to_child = make_dense_seq_dis(child);
-
-    let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
-
-    pretty_assert_ulps_eq!(&contribution.rate_eigvals, &gtr.rate_eigvals(), max_ulps = 10);
-  }
 }

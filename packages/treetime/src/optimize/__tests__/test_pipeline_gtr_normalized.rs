@@ -16,7 +16,7 @@ mod tests {
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
-  fn test_optimize_pipeline_infer_gtr_mu_normalized() -> Result<(), Report> {
+  fn test_pipeline_gtr_normalized_inferred_model_has_unit_mu() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let nwk_parsed = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
     let names = nwk_parsed.names.clone();
@@ -53,7 +53,7 @@ mod tests {
       panic!("one alignment gives one result");
     };
     let gtr = result.model.as_ref().expect("optimize fits a model").gtr();
-    pretty_assert_ulps_eq!(gtr.mu(), 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(1.0, gtr.mu(), max_ulps = 4);
 
     Ok(())
   }

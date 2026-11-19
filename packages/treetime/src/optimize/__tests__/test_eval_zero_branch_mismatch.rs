@@ -13,12 +13,13 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
+  use itertools::Itertools;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   #[test]
-  fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
+  fn test_eval_zero_branch_mismatch_newton_keeps_lengths_finite_and_non_negative() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;".as_slice())?;
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
@@ -69,14 +70,15 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    for edge_ref in graph.get_edges() {
-      let bl = branch_lengths[&edge_ref.key()].unwrap();
-      assert!(
-        bl.is_finite(),
-        "Branch length must be finite after optimization, got {bl}"
-      );
-      assert!(bl >= 0.0, "Branch length must be non-negative, got {bl}");
-    }
+    let invalid_lengths = graph
+      .get_edges()
+      .map(|edge_ref| (edge_ref.key(), branch_lengths[&edge_ref.key()]))
+      .filter(|(_, branch_length)| branch_length.is_none_or(|bl| !bl.is_finite() || bl < 0.0))
+      .collect_vec();
+    assert!(
+      invalid_lengths.is_empty(),
+      "optimized branch lengths must be finite and non-negative, got {invalid_lengths:?}"
+    );
 
     Ok(())
   }

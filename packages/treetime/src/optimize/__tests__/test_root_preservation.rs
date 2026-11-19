@@ -12,9 +12,6 @@ mod tests {
   use ndarray::Array1;
   use rstest::rstest;
 
-  #[rustfmt::skip]
-  const BIFURCATING_TREE: &str = "((A:0.05,B:0.05)AB:0.15,(C:0.05,D:0.05)CD:0.05)root:0.0;";
-
   const ALIGNMENT: &str = indoc! {r#"
     >A
     ACGTACGTAAGGACGT
@@ -26,14 +23,18 @@ mod tests {
     TCGATCGATTCCACGC
   "#};
 
-  #[test]
-  fn test_root_preservation_ratio_preserved_after_optimization() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ratio_3_to_1( "((A:0.05,B:0.05)AB:0.15,(C:0.05,D:0.05)CD:0.05)root:0.0;")]
+  #[case::ratio_90_to_1("((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.01)root:0.0;")]
+  #[trace]
+  fn test_root_preservation_keeps_ratio_of_root_edges(#[case] tree: &str) -> Result<(), Report> {
     let DenseSetup {
       graph,
       reconstruction,
       mut branch_lengths,
       ..
-    } = DenseSetup::new(BIFURCATING_TREE, ALIGNMENT)?;
+    } = DenseSetup::new(tree, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
@@ -87,7 +88,7 @@ mod tests {
       "optimizer should produce positive total from zero-start edges"
     );
     let ratio = bl0 / total;
-    pretty_assert_abs_diff_eq!(ratio, 0.5, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(0.5, ratio, epsilon = 1e-12);
     Ok(())
   }
 
@@ -131,41 +132,6 @@ mod tests {
       BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
-    Ok(())
-  }
-
-  #[test]
-  fn test_root_preservation_asymmetric_ratio() -> Result<(), Report> {
-    let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.01)root:0.0;";
-    let DenseSetup {
-      graph,
-      reconstruction,
-      mut branch_lengths,
-      ..
-    } = DenseSetup::new(tree, ALIGNMENT)?;
-
-    let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
-    let total_before = bl0_before + bl1_before;
-    let ratio_before = bl0_before / total_before;
-
-    assert!(ratio_before > 0.9, "pre-condition: asymmetric ratio");
-
-    let total_length = reconstruction.total_length();
-    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    optimize_edge_lengths(
-      &graph,
-      total_length,
-      &contributions,
-      &EdgeIndels::Excluded,
-      BranchOptMethod::Brent,
-      &mut branch_lengths,
-    )?;
-
-    let (bl0_after, bl1_after) = root_edge_branch_lengths(&graph, &branch_lengths);
-    let total_after = bl0_after + bl1_after;
-    let ratio_after = bl0_after / total_after;
-
-    pretty_assert_abs_diff_eq!(ratio_before, ratio_after, epsilon = 1e-12);
     Ok(())
   }
 

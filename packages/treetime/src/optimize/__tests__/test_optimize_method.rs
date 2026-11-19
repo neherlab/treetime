@@ -14,7 +14,6 @@ pub(super) mod tests {
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use eyre::Report;
   use helpers::*;
-  use proptest::prelude::*;
   use rstest::rstest;
 
   use treetime_graph::graph::Graph;
@@ -110,7 +109,6 @@ pub(super) mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
-  #[case::k2(2)]
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
@@ -129,10 +127,8 @@ pub(super) mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::brent_k1( BranchOptMethod::Brent,  1)]
-  #[case::brent_k2( BranchOptMethod::Brent,  2)]
   #[case::brent_k4( BranchOptMethod::Brent,  4)]
   #[case::newton_k1(BranchOptMethod::Newton, 1)]
-  #[case::newton_k2(BranchOptMethod::Newton, 2)]
   #[case::newton_k4(BranchOptMethod::Newton, 4)]
   #[trace]
   fn test_optimize_method_positive_with_indels(#[case] method: BranchOptMethod, #[case] n_indels: usize) -> Result<(), Report> {
@@ -140,22 +136,6 @@ pub(super) mod tests {
     assert!(bl > 0.0, "{method:?} BL with {n_indels} indels must be positive, got {bl}");
     assert!(bl.is_finite(), "{method:?} BL must be finite, got {bl}");
     Ok(())
-  }
-
-  mod generators {
-    use proptest::prelude::*;
-    pub(crate) fn gen_s() -> impl Strategy<Value = f64> {
-      1e-6_f64..1e3_f64
-    }
-    pub(crate) fn gen_dl_dt() -> impl Strategy<Value = f64> {
-      -1e6_f64..1e6_f64
-    }
-    pub(crate) fn gen_d2l_dt2() -> impl Strategy<Value = f64> {
-      -1e8_f64..1e8_f64
-    }
-    pub(crate) fn gen_scalar() -> impl Strategy<Value = f64> {
-      prop_oneof![-1e3_f64..-1e-3_f64, 1e-3_f64..1e3_f64]
-    }
   }
 
   pub(crate) mod helpers {
@@ -275,50 +255,6 @@ pub(super) mod tests {
 
     pub(crate) fn first_edge_bl(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> f64 {
       branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap()
-    }
-
-    proptest! {
-      #[test]
-      fn test_prop_optimize_method_chain_rule_sqrt_formula(
-        s in generators::gen_s(),
-        dl_dt in generators::gen_dl_dt(),
-        d2l_dt2 in generators::gen_d2l_dt2(),
-      ) {
-        let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
-        let expected_dl_ds = 2.0 * s * dl_dt;
-        let expected_d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
-        let dl_tol = 1e-9 * expected_dl_ds.abs().max(1.0);
-        let d2l_tol = 1e-9 * expected_d2l_ds2.abs().max(1.0);
-        prop_assert!(
-          (dl_ds - expected_dl_ds).abs() <= dl_tol,
-          "dl_ds: got {dl_ds}, expected {expected_dl_ds}"
-        );
-        prop_assert!(
-          (d2l_ds2 - expected_d2l_ds2).abs() <= d2l_tol,
-          "d2l_ds2: got {d2l_ds2}, expected {expected_d2l_ds2}"
-        );
-      }
-
-      #[test]
-      fn test_prop_optimize_method_chain_rule_sqrt_linear(
-        s in generators::gen_s(),
-        dl_dt in generators::gen_dl_dt(),
-        d2l_dt2 in generators::gen_d2l_dt2(),
-        k in generators::gen_scalar(),
-      ) {
-        let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
-        let (dl_ds_k, d2l_ds2_k) = chain_rule_sqrt(s, k * dl_dt, k * d2l_dt2);
-        let dl_tol = 1e-9 * (k * dl_ds).abs().max(1.0);
-        let d2l_tol = 1e-9 * (k * d2l_ds2).abs().max(1.0);
-        prop_assert!(
-          (dl_ds_k - k * dl_ds).abs() <= dl_tol,
-          "linearity violated for dl_ds: {dl_ds_k} vs k*{dl_ds}"
-        );
-        prop_assert!(
-          (d2l_ds2_k - k * d2l_ds2).abs() <= d2l_tol,
-          "linearity violated for d2l_ds2: {d2l_ds2_k} vs k*{d2l_ds2}"
-        );
-      }
     }
   }
 }

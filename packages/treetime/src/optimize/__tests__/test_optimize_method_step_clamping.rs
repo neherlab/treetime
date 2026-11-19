@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::method_newton::sqrt_step_lower_bound;
+  use proptest::prelude::*;
   use rstest::rstest;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_optimize_method_step_clamping_sqrt_at_zero() {
-    pretty_assert_abs_diff_eq!(sqrt_step_lower_bound(0.0), -1.0, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(-1.0, sqrt_step_lower_bound(0.0), epsilon = 1e-15);
   }
 
   #[rustfmt::skip]
@@ -16,22 +17,8 @@ mod tests {
   #[case::s_3_0( 3.0, 3.0 - 10.0_f64.sqrt())]
   #[case::s_10(  10.0, 10.0 - 101.0_f64.sqrt())]
   #[trace]
-  fn test_optimize_method_step_clamping_sqrt_analytical(#[case] s: f64, #[case] expected: f64) {
-    pretty_assert_abs_diff_eq!(sqrt_step_lower_bound(s), expected, epsilon = 1e-14);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::zero(  0.0)]
-  #[case::tiny(  1e-10)]
-  #[case::small( 0.01)]
-  #[case::medium(0.3)]
-  #[case::one(   1.0)]
-  #[case::large( 10.0)]
-  #[case::huge(  1000.0)]
-  #[trace]
-  fn test_optimize_method_step_clamping_sqrt_always_negative(#[case] s: f64) {
-    assert!(sqrt_step_lower_bound(s) < 0.0);
+  fn test_optimize_method_step_clamping_sqrt_matches_analytical_bound(#[case] s: f64, #[case] expected: f64) {
+    pretty_assert_abs_diff_eq!(expected, sqrt_step_lower_bound(s), epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -43,45 +30,16 @@ mod tests {
   #[case::large( 5.0)]
   #[case::huge(  100.0)]
   #[trace]
-  fn test_optimize_method_step_clamping_sqrt_produces_unit_t_increase(#[case] s: f64) {
-    let delta_s = sqrt_step_lower_bound(s);
-    let s_new = s - delta_s;
-    let t_old = s * s;
-    let t_new = s_new * s_new;
-    pretty_assert_abs_diff_eq!(t_new - t_old, 1.0, epsilon = 1e-10);
+  fn test_optimize_method_step_clamping_sqrt_increases_t_by_one(#[case] s: f64) {
+    let s_new = s - sqrt_step_lower_bound(s);
+    pretty_assert_abs_diff_eq!(1.0, s_new * s_new - s * s, epsilon = 1e-10);
   }
 
   #[test]
-  fn test_optimize_method_step_clamping_sqrt_large_s_asymptote() {
+  fn test_optimize_method_step_clamping_sqrt_follows_large_s_asymptote() {
     let s = 1000.0;
-    let bound = sqrt_step_lower_bound(s);
-    let asymptote = -1.0 / (2.0 * s);
-    pretty_assert_abs_diff_eq!(bound, asymptote, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(-1.0 / (2.0 * s), sqrt_step_lower_bound(s), epsilon = 1e-9);
   }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::small( 0.01)]
-  #[case::medium(0.3)]
-  #[case::one(   1.0)]
-  #[case::large( 10.0)]
-  #[trace]
-  fn test_optimize_method_step_clamping_sqrt_strictly_greater_than_minus_one(#[case] s: f64) {
-    let bound = sqrt_step_lower_bound(s);
-    assert!(
-      bound > -1.0,
-      "At s={s}, bound ({bound}) should be > -1.0"
-    );
-  }
-
-  mod generators {
-    use proptest::prelude::*;
-    pub(super) fn gen_s() -> impl Strategy<Value = f64> {
-      0.0_f64..1e3_f64
-    }
-  }
-
-  use proptest::prelude::*;
 
   proptest! {
     #[test]
@@ -99,6 +57,14 @@ mod tests {
         (delta_t - 1.0).abs() < 1e-6,
         "sqrt step from s={s} should yield delta_t = 1.0, got {delta_t}"
       );
+    }
+  }
+
+  mod generators {
+    use proptest::prelude::*;
+
+    pub(super) fn gen_s() -> impl Strategy<Value = f64> {
+      0.0_f64..1e3_f64
     }
   }
 }

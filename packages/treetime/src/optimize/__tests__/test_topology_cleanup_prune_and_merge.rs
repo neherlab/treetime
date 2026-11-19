@@ -34,7 +34,7 @@ mod tests {
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed);
-    assert_eq!(graph.get_nodes().count(), 4);
+    assert_eq!(4, graph.get_nodes().count());
     Ok(())
   }
 
@@ -98,7 +98,7 @@ mod tests {
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.degree_out(), 2);
+    assert_eq!(2, root_node.degree_out());
 
     Ok(())
   }
@@ -287,7 +287,7 @@ mod tests {
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.degree_out(), 4);
+    assert_eq!(4, root_node.degree_out());
 
     Ok(())
   }

@@ -6,7 +6,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::pretty_assert_abs_diff_eq;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -29,12 +29,15 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::negative(         -0.1)]
-  #[case::negative_infinity(f64::NEG_INFINITY)]
-  #[case::positive_infinity(f64::INFINITY)]
-  #[case::nan(              f64::NAN)]
+  #[case::negative(         -0.1,              "branch length must be finite and non-negative, got -0.1")]
+  #[case::negative_infinity(f64::NEG_INFINITY, "branch length must be finite and non-negative, got -inf")]
+  #[case::positive_infinity(f64::INFINITY,     "branch length must be finite and non-negative, got inf")]
+  #[case::nan(              f64::NAN,          "branch length must be finite and non-negative, got NaN")]
   #[trace]
-  fn test_branch_length_validation_substitution_evaluator_rejects_invalid(#[case] branch_length: f64) {
+  fn test_branch_length_validation_substitution_evaluator_rejects_invalid(
+    #[case] branch_length: f64,
+    #[case] expected: &str,
+  ) {
     let coefficients = array![1.0, 0.0];
     let eigvals = array![0.0, -1.0];
     let result = evaluate_site_contributions(
@@ -43,22 +46,23 @@ mod tests {
       branch_length,
       true,
     );
-    let error = result.expect_err("invalid branch length must be rejected");
-    assert!(error.to_string().contains("finite and non-negative"));
+    assert_error!(result, expected);
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::negative_no_indels(  0, -0.1)]
-  #[case::negative_with_indels(1, -0.1)]
-  #[case::negative_infinity(   1, f64::NEG_INFINITY)]
-  #[case::positive_infinity(   1, f64::INFINITY)]
-  #[case::nan(                 1, f64::NAN)]
+  #[case::negative_no_indels(  0, -0.1,              "branch length must be finite and non-negative, got -0.1")]
+  #[case::negative_with_indels(1, -0.1,              "branch length must be finite and non-negative, got -0.1")]
+  #[case::negative_infinity(   1, f64::NEG_INFINITY, "branch length must be finite and non-negative, got -inf")]
+  #[case::positive_infinity(   1, f64::INFINITY,     "branch length must be finite and non-negative, got inf")]
+  #[case::nan(                 1, f64::NAN,          "branch length must be finite and non-negative, got NaN")]
   #[trace]
-  fn test_branch_length_validation_poisson_evaluator_rejects_invalid(#[case] k: usize, #[case] branch_length: f64) {
-    let result = poisson_indel_log_lh(k, 1.0, branch_length);
-    let error = result.expect_err("invalid branch length must be rejected");
-    assert!(error.to_string().contains("finite and non-negative"));
+  fn test_branch_length_validation_poisson_evaluator_rejects_invalid(
+    #[case] k: usize,
+    #[case] branch_length: f64,
+    #[case] expected: &str,
+  ) {
+    assert_error!(poisson_indel_log_lh(k, 1.0, branch_length), expected);
   }
 
   #[test]
@@ -66,7 +70,9 @@ mod tests {
     let no_indels = poisson_indel_log_lh(0, 1.0, 0.0).expect("zero is valid without indels");
     pretty_assert_abs_diff_eq!(0.0, no_indels.log_lh.value(), epsilon = 1e-15);
 
-    let error = poisson_indel_log_lh(1, 1.0, 0.0).expect_err("zero is invalid with observed indels");
-    assert!(error.to_string().contains("positive branch length"));
+    assert_error!(
+      poisson_indel_log_lh(1, 1.0, 0.0),
+      "Poisson indel likelihood requires a positive branch length when k > 0, got t=0"
+    );
   }
 }

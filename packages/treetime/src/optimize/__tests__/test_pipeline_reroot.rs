@@ -33,7 +33,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().count(), leaves_before);
+    assert_eq!(leaves_before, output.graph.get_leaves().count());
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     let root_children_after = root_child_keys(&output.graph);
     assert_ne!(
@@ -63,7 +63,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().count(), leaves_before);
+    assert_eq!(leaves_before, output.graph.get_leaves().count());
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     let root_after = root_key(&output.graph);
     assert_ne!(root_before, root_after, "tip-based reroot should move the root");
@@ -91,7 +91,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().count(), leaves_before);
+    assert_eq!(leaves_before, output.graph.get_leaves().count());
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
   }
@@ -182,7 +182,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().count(), leaves_before);
+    assert_eq!(leaves_before, output.graph.get_leaves().count());
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
   }

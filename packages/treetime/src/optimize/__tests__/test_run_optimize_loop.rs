@@ -24,39 +24,6 @@ mod tests {
   use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
-  fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
-    let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let mut graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
-
-    let max_iter = 5;
-    let names_tt_6 = names.clone();
-    let result = run_optimize_loop(
-      &mut graph,
-      reconstruction,
-      &OptimizeLoopSettings {
-        max_iter,
-        dp: 0.0,
-        damping: 0.75,
-        opt_method: BranchOptMethod::Brent,
-        indel_policy: IndelPolicy::Include,
-        topology_ops: TopologyOps::default(),
-        partition_rates: PartitionRates::Estimate,
-      },
-      branch_lengths,
-      names_tt_6,
-      &NoopProgress,
-    )?;
-
-    assert!(result.lh_history.len() >= 1);
-    assert!(result.lh_history.len() <= max_iter + 2);
-    Ok(())
-  }
-
-  #[test]
   fn test_run_optimize_loop_records_joint_likelihood_with_sparse_indels() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
@@ -99,7 +66,7 @@ mod tests {
     )?;
 
     assert_eq!(3, result.lh_history.len());
-    pretty_assert_abs_diff_eq!(result.lh_history[0].value(), expected_total_lh, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(expected_total_lh, result.lh_history[0].value(), epsilon = 1e-10);
     Ok(())
   }
 

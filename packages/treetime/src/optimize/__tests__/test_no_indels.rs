@@ -21,6 +21,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use eyre::Report;
+  use ndarray::Array1;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
@@ -193,19 +194,9 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(
-      result_no_flag.lh_history.len(),
-      result_flag.lh_history.len(),
-      "Same number of iterations expected"
-    );
-    for (i, (lh_nf, lh_f)) in result_no_flag
-      .lh_history
-      .iter()
-      .zip(&result_flag.lh_history)
-      .enumerate()
-    {
-      pretty_assert_abs_diff_eq!(lh_nf.value(), lh_f.value(), epsilon = 1e-10);
-    }
+    let expected: Array1<f64> = result_no_flag.lh_history.iter().map(|lh| lh.value()).collect();
+    let actual: Array1<f64> = result_flag.lh_history.iter().map(|lh| lh.value()).collect();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-10);
     Ok(())
   }
 
@@ -215,7 +206,7 @@ mod tests {
     inject_indel_on_first_edge(&graph, &mut reconstruction)?;
     let indels = IndelPolicy::Exclude.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
-    let result = apply_initial_guess_mode(
+    apply_initial_guess_mode(
       &graph,
       &indels,
       &evidence,
@@ -223,11 +214,7 @@ mod tests {
       &mut branch_lengths,
       &names,
       &NoopProgress,
-    );
-    assert!(
-      result.is_ok(),
-      "no_indels=true should accept zero-BL indel edges in Never mode, got: {result:?}"
-    );
+    )?;
     Ok(())
   }
 

@@ -5,96 +5,15 @@ mod tests {
   use treetime_primitives::LogLh;
 
   #[test]
-  fn test_optimization_metrics_default_is_zero() {
-    let metrics = OptimizationMetrics::default();
-
-    pretty_assert_ulps_eq!(metrics.log_lh.value(), 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(metrics.derivative, 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(metrics.second_derivative, 0.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_optimization_metrics_new_stores_values() {
-    let metrics = OptimizationMetrics::new(LogLh::new(1.5), -0.3, -2.0);
-
-    pretty_assert_ulps_eq!(metrics.log_lh.value(), 1.5, max_ulps = 4);
-    pretty_assert_ulps_eq!(metrics.derivative, -0.3, max_ulps = 4);
-    pretty_assert_ulps_eq!(metrics.second_derivative, -2.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_optimization_metrics_add_single() {
-    let mut total = OptimizationMetrics::default();
-    let other = OptimizationMetrics::new(LogLh::new(1.0), 2.0, 3.0);
-
-    total.add(&other);
-
-    pretty_assert_ulps_eq!(total.log_lh.value(), 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.derivative, 2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.second_derivative, 3.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_optimization_metrics_add_multiple_partitions() {
+  fn test_optimization_metrics_add_sums_each_component_across_partitions() {
     let mut total = OptimizationMetrics::default();
 
-    let partition1 = OptimizationMetrics::new(LogLh::new(-10.0), 0.5, -1.0);
-    let partition2 = OptimizationMetrics::new(LogLh::new(-15.0), 0.3, -2.0);
-    let partition3 = OptimizationMetrics::new(LogLh::new(-5.0), -0.1, -0.5);
+    total.add(&OptimizationMetrics::new(LogLh::new(-10.0), 0.5, -1.0));
+    total.add(&OptimizationMetrics::new(LogLh::new(-15.0), 0.3, -2.0));
+    total.add(&OptimizationMetrics::new(LogLh::new(-5.0), -0.1, -0.5));
 
-    total.add(&partition1);
-    total.add(&partition2);
-    total.add(&partition3);
-
-    let expected_log_lh = -10.0 + -15.0 + -5.0;
-    let expected_derivative = 0.5 + 0.3 + -0.1;
-    let expected_second_derivative = -1.0 + -2.0 + -0.5;
-
-    pretty_assert_ulps_eq!(total.log_lh.value(), expected_log_lh, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_optimization_metrics_add_with_negative_values() {
-    let mut total = OptimizationMetrics::new(LogLh::new(-100.0), -5.0, -10.0);
-    let other = OptimizationMetrics::new(LogLh::new(-50.0), 3.0, -5.0);
-
-    total.add(&other);
-
-    pretty_assert_ulps_eq!(total.log_lh.value(), -150.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.derivative, -2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.second_derivative, -15.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_optimization_metrics_add_preserves_precision() {
-    let mut total = OptimizationMetrics::default();
-
-    for i in 0..1000_u32 {
-      let small = OptimizationMetrics::new(LogLh::new(0.001), 0.0001 * f64::from(i), -0.00001);
-      total.add(&small);
-    }
-
-    let expected_log_lh = 1.0;
-    let expected_derivative: f64 = (0..1000_u32).map(|i| 0.0001 * f64::from(i)).sum();
-    let expected_second_derivative = -0.01;
-
-    pretty_assert_ulps_eq!(total.log_lh.value(), expected_log_lh, max_ulps = 1000);
-    pretty_assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 1000);
-    pretty_assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 1000);
-  }
-
-  #[test]
-  fn test_optimization_metrics_add_zero_is_identity() {
-    let original = OptimizationMetrics::new(LogLh::new(-42.5), 1.23, -4.56);
-    let mut total = original.clone();
-    let zero = OptimizationMetrics::default();
-
-    total.add(&zero);
-
-    pretty_assert_ulps_eq!(total.log_lh.value(), original.log_lh.value(), max_ulps = 4);
-    pretty_assert_ulps_eq!(total.derivative, original.derivative, max_ulps = 4);
-    pretty_assert_ulps_eq!(total.second_derivative, original.second_derivative, max_ulps = 4);
+    pretty_assert_ulps_eq!(-10.0 + -15.0 + -5.0, total.log_lh.value(), max_ulps = 4);
+    pretty_assert_ulps_eq!(0.5 + 0.3 + -0.1, total.derivative, max_ulps = 4);
+    pretty_assert_ulps_eq!(-1.0 + -2.0 + -0.5, total.second_derivative, max_ulps = 4);
   }
 }

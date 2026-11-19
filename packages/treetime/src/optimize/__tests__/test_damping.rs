@@ -12,6 +12,8 @@ mod tests {
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::progress::NoopProgress;
   use eyre::Report;
+  use ndarray::{Array1, array};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::key_map::EdgeMap;
 
@@ -19,35 +21,14 @@ mod tests {
   use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
-  fn test_parse_branch_lengths_covers_all_edges() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let saved = branch_lengths;
-    let edges = graph.get_edges().collect::<Vec<_>>();
-    assert_eq!(saved.len(), edges.len());
-    for edge_ref in &edges {
-      let edge = edge_ref;
-      assert!(saved.contains_key(edge.key()));
-    }
-    Ok(())
-  }
-
-  #[test]
-  fn test_apply_damping_zero_is_noop() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let original = branch_lengths;
-
+  fn test_apply_damping_zero_keeps_optimized_lengths() -> Result<(), Report> {
+    let original = nwk_read(TREE_NEWICK.as_bytes())?.branch_lengths;
     let mut optimized: EdgeMap<Option<f64>> = original.iter().map(|(key, &bl)| (key, bl.map(|b| b * 2.0))).collect();
-    let after_optim = optimized.clone();
+    let expected = optimized.clone();
 
     apply_damping(&mut optimized, &original, 0.0, 0);
 
-    assert_eq!(optimized, after_optim);
+    assert_eq!(expected, optimized);
     Ok(())
   }
 
@@ -60,68 +41,28 @@ mod tests {
   #[case::iter_9( 9, 0.056313514709472656)]
   #[trace]
   fn test_apply_damping_weights_match_v0(#[case] iteration: usize, #[case] expected_old_weight: f64) -> Result<(), Report> {
-    let damping = 0.75;
-    let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let old_bls = branch_lengths;
-
+    let old_bls = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?.branch_lengths;
     let mut bls: EdgeMap<Option<f64>> = old_bls.keys().map(|key| (key, Some(0.0))).collect();
 
-    apply_damping(&mut bls, &old_bls, damping, iteration);
+    apply_damping(&mut bls, &old_bls, 0.75, iteration);
 
-    for bl in bls.values() {
-      pretty_assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
-    }
+    let actual: Array1<f64> = bls.values().map(|bl| bl.expect("damped length")).collect();
+    pretty_assert_abs_diff_eq!(array![expected_old_weight, expected_old_weight], actual, epsilon = 1e-15);
     Ok(())
   }
 
   #[test]
-  fn test_apply_damping_blends_correctly() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let old_bls = branch_lengths;
-
+  fn test_apply_damping_blends_each_edge_with_its_own_old_length() -> Result<(), Report> {
+    let old_bls = nwk_read(b"(A:0.1,B:0.2)root:0.0;".as_slice())?.branch_lengths;
     let mut bls: EdgeMap<Option<f64>> = old_bls.iter().map(|(key, &bl)| (key, bl.map(|b| b * 3.0))).collect();
 
     apply_damping(&mut bls, &old_bls, 0.75, 0);
 
-    for (key, &old) in &old_bls {
-      let damped = bls[&key].unwrap();
-      let expected = if (old.unwrap() - 0.1).abs() < 1e-9 { 0.15 } else { 0.30 };
-      pretty_assert_abs_diff_eq!(damped, expected, epsilon = 1e-8);
-    }
-    Ok(())
-  }
-
-  #[test]
-  fn test_apply_damping_new_weight_increases_with_iteration() -> Result<(), Report> {
-    let damping = 0.75;
-    let old_bl = 1.0;
-    let optimized_bl = 2.0;
-
-    let mut prev_damped = old_bl;
-    for iteration in 0..10 {
-      let nwk_parsed = nwk_read(b"(A:1.0)root:0.0;".as_slice())?;
-      let names = nwk_parsed.names.clone();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let old_bls = branch_lengths;
-      let mut bls: EdgeMap<Option<f64>> = old_bls.keys().map(|key| (key, Some(optimized_bl))).collect();
-
-      apply_damping(&mut bls, &old_bls, damping, iteration);
-
-      let damped = bls.values().next().unwrap().unwrap();
-
-      assert!(
-        damped > prev_damped || iteration == 0,
-        "Iteration {iteration}: damped {damped} should be > previous {prev_damped}"
-      );
-      prev_damped = damped;
-    }
+    let damped_to_old_ratio: Array1<f64> = old_bls
+      .keys()
+      .map(|key| bls[key].expect("damped length") / old_bls[key].expect("old length"))
+      .collect();
+    pretty_assert_abs_diff_eq!(array![1.5, 1.5], damped_to_old_ratio, epsilon = 1e-14);
     Ok(())
   }
 

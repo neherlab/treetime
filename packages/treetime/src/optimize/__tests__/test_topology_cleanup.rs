@@ -45,7 +45,7 @@ pub(super) mod tests {
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = Graph::new();
     let edges = find_zero_optimal_internal_edges(&graph, &EdgeIndels::Excluded, &EdgeMap::new());
-    assert_eq!(edges.len(), 0);
+    assert_eq!(0, edges.len());
     Ok(())
   }
 
@@ -57,7 +57,7 @@ pub(super) mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let indels = EdgeIndels::Excluded;
     let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
-    assert_eq!(edges.len(), 0);
+    assert_eq!(0, edges.len());
     Ok(())
   }
 
@@ -69,7 +69,7 @@ pub(super) mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let indels = EdgeIndels::Excluded;
     let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
-    assert_eq!(edges.len(), 0);
+    assert_eq!(0, edges.len());
     Ok(())
   }
 
@@ -81,7 +81,7 @@ pub(super) mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let indels = EdgeIndels::Excluded;
     let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
-    assert_eq!(edges.len(), 1);
+    assert_eq!(1, edges.len());
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
     let target = edge.target();
@@ -123,7 +123,7 @@ pub(super) mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let indels = EdgeIndels::Excluded;
     let edges = find_zero_optimal_internal_edges(&graph, &indels, &branch_lengths);
-    assert_eq!(edges.len(), 2);
+    assert_eq!(2, edges.len());
     Ok(())
   }
 
@@ -371,7 +371,7 @@ pub(super) mod tests {
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.degree_out(), 3);
+    assert_eq!(3, root_node.degree_out());
 
     Ok(())
   }

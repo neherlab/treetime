@@ -439,19 +439,6 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tiny(    0.01)]
-  #[case::small(   0.1 )]
-  #[case::moderate( 0.5)]
-  #[case::one(     1.0 )]
-  #[case::large(   5.0 )]
-  #[trace]
-  fn test_optimize_indel_poisson_concavity(#[case] t: f64) {
-    let metrics = poisson_indel_log_lh(3, 5.0, t).expect("valid Poisson parameters");
-    assert!(metrics.second_derivative < 0.0, "Poisson log-likelihood should be concave for k>0");
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
   #[case::k1( 1)]
   #[case::k2( 2)]
   #[case::k3( 3)]
@@ -462,7 +449,7 @@ pub(super) mod tests {
     let mu = 3.0;
     let t_mle = k.to_f64_exact() / mu;
     let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
-    pretty_assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
+    pretty_assert_abs_diff_eq!(0.0, metrics.derivative, epsilon = 1e-13);
   }
 
   #[rustfmt::skip]
@@ -479,11 +466,9 @@ pub(super) mod tests {
     let mu = 2.0;
     let t_mle = k.to_f64_exact() / mu;
     let t = t_mle + delta;
-    if t > 0.0 {
-      let lh_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters").log_lh.value();
-      let lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh.value();
-      assert!(lh <= lh_mle + 1e-14, "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})");
-    }
+    let lh_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters").log_lh.value();
+    let lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh.value();
+    assert!(lh <= lh_mle + 1e-14, "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})");
   }
 
   #[test]

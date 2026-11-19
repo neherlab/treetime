@@ -10,6 +10,8 @@ mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use ndarray::{Array2, array};
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
@@ -36,16 +38,34 @@ mod tests {
     assert!(!is_zero_optimal_without_indels(&[]));
   }
 
-  #[test]
-  fn test_is_zero_branch_optimal_negative_derivative_returns_true() {
-    let contribution = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
-    assert!(is_zero_optimal_without_indels(&[contribution]));
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative_derivative(array![[0.0,           1.0, 0.0, 0.0]],                       true )]
+  #[case::zero_derivative(    array![[0.0,           0.0, 0.0, 1.0]],                       false)]
+  #[case::zero_site_lh(       array![[0.0,           1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], false)]
+  #[case::negative_site_lh(   array![[1.0,          -2.0, 0.0, 0.0]],                       false)]
+  #[case::nonfinite_site_lh(  array![[f64::INFINITY, 0.0, 0.0, 0.0]],                       false)]
+  #[trace]
+  fn test_is_zero_branch_optimal_dense_decides_on_the_derivative_of_valid_sites(
+    #[case] coefficients: Array2<f64>,
+    #[case] expected: bool,
+  ) {
+    let contribution = make_dense_contribution(coefficients);
+    assert_eq!(expected, is_zero_optimal_without_indels(&[contribution]));
   }
 
-  #[test]
-  fn test_is_zero_branch_optimal_zero_derivative_returns_false() {
-    let contribution = make_dense_contribution(array![[0.0, 0.0, 0.0, 1.0]]);
-    assert!(!is_zero_optimal_without_indels(&[contribution]));
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative_derivative((  1.0, vec![0.0, 1.0, 0.0, 0.0]), true )]
+  #[case::zero_derivative((      1.0, vec![0.0, 0.0, 0.0, 1.0]), false)]
+  #[case::high_multiplicity((   50.0, vec![0.0, 0.5, 0.0, 0.0]), true )]
+  #[trace]
+  fn test_is_zero_branch_optimal_sparse_decides_on_the_derivative(
+    #[case] site: (f64, Vec<f64>),
+    #[case] expected: bool,
+  ) {
+    let contribution = make_sparse_contribution(vec![site]);
+    assert_eq!(expected, is_zero_optimal_without_indels(&[contribution]));
   }
 
   #[test]
@@ -88,27 +108,6 @@ mod tests {
   }
 
   #[test]
-  fn test_is_zero_branch_optimal_zero_site_lh_returns_false() {
-    let coefficients = array![[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],];
-    let contribution = make_dense_contribution(coefficients);
-    assert!(!is_zero_optimal_without_indels(&[contribution]));
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_negative_site_lh_returns_false() {
-    let coefficients = array![[1.0, -2.0, 0.0, 0.0]];
-    let contribution = make_dense_contribution(coefficients);
-    assert!(!is_zero_optimal_without_indels(&[contribution]));
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_nonfinite_site_lh_returns_false() {
-    let coefficients = array![[f64::INFINITY, 0.0, 0.0, 0.0]];
-    let contribution = make_dense_contribution(coefficients);
-    assert!(!is_zero_optimal_without_indels(&[contribution]));
-  }
-
-  #[test]
   fn test_is_zero_branch_optimal_multiple_partitions_negative_derivative() {
     let contrib1 = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
     let contrib2 = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
@@ -128,35 +127,6 @@ mod tests {
     let dense = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
     let sparse = make_sparse_contribution(vec![(1.0, vec![0.0, 0.5, 0.0, 0.0])]);
     assert!(is_zero_optimal_without_indels(&[dense, sparse]));
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_multiple_positions_dense() {
-    #[rustfmt::skip]
-    let coefficients = array![
-      [0.0, 1.0, 0.0, 0.0],
-      [0.0, 1.0, 0.0, 0.0],
-    ];
-    let contribution = make_dense_contribution(coefficients);
-    assert!(is_zero_optimal_without_indels(&[contribution]));
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_sparse_negative_derivative() {
-    let contribution = make_sparse_contribution(vec![(1.0, vec![0.0, 1.0, 0.0, 0.0])]);
-    assert!(is_zero_optimal_without_indels(&[contribution]));
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_sparse_zero_derivative() {
-    let contribution = make_sparse_contribution(vec![(1.0, vec![0.0, 0.0, 0.0, 1.0])]);
-    assert!(!is_zero_optimal_without_indels(&[contribution]));
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_sparse_multiplicity_preserves_sign() {
-    let contribution = make_sparse_contribution(vec![(50.0, vec![0.0, 0.5, 0.0, 0.0])]);
-    assert!(is_zero_optimal_without_indels(&[contribution]));
   }
 
   #[test]

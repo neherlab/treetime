@@ -3,6 +3,7 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_graph::reroot::{
     apply_reroot_topology, record_merge, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
@@ -11,19 +12,27 @@ mod tests {
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_utils::pretty_assert_abs_diff_eq;
 
-  #[test]
-  fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(b"(A:0.6,B:0.4)root;".as_slice())?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::quarter( ("(A:0.6,B:0.4)root;", "A"), 0.25, (0.15, 0.45))]
+  #[case::midpoint(("(A:1.0,B:2.0)root;", "B"), 0.5,  (1.0,  1.0) )]
+  #[trace]
+  fn test_reroot_split_edge_replaces_edge_by_two_edges_that_divide_its_branch_length(
+    #[case] (nwk, child): (&str, &str),
+    #[case] fraction: f64,
+    #[case] (expected_parent_side, expected_child_side): (f64, f64),
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(nwk.as_bytes())?;
     let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
-    let a_key = find_node_key_by_name(&graph, &names, "A").unwrap();
+    let child_key = find_node_key_by_name(&graph, &names, child).unwrap();
 
     let edge_key = graph
       .get_edges()
-      .find(|e| e.source() == root_key && e.target() == a_key)
+      .find(|e| e.source() == root_key && e.target() == child_key)
       .map(|e| e.key())
       .unwrap();
 
@@ -31,55 +40,16 @@ mod tests {
       &mut graph,
       &mut names,
       edge_key,
-      SplitFraction::new(0.25)?,
+      SplitFraction::new(fraction)?,
       branch_lengths[&edge_key],
     )?;
 
-    assert_eq!(info.old_edge_key, edge_key);
-    pretty_assert_abs_diff_eq!(info.split_position.value(), 0.25, epsilon = 1e-7);
-
-    let parent_bl = info.parent_side_length.unwrap();
-    pretty_assert_abs_diff_eq!(parent_bl, 0.15, epsilon = 1e-7);
-
-    let child_bl = info.child_side_length.unwrap();
-    pretty_assert_abs_diff_eq!(child_bl, 0.45, epsilon = 1e-7);
-
+    assert_eq!(edge_key, info.old_edge_key);
+    pretty_assert_abs_diff_eq!(fraction, info.split_position.value(), epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(expected_parent_side, info.parent_side_length.unwrap(), epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(expected_child_side, info.child_side_length.unwrap(), epsilon = 1e-7);
     assert!(graph.get_node(info.new_node_key).is_some());
-
     assert!(graph.get_edge(edge_key).is_none());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_reroot_split_edge_at_midpoint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(b"(A:1.0,B:2.0)root;".as_slice())?;
-    let mut names = nwk_parsed.names.clone();
-    let mut graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-
-    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
-    let b_key = find_node_key_by_name(&graph, &names, "B").unwrap();
-
-    let edge_key = graph
-      .get_edges()
-      .find(|e| e.source() == root_key && e.target() == b_key)
-      .map(|e| e.key())
-      .unwrap();
-
-    let info = split_edge(
-      &mut graph,
-      &mut names,
-      edge_key,
-      SplitFraction::MIDDLE,
-      branch_lengths[&edge_key],
-    )?;
-
-    let parent_bl = info.parent_side_length.unwrap();
-    pretty_assert_abs_diff_eq!(parent_bl, 1.0, epsilon = 1e-7);
-
-    let child_bl = info.child_side_length.unwrap();
-    pretty_assert_abs_diff_eq!(child_bl, 1.0, epsilon = 1e-7);
 
     Ok(())
   }
@@ -95,7 +65,7 @@ mod tests {
 
     let inverted = apply_reroot_topology(&mut graph, root_key, ab_key)?;
 
-    assert_eq!(inverted.len(), 1);
+    assert_eq!(1, inverted.len());
 
     let ab_node = graph.get_node(ab_key).unwrap();
     assert!(ab_node.inbound().is_empty());
@@ -117,7 +87,7 @@ mod tests {
 
     let inverted = apply_reroot_topology(&mut graph, root_key, a_key)?;
 
-    assert_eq!(inverted.len(), 2);
+    assert_eq!(2, inverted.len());
 
     let a_node = graph.get_node(a_key).unwrap();
     assert!(a_node.inbound().is_empty());
@@ -137,7 +107,7 @@ mod tests {
 
     apply_reroot_topology(&mut graph, root_key, cd_key)?;
 
-    assert_eq!(graph.get_leaves().count(), initial_leaves);
+    assert_eq!(initial_leaves, graph.get_leaves().count());
 
     Ok(())
   }
@@ -156,12 +126,12 @@ mod tests {
 
     let merge_info = result.expect("Node should have been removed");
     record_merge(&mut branch_lengths, &merge_info);
-    assert_eq!(merge_info.removed_node_key, mid_key);
+    assert_eq!(mid_key, merge_info.removed_node_key);
 
     assert!(graph.get_node(mid_key).is_none());
 
     let merged_bl = merge_info.merged_branch_length.unwrap();
-    pretty_assert_abs_diff_eq!(merged_bl, 0.8, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(0.8, merged_bl, epsilon = 1e-7);
 
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
@@ -215,7 +185,7 @@ mod tests {
     let cd_node = graph.get_node(cd_key).unwrap();
     assert!(cd_node.inbound().is_empty());
 
-    assert_eq!(graph.get_leaves().count(), 4);
+    assert_eq!(4, graph.get_leaves().count());
 
     let newick = nwk_write_str(
       &GraphSchedule::new(&graph)?.into_tree()?,

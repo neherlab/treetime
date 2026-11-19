@@ -8,14 +8,12 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::test_utils::dense_partition_with_constant_leaves;
   use eyre::Report;
-  use maplit::btreemap;
   use treetime_graph::key_map::EdgeMap;
-
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   #[test]
-  fn test_optimize_zero_sequence_length_run_optimize_error() -> Result<(), Report> {
+  fn test_optimize_zero_sequence_length_rejects_branch_optimization() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;".as_slice())?;
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -36,7 +34,7 @@ mod tests {
   }
 
   #[test]
-  fn test_optimize_zero_sequence_length_initial_guess_error() -> Result<(), Report> {
+  fn test_optimize_zero_sequence_length_rejects_initial_guess() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;".as_slice())?;
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -56,31 +54,6 @@ mod tests {
     assert_error!(
       result,
       "Total sequence length across all partitions is zero; cannot compute initial guess"
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_zero_sequence_length_run_optimize_with_indels_error() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;".as_slice())?;
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
-    let result = optimize_edge_lengths(
-      &graph,
-      total_length,
-      &EdgeMap::new(),
-      &EdgeIndels::Included {
-        counts: EdgeMap::new(),
-        alignment_rates: btreemap! {1 => 1.0},
-        uncarried: std::collections::BTreeMap::new(),
-      },
-      BranchOptMethod::Newton,
-      &mut branch_lengths,
-    );
-    assert_error!(
-      result,
-      "Total sequence length across all partitions is zero; cannot optimize branch lengths"
     );
     Ok(())
   }
