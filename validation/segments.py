@@ -3,6 +3,8 @@
   python segments.py simulate [--reps 3]      writes data_segments/<case>/rep<NN>/
   python segments.py run [-j 8]               runs ../.out/treetime, writes results_segments/<case>/rep<NN>/<variant>/
   python segments.py evaluate                 writes results_segments/branches.tsv, rates.tsv and summary.md
+  python segments.py export --case high --rep 0 --out ../data/simulated/reassortment/80
+                                              writes one replicate as an example dataset of TreeTime
 
 Data: an ancestral reassortment graph (reassortment.py, Tc = 10 years, 80 tips at 40 sample times, rate `rho` per
 lineage and year) and four segments with their own length, substitution rate and random GTR. Sequences evolve along
@@ -31,6 +33,7 @@ import argparse
 import json
 import lzma
 import re
+import shutil
 import subprocess
 import sys
 import zlib
@@ -675,17 +678,44 @@ def hidden_summary(dates, hidden):
     return lines
 
 
+def export(args):
+    """One replicate as an example dataset: per segment the collapsed tree (`tree_<segment>.nwk`) and the tip alignment
+    (`aln_<segment>.fasta.xz`), the tip dates (`metadata.tsv`), the true date of every node of the merged trees and its
+    number of parents in the true graph without hidden nodes (`truth_nodes.tsv`), and the true model
+    (`truth_model.json`)."""
+    rep_dir = args.data / args.case / f'rep{args.rep:02d}'
+    args.out.mkdir(parents=True, exist_ok=True)
+    for s in SEGMENTS:
+        shutil.copyfile(rep_dir / f'{s}.collapsed.nwk', args.out / f'tree_{s}.nwk')
+        shutil.copyfile(rep_dir / f'{s}.tips.fasta.xz', args.out / f'aln_{s}.fasta.xz')
+    shutil.copyfile(write_metadata(rep_dir), args.out / 'metadata.tsv')
+    truth = json.loads((rep_dir / 'truth.json').read_text())
+    model = {'clock_rate': mean_clock_rate(), **truth}
+    (args.out / 'truth_model.json').write_text(json.dumps(model, indent=1) + '\n')
+    parents = {}
+    for parent, child in graph_edges(rep_dir, 'full'):
+        parents.setdefault(child, set()).add(parent)
+    nodes = sorted({node for edge in graph_edges(rep_dir, 'collapsed') for node in edge})
+    dates = node_dates(rep_dir)
+    rows = ''.join(f'{node}\t{dates[node]:.6f}\t{len(parents.get(node, ()))}\n' for node in nodes)
+    (args.out / 'truth_nodes.tsv').write_text('name\tnumeric_date\tparents\n' + rows)
+    print(f'{args.out}: {truth["n_reassortments"]} reassortments, {len(nodes)} nodes', flush=True)
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('step', choices=['simulate', 'run', 'evaluate'])
+    p.add_argument('step', choices=['simulate', 'run', 'evaluate', 'export'])
     p.add_argument('--data', type=Path, default=HERE / 'data_segments')
     p.add_argument('--results', type=Path, default=HERE / 'results_segments')
     p.add_argument('--reps', type=int, default=3)
     p.add_argument('--seed', type=int, default=2026)
     p.add_argument('--binary', default=str(HERE.parent / '.out' / 'treetime'))
     p.add_argument('-j', '--jobs', type=int, default=4)
+    p.add_argument('--case', choices=list(CASES), default='high', help='export: reassortment rate case')
+    p.add_argument('--rep', type=int, default=0, help='export: replicate')
+    p.add_argument('--out', type=Path, help='export: dataset directory')
     args = p.parse_args()
-    {'simulate': simulate, 'run': run, 'evaluate': evaluate}[args.step](args)
+    {'simulate': simulate, 'run': run, 'evaluate': evaluate, 'export': export}[args.step](args)
 
 
 if __name__ == '__main__':
