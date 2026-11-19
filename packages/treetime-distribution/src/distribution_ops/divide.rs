@@ -7,10 +7,10 @@ use crate::distribution_ops::multiply::{
   multiplication_support_intersection, point_hard_domain, range_hard_domain, with_settled_tails,
 };
 use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_support_n_points};
-use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
 use std::cmp::Ordering;
+use treetime_grid::YAxisPolicy;
 use treetime_grid::{
   BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, HardCell, MaxGridPoints, Side, coordinates_coincide,
 };

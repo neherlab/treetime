@@ -1,10 +1,10 @@
 use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
 use crate::distribution_ops::time_bounds::distribution_support_n_points;
-use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use itertools::Either;
 use ndarray::{Array1, s};
+use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, GridFn, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};

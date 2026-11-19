@@ -2,12 +2,12 @@
 mod tests {
   use crate::BoundaryBehavior;
   use crate::distribution_core::function::DistributionFunction;
-  use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{EdgeCellLaw, HardApproachLaw, Side, SoftTailLaw};
+  use treetime_grid::{NegLog, Plain};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   type DistFn = DistributionFunction<f64, Plain>;

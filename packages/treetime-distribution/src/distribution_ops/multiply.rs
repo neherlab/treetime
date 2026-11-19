@@ -4,11 +4,11 @@ use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_support_n_points};
-use crate::policy::YAxisPolicy;
 use eyre::Report;
 use itertools::izip;
 use ndarray::{Array1, Zip};
 use ordered_float::OrderedFloat;
+use treetime_grid::YAxisPolicy;
 use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side};
 use treetime_utils::make_internal_error;
 

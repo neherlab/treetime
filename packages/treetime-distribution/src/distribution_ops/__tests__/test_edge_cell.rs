@@ -4,12 +4,12 @@ mod tests {
   use crate::distribution_ops::edge_convolution::convolve_across_edge;
   use crate::distribution_ops::mass_domain::{mass_bounded_domain, trim_to_mass};
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
-  use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction, distribution_division, distribution_multiplication};
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
   use treetime_ops::FftPlans;
   use treetime_utils::cast::ToF64Exact;

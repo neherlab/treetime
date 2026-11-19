@@ -5,12 +5,12 @@ mod tests {
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
-  use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
+  use treetime_grid::{NegLog, Plain};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_ulps_eq;
 

@@ -1,4 +1,4 @@
-use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
+use crate::policy::PolicyMarker;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -6,6 +6,7 @@ use ndarray_stats::errors::MinMaxError;
 use num::Float;
 use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, EdgeCell, GridFn, HardCell, InterpElem, MaxGridPoints, Side, SoftTailLaw};
+use treetime_grid::{Plain, YAxisPolicy};
 use treetime_utils::make_error;
 
 #[derive(Clone, Debug)]

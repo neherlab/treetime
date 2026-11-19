@@ -10,13 +10,13 @@ mod tests {
     rewindow_to_mass,
   };
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
-  use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::f64::consts::LN_10;
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 

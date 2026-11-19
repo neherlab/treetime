@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::distribution_core::formula::DistributionFormula;
-  use crate::policy::{NegLog, Plain};
   use crate::{Distribution, DistributionFunction};
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
+  use treetime_grid::{NegLog, Plain};
   use treetime_utils::{assert_error, make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]

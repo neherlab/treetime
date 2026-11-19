@@ -2,8 +2,8 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
-use crate::policy::YAxisPolicy;
 use eyre::Report;
+use treetime_grid::YAxisPolicy;
 use treetime_utils::make_error;
 
 pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<Distribution<Y>, Report> {

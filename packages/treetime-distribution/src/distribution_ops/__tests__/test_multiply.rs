@@ -5,10 +5,10 @@ mod tests {
   use crate::distribution_ops::multiply::{
     HardDomain, distribution_multiplication, guarded_empty_result, hard_domains_disjoint,
   };
-  use crate::policy::Plain;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::Plain;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -573,8 +573,8 @@ mod tests {
   mod helpers {
     use crate::__tests__::aliases::DistributionPlain;
     use crate::DistributionFunction;
-    use crate::policy::Plain;
     use ndarray::Array1;
+    use treetime_grid::Plain;
     use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> DistributionPlain {

@@ -1,6 +1,7 @@
-use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
+use crate::policy::PolicyMarker;
 use getset::Getters;
 use std::fmt::Debug;
+use treetime_grid::{Plain, YAxisPolicy};
 
 #[derive(Debug, Eq, PartialEq, Clone, Getters)]
 #[getset(get = "pub")]

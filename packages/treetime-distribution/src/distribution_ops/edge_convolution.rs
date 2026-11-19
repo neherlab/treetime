@@ -6,8 +6,8 @@ use crate::distribution_ops::mass_domain::{
   trim_to_mass, trim_with_profile,
 };
 use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
-use crate::policy::NegLog;
 use eyre::Report;
+use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
 use treetime_ops::FftPlans;
 use treetime_utils::cast::ToF64Exact;

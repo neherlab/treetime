@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::Distribution;
-  use crate::policy::NegLog;
   use ndarray::Array1;
   use proptest::prelude::*;
+  use treetime_grid::NegLog;
   use treetime_utils::{prop_assert_array_abs_diff_eq, prop_assert_array_finite, prop_assert_array_nonneg};
 
   proptest! {

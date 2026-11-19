@@ -1,5 +1,5 @@
 use crate::Distribution;
-use crate::policy::{NegLog, Plain};
+use treetime_grid::{NegLog, Plain};
 
 pub(crate) type DistributionPlain = Distribution<Plain>;
 pub(crate) type DistributionNegLog = Distribution<NegLog>;

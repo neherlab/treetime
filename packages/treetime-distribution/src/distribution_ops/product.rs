@@ -1,8 +1,8 @@
 use crate::Distribution;
 use crate::distribution_ops::multiply::{distribution_multiplication, multiply_functions};
-use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_grid::MaxGridPoints;
+use treetime_grid::YAxisPolicy;
 use treetime_utils::make_internal_error;
 
 pub fn distribution_product<Y: YAxisPolicy>(

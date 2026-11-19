@@ -802,7 +802,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::distribution_core::formula::DistributionFormula;
-    use crate::policy::NegLog;
+    use treetime_grid::NegLog;
 
     #[derive(Clone, Copy, Debug)]
     pub(super) enum DistributionVariant {

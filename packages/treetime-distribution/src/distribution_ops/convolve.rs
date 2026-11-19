@@ -6,12 +6,12 @@ use crate::distribution_ops::exact_tails::{ExactTailOperands, IndexWindow, neg_l
 use crate::distribution_ops::mass_profile::MassProfile;
 use crate::distribution_ops::multiply::{HardDomain, distribution_hard_domain, guarded_empty_result};
 use crate::distribution_ops::time_bounds::distribution_support_n_points;
-use crate::policy::NegLog;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, Zip};
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, Grid, GridFn, MaxGridPoints, Side};
 use treetime_ops::{FftConvolver, FftPlans, convolve_direct_at, convolve_direct_neg_log_at};
 use treetime_utils::array::ndarray::{max_or, min_or};

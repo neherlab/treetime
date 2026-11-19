@@ -3,11 +3,11 @@ mod tests {
   use crate::__tests__::aliases::DistributionPlain;
   use crate::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
-  use crate::policy::Plain;
   use itertools::Itertools;
   use ndarray::Array1;
   use proptest::prelude::*;
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::Plain;
   use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_ulps_eq, prop_assert_ulps_eq};

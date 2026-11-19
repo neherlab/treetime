@@ -1,11 +1,11 @@
 use crate::DistributionFunction;
 use crate::distribution_ops::scaled_mass::{CellSums, ScaledMass, scale_below};
-use crate::policy::NegLog;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::cmp::Ordering;
 use std::sync::OnceLock;
+use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, CellEnd, EdgeCell, Grid, Side};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::f64_to_usize_saturating;

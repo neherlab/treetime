@@ -1,7 +1,6 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
-  use crate::policy::NegLog;
   use crate::{BoundaryBehavior, DistributionFunction};
   use eyre::Report;
   use itertools::Itertools;
@@ -10,6 +9,7 @@ pub(super) mod tests {
   use statrs::distribution::{ContinuousCDF, Gamma, Normal};
   use statrs::function::gamma::gamma;
   use std::f64::consts::PI;
+  use treetime_grid::NegLog;
   use treetime_grid::{DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
   use treetime_utils::pretty_assert_relative_eq;
 

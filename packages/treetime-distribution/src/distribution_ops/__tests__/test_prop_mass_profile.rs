@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
-  use crate::policy::NegLog;
   use crate::{BoundaryBehavior, Distribution, DistributionFunction};
   use itertools::Itertools;
   use ndarray::Array1;
   use proptest::prelude::*;
+  use treetime_grid::NegLog;
   use treetime_grid::{GridEdge, HardApproachLaw, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_ulps_eq};

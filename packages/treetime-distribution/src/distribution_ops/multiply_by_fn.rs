@@ -1,7 +1,7 @@
-use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
+use treetime_grid::NegLog;
 use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::min_or;
 use treetime_utils::{make_error, make_internal_error};

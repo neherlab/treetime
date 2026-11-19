@@ -1,10 +1,11 @@
-use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
+use crate::policy::PolicyMarker;
 use eyre::{Result, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use std::fmt;
 use std::sync::Arc;
+use treetime_grid::{Plain, YAxisPolicy};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 

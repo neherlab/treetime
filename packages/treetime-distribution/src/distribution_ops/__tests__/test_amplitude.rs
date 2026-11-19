@@ -4,10 +4,10 @@ mod tests {
   use crate::DistributionFunction;
   use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::multiply::distribution_multiplication;
-  use crate::policy::NegLog;
   use eyre::Report;
   use ndarray::{Array1, array};
   use rstest::rstest;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, MaxGridPoints};
   use treetime_ops::FftPlans;
   use treetime_utils::pretty_assert_abs_diff_eq;

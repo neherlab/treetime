@@ -17,8 +17,8 @@ pub use distribution_ops::mass_profile::{MassFractions, MassProfile, TailMass};
 pub use distribution_ops::multiply::distribution_multiplication;
 pub use distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
 pub use distribution_ops::product::distribution_product;
-pub use policy::{NegLog, Plain, PolicyMarker, YAxisPolicy};
-pub use treetime_grid::BoundaryBehavior;
+pub use policy::PolicyMarker;
+pub use treetime_grid::{BoundaryBehavior, NegLog, Plain, YAxisPolicy};
 
 #[cfg(test)]
 mod __tests__;

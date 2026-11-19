@@ -2,11 +2,11 @@
 mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::DistributionFunction;
-  use crate::policy::NegLog;
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_abs_diff_eq;

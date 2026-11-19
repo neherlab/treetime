@@ -152,9 +152,9 @@ mod tests {
   mod helpers {
     use crate::__tests__::aliases::DistributionNegLog;
     use crate::distribution_core::function::DistributionFunction;
-    use crate::policy::NegLog;
     use ndarray::Array1;
     use treetime_grid::MaxGridPoints;
+    use treetime_grid::NegLog;
 
     pub(super) fn limit() -> MaxGridPoints {
       MaxGridPoints::new(MaxGridPoints::MIN).unwrap()

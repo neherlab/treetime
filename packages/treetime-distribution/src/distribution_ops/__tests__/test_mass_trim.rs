@@ -2,7 +2,6 @@
 mod tests {
   use crate::distribution_ops::mass_domain::trim_to_mass;
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
-  use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
   use eyre::Report;
   use itertools::Itertools;
@@ -10,6 +9,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Normal};
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_array_eq, pretty_assert_ulps_eq};

@@ -4,7 +4,6 @@ pub(crate) mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::mass_domain::{peak_normalized_if_mass_sizable, trim_to_mass};
-  use crate::policy::NegLog;
   use crate::{
     Distribution, MassProfile, MessageSpacing, TailMass, convolve_across_edge, convolve_forward_across_edge,
     distribution_multiplication,
@@ -17,6 +16,7 @@ pub(crate) mod tests {
   use statrs::function::erf::{erf, erfc};
   use std::f64::consts::{LN_10, PI, SQRT_2};
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_ops::FftPlans;
   use treetime_utils::array::ndarray::min_or;

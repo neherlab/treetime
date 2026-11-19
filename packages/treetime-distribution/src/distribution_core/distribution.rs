@@ -3,7 +3,6 @@ use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::negate::distribution_negation;
-use crate::policy::{NegLog, Plain, YAxisPolicy};
 use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -11,6 +10,7 @@ use ndarray_stats::errors::MinMaxError;
 use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side, coordinates_coincide};
+use treetime_grid::{NegLog, Plain, YAxisPolicy};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 

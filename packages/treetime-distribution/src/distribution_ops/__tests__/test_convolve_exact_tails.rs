@@ -189,7 +189,6 @@ mod tests {
     use crate::distribution_core::function::DistributionFunction;
     use crate::distribution_ops::__tests__::test_edge_convolution::tests::helpers::ln_gauss_integral;
     use crate::distribution_ops::convolve::{SampleTrace, convolution_function_function_fine_traced};
-    use crate::policy::NegLog;
     use eyre::Report;
     use itertools::Itertools;
     use ndarray::{Array1, Zip};
@@ -197,6 +196,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::f64::consts::LN_2;
     use std::ops::RangeInclusive;
+    use treetime_grid::NegLog;
     use treetime_grid::{BoundaryBehavior, MaxGridPoints};
     use treetime_ops::{FftConvolver, FftPlans, UNIT_ROUND_OFF, rounding_gamma};
     use treetime_utils::array::ndarray::{max_or, min_or};

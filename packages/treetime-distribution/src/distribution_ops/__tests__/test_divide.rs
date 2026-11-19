@@ -8,10 +8,10 @@ mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::divide::distribution_division;
   use crate::distribution_ops::multiply::distribution_multiplication;
-  use crate::policy::NegLog;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
+  use treetime_grid::NegLog;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -479,8 +479,8 @@ mod tests {
     use crate::__tests__::aliases::DistributionPlain;
     use crate::distribution_core::formula::DistributionFormula;
     use crate::distribution_core::function::DistributionFunction;
-    use crate::policy::NegLog;
     use ndarray::{Array1, array};
+    use treetime_grid::NegLog;
     use treetime_grid::{BoundaryBehavior, HardApproachLaw, Side};
     use treetime_utils::cast::ToF64Exact;
 
