@@ -21,42 +21,58 @@ mod tests {
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
-  #[test]
-  fn test_marginal_clock_rate_matches_closed_form_curve() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_the_maximum(       2.0)]
+  #[case::just_below_the_maximum(  2.5)]
+  #[case::above_the_maximum(       4.0)]
+  #[trace]
+  fn test_marginal_clock_rate_matches_closed_form_curve(#[case] mu: f64) -> Result<(), Report> {
     let setup = helpers::cherry()?;
     let inputs = setup.inputs();
     let at = |mu: f64| marginal_log_lh_at_rate(&inputs, mu).map(|log_lh| log_lh.expect("root has a distribution"));
     let curve = |mu: f64| -mu.ln() - (mu - 3.0).powi(2);
-    for mu in [2.0, 2.5, 4.0] {
-      pretty_assert_abs_diff_eq!(curve(mu) - curve(3.0), at(mu)? - at(3.0)?, epsilon = 1e-13);
-    }
+    pretty_assert_abs_diff_eq!(curve(mu) - curve(3.0), at(mu)? - at(3.0)?, epsilon = 1e-13);
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_clock_rate_first_step_steps_the_step_fraction_toward_a_maximum_between_the_probes_and_halves_the_window()
+  -> Result<(), Report> {
+    let (reference, window) = (2.7, helpers::window(1.0, true));
+
+    let step = helpers::step_on(helpers::BRANCH_GRID_DX, reference, window)?;
+
+    let target = helpers::parabola_maximum(reference, window.half_width);
+    assert!(target.abs() <= window.half_width);
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
+      reference * (STEP_FRACTION * target).exp(),
+      step.clock_rate,
+      epsilon = 1e-14
+    );
+    assert_eq!(helpers::window(0.5, false), step.window);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::first_step(           (2.7, 1.0,   true ), 0.5,   (helpers::BRANCH_GRID_DX, 1e-14))]
-  #[case::later_step(           (2.7, 0.5,   false), 0.25,  (0.0005,                  1e-6 ))]
-  #[case::at_an_eighth_of_start((2.8, 0.125, false), 0.125, (helpers::BRANCH_GRID_DX, 1e-6 ))]
+  #[case::half_of_start(        (2.7, 0.5  ), 0.25,  0.0005                 )]
+  #[case::at_an_eighth_of_start((2.8, 0.125), 0.125, helpers::BRANCH_GRID_DX)]
   #[trace]
-  fn test_marginal_clock_rate_steps_the_step_fraction_toward_a_maximum_between_the_probes_and_halves_the_window(
-    #[case] (reference, scale, follow_slope): (f64, f64, bool),
+  fn test_marginal_clock_rate_later_step_steps_the_step_fraction_toward_a_maximum_between_the_probes_and_halves_the_window(
+    #[case] (reference, scale): (f64, f64),
     #[case] next_scale: f64,
-    #[case] (branch_grid_dx, tolerance): (f64, f64),
+    #[case] branch_grid_dx: f64,
   ) -> Result<(), Report> {
-    let setup = helpers::cherry_on(branch_grid_dx)?;
-    let window = helpers::window(scale, follow_slope);
-    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
+    let window = helpers::window(scale, false);
+
+    let step = helpers::step_on(branch_grid_dx, reference, window)?;
 
     let target = helpers::parabola_maximum(reference, window.half_width);
     assert!(target.abs() <= window.half_width);
-    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = tolerance);
-    pretty_assert_abs_diff_eq!(
-      reference * (STEP_FRACTION * target).exp(),
-      step.clock_rate,
-      epsilon = tolerance
-    );
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(reference * (STEP_FRACTION * target).exp(), step.clock_rate, epsilon = 1e-6);
     assert_eq!(helpers::window(next_scale, false), step.window);
     Ok(())
   }
@@ -77,12 +93,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::convex_to_the_bound(    (1.0, false), 1e-15)]
-  #[case::maximum_past_the_probes((2.0, true ), 1e-12)]
+  #[case::convex_to_the_bound(    1.0, false)]
+  #[case::maximum_past_the_probes(2.0, true )]
   #[trace]
   fn test_marginal_clock_rate_first_step_follows_the_slope_out_of_the_window_and_keeps_its_width(
-    #[case] (reference, concave): (f64, bool),
-    #[case] tolerance: f64,
+    #[case] reference: f64,
+    #[case] concave: bool,
   ) -> Result<(), Report> {
     let setup = helpers::cherry()?;
     let window = RateWindow::initial();
@@ -95,12 +111,8 @@ mod tests {
       2.0_f64.ln()
     };
     assert!(target > window.half_width && target <= 2.0_f64.ln());
-    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = tolerance);
-    pretty_assert_abs_diff_eq!(
-      reference * (STEP_FRACTION * target).exp(),
-      step.clock_rate,
-      epsilon = tolerance
-    );
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(reference * (STEP_FRACTION * target).exp(), step.clock_rate, epsilon = 1e-12);
     assert_eq!(helpers::window(1.0, false), step.window);
     Ok(())
   }
@@ -160,8 +172,10 @@ mod tests {
   mod helpers {
     use super::{
       Arc, Array1, BranchLikelihood, DateConstraints, Distribution, FftPlans, Graph, MarginalRateInputs, MaxGridPoints,
-      RateWindow, Report, find_node_key_by_name, nwk_read, parent_edge_key, unknown_branches,
+      RateWindow, Report, branches_at_rate, find_node_key_by_name, nwk_read, parent_edge_key, step_marginal_clock_rate,
+      unknown_branches,
     };
+    use crate::timetree::optimization::marginal_clock_rate::MarginalRateStep;
     use treetime_graph::key_map::EdgeMap;
     use treetime_graph::key_map::NodeMap;
     use treetime_graph::node_names::NodeNames;
@@ -286,6 +300,12 @@ mod tests {
         names,
         fft_plans: FftPlans::new(),
       })
+    }
+
+    pub(super) fn step_on(branch_grid_dx: f64, reference: f64, window: RateWindow) -> Result<MarginalRateStep, Report> {
+      let setup = cherry_on(branch_grid_dx)?;
+      let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
+      step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))
     }
   }
 }
