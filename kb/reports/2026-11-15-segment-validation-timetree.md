@@ -46,6 +46,8 @@ Sweeps are those of the first round; without cross-parent messages one sweep is 
 
 Comparison of three inputs with the same simulated data (commit `f16b1235a` changed no random draw): `kept`, the `full` trees with the hidden nodes as nodes of one child in every segment; `contracted`, the `full` trees without them, where an edge across a hidden node gets the sum of the perturbed lengths of its segment (the `timetree-full` variant); and `collapsed`. Fixed clock rate, `--confidence`, default message passing, 3 replicates per case. `validation/segments.py` writes the `kept` trees and runs `timetree-kept` and `joint-kept`.
 
+TreeTime keeps hidden nodes as given, based on these measurements: [kb/decisions/segment-graph-hidden-nodes-kept.md](../decisions/segment-graph-hidden-nodes-kept.md).
+
 The runs use the binary of commit `c06d8a04f`, which reproduces the `full` rows of the results above to the last digit. Commit `c4c2b5e9a` changed the merge after it, and a later fix restored its rule (section Merge of trees that hold all their pass-through nodes). With the fix, the code gives the tables below to the last digit for `kept` and `contracted`, and the same `collapsed` dates as commit `873490a98`; `collapsed` differs from `c06d8a04f` by at most 0.002 years in bias and RMSE, through other commits.
 
 ### Results (commit `c06d8a04f`)
@@ -121,6 +123,5 @@ Commit `c4c2b5e9a` also let the edge continue through nodes with one child in th
 ## Open
 
 - **Merge of trees with pass-through nodes**: the merge moves an edge of a segment below a node that the other segments put on its path and that the segment does not hold, also where a reassortment separates them; in the simulation this changes one edge per form over 6 replicates (section Hidden nodes)
-- **Hidden-node policy**: contraction of the input trees before the merge dates the other nodes as well as inputs without hidden nodes (section Hidden nodes)
 - **Sweep tolerance** (with `--cross-parent-messages`): the flu graph needs more than 20 sweeps in one round to reach 10^-4 of the date span
 - Clock rate estimation, coalescent prior, rooting and polytomy resolution on segment graphs: [kb/issues/M-timetree-segment-graphs-fixed-clock-only.md](../issues/M-timetree-segment-graphs-fixed-clock-only.md)
