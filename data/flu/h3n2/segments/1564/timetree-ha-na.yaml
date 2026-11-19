@@ -11,8 +11,9 @@
 # several segments share has one name in every tree (../README.md).
 #
 # Two of the four trees form a graph of their own: the names stay valid for any
-# subset of the segments. Compare the dates with `timetree-confidence.yaml`, which
-# adds the polymerase segments PB1 and PB2.
+# subset of the segments. `timetree-confidence.yaml` dates all four segments at
+# another clock rate (0.0024), so a comparison of the two runs changes both the
+# segments and the clock rate and does not isolate the effect of adding PB1 and PB2.
 
 segment_trees:
   - "tree_ha.nwk"
@@ -22,11 +23,14 @@ segment_alignments:
   - "aln_na.fasta.xz"
 metadata: "metadata.tsv"
 
-# Clock rate in substitutions per site per year, averaged over the sites of HA and
-# NA: the mean of the Nextstrain H3N2 rates of the two segments
-# (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:198-199: HA
-# 0.00382, NA 0.00267), weighted by the alignment widths 1737 and 1436:
-# 10.469 / 3173 = 0.0033.
+# Clock rate of the graph in substitutions per site per year, averaged over the
+# sites of HA and NA. The value is an external calibration: the Nextstrain H3N2
+# rates of the two segments (nextstrain/seasonal-flu@9ec17de,
+# workflow/snakemake_rules/core.smk:198-199: HA 0.00382, NA 0.00267), weighted by
+# the alignment widths 1737 and 1436: 10.469 / 3173 = 0.0033. The fitted relative
+# rates imply other per-segment rates than that source: on the full set, HA
+# 1.04 x 0.0033 = 0.0034 against 0.00382, and NA 0.95 x 0.0033 = 0.0032 against
+# 0.00267 (../README.md).
 clock_rate: 0.0033
 
 # 90% date intervals of every node, in the node dates table.

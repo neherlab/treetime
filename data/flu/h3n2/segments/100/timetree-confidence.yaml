@@ -28,13 +28,16 @@ segment_alignments:
   - "aln_pb2.fasta.xz"
 metadata: "metadata.tsv"
 
-# Clock rate in substitutions per site per year, averaged over the sites of the
-# four segments. Each segment gets a relative rate, scaled to a mean of 1 over all
-# sites, so a branch length of the graph is in substitutions per site averaged over
-# all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2
-# builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:
+# Clock rate of the graph in substitutions per site per year, averaged over the
+# sites of the four segments. Each segment gets a relative rate, fitted to the data
+# and scaled to a mean of 1 over all sites, so a branch length of the graph is in
+# substitutions per site averaged over all sites. The value is an external
+# calibration: the per-segment rates of the Nextstrain H3N2 builds
+# (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:
 # HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment
-# widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.
+# widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024. The fitted relative
+# rates imply other per-segment rates than that source: on the full set, HA
+# 1.17 x 0.0024 = 0.0028 against 0.00382 (../README.md).
 clock_rate: 0.0024
 
 # 90% date intervals of every node, in the node dates table.

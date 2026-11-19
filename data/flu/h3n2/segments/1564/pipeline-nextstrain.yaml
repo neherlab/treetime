@@ -27,10 +27,11 @@
 #   resolves to several files, which a single reference cannot name
 # - `timetree` keeps the roots of the graph, as `--keep-root` does, and uses
 #   marginal dates with confidence intervals. It runs at one clock rate for all
-#   segments (see `vars`). Segment graphs reject the rate uncertainty, the
-#   coalescent prior and the clock filter. On the full set of 1564 viruses, the
-#   root-to-tip regression of each segment tree with its input root flags only old
-#   reference strains of 2004 and one HA sequence at 4 interquartile ranges (../README.md)
+#   segments (see `vars`). Segment graphs reject the rate uncertainty and the
+#   coalescent prior, and do not apply the clock filter. On the full set of 1564
+#   viruses, the root-to-tip regression of each segment tree with its input root
+#   flags only old reference strains of 2004 and one HA sequence at 4 interquartile
+#   ranges (../README.md)
 # - The graph keeps A/Wisconsin/67/2005, a dated sample of 2005, because `prune`
 #   does not run on a graph of segment trees
 # - `ancestral` replaces the joint reconstruction of augur with marginal
@@ -41,13 +42,17 @@
 #   does, because mugration does not run on a graph of segment trees
 
 vars:
-  # Clock rate in substitutions per site per year, averaged over the sites of the
-  # four segments. Each segment gets a relative rate, scaled to a mean of 1 over all
-  # sites, so a branch length of the graph is in substitutions per site averaged over
-  # all sites. The rate is the mean of the per-segment rates of the Nextstrain H3N2
-  # builds (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:
+  # Clock rate of the graph in substitutions per site per year, averaged over the
+  # sites of the four segments. Each segment gets a relative rate, fitted to the data
+  # and scaled to a mean of 1 over all sites, so a branch length of the graph is in
+  # substitutions per site averaged over all sites. The value is an external
+  # calibration: the per-segment rates of the Nextstrain H3N2 builds
+  # (nextstrain/seasonal-flu@9ec17de, workflow/snakemake_rules/core.smk:190-203:
   # HA 0.00382, NA 0.00267, PB1 0.00139, PB2 0.00218), weighted by the alignment
-  # widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024.
+  # widths 1737, 1436, 2341 and 2341: 18.827 / 7855 = 0.0024. The fitted relative
+  # rates imply other per-segment rates than that source: on the full set, HA
+  # 1.17 x 0.0024 = 0.0028 against 0.00382 (../README.md).
+#
   clock_rate: 0.0024
 
 steps:

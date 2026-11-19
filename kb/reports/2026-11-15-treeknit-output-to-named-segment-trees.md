@@ -15,13 +15,15 @@ TreeTime merges segment trees by node name ([kb/proposals/edge-scoped-inheritanc
 | --------------------------------------- | -------------------------------------------------------------- |
 | Internal nodes per tree                 | 747 to 783 (resolved trees keep some polytomies)               |
 | Matched nodes per pair                  | 558 to 596; 28 to 44 MCC nodes per pair have no mutual match   |
-| Identities shared by 4 / 3 / 2 segments | 508 / 92 / 99                                                  |
-| Internal nodes in one segment only      | 518                                                            |
+| Identities shared by 4 / 3 / 2 segments | 506 / 92 / 98 in the written trees; 508 / 92 / 99 before the splits |
+| Internal nodes in one segment only      | 579 in the written trees; 518 before the splits                |
 | Identities with two nodes of one tree   | 10 (51 nodes)                                                  |
 | Identities split to remove cycles       | 3                                                              |
 | Merged graph                            | 2839 nodes, 4374 edges, 4 roots; 802 nodes with 2 to 4 parents |
 
-`treetime ancestral --segment-trees --segment-alignments --method-anc parsimony` runs on the four named trees in 0.3 s and 60 MB, and gives each segment the same reconstructed sequences as a run on its own tree.
+The converter prints the counts before it splits the identities of the last two rows; the 13 split identities become 61 nodes of one segment each. The written trees, counted by name, give the final counts.
+
+`treetime ancestral --segment-trees --segment-alignments --method-anc parsimony` runs on the four named trees in 0.3 s and 60 MB. It reconstructs each segment on that segment's tree after the merge, which can hold inserted pass-through nodes and regrouped children. On this set and on its 100-virus subset in [data/flu/h3n2/segments/](../../data/flu/h3n2/segments/), each segment's sequences equal those of a run on its input tree alone at every node of the input tree; this is a measurement on these trees, not a property of every merge.
 
 With pass-through insertion ([kb/algo/graph.md](../algo/graph.md#merging-trees-by-name)) the merge inserts 179 nodes into segments that pass through them, and leaves 9 edges whose other segments disagree on the path and 29 edges whose path holds a node of the segment elsewhere. The graph keeps 2839 nodes and has 4268 edges instead of 4374; 737 nodes keep 2 to 4 parents (289 with 2, 200 with 3, 248 with 4). The datasets of [data/flu/h3n2/segments/](../../data/flu/h3n2/segments/) hold these named trees, with subsets of 100 and 500 viruses.
 

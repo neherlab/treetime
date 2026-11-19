@@ -10,8 +10,12 @@
 # reassorted. TreeTime merges them into one graph by node name: an ancestor that
 # several segments share has one name in every tree (../README.md).
 #
-# Each segment's sequences pass only along the edges of its own tree, so the
-# reconstruction of a segment equals a run on that segment's tree alone.
+# Each segment's sequences pass only along the edges of its own tree in the merged
+# graph. The merge can insert nodes that a segment passes through and regroup the
+# children of a node under them, so the reconstruction runs on each segment's tree
+# after the merge. On these datasets it equals a run on the input tree alone at
+# every node of that tree; this is a measurement on these trees, not a property of
+# every merge.
 
 segment_trees:
   - "tree_ha.nwk"
