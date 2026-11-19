@@ -17,7 +17,7 @@ import { usePreferencesStore } from "../store/preferences";
 import { useShellStore } from "../store/shell";
 import { WorkspaceButton } from "./WorkspaceDialog";
 
-const DOCS_URL = import.meta.env.VITE_TREETIME_DOCS_URL ?? "https://docs.treetime.neherlab.click";
+const DOCS_URL = import.meta.env.VITE_TREETIME_DOCS_URL ?? "https://docs.treetime.neherlab.org";
 
 export function SiteHeader() {
   const locale = useLocale();

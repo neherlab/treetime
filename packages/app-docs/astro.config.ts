@@ -21,7 +21,7 @@ import versionsFile from "./versions.json";
 
 const DOCS_VERSION = process.env["TREETIME_DOCS_VERSION"] ?? "dev";
 
-const SITE = process.env["TREETIME_DOCS_SITE_URL"] ?? "https://docs.treetime.neherlab.click";
+const SITE = process.env["TREETIME_DOCS_SITE_URL"] ?? "https://docs.treetime.neherlab.org";
 
 const BASE = `/${DOCS_VERSION}`;
 

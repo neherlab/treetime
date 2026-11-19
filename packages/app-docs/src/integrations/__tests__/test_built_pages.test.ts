@@ -27,11 +27,11 @@ describe("built pages", () => {
   });
 
   test("the site root page sends the reader to the English home page of the preferred version", () => {
-    const html = redirectPage("https://docs.treetime.neherlab.click", "/dev/en");
+    const html = redirectPage("https://docs.treetime.neherlab.org", "/dev/en");
 
     expect([
       html.includes('<meta http-equiv="refresh" content="0; url=/dev/en">'),
-      html.includes('<link rel="canonical" href="https://docs.treetime.neherlab.click/dev/en">'),
+      html.includes('<link rel="canonical" href="https://docs.treetime.neherlab.org/dev/en">'),
       html.includes('<a href="/dev/en">'),
       html.includes(`<meta http-equiv="content-security-policy" content="default-src 'none'">`),
     ]).toStrictEqual([true, true, true, true]);
