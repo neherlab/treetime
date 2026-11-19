@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Compare a fitted clock with a published Zika outbreak clock (zika/86).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/zika/86/pipeline-clock-sensitivity.yaml --output-all tmp/examples/zika/86/pipeline-clock-sensitivity
+#
+# Fit a clock to the bundled samples, then date the same tree with the
+# within-outbreak estimate of 0.00115 substitutions per site per year from
+# Metsky et al. (2017), "Zika virus evolution and spread in the Americas",
+# doi:10.1038/nature22402. Compare the root date and its interval in the two
+# outputs. The fixed-rate interval is conditional on the published point
+# estimate. The two runs keep the input root and leave clock filtering off so
+# that the clock rate cannot change the input root or which tips are kept.
+# Both runs fit a constant coalescent time scale, as in nextstrain/zika@12de10f
+# (phylogenetic/defaults/config.yaml lines 27-30), and omit the indel term
+# from branch lengths to compare substitutions only. The seed makes the
+# stochastic resolution of polytomies reproducible.
+
+vars:
+  tree: "tree.nwk"
+  metadata: "metadata.tsv"
+  alignment:
+    - "aln.fasta.xz"
+  seed: 42
+
+steps:
+  - name: "fitted-clock"
+    timetree:
+      tree: "{{ vars.tree }}"
+      metadata: "{{ vars.metadata }}"
+      alignment: "{{ vars.alignment }}"
+      keep_root: true
+      clock_filter: 0.0
+      coalescent: "opt"
+      confidence: true
+      no_indels: true
+      seed: "{{ vars.seed }}"
+
+  - name: "published-clock"
+    timetree:
+      tree: "{{ vars.tree }}"
+      metadata: "{{ vars.metadata }}"
+      alignment: "{{ vars.alignment }}"
+      keep_root: true
+      clock_filter: 0.0
+      coalescent: "opt"
+      confidence: true
+      clock_rate: 0.00115
+      no_indels: true
+      seed: "{{ vars.seed }}"
