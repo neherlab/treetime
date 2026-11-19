@@ -8,14 +8,18 @@ Data: an ancestral reassortment graph (reassortment.py, Tc = 10 years, 80 tips a
 lineage and year) and four segments with their own length, substitution rate and random GTR. Sequences evolve along
 each segment's local tree. TreeTime sees, per segment, the tip alignment and a divergence tree on the true topology
 with branch lengths mu t * lognormal(0, 0.3), named internal nodes (perfect node identities, as from an ideal
-TreeKnit), in two forms: `full` keeps the nodes that the segment only passes through where another segment branches,
-`collapsed` drops them, as tree inference would. Neither keeps the hidden nodes, which have one child in every segment
-(reassortment nodes, and mergers of lineages with disjoint segments): no tree inference recovers them.
+TreeKnit), in three forms: `full` keeps the nodes that the segment only passes through where another segment branches,
+`collapsed` drops them, as tree inference would. These two forms leave out the hidden nodes, which have one child in
+every segment (reassortment nodes, and mergers of lineages with disjoint segments): no tree inference recovers them,
+and an edge across a dropped hidden node gets the sum of the perturbed lengths. `kept` is `full` with the hidden nodes,
+as nodes with one child in every segment, and the same perturbed lengths; it shows what hidden nodes in the input do.
 
-Variants: `joint-full` and `joint-collapsed` run `optimize --segment-trees` on all segments, `separate` runs
-`optimize --tree` once per segment (collapsed tree, topology kept). `timetree-full` and `timetree-collapsed` run
-`timetree --segment-trees` at the true mean clock rate with the default message passing, where the message to a
-parent is the subtree alone, the `-cross` variants with `--cross-parent-messages`.
+Variants: `joint-kept`, `joint-full` and `joint-collapsed` run `optimize --segment-trees` on all segments, `separate`
+runs `optimize --tree` once per segment (collapsed tree, topology kept). `timetree-kept`, `timetree-full` and
+`timetree-collapsed` run `timetree --segment-trees` at the true mean clock rate with the default message passing, where
+the message to a parent is the subtree alone, the `-cross` variants with `--cross-parent-messages`. Each timetree run
+also writes the merged graph with its fitted divergence lengths (`graph.dot`), which the evaluation compares with the
+input trees.
 
 Expected: the relative segment rates are recovered; on branches shared by several segments the joint fit is closer
 to the true substitutions than the separate fits, the more so the more segments share the branch; branches of one
@@ -26,6 +30,7 @@ cover about 90% of the true dates; cross-parent messages matter at nodes with se
 import argparse
 import json
 import lzma
+import re
 import subprocess
 import sys
 import zlib
@@ -47,7 +52,9 @@ PERTURB_SIGMA = 0.3
 KEEP_TOPOLOGY = ['--no-collapse-short-branches', '--no-merge-shared-mutations', '--no-hoist-reversions']
 ALPHABET = np.array(list('ACGT'))
 SAMPLES_PER_BATCH, SAMPLE_INTERVAL = 2, 0.1  # the sampling schedule of simulate_arg
+TREE_FORMS = ('kept', 'full', 'collapsed')
 TIMETREE_VARIANTS = {
+    'timetree-kept': ('kept', []),
     'timetree-full': ('full', []),
     'timetree-full-cross': ('full', ['--cross-parent-messages']),
     'timetree-collapsed': ('collapsed', []),
@@ -90,7 +97,7 @@ def simulate(args):
     for case, rho in CASES.items():
         for rep in range(args.reps):
             out = args.data / case / f'rep{rep:02d}'
-            if (out / 'truth.json').exists():
+            if all((out / name).exists() for name in ('truth.json', *(f'{s}.kept.nwk' for s in SEGMENTS))):
                 continue
             rng = np.random.default_rng([args.seed, list(CASES).index(case), rep])
             arg = simulate_arg(Constant(10.0), rng, list(SEGMENTS), rho)
@@ -120,6 +127,9 @@ def simulate(args):
                     newick(root, children, lambda n: arg.tau[parent[n]] - arg.tau[n])
                 )
                 perturb = {n: rng.lognormal(0.0, PERTURB_SIGMA) for n in parent}
+                (out / f'{segment}.kept.nwk').write_text(
+                    newick(root, children, lambda n: mu * (arg.tau[parent[n]] - arg.tau[n]) * perturb[n])
+                )
                 froot, fchildren, fparent = collapsed(root, children, hidden)
                 edges = {n: (p, mu * (arg.tau[p] - arg.tau[n]) * perturb[n]) for n, p in parent.items()}
                 (out / f'{segment}.full.nwk').write_text(
@@ -177,9 +187,9 @@ def jobs(args):
             yield target, 'timetree', [
                 '--segment-trees', *trees, '--segment-alignments', *alignments, '--metadata', str(metadata),
                 '--clock-rate', f'{mean_clock_rate():.6g}', '--confidence', *extra,
-                '--output-dates', str(target / 'dates.tsv'),
+                '--output-dates', str(target / 'dates.tsv'), '--output-tree-dot', str(target / 'graph.dot'),
             ]  # fmt: skip
-        for form in ('full', 'collapsed'):
+        for form in TREE_FORMS:
             trees = [str(rep_dir / f'{s}.{form}.nwk') for s in SEGMENTS]
             target = out / f'joint-{form}'
             yield target, 'optimize', [
@@ -254,7 +264,7 @@ def evaluate(args):
             for child, (parent, _) in edges.items():
                 shared[(parent, child)] = shared.get((parent, child), 0) + 1
         fitted = {}
-        for variant in ('joint-full', 'joint-collapsed'):
+        for variant in (f'joint-{form}' for form in TREE_FORMS):
             rates = model_rates(out / variant / 'model.json')
             fitted[variant] = {
                 s: (parents_with_lengths(out / variant / f'tree.{i}.nwk'), rates[i - 1])
@@ -266,7 +276,7 @@ def evaluate(args):
         }
         lengths = np.array([SEGMENTS[s][0] for s in SEGMENTS], dtype=float)
         true_rates = np.array([SEGMENTS[s][1] for s in SEGMENTS])
-        for variant in ('joint-full', 'joint-collapsed'):
+        for variant in (f'joint-{form}' for form in TREE_FORMS):
             est = np.array([fitted[variant][s][1] for s in SEGMENTS])
             for s, t, e in zip(SEGMENTS, true_rates / np.average(true_rates, weights=lengths), est / np.average(est, weights=lengths)):
                 rate_rows.append({'case': rep_dir.parent.name, 'rep': rep_dir.name, 'variant': variant, 'segment': s,
@@ -292,7 +302,14 @@ def evaluate(args):
     rates.to_csv(args.results / 'rates.tsv', sep='\t', index=False, float_format='%.6g')
     dates = evaluate_dates(args)
     dates.to_csv(args.results / 'dates.tsv', sep='\t', index=False, float_format='%.6g')
-    summary(branches, rates, dates, args.data, args.results / 'summary.md')
+    hidden_edges = evaluate_hidden_edges(args)
+    hidden_edges.to_csv(args.results / 'hidden_edges.tsv', sep='\t', index=False, float_format='%.6g')
+    hidden_paths = evaluate_hidden_paths(args)
+    hidden_paths.to_csv(args.results / 'hidden_paths.tsv', sep='\t', index=False, float_format='%.6g')
+    graphs = evaluate_graphs(args)
+    graphs.to_csv(args.results / 'graphs.tsv', sep='\t', index=False)
+    hidden = {'edges': hidden_edges, 'paths': hidden_paths, 'graphs': graphs}
+    summary(branches, rates, dates, hidden, args.data, args.results / 'summary.md')
 
 
 def read_dates(path):
@@ -316,11 +333,47 @@ def node_kinds(rep_dir, form):
     } | {node: 'one parent' for node in branching if node not in parents}
 
 
+def graph_edges(rep_dir, form):
+    """{(parent, child): segments} of the graph that the segment trees of `form` give when merged by name."""
+    edges = {}
+    for s in SEGMENTS:
+        for child, (parent, _) in parents_with_lengths(rep_dir / f'{s}.{form}.nwk').items():
+            edges.setdefault((parent, child), set()).add(s)
+    return edges
+
+
+def hidden_kinds(rep_dir):
+    """Kind of each hidden node of the `kept` trees: 'reassortment' (several parents), 'disjoint merger' (several
+    children), or 'loop' (one parent and one child: a reassortment whose two lineages merge again, and that merger)."""
+    edges = graph_edges(rep_dir, 'kept')
+    parents, children = {}, {}
+    for parent, child in edges:
+        parents.setdefault(child, set()).add(parent)
+        children.setdefault(parent, set()).add(child)
+    hidden = [node for node, kind in node_kinds(rep_dir, 'kept').items() if kind == 'hidden' and node in children]
+    return {
+        node: 'reassortment' if len(parents[node]) > 1 else 'disjoint merger' if len(children[node]) > 1 else 'loop'
+        for node in hidden
+    }
+
+
+def hidden_neighbours(rep_dir, hidden):
+    """Nodes that are not hidden and are linked to a hidden node by an edge or by a path through hidden nodes."""
+    adjacent = {}
+    for parent, child in graph_edges(rep_dir, 'kept'):
+        adjacent.setdefault(parent, set()).add(child)
+        adjacent.setdefault(child, set()).add(parent)
+    reached = set().union(*(adjacent[node] for node in hidden)) if hidden else set()
+    return reached - set(hidden)
+
+
 def evaluate_dates(args):
     rows = []
     for rep_dir in sorted(args.data.glob('*/rep*')):
         truth = node_dates(rep_dir)
-        kinds = {form: node_kinds(rep_dir, form) for form in ('full', 'collapsed')}
+        kinds = {form: node_kinds(rep_dir, form) for form in TREE_FORMS}
+        hidden = hidden_kinds(rep_dir)
+        neighbours = hidden_neighbours(rep_dir, hidden)
         out = args.results / rep_dir.relative_to(args.data)
         for variant in TIMETREE_VARIANTS:
             path = out / variant / 'dates.tsv'
@@ -335,12 +388,134 @@ def evaluate_dates(args):
                     continue
                 row = inferred.loc[node]
                 rows.append({'case': rep_dir.parent.name, 'rep': rep_dir.name, 'variant': variant, 'node': node,
-                             'kind': kinds[form].get(node, 'hidden'), 'true': date, 'inferred': float(row['numeric']),
+                             'kind': kinds[form].get(node, 'hidden'), 'full_kind': kinds['full'].get(node, ''),
+                             'hidden_kind': hidden.get(node, ''), 'neighbour': node in neighbours,
+                             'true': date, 'inferred': float(row['numeric']),
                              'lower': float(row['lower']), 'upper': float(row['upper']), 'sweeps': sweeps})  # fmt: skip
     return pd.DataFrame(rows)
 
 
-def summary(branches, rates, dates, data, path):
+def read_dot(path):
+    """{(parent, child): divergence} of a DOT graph that TreeTime writes."""
+    names, lengths = {}, {}
+    for line in path.read_text().splitlines():
+        if (m := re.match(r'\s*(\d+) \[label="\(\d+\) (\S+)"\]', line)) is not None:
+            names[m[1]] = m[2]
+        elif 'invis' not in line and (m := re.match(r'\s*(\d+) -> (\d+) \[xlabel=.*weight="([^"]+)"\]', line)):
+            lengths[(m[1], m[2])] = float(m[3])
+    return {(names[p], names[c]): length for (p, c), length in lengths.items()}
+
+
+def contract(edges, hidden):
+    """`edges` ({(parent, child): segments}) without the `hidden` nodes: each child takes over the parent edges whose
+    segments it shares."""
+    edges = dict(edges)
+    for node in hidden:
+        parents = [(p, segs) for (p, c), segs in edges.items() if c == node]
+        children = [(c, segs) for (p, c), segs in edges.items() if p == node]
+        edges = {key: segs for key, segs in edges.items() if node not in key}
+        for p, parent_segments in parents:
+            for c, child_segments in children:
+                if common := parent_segments & child_segments:
+                    edges[(p, c)] = edges.get((p, c), set()) | common
+    return edges
+
+
+def evaluate_graphs(args):
+    rows = []
+    for rep_dir in sorted(args.data.glob('*/rep*')):
+        out = args.results / rep_dir.relative_to(args.data)
+        hidden = hidden_kinds(rep_dir)
+        given = {form: graph_edges(rep_dir, form) for form in ('kept', 'full')}
+        dots = {form: out / f'timetree-{form}' / 'graph.dot' for form in ('kept', 'full')}
+        merged = {form: read_dot(path) for form, path in dots.items() if path.exists()}
+        row = {'case': rep_dir.parent.name, 'rep': rep_dir.name, 'hidden': len(hidden),
+               'input_contraction_equal': contract(given['kept'], hidden) == given['full']}  # fmt: skip
+        for form, graph in merged.items():
+            row[f'{form}_missing'] = ' '.join(f'{p}->{c}' for p, c in sorted(set(given[form]) - set(graph))) or '-'
+        if len(merged) == 2:
+            contracted = set(contract({key: given['kept'][key] for key in merged['kept']}, hidden))
+            row['merged_contraction_differs'] = len(contracted ^ set(merged['full']))
+        if 'kept' in merged:
+            below = [length for (p, _), length in merged['kept'].items() if p in hidden]
+            row['below_hidden_zero'] = f'{sum(length < 1e-8 for length in below)}/{len(below)}'
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def evaluate_hidden_paths(args):
+    """For each parent and child joined through hidden nodes in the kept graph: the true, fitted and inferred spans
+    in kept, and the fitted and inferred spans of the same pair in contracted."""
+    rows = []
+    rate = mean_clock_rate()
+    for rep_dir in sorted(args.data.glob('*/rep*')):
+        out = args.results / rep_dir.relative_to(args.data)
+        variants = {form: out / f'timetree-{form}' for form in ('kept', 'full')}
+        if not all((v / 'graph.dot').exists() for v in variants.values()):
+            continue
+        truth, hidden = node_dates(rep_dir), hidden_kinds(rep_dir)
+        fitted = {form: read_dot(v / 'graph.dot') for form, v in variants.items()}
+        dates = {form: read_dates(v / 'dates.tsv')['numeric'] for form, v in variants.items()}
+        for path in hidden_paths(graph_edges(rep_dir, 'kept'), hidden):
+            parent, child = path[0], path[-1]
+            kept_divergence = sum(fitted['kept'].get(edge, np.nan) for edge in zip(path, path[1:]))
+            rows.append({
+                'case': rep_dir.parent.name, 'rep': rep_dir.name, 'parent': parent, 'child': child,
+                'hidden_on_path': len(path) - 2, 'true_span': truth[child] - truth[parent],
+                'kept_fitted_span': kept_divergence / rate, 'kept_span': dates['kept'][child] - dates['kept'][parent],
+                'contracted_fitted_span': fitted['full'].get((parent, child), np.nan) / rate,
+                'contracted_span': dates['full'][child] - dates['full'][parent],
+            })  # fmt: skip
+    return pd.DataFrame(rows).drop_duplicates(['case', 'rep', 'parent', 'child']) if rows else pd.DataFrame()
+
+
+def hidden_paths(edges, hidden):
+    """Paths [parent, hidden..., child] whose inner nodes are hidden and whose edges share a segment."""
+    children = {}
+    for (p, c), segments in edges.items():
+        children.setdefault(p, []).append((c, segments))
+
+    def walk(path, segments):
+        for c, s in children.get(path[-1], []):
+            if common := s & segments:
+                yield from walk([*path, c], common) if c in hidden else [[*path, c]]
+
+    for parent in sorted({p for (p, c) in edges if c in hidden and p not in hidden}):
+        for c, s in children[parent]:
+            if c in hidden:
+                yield from walk([parent, c], s)
+
+
+def evaluate_hidden_edges(args):
+    """Substitutions that `joint-kept` fits on the edges below and above each hidden node, per segment of the edge,
+    against the expected substitutions mu t L."""
+    rows = []
+    for rep_dir in sorted(args.data.glob('*/rep*')):
+        fitted_dir = args.results / rep_dir.relative_to(args.data) / 'joint-kept'
+        if not (fitted_dir / 'model.json').exists():
+            continue
+        truth = node_dates(rep_dir)
+        hidden = hidden_kinds(rep_dir)
+        rates = model_rates(fitted_dir / 'model.json')
+        fitted = {s: parents_with_lengths(fitted_dir / f'tree.{i}.nwk') for i, s in enumerate(SEGMENTS, 1)}
+        for (parent, child), segments in graph_edges(rep_dir, 'kept').items():
+            role = 'below' if parent in hidden else 'above' if child in hidden else None
+            if role is None:
+                continue
+            node = parent if role == 'below' else child
+            for i, s in enumerate(SEGMENTS):
+                if s not in segments:
+                    continue
+                L, mu = SEGMENTS[s]
+                fitted_parent, length = fitted[s].get(child, (None, np.nan))
+                rows.append({'case': rep_dir.parent.name, 'rep': rep_dir.name, 'hidden': node, 'hidden_kind': hidden[node],
+                             'role': role, 'parent': parent, 'child': child, 'segment': s,
+                             'expected': mu * (truth[child] - truth[parent]) * L,
+                             'fitted': rates[i] * length * L if fitted_parent == parent else np.nan})  # fmt: skip
+    return pd.DataFrame(rows)
+
+
+def summary(branches, rates, dates, hidden, data, path):
     lines = ['# Segment validation', '']
     meta = [json.loads(p.read_text()) | {'case': p.parent.parent.name} for p in sorted(data.glob('*/rep*/truth.json'))]
     lines += ['Reassortments per replicate: ' + ', '.join(f'{m["case"]} {m["n_reassortments"]}' for m in meta), '']
@@ -350,7 +525,7 @@ def summary(branches, rates, dates, data, path):
         sd=('estimated_relative_rate', 'std'),
     )  # fmt: skip
     lines += [table.round(3).to_markdown(), '']
-    variants = ['separate', 'joint-collapsed', 'joint-full']
+    variants = ['separate', 'joint-collapsed', 'joint-full', 'joint-kept']
     for reference, note in [
         ('expected', 'the expected substitutions mu t L, which a fit pooled over segments targets'),
         ('realized', "the segment's own realized substitutions, which a separate fit follows"),
@@ -373,6 +548,7 @@ def summary(branches, rates, dates, data, path):
               roots.round(2).to_markdown(), '']  # fmt: skip
     if not dates.empty:
         lines += dates_summary(dates)
+        lines += hidden_summary(dates, hidden)
     path.write_text('\n'.join(lines))
     print('\n'.join(lines))
 
@@ -399,6 +575,104 @@ def dates_summary(dates):
         'sweeps': grouped['sweeps'].mean(),
     })  # fmt: skip
     return lines + [table.round(3).to_markdown(), '']
+
+
+def hidden_summary(dates, hidden):
+    forms = {'timetree-kept': 'kept', 'timetree-full': 'contracted', 'timetree-collapsed': 'collapsed'}
+    dates = dates[dates['variant'].isin(forms)].assign(
+        form=lambda d: d['variant'].map(forms),
+        error=lambda d: d['inferred'] - d['true'],
+        covered=lambda d: (d['lower'] <= d['true']) & (d['true'] <= d['upper']),
+        width=lambda d: d['upper'] - d['lower'],
+        age=lambda d: PRESENT - d['true'],
+    )
+    if dates['form'].nunique() < len(forms):
+        return []
+    counts = dates.groupby(['case', 'rep', 'node'])['form'].transform('nunique')
+    shared = dates[(counts == len(forms)) & (dates['full_kind'] != '')]
+
+    def stats(grouped):
+        return pd.DataFrame({
+            'nodes': grouped.size(),
+            'bias': grouped['error'].mean(),
+            'rmse': grouped['error'].apply(lambda e: np.sqrt(np.mean(e ** 2))),
+            'coverage': grouped['covered'].mean(),
+            'width': grouped['width'].median(),
+        })  # fmt: skip
+
+    lines = ['## Hidden nodes', '',
+             '`kept` dates the `full` trees with the hidden nodes, `contracted` the `full` trees without them (the '
+             '`timetree-full` variant), `collapsed` the collapsed trees. Shared nodes are the nodes that all three '
+             'graphs date; the kind of a shared node is its kind in the contracted graph, so each row has the same '
+             'nodes in every form.', '']  # fmt: skip
+    table = stats(shared.groupby(['case', 'full_kind', 'form']))
+    lines += ['### Shared nodes', '', table.round(3).to_markdown(), '']
+    hidden_dates = dates[(dates['form'] == 'kept') & (dates['hidden_kind'] != '')]
+    table = stats(hidden_dates.groupby(['case', 'hidden_kind']))
+    lines += ['### Hidden nodes in `kept`', '', table.round(3).to_markdown(), '']
+    pivot = shared.pivot_table(index=['case', 'rep', 'node'], columns='form', values='inferred')
+    info = shared[shared['form'] == 'kept'].set_index(['case', 'rep', 'node'])[['true', 'age', 'neighbour', 'full_kind']]
+    shift = info.join(pivot).assign(
+        shift=lambda d: d['kept'] - d['contracted'],
+        kept_error=lambda d: d['kept'] - d['true'],
+        contracted_error=lambda d: d['contracted'] - d['true'],
+        age_bin=lambda d: pd.cut(d['age'], [0, 5, 10, 20, np.inf], right=False),
+    )
+    grouped = shift.groupby(['case', 'neighbour', 'age_bin'], observed=True)
+    table = pd.DataFrame({
+        'nodes': grouped.size(),
+        'rms_shift': grouped['shift'].apply(lambda e: np.sqrt(np.mean(e ** 2))),
+        'max_abs_shift': grouped['shift'].apply(lambda e: e.abs().max()),
+        'rmse_kept': grouped['kept_error'].apply(lambda e: np.sqrt(np.mean(e ** 2))),
+        'rmse_contracted': grouped['contracted_error'].apply(lambda e: np.sqrt(np.mean(e ** 2))),
+    })  # fmt: skip
+    lines += ['### Date shift kept minus contracted at shared nodes', '',
+              '`neighbour`: linked to a hidden node by an edge or through other hidden nodes. Age in years before '
+              f'{PRESENT}.', '', table.round(3).to_markdown(), '']  # fmt: skip
+    largest = shift.reindex(shift['shift'].abs().sort_values(ascending=False).index).head(12)
+    columns = ['age', 'neighbour', 'full_kind', 'shift', 'kept_error', 'contracted_error']
+    lines += ['Largest shifts:', '', largest[columns].round(3).to_markdown(), '']
+    hidden_edges = hidden['edges']
+    if not hidden_edges.empty:
+        edges = hidden_edges.dropna(subset=['fitted'])
+        grouped = edges.groupby(['case', 'role'])
+        table = pd.DataFrame({
+            'edges': grouped.size(),
+            'fitted_below_0.01': grouped['fitted'].apply(lambda f: np.mean(f < 0.01)),
+            'median_fitted': grouped['fitted'].median(),
+            'median_expected': grouped['expected'].median(),
+        })  # fmt: skip
+        lines += ['### Edges at hidden nodes after `optimize --segment-trees` (`joint-kept`)', '',
+                  'Fitted and expected substitutions per segment of the edge (rate x length x L, and mu t L). '
+                  f'{len(hidden_edges) - len(edges)} edges are missing from the fitted trees.', '',
+                  table.round(3).to_markdown(), '']  # fmt: skip
+    paths = hidden['paths']
+    if not paths.empty:
+        paths = paths.assign(
+            kept_stretch=paths['kept_span'] - paths['kept_fitted_span'],
+            contracted_stretch=paths['contracted_span'] - paths['contracted_fitted_span'],
+            kept_error=paths['kept_span'] - paths['true_span'],
+            contracted_error=paths['contracted_span'] - paths['true_span'],
+        )
+        columns = ['kept_stretch', 'contracted_stretch', 'kept_error', 'contracted_error']
+        table = paths.groupby(['case', 'hidden_on_path'])[columns].agg(['mean', 'median'])
+        table.insert(0, 'paths', paths.groupby(['case', 'hidden_on_path']).size())
+        lines += ['### Time spans of paths through hidden nodes', '',
+                  'For each parent and child joined by a path through hidden nodes in the kept graph: stretch is the '
+                  'inferred time span minus the fitted divergence of the path at the clock rate, in kept (sum over the '
+                  'path) and in contracted (the edge from the parent to the child); error is the inferred minus the true '
+                  'span. Years.', '', table.round(2).to_markdown(), '']  # fmt: skip
+    graphs = hidden['graphs']
+    if not graphs.empty:
+        lines += ['### Merged graphs', '',
+                  '`missing`: input edges that the merge of TreeTime rerouted; the `full` and `kept` trees hold every '
+                  'pass-through node, so it should reroute none. `input_contraction_equal`: contracting the hidden nodes '
+                  'of the kept trees, where each child takes over the parent edges whose segments it shares, gives the '
+                  'edges and scopes of the full trees. `merged_contraction_differs`: edges in which the merged kept graph, '
+                  'contracted, differs from the merged full graph. `below_hidden_zero`: edges below hidden nodes that the '
+                  'optimize step of timetree-kept fits below 1e-8.', '',
+                  graphs.to_markdown(index=False), '']  # fmt: skip
+    return lines
 
 
 def main():
