@@ -45,6 +45,13 @@ mod tests {
   }
 
   #[test]
+  fn test_distribution_function_of_no_samples_is_empty() -> Result<(), Report> {
+    let actual = Distribution::function(array![], array![])?;
+    assert_eq!(Distribution::Empty, actual);
+    Ok(())
+  }
+
+  #[test]
   fn test_distribution_function_of_one_sample_is_a_point() -> Result<(), Report> {
     let actual = Distribution::function(array![2.0], array![3.0])?;
     assert_eq!(Distribution::point(2.0, 3.0), actual);
