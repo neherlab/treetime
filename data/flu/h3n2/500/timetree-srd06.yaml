@@ -1,26 +1,24 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
 
-# Time tree with the SRD06 codon-position model: positions 1+2 and 3, each with gamma rate variation (flu/h3n2/500).
+# Time tree with SRD06-style codon partitions and gamma rate variation (flu/h3n2/500).
 #
 # Run from any folder; relative paths in this file resolve from its folder, and
 # `--output-all` chooses the output folder. From the repository root:
 #   treetime timetree --config data/flu/h3n2/500/timetree-srd06.yaml --output-all tmp/examples/flu/h3n2/500/timetree-srd06
 #
-# The codon-position model of Shapiro, Rambaut and Drummond 2006
-# (https://doi.org/10.1093/molbev/msj021), which BEAST offers as SRD06 for coding
-# sequences of RNA viruses: codon positions 1 and 2 form one partition and position 3
-# the other, and each partition has its own substitution model, relative rate, and
-# gamma rate variation with 4 categories. BEAST fits HKY to each partition; TreeTime
-# fits a GTR model, because its named HKY model keeps a fixed transition/transversion
-# ratio. The partitions share no parameter, the default for `partition` entries.
+# The codon grouping follows Shapiro, Rambaut and Drummond (2006),
+# https://doi.org/10.1093/molbev/msj021. Positions 1 and 2 form one partition;
+# position 3 forms the other. Both partitions share the tree. Each has its own
+# relative rate and gamma shape. TreeTime fits GTR in place of the paper's HKY
+# because the TreeTime HKY model requires a fixed transition/transversion ratio.
+# The four-rate gamma approximation follows
+# `kb/decisions/discrete-gamma-rate-variation.md`.
 #
 # On these 476 NA sequences the first two positions have a gamma shape near 0.25
 # (strong rate variation between conserved and variable amino acids), position 3 a
 # shape near 3, and position 3 evolves about 3 times as fast. Gamma lengthens the
-# branches that a single rate per partition shortens, so the estimated clock rate is
-# higher than in `data/flu/h3n2/500/timetree-codon-partitions.yaml` (0.0044 against
-# 0.0032). Gamma makes the run about 5 times slower
-# (`kb/decisions/discrete-gamma-rate-variation.md`, section "Cost").
+# branches in this example. The exported model and dates show the fitted rate
+# variation and the resulting time tree.
 
 tree: "tree.nwk"
 metadata: "metadata.tsv"
@@ -34,3 +32,9 @@ partition:
     sites: ['3-1407\3']
 gamma_categories: 4
 seed: 42
+
+output_selection:
+  - "nwk"
+  - "model"
+  - "clock-model"
+  - "dates"

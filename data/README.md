@@ -45,7 +45,7 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | [`flu/h3n2/500/prune-collapse.yaml`](flu/h3n2/500/prune-collapse.yaml) | `prune` | Tree cleanup: short, empty, and shared-mutation branches |
 | [`flu/h3n2/500/timetree-codon-partitions.yaml`](flu/h3n2/500/timetree-codon-partitions.yaml) | `timetree` | Time tree with one substitution model per codon position |
 | [`flu/h3n2/500/timetree-skyline-confidence.yaml`](flu/h3n2/500/timetree-skyline-confidence.yaml) | `timetree` | Influenza H3N2 time tree with an estimated clock and a skyline coalescent |
-| [`flu/h3n2/500/timetree-srd06.yaml`](flu/h3n2/500/timetree-srd06.yaml) | `timetree` | Time tree with the SRD06 codon-position model: positions 1+2 and 3, each with gamma rate variation |
+| [`flu/h3n2/500/timetree-srd06.yaml`](flu/h3n2/500/timetree-srd06.yaml) | `timetree` | Time tree with SRD06-style codon partitions: positions 1+2 and 3, each with GTR and gamma rate variation |
 | [`flu/h3n2/500/timetree.yaml`](flu/h3n2/500/timetree.yaml) | `timetree` | Time tree with the default settings |
 | [`lassa/L/20/timetree.yaml`](lassa/L/20/timetree.yaml) | `timetree` | Lassa virus time tree with the default settings |
 | [`lassa/L/500/ancestral.yaml`](lassa/L/500/ancestral.yaml) | `ancestral` | Ancestral sequences with the default settings |
@@ -123,7 +123,7 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 | [`dengue/2000/pipeline-nextstrain.yaml`](dengue/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` -> `mugration` | Nextstrain dengue denv2 genome build, TreeTime part |
 | [`ebola/362/pipeline-nextstrain.yaml`](ebola/362/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` -> `mugration` | Nextstrain ebola west-africa-2014 build, TreeTime part |
 | [`flu/h3n2/200/pipeline-fixed-clock.yaml`](flu/h3n2/200/pipeline-fixed-clock.yaml) | `optimize` -> `timetree` | Optimize then date, with a fixed clock rate defined once |
-| [`flu/h3n2/500/pipeline-nextstrain.yaml`](flu/h3n2/500/pipeline-nextstrain.yaml) | `optimize` -> `prune` -> `timetree` -> `ancestral` -> `mugration` | Nextstrain seasonal-flu h3n2 NA build, TreeTime part |
+| [`flu/h3n2/500/pipeline-nextstrain.yaml`](flu/h3n2/500/pipeline-nextstrain.yaml) | `optimize` -> `prune` -> `timetree` -> `ancestral` -> `mugration` | Nextstrain seasonal-flu h3n2 NA dating and regional trait inference on the historical NA dataset |
 | [`lassa/L/500/pipeline-nextstrain.yaml`](lassa/L/500/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` | Nextstrain lassa L segment build, TreeTime part |
 | [`mpox/clade-ii/2000/pipeline-full.yaml`](mpox/clade-ii/2000/pipeline-full.yaml) | `optimize` -> `ancestral` -> `timetree` -> `mugration` | All four analysis commands on 2000 clade II mpox genomes |
 | [`mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml`](mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml) | `optimize` -> `ancestral` -> `timetree` | Nextstrain mpox WIP/new_tt build with TreeTime v1 |
