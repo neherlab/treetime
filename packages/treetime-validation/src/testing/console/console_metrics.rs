@@ -5,7 +5,6 @@ use crate::testing::framework::test_case::TestCase;
 use eyre::Report;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
 use treetime_utils::make_internal_report;
@@ -27,7 +26,7 @@ impl ValidationConsole {
 
       let correlation_mean: f64 = algorithm_results
         .iter()
-        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.quality_metrics.correlation);
+        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.quality_metrics.correlation)?;
 
       let rmse_max = algorithm_results
         .iter()
@@ -50,11 +49,11 @@ impl ValidationConsole {
 
       let agg_abs_mean: f64 = algorithm_results
         .iter()
-        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.abs_error_stats.mean);
+        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.abs_error_stats.mean)?;
 
       let agg_rel_mean: f64 = algorithm_results
         .iter()
-        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.rel_error_stats.mean);
+        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.rel_error_stats.mean)?;
 
       let pw_abs_max = algorithm_results
         .iter()
@@ -63,9 +62,7 @@ impl ValidationConsole {
 
       let pw_abs_mean = algorithm_results
         .iter()
-        .map(|r| r.metrics.pointwise.errors.summary.abs_mean)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.pointwise.errors.summary.abs_mean)?;
 
       let pw_abs_std = algorithm_results
         .iter()
@@ -79,15 +76,11 @@ impl ValidationConsole {
 
       let pw_rel_mean = algorithm_results
         .iter()
-        .map(|r| r.metrics.pointwise.errors.summary.rel_mean)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.pointwise.errors.summary.rel_mean)?;
 
       let pw_rel_median = algorithm_results
         .iter()
-        .map(|r| r.metrics.pointwise.errors.summary.rel_median)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.pointwise.errors.summary.rel_median)?;
 
       let pw_signed_bias_max = algorithm_results
         .iter()
@@ -106,9 +99,7 @@ impl ValidationConsole {
 
       let d1_mean = algorithm_results
         .iter()
-        .map(|r| r.metrics.pointwise.structural.summary.d1_mean)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.pointwise.structural.summary.d1_mean)?;
 
       let d2_max = algorithm_results
         .iter()
@@ -117,9 +108,7 @@ impl ValidationConsole {
 
       let d2_mean = algorithm_results
         .iter()
-        .map(|r| r.metrics.pointwise.structural.summary.d2_mean)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.pointwise.structural.summary.d2_mean)?;
 
       let symmetry_max = algorithm_results
         .iter()
@@ -134,9 +123,7 @@ impl ValidationConsole {
 
       let peak_mean = algorithm_results
         .iter()
-        .map(|r| r.metrics.spatial.regional.summary.peak_region.mean_error)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.spatial.regional.summary.peak_region.mean_error)?;
 
       let peak_max = algorithm_results
         .iter()
@@ -145,9 +132,7 @@ impl ValidationConsole {
 
       let tail_mean = algorithm_results
         .iter()
-        .map(|r| r.metrics.spatial.regional.summary.tail_region.mean_error)
-        .sum::<f64>()
-        / algorithm_results.len().to_f64_exact();
+        .mean_by_key(|r| r.metrics.spatial.regional.summary.tail_region.mean_error)?;
 
       let tail_max = algorithm_results
         .iter()

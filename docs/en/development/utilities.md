@@ -30,7 +30,7 @@ Crate root: `packages/treetime-utils/src/` (module list in `lib.rs`).
 - Vector macros: `vec_of_owned![]`, `vec_u8![]`
 - `collections::container`: `get_one()`, `get_exactly_one()`, `minmax()`
 - `collections::manyzip`: `Manyzip` (zip any number of iterators into `Vec` items)
-- `iterator`: `iterator_intersection()`, `iterator_difference()`, trait `MeanByKey` (`.mean_by_key()`)
+- `iterator`: `iterator_intersection()`, `iterator_difference()`, trait `MeanByKey` (`.mean_by_key()`, an error for an empty sequence and for a count that the key type cannot hold)
 - Literal maps and sets: `btreemap!{}`, `btreeset!{}` (workspace dependency `maplit`)
 - `IndexSet`, `IndexMap` operations (`.difference()`)
 
