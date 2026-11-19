@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain tuberculosis build, TreeTime part (tb/149).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/tb/149/pipeline-nextstrain.yaml --output-all tmp/examples/tb/149/pipeline-nextstrain
+#
+# nextstrain/tb@d23ba2b (`defaults/config.yaml` L63-L65, `Snakefile` L475-L532):
+# `augur refine --timetree --coalescent opt --root mid_point` and `augur ancestral
+# --inference joint`, both with a VCF and an H37Rv FASTA supplied by
+# `--vcf-reference`. The refine call estimates the clock rate, resolves polytomies
+# and leaves clock filtering and date confidence off. The build has no trait step,
+# and its Auspice export keeps the divergence and drops the inferred dates
+# (`Snakefile` L585-L603).
+#
+# `reroot: midpoint` roots the input tree at its midpoint, as Augur does before it
+# calls TreeTime (augur@58f32904, `augur/refine.py` L134-L136). Augur uses joint
+# branch-length estimation on VCF input (L41-L45), joint dates and joint ancestral
+# reconstruction. TreeTime v1 uses marginal inference for all three. Ancestral
+# reconstruction imputes missing tip states. `clock_filter: 0` leaves filtering off,
+# and `seed` makes polytomy resolution reproducible.
+#
+# Nextstrain masks repeats and regions of low mappability before building the VCF
+# (`Snakefile` L324-L347, `defaults/config.yaml` L7). The bundled inputs are from the
+# Lee et al. 2015 dataset (https://doi.org/10.1073/pnas.1507071112), with collection
+# years such as `1991-XX-XX` represented as date ranges. The VCF must be read against
+# `reference.fasta.xz`; the bundled FASTA alignment has only the 216
+# parsimony-informative sites and omits singleton variants on terminal branches.
+# TreeTime v1 cannot read a VCF or accept its reference, so this example stops at
+# input: kb/issues/M-io-vcf-input-output-unimplemented.md.
+
+steps:
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      alignment:
+        - "aln.vcf.xz"
+      reroot: "midpoint"
+      coalescent: "opt"
+      clock_filter: 0.0
+      branch_length_mode: "marginal"
+      seed: 42
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.vcf.xz"
+      method_anc: "marginal"
+      impute_missing_data: true

@@ -132,6 +132,7 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 | [`rsv/a/2000/pipeline-nextstrain.yaml`](rsv/a/2000/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` -> `mugration` | Nextstrain RSV-A genome build with clock-filtered and undated tips removed |
 | [`sc2/2844/pipeline-undated.yaml`](sc2/2844/pipeline-undated.yaml) | `optimize` -> `ancestral` | SARS-CoV-2 branch-length optimization and ancestral reconstruction |
 | [`sc2/5100/pipeline-nextstrain.yaml`](sc2/5100/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` -> `mugration` | Nextstrain ncov global build, TreeTime part |
+| [`tb/149/pipeline-nextstrain.yaml`](tb/149/pipeline-nextstrain.yaml) | `timetree` -> `ancestral` | Nextstrain tuberculosis VCF workflow; blocked by missing VCF support |
 | [`zika/20/pipeline-dated-geography.yaml`](zika/20/pipeline-dated-geography.yaml) | `timetree` -> `mugration` | Phylodynamics + phylogeography in one file: time tree, then ancestral geography |
 | [`zika/86/pipeline-clock-sensitivity.yaml`](zika/86/pipeline-clock-sensitivity.yaml) | `timetree` -> `timetree` | Compare dates from a fitted clock and a published outbreak clock on the same input tree |
 | [`zika/86/pipeline-geography-map.yaml`](zika/86/pipeline-geography-map.yaml) | `timetree` -> `mugration` | Zika virus spread in the Americas: time tree, then weighted ancestral geography |
