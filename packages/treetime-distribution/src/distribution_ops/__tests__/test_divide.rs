@@ -320,13 +320,13 @@ mod tests {
   #[test]
   fn test_divide_function_by_function_roundtrip_recovers_dividend_factor() {
     let grid = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-    let a = DistributionFunction::<f64>::from_arrays(&grid, array![4.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+    let a = DistributionFunction::from_arrays(&grid, array![4.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
       .unwrap()
       .fit_soft_tail(Side::Left, DEFAULT_TAIL_FIT_POINTS)
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
-    let b = DistributionFunction::<f64>::from_arrays(&grid, array![2.0, 1.5, 1.0, 0.5, 0.0, 0.5, 1.0, 1.5, 2.0])
+    let b = DistributionFunction::from_arrays(&grid, array![2.0, 1.5, 1.0, 0.5, 0.0, 0.5, 1.0, 1.5, 2.0])
       .unwrap()
       .fit_soft_tail(Side::Left, DEFAULT_TAIL_FIT_POINTS)
       .unwrap()
@@ -400,7 +400,7 @@ mod tests {
       .unwrap();
     let t = Array1::linspace(0.3, 1.0, 8);
     let y = t.mapv(|t: f64| if t < 1.0 { -(1.0 - t).ln() } else { f64::INFINITY });
-    let divisor = DistributionFunction::<f64>::from_arrays(&t, y)
+    let divisor = DistributionFunction::from_arrays(&t, y)
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard)
       .unwrap()
@@ -447,7 +447,7 @@ mod tests {
 
     const N_POINTS: usize = 11;
 
-    pub(super) fn power_law_to_hard_end(side: Side, exponent: f64, offset: f64) -> DistributionFunction<f64> {
+    pub(super) fn power_law_to_hard_end(side: Side, exponent: f64, offset: f64) -> DistributionFunction {
       let mut y = power_law_values(side, exponent, offset);
       y[end_index(side)] = f64::INFINITY;
       let law = BoundaryBehavior::HardApproach(HardApproachLaw {
@@ -490,7 +490,7 @@ mod tests {
       }
     }
 
-    pub(super) fn end_tail(f: &DistributionFunction<f64>, side: Side) -> BoundaryBehavior {
+    pub(super) fn end_tail(f: &DistributionFunction, side: Side) -> BoundaryBehavior {
       match side {
         Side::Left => f.left_extrap(),
         Side::Right => f.right_extrap(),

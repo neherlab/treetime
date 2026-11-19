@@ -10,7 +10,7 @@ pub struct SoftTailLaw {
 }
 
 impl SoftTailLaw {
-  pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Result<Self, Report> {
+  pub fn fit(grid_fn: &GridFn, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
 

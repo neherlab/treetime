@@ -45,7 +45,7 @@ where
 }
 
 fn weighted_tail_law(
-  f: &DistributionFunction<f64>,
+  f: &DistributionFunction,
   side: Side,
   outward_slope: impl Fn(Side, f64) -> f64,
 ) -> Result<BoundaryBehavior, Report> {

@@ -80,17 +80,17 @@ struct NoTrace;
 
 impl SampleTrace for NoTrace {}
 
-fn convolution_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Distribution {
+fn convolution_point_point(a: &DistributionPoint, b: &DistributionPoint) -> Distribution {
   Distribution::point(a.t() + b.t(), a.amplitude() + b.amplitude())
 }
 
-fn convolution_point_range(p: &DistributionPoint<f64>, r: &DistributionRange<f64>) -> Distribution {
+fn convolution_point_range(p: &DistributionPoint, r: &DistributionRange) -> Distribution {
   Distribution::range((r.start() + p.t(), r.end() + p.t()), p.amplitude() + r.amplitude())
 }
 
 fn convolution_range_function(
-  r: &DistributionRange<f64>,
-  f: &DistributionFunction<f64>,
+  r: &DistributionRange,
+  f: &DistributionFunction,
   max_points: MaxGridPoints,
 ) -> Result<Distribution, Report> {
   if f.is_empty() || !f.grid_fn().y_min().is_finite() || r.amplitude() == f64::INFINITY {
@@ -145,7 +145,7 @@ fn convolution_range_function(
   Ok(Distribution::Function(g.with_amplitude(r.amplitude() + f.amplitude())))
 }
 
-fn narrowest_support_component(f: &DistributionFunction<f64>, left: SupportEnd, right: SupportEnd) -> Option<f64> {
+fn narrowest_support_component(f: &DistributionFunction, left: SupportEnd, right: SupportEnd) -> Option<f64> {
   let last = f.len() - 1;
   f.y()
     .iter()
@@ -180,7 +180,7 @@ struct SupportEnd {
 }
 
 impl SupportEnd {
-  fn of(f: &DistributionFunction<f64>, side: Side) -> Self {
+  fn of(f: &DistributionFunction, side: Side) -> Self {
     let y = f.y();
     let last = y.len() - 1;
     let (behavior, edge_index, outermost_finite) = match side {
@@ -225,16 +225,13 @@ impl SupportEnd {
   }
 }
 
-fn convolution_point_function(
-  p: &DistributionPoint<f64>,
-  f: &DistributionFunction<f64>,
-) -> Result<DistributionFunction<f64>, Report> {
+fn convolution_point_function(p: &DistributionPoint, f: &DistributionFunction) -> Result<DistributionFunction, Report> {
   Ok(f.shift_time(p.t())?.with_amplitude(f.amplitude() + p.amplitude()))
 }
 
 fn convolution_function_function(
-  a: &DistributionFunction<f64>,
-  b: &DistributionFunction<f64>,
+  a: &DistributionFunction,
+  b: &DistributionFunction,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
 ) -> Result<Distribution, Report> {
@@ -246,8 +243,8 @@ fn convolution_function_function(
 }
 
 fn convolution_function_function_fine(
-  a: &DistributionFunction<f64>,
-  b: &DistributionFunction<f64>,
+  a: &DistributionFunction,
+  b: &DistributionFunction,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
 ) -> Result<Distribution, Report> {
@@ -255,8 +252,8 @@ fn convolution_function_function_fine(
 }
 
 pub(crate) fn convolution_function_function_fine_traced(
-  a: &DistributionFunction<f64>,
-  b: &DistributionFunction<f64>,
+  a: &DistributionFunction,
+  b: &DistributionFunction,
   max_points: MaxGridPoints,
   fft_plans: &FftPlans,
   trace: &mut impl SampleTrace,
@@ -324,10 +321,10 @@ pub(crate) fn convolution_function_function_fine_traced(
 }
 
 pub(crate) fn on_common_spacing(
-  operand: &DistributionFunction<f64>,
+  operand: &DistributionFunction,
   other_dx: f64,
   max_points: MaxGridPoints,
-) -> Result<Cow<'_, DistributionFunction<f64>>, Report> {
+) -> Result<Cow<'_, DistributionFunction>, Report> {
   if operand.dx() <= other_dx {
     Ok(Cow::Borrowed(operand))
   } else {
@@ -343,7 +340,7 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
 }
 
 pub(super) fn coarsen_convolution(
-  conv_distr: DistributionFunction<f64>,
+  conv_distr: DistributionFunction,
   coarse_dx: f64,
   max_points: MaxGridPoints,
 ) -> Result<Distribution, Report> {

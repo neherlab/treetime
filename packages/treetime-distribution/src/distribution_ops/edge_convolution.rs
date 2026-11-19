@@ -212,7 +212,7 @@ pub enum MessageSpacing {
 enum WindowedConvolution {
   Exact(Distribution),
   Window {
-    normalized: DistributionFunction<f64>,
+    normalized: DistributionFunction,
     window: (f64, f64),
     cap: f64,
   },

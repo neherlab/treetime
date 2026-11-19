@@ -355,13 +355,13 @@ mod tests {
       y: Array1<f64>,
       left: BoundaryBehavior,
       right: BoundaryBehavior,
-    ) -> Result<DistributionFunction<f64>, Report> {
+    ) -> Result<DistributionFunction, Report> {
       DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)
     }
 
-    pub(super) fn growing_tail(side: Side) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn growing_tail(side: Side) -> Result<DistributionFunction, Report> {
       match side {
         Side::Left => function(
           (0.0, 1.0),

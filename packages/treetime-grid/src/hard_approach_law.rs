@@ -14,7 +14,7 @@ impl HardApproachLaw {
     Self { t_hard, b: 0.0 }
   }
 
-  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
+  pub fn fit(grid_fn: &GridFn, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
     let points: Vec<(f64, f64)> = (0..n_fit)

@@ -374,7 +374,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn sub_cell_lengths(function: &DistributionFunction<f64>, (start, end): (f64, f64)) -> Vec<f64> {
+    pub(super) fn sub_cell_lengths(function: &DistributionFunction, (start, end): (f64, f64)) -> Vec<f64> {
       let step = function.dx() * BRANCH_RATE;
       let first = f64_to_usize_saturating((start / step).ceil());
       let last = f64_to_usize_saturating((end / step).floor());
@@ -414,7 +414,7 @@ mod tests {
     }
 
     impl Production {
-      pub(super) fn function(&self) -> &DistributionFunction<f64> {
+      pub(super) fn function(&self) -> &DistributionFunction {
         let Distribution::Function(function) = self.distribution.as_ref() else {
           panic!(
             "an input branch-length distribution must be a Function, got {:?}",

@@ -12,13 +12,6 @@ pub mod piecewise_constant_fn;
 pub mod piecewise_fn;
 pub mod soft_tail_law;
 
-use num_traits::{Num, NumCast};
-use std::fmt::Debug;
-
-pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy + From<f64> + Into<f64> + 'static {}
-
-impl InterpElem for f64 {}
-
 pub use boundary_behavior::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS};
 pub use edge_cell::{CellEnd, EdgeCell};
 pub use edge_cell_law::EdgeCellLaw;

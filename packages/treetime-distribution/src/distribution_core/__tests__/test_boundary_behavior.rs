@@ -20,7 +20,7 @@ mod tests {
     #[case] side: Side,
     #[case] t: f64,
   ) -> Result<(), Report> {
-    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+    let f: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let f = match side {
       Side::Left => f.with_left_extrap(BoundaryBehavior::Hard)?,
       Side::Right => f.with_right_extrap(BoundaryBehavior::Hard)?,
@@ -31,7 +31,7 @@ mod tests {
 
   #[test]
   fn test_boundary_function_eval_errors_by_default() -> Result<(), Report> {
-    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    let f: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let dist = Distribution::Function(f);
     assert_error!(
       dist.eval(3.0),
@@ -64,8 +64,7 @@ mod tests {
 
   #[test]
   fn test_boundary_distribution_function_soft_tail_fitting() -> Result<(), Report> {
-    let function: DistributionFunction<f64> =
-      DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+    let function: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let distribution = Distribution::Function(function).fit_soft_tail(Side::Right, 3)?;
 
     let Distribution::Function(fitted) = &distribution else {
@@ -89,7 +88,7 @@ mod tests {
   fn test_boundary_multiply_point_function_outside_hard_support_is_empty(
     #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
   ) -> Result<(), Report> {
-    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+    let f: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
     let function = Distribution::Function(f);
@@ -109,7 +108,7 @@ mod tests {
     #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
     #[case] expected_amplitude: f64,
   ) -> Result<(), Report> {
-    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+    let f: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
     let function = Distribution::Function(f);
@@ -132,9 +131,9 @@ mod tests {
   #[test]
   fn test_boundary_multiply_composes_linear_tail_slopes() -> Result<(), Report> {
     let (slope_a, slope_b) = (0.6, 0.9);
-    let fa: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?
+    let fa: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: slope_a }))?;
-    let fb: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 1.5, 2.5])?
+    let fb: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 1.5, 2.5])?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: slope_b }))?;
 
     let product = distribution_multiplication(
@@ -155,7 +154,7 @@ mod tests {
 
   #[test]
   fn test_boundary_multiply_point_inside_function_is_point() -> Result<(), Report> {
-    let f: DistributionFunction<f64> = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    let f: DistributionFunction = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let function = Distribution::Function(f);
     let point_inside = Distribution::point(1.0, 2.0);
     let actual = distribution_multiplication(&point_inside, &function, MaxGridPoints::default())?;

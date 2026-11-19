@@ -232,7 +232,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn total_mass(f: &DistributionFunction<f64>) -> f64 {
+    pub(super) fn total_mass(f: &DistributionFunction) -> f64 {
       MassProfile::new(f)
         .unwrap()
         .fractions(TailMass::Required)
@@ -240,14 +240,14 @@ mod tests {
         .total()
     }
 
-    pub(super) fn as_function(dist: Distribution) -> DistributionFunction<f64> {
+    pub(super) fn as_function(dist: Distribution) -> DistributionFunction {
       match dist {
         Distribution::Function(f) => f,
         other => panic!("expected a Function distribution, got {other:?}"),
       }
     }
 
-    pub(super) fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction<f64> {
+    pub(super) fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| -lambda.ln() + lambda * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -258,7 +258,7 @@ mod tests {
         .unwrap()
     }
 
-    pub(super) fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64> {
+    pub(super) fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction {
       let t = Array1::linspace(-t_max, t_max, n);
       let y = t.mapv(|ti| slope * ti.abs());
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -270,7 +270,7 @@ mod tests {
         .unwrap()
     }
 
-    pub(super) fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64> {
+    pub(super) fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| slope * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();

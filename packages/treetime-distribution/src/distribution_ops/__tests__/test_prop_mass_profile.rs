@@ -127,18 +127,18 @@ mod tests {
       }
     }
 
-    pub(super) fn position_ulp(f: &DistributionFunction<f64>) -> f64 {
+    pub(super) fn position_ulp(f: &DistributionFunction) -> f64 {
       let scale = f.x_min().abs().max(f.x_max().abs());
       scale.next_up() - scale
     }
 
-    pub(super) fn ulps_around(f: &DistributionFunction<f64>, x: f64, ulps: f64) -> (f64, f64) {
+    pub(super) fn ulps_around(f: &DistributionFunction, x: f64, ulps: f64) -> (f64, f64) {
       let scale = x.abs().max(f.dx()).max(f.x_min().abs()).max(f.x_max().abs());
       let ulp = scale.next_up() - scale;
       (x - ulps * ulp, x + ulps * ulp)
     }
 
-    pub(super) fn dyadic_ordinates(f: &DistributionFunction<f64>) -> DistributionFunction<f64> {
+    pub(super) fn dyadic_ordinates(f: &DistributionFunction) -> DistributionFunction {
       let y = f.y().mapv(|y| (y * 1_048_576.0).round() / 1_048_576.0);
       DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), y)
         .unwrap()
@@ -148,7 +148,7 @@ mod tests {
         .unwrap()
     }
 
-    pub(super) fn sorted_positions(f: &DistributionFunction<f64>, cuts: [f64; 3]) -> [f64; 3] {
+    pub(super) fn sorted_positions(f: &DistributionFunction, cuts: [f64; 3]) -> [f64; 3] {
       let width = f.x_max() - f.x_min();
       let mut xs = cuts.map(|c| f.x_min() + c * width);
       xs.sort_by(f64::total_cmp);
@@ -159,7 +159,7 @@ mod tests {
   mod generators {
     use super::*;
 
-    pub(super) fn function(hard_cells: bool) -> impl Strategy<Value = DistributionFunction<f64>> {
+    pub(super) fn function(hard_cells: bool) -> impl Strategy<Value = DistributionFunction> {
       let ordinate = if hard_cells {
         prop_oneof![9 => 0.0..30.0_f64, 1 => Just(f64::INFINITY)].boxed()
       } else {

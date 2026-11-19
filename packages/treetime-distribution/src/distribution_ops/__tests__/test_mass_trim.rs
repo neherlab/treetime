@@ -125,7 +125,7 @@ mod tests {
   #[case::soft_left( helpers::plateau(Side::Left),   1.0, SoftTailLaw { slope: -0.5 })]
   #[trace]
   fn test_mass_trim_soft_side_cut_on_a_plateau_gets_a_decaying_tail_with_the_trimmed_mass(
-    #[case] input: DistributionFunction<f64>,
+    #[case] input: DistributionFunction,
     #[case] cut: f64,
     #[case] expected: SoftTailLaw,
   ) -> Result<(), Report> {
@@ -152,7 +152,7 @@ mod tests {
   #[case::soft_left( helpers::deep_valley(Side::Left),  1.0, SoftTailLaw { slope: -0.5 })]
   #[trace]
   fn test_mass_trim_soft_side_cut_whose_tail_rate_underflows_moves_out_to_a_representable_rate(
-    #[case] input: DistributionFunction<f64>,
+    #[case] input: DistributionFunction,
     #[case] cut: f64,
     #[case] expected: SoftTailLaw,
   ) -> Result<(), Report> {
@@ -295,40 +295,40 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn trim(input: DistributionFunction<f64>) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn trim(input: DistributionFunction) -> Result<DistributionFunction, Report> {
       trim_at(input, TRIM_EPS)
     }
 
-    pub(super) fn trim_at(input: DistributionFunction<f64>, eps: f64) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn trim_at(input: DistributionFunction, eps: f64) -> Result<DistributionFunction, Report> {
       match trim_to_mass(Distribution::Function(input), eps)? {
         Distribution::Function(trimmed) => Ok(trimmed),
         other => Err(eyre::eyre!("trimming a function must give a function, got {other:?}")),
       }
     }
 
-    pub(super) fn neg_log_mass_between(f: &DistributionFunction<f64>, a: f64, b: f64) -> Result<f64, Report> {
+    pub(super) fn neg_log_mass_between(f: &DistributionFunction, a: f64, b: f64) -> Result<f64, Report> {
       let profile = MassProfile::new(f)?;
       Ok(f.amplitude() + profile.y_peak() + profile.neg_log_mass_between(a, b)?)
     }
 
-    pub(super) fn total_mass(f: &DistributionFunction<f64>) -> Result<f64, Report> {
+    pub(super) fn total_mass(f: &DistributionFunction) -> Result<f64, Report> {
       let profile = MassProfile::new(f)?;
       Ok(profile.fractions(TailMass::Required).expect("a finite mass").total())
     }
 
-    pub(super) fn gaussian(x_min: f64, x_max: f64, n_points: usize) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn gaussian(x_min: f64, x_max: f64, n_points: usize) -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(x_min, x_max, n_points);
       DistributionFunction::from_start_dx_values(x_min, t[1] - t[0], t.mapv(|t| 0.5 * t * t))?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Hard)
     }
 
-    pub(super) fn with_fitted_right_tail(f: DistributionFunction<f64>) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn with_fitted_right_tail(f: DistributionFunction) -> Result<DistributionFunction, Report> {
       let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       f.with_right_extrap(BoundaryBehavior::Linear(law))
     }
 
-    pub(super) fn plateau(soft: Side) -> DistributionFunction<f64> {
+    pub(super) fn plateau(soft: Side) -> DistributionFunction {
       let (peak, left, right) = match soft {
         Side::Right => (
           0..=4,
@@ -348,7 +348,7 @@ mod tests {
         .unwrap()
     }
 
-    pub(super) fn deep_valley(soft: Side) -> DistributionFunction<f64> {
+    pub(super) fn deep_valley(soft: Side) -> DistributionFunction {
       let valley = -(1e-10_f64).ln();
       let (y, left, right) = match soft {
         Side::Right => (
@@ -368,7 +368,7 @@ mod tests {
         .unwrap()
     }
 
-    pub(super) fn flat_on_one_to_two(left: HardApproachLaw) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn flat_on_one_to_two(left: HardApproachLaw) -> Result<DistributionFunction, Report> {
       DistributionFunction::from_start_dx_values(1.0, 0.5, array![0.0, 0.0, 0.0])?
         .with_left_extrap(BoundaryBehavior::HardApproach(left))?
         .with_right_extrap(BoundaryBehavior::Hard)

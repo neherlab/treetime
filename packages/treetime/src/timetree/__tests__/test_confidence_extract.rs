@@ -396,7 +396,7 @@ mod tests {
       }
     }
 
-    pub(super) fn laplace(t0: f64, rate: f64, right: BoundaryBehavior) -> DistributionFunction<f64> {
+    pub(super) fn laplace(t0: f64, rate: f64, right: BoundaryBehavior) -> DistributionFunction {
       let half_width = 1.0 / rate;
       let y = Array1::linspace(t0 - half_width, t0 + half_width, 3).mapv(|x| rate * (x - t0).abs());
       DistributionFunction::from_range_values((t0 - half_width, t0 + half_width), y)

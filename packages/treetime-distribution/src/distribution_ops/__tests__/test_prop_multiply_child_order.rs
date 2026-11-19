@@ -88,7 +88,7 @@ mod tests {
       let x = x_min + dx * i.to_f64_exact();
       0.5 * ((x - center) / sigma).powi(2)
     });
-    let f = DistributionFunction::<f64>::from_start_dx_values(x_min, dx, y)
+    let f = DistributionFunction::from_start_dx_values(x_min, dx, y)
       .unwrap()
       .with_left_extrap(SOFT)
       .unwrap()

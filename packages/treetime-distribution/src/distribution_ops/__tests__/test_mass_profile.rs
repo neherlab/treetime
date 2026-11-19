@@ -510,7 +510,7 @@ mod tests {
       y: Array1<f64>,
       left: BoundaryBehavior,
       right: BoundaryBehavior,
-    ) -> Result<DistributionFunction<f64>, Report> {
+    ) -> Result<DistributionFunction, Report> {
       DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)
@@ -553,7 +553,7 @@ mod tests {
         .sum()
     }
 
-    pub(super) fn piecewise_model() -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn piecewise_model() -> Result<DistributionFunction, Report> {
       function(
         (0.0, 2.0),
         array![0.5, 0.0, 1.5],

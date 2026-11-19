@@ -7,7 +7,7 @@ mod tests {
   use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
-  fn make_neglog_linear_grid(slope: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
+  fn make_neglog_linear_grid(slope: f64, x_min: f64, x_max: f64, n: usize) -> GridFn {
     let y = Array1::linspace(x_min, x_max, n).mapv(|t| slope * t);
     GridFn::from_range_values((x_min, x_max), y).unwrap()
   }

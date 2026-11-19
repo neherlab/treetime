@@ -37,10 +37,7 @@ pub fn distribution_division(
   }
 }
 
-fn divide_point_by_function(
-  point: &DistributionPoint<f64>,
-  divisor: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn divide_point_by_function(point: &DistributionPoint, divisor: &DistributionFunction) -> Result<Distribution, Report> {
   let t = point.t();
   let tail = if t < divisor.x_min() {
     Some(divisor.left_extrap())
@@ -73,8 +70,8 @@ fn divide_point_by_function(
 }
 
 fn divide_range_by_function(
-  range: &DistributionRange<f64>,
-  divisor: &DistributionFunction<f64>,
+  range: &DistributionRange,
+  divisor: &DistributionFunction,
   max_points: MaxGridPoints,
 ) -> Result<Distribution, Report> {
   let range_domain = range_hard_domain(range);
@@ -99,8 +96,8 @@ fn divide_range_by_function(
 }
 
 fn divide_function_by_function(
-  dividend: &DistributionFunction<f64>,
-  divisor: &DistributionFunction<f64>,
+  dividend: &DistributionFunction,
+  divisor: &DistributionFunction,
   max_points: MaxGridPoints,
 ) -> Result<Distribution, Report> {
   let dividend_domain = function_hard_domain(dividend);
@@ -147,8 +144,8 @@ fn divide_function_by_function(
 }
 
 fn shared_hard_end(
-  dividend: &DistributionFunction<f64>,
-  divisor: &DistributionFunction<f64>,
+  dividend: &DistributionFunction,
+  divisor: &DistributionFunction,
   side: Side,
   t: f64,
 ) -> Result<Option<SharedHardEnd>, Report> {
@@ -168,7 +165,7 @@ fn shared_hard_end(
   Ok(Some(end))
 }
 
-fn end_approach(f: &DistributionFunction<f64>, side: Side, t: f64) -> Result<Option<EndApproach>, Report> {
+fn end_approach(f: &DistributionFunction, side: Side, t: f64) -> Result<Option<EndApproach>, Report> {
   let neg_log = f.interp_stored(t)?;
   if neg_log.is_finite() {
     return Ok(Some(EndApproach {
@@ -226,11 +223,11 @@ impl SharedHardEnd {
 }
 
 fn apply_division_tail(
-  function: DistributionFunction<f64>,
+  function: DistributionFunction,
   side: Side,
   dividend: HardDomain,
   divisor: HardDomain,
-) -> Result<DistributionFunction<f64>, Report> {
+) -> Result<DistributionFunction, Report> {
   let tail = match division_side_tail(side, dividend, divisor)? {
     DivisionSideTail::Refit => return function.fit_soft_tail(side, DEFAULT_TAIL_FIT_POINTS),
     DivisionSideTail::Fixed(tail) => tail,

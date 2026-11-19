@@ -74,7 +74,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn branch_like() -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn branch_like() -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(0.1, 4.0, 391);
       let y = t.mapv(|t: f64| 1.5 * t - 2.0 * t.ln());
       DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?

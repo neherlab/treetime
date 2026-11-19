@@ -97,7 +97,7 @@ impl MassCut {
 
 struct TrimCuts<'a> {
   profile: &'a MassProfile,
-  grid_fn: &'a GridFn<f64>,
+  grid_fn: &'a GridFn,
   t: &'a Array1<f64>,
   y: &'a Array1<f64>,
   left: BoundaryBehavior,
@@ -225,7 +225,7 @@ struct TrimWindow {
   upper: MassCut,
 }
 
-fn hard_cell_fit_hull(grid_fn: &GridFn<f64>, first: usize, end: usize) -> Result<(usize, usize), Report> {
+fn hard_cell_fit_hull(grid_fn: &GridFn, first: usize, end: usize) -> Result<(usize, usize), Report> {
   (first..end).try_fold((first, end), |(lo, hi), cell| {
     Ok(match grid_fn.hard_cell_fit_range(cell)? {
       Some(range) => (lo.min(*range.start()), hi.max(*range.end())),
@@ -265,7 +265,7 @@ fn tail_with_mass_beyond(profile: &MassProfile, side: Side, edge: GridEdge) -> R
     reason = "a mass profile that cannot be computed means the distribution is not mass-sizable, and callers fall back to plain normalization"
   )
 )]
-pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64>) -> Option<MassSized> {
+pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction) -> Option<MassSized> {
   let Ok(Some(normalized)) = f.repeak() else {
     return None;
   };
@@ -282,7 +282,7 @@ pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64>) -> 
     reason = "a mass profile that cannot be computed means the distribution is not mass-sizable, and callers fall back to plain normalization"
   )
 )]
-pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64>) -> Option<MassProfile> {
+pub(crate) fn mass_sizable_profile(f: &DistributionFunction) -> Option<MassProfile> {
   let Ok(profile) = MassProfile::new(f) else {
     return None;
   };
@@ -290,7 +290,7 @@ pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64>) -> Option<Mass
 }
 
 pub(crate) struct MassSized {
-  pub(crate) normalized: DistributionFunction<f64>,
+  pub(crate) normalized: DistributionFunction,
   profile: MassProfile,
 }
 
@@ -323,7 +323,7 @@ pub(crate) fn mass_bounded_domain(profile: &MassProfile, eps: f64) -> Result<(f6
 }
 
 pub(crate) fn resample_to_mass_window(
-  normalized: &DistributionFunction<f64>,
+  normalized: &DistributionFunction,
   lo: f64,
   hi: f64,
   grid_points: usize,
@@ -360,7 +360,7 @@ pub(crate) fn resample_to_mass_window(
   Ok(Distribution::Function(resampled))
 }
 
-pub(crate) fn refit_soft_tails(f: DistributionFunction<f64>) -> Result<DistributionFunction<f64>, Report> {
+pub(crate) fn refit_soft_tails(f: DistributionFunction) -> Result<DistributionFunction, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_left_extrap(BoundaryBehavior::Linear(law))?
@@ -377,10 +377,10 @@ pub(crate) fn refit_soft_tails(f: DistributionFunction<f64>) -> Result<Distribut
 }
 
 fn soft_tails_at_window_edges(
-  input: &DistributionFunction<f64>,
-  resampled: DistributionFunction<f64>,
+  input: &DistributionFunction,
+  resampled: DistributionFunction,
   (lo, hi): (f64, f64),
-) -> Result<DistributionFunction<f64>, Report> {
+) -> Result<DistributionFunction, Report> {
   let resampled = if matches!(resampled.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = window_edge_tail_law(input, &resampled, Side::Left, lo)?;
     resampled.with_left_extrap(BoundaryBehavior::Linear(law))?
@@ -397,8 +397,8 @@ fn soft_tails_at_window_edges(
 }
 
 fn window_edge_tail_law(
-  input: &DistributionFunction<f64>,
-  resampled: &DistributionFunction<f64>,
+  input: &DistributionFunction,
+  resampled: &DistributionFunction,
   side: Side,
   edge: f64,
 ) -> Result<SoftTailLaw, Report> {

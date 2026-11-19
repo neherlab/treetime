@@ -19,9 +19,9 @@ use treetime_utils::make_error;
 pub enum Distribution {
   #[default]
   Empty,
-  Point(DistributionPoint<f64>),
-  Range(DistributionRange<f64>),
-  Function(DistributionFunction<f64>),
+  Point(DistributionPoint),
+  Range(DistributionRange),
+  Function(DistributionFunction),
 }
 
 impl Distribution {
@@ -209,7 +209,7 @@ fn hard_limit(behavior: BoundaryBehavior, edge: f64, unbounded: f64) -> f64 {
   }
 }
 
-fn neglog_function_normalize(function: &DistributionFunction<f64>) -> Result<Distribution, Report> {
+fn neglog_function_normalize(function: &DistributionFunction) -> Result<Distribution, Report> {
   let minimum = match function.y().min() {
     Ok(&minimum) => minimum,
     Err(MinMaxError::EmptyInput) => return Ok(Distribution::Empty),

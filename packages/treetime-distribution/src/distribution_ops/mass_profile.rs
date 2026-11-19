@@ -19,7 +19,7 @@ pub enum TailMass {
 #[derive(Clone, Debug)]
 pub struct MassProfile {
   y_peak: f64,
-  grid: Grid<f64>,
+  grid: Grid,
   r: Array1<f64>,
   laws: CellLaws,
   prefix: Array1<f64>,
@@ -32,7 +32,7 @@ pub struct MassProfile {
 }
 
 impl MassProfile {
-  pub fn new(f: &DistributionFunction<f64>) -> Result<Self, Report> {
+  pub fn new(f: &DistributionFunction) -> Result<Self, Report> {
     let n = f.len();
     if n < 2 {
       return make_error!("Mass profile needs at least two grid points, got {n}");

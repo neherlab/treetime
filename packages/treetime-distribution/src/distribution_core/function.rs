@@ -2,47 +2,28 @@ use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
-use num::Float;
 use treetime_grid::grid::Grid;
-use treetime_grid::{BoundaryBehavior, EdgeCell, GridFn, HardCell, InterpElem, MaxGridPoints, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, EdgeCell, GridFn, HardCell, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::float_compare::within_epsilons_of_scale;
 use treetime_utils::make_error;
 
 const MAX_COST_ULPS: f64 = 10.0;
 
 #[derive(Clone, Debug)]
-pub struct DistributionFunction<T: InterpElem> {
-  grid_fn: GridFn<T>,
-  ampl: T,
+pub struct DistributionFunction {
+  grid_fn: GridFn,
+  ampl: f64,
   left_extrap: BoundaryBehavior,
   right_extrap: BoundaryBehavior,
 }
 
-impl<T: InterpElem> PartialEq for DistributionFunction<T> {
-  fn eq(&self, other: &Self) -> bool {
-    let with_level = |f: &Self| {
-      let ampl: f64 = f.ampl.into();
-      f.grid_fn.map_y(|v| (ampl + Into::<f64>::into(v)).into())
-    };
-    self.left_extrap == other.left_extrap
-      && self.right_extrap == other.right_extrap
-      && with_level(self) == with_level(other)
-  }
-}
-
-impl<T: InterpElem> DistributionFunction<T> {
-  pub(crate) fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+impl DistributionFunction {
+  pub(crate) fn from_arrays(x: &Array1<f64>, y: Array1<f64>) -> Result<Self, Report> {
     let grid_fn = GridFn::from_arrays(x, y)?;
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  pub fn from_range_values(x_range: (T, T), y: Array1<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn from_range_values(x_range: (f64, f64), y: Array1<f64>) -> Result<Self, Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     Ok(Self::from_grid_fn(grid_fn))
   }
@@ -54,26 +35,23 @@ impl<T: InterpElem> DistributionFunction<T> {
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
     )
   )]
-  pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn from_start_dx_values(x_min: f64, dx: f64, y: Array1<f64>) -> Result<Self, Report> {
     let grid_fn = GridFn::from_start_dx_values(x_min, dx, y)?;
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  pub fn from_grid_fn(grid_fn: GridFn<T>) -> Self {
+  pub fn from_grid_fn(grid_fn: GridFn) -> Self {
     Self {
       grid_fn,
-      ampl: T::zero(),
+      ampl: 0.0,
       left_extrap: BoundaryBehavior::default(),
       right_extrap: BoundaryBehavior::default(),
     }
   }
 
   fn from_grid_fn_with_extrap(
-    grid_fn: GridFn<T>,
-    ampl: T,
+    grid_fn: GridFn,
+    ampl: f64,
     left_extrap: BoundaryBehavior,
     right_extrap: BoundaryBehavior,
   ) -> Self {
@@ -85,120 +63,92 @@ impl<T: InterpElem> DistributionFunction<T> {
     }
   }
 
-  pub(crate) fn grid_fn(&self) -> &GridFn<T> {
+  pub(crate) fn grid_fn(&self) -> &GridFn {
     &self.grid_fn
   }
 
-  pub fn t(&self) -> Array1<T>
-  where
-    T: Float,
-  {
+  pub fn t(&self) -> Array1<f64> {
     self.grid_fn.x()
   }
 
-  pub fn x_min(&self) -> T {
+  pub fn x_min(&self) -> f64 {
     self.grid_fn.x_min()
   }
 
-  pub fn x_max(&self) -> T
-  where
-    T: Float,
-  {
+  pub fn x_max(&self) -> f64 {
     self.grid_fn.x_max()
   }
 
-  pub fn dx(&self) -> T {
+  pub fn dx(&self) -> f64 {
     self.grid_fn.dx()
   }
 
-  pub fn x_at(&self, idx: usize) -> T
-  where
-    T: Float,
-  {
+  pub fn x_at(&self, idx: usize) -> f64 {
     self.grid_fn.x_at(idx)
   }
 
-  pub fn y(&self) -> &Array1<T> {
+  pub fn y(&self) -> &Array1<f64> {
     self.grid_fn.y()
   }
 
-  pub fn amplitude(&self) -> T {
+  pub fn amplitude(&self) -> f64 {
     self.ampl
   }
 
   #[must_use]
-  pub fn with_amplitude(mut self, ampl: T) -> Self {
+  pub fn with_amplitude(mut self, ampl: f64) -> Self {
     self.ampl = ampl;
     self
   }
 
-  pub fn values(&self) -> Array1<T>
-  where
-    T: Float,
-  {
-    let ampl: f64 = self.ampl.into();
-    self.y().mapv(|v| (ampl + Into::<f64>::into(v)).into())
+  pub fn values(&self) -> Array1<f64> {
+    self.y().mapv(|v| self.ampl + v)
   }
 
-  pub(crate) fn interp(&self, x: T) -> Result<T, Report>
-  where
-    T: Float,
-  {
-    let ampl: f64 = self.ampl.into();
-    let stored: f64 = self.interp_stored(x)?.into();
-    Ok((ampl + stored).into())
+  pub(crate) fn interp(&self, x: f64) -> Result<f64, Report> {
+    Ok(self.ampl + self.interp_stored(x)?)
   }
 
-  pub(crate) fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
-  where
-    T: Float,
-  {
-    let values = xs.iter().map(|&q| self.interp(q)).collect::<Result<Vec<T>, Report>>()?;
+  pub(crate) fn interp_many(&self, xs: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    let values = xs
+      .iter()
+      .map(|&q| self.interp(q))
+      .collect::<Result<Vec<f64>, Report>>()?;
     Ok(Array1::from_vec(values))
   }
 
-  pub(crate) fn interp_stored(&self, x: T) -> Result<T, Report>
-  where
-    T: Float,
-  {
+  pub(crate) fn interp_stored(&self, x: f64) -> Result<f64, Report> {
     let val = self
       .grid_fn
       .interp_with_extrap(x, self.left_extrap, self.right_extrap)?;
-    if val == T::zero() && self.is_beyond_hard_boundary(x) {
-      return Ok(T::infinity());
+    if val == 0.0 && self.is_beyond_hard_boundary(x) {
+      return Ok(f64::INFINITY);
     }
     Ok(val)
   }
 
-  pub(crate) fn interp_many_stored(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
-  where
-    T: Float,
-  {
+  pub(crate) fn interp_many_stored(&self, xs: &Array1<f64>) -> Result<Array1<f64>, Report> {
     let values = xs
       .iter()
       .map(|&q| self.interp_stored(q))
-      .collect::<Result<Vec<T>, Report>>()?;
+      .collect::<Result<Vec<f64>, Report>>()?;
     Ok(Array1::from_vec(values))
   }
 
-  fn is_beyond_hard_boundary(&self, x: T) -> bool
-  where
-    T: Float,
-  {
-    let x_f64: f64 = x.into();
-    let x_min: f64 = self.x_min().into();
-    let x_max: f64 = self.x_max().into();
-    if x_f64 < x_min {
+  fn is_beyond_hard_boundary(&self, x: f64) -> bool {
+    let x_min = self.x_min();
+    let x_max = self.x_max();
+    if x < x_min {
       return match self.left_extrap() {
         BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => true,
-        BoundaryBehavior::HardApproach(law) => x_f64 < law.t_hard,
+        BoundaryBehavior::HardApproach(law) => x < law.t_hard,
         _ => false,
       };
     }
-    if x_f64 > x_max {
+    if x > x_max {
       return match self.right_extrap() {
         BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => true,
-        BoundaryBehavior::HardApproach(law) => x_f64 > law.t_hard,
+        BoundaryBehavior::HardApproach(law) => x > law.t_hard,
         _ => false,
       };
     }
@@ -220,17 +170,11 @@ impl<T: InterpElem> DistributionFunction<T> {
     }
   }
 
-  pub fn hard_cell(&self, cell: usize) -> Result<Option<HardCell>, Report>
-  where
-    T: Float,
-  {
+  pub fn hard_cell(&self, cell: usize) -> Result<Option<HardCell>, Report> {
     self.grid_fn.hard_cell(cell, self.left_extrap, self.right_extrap)
   }
 
-  pub fn edge_cell(&self, cell: usize) -> Result<Option<EdgeCell>, Report>
-  where
-    T: Float,
-  {
+  pub fn edge_cell(&self, cell: usize) -> Result<Option<EdgeCell>, Report> {
     self.grid_fn.edge_cell(cell, self.left_extrap, self.right_extrap)
   }
 
@@ -244,10 +188,7 @@ impl<T: InterpElem> DistributionFunction<T> {
     Ok(self)
   }
 
-  fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  fn resample(&self, grid: &Grid) -> Result<Self, Report> {
     let grid_fn = self
       .grid_fn
       .resample_with_extrap(grid, self.left_extrap, self.right_extrap)?;
@@ -259,10 +200,7 @@ impl<T: InterpElem> DistributionFunction<T> {
     ))
   }
 
-  pub(crate) fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub(crate) fn resample_range_n_points(&self, x_range: (f64, f64), n_points: usize) -> Result<Self, Report> {
     let grid = Grid::from_range_n_points(x_range.0, x_range.1, n_points)?;
     self.resample(&grid)
   }
@@ -274,24 +212,18 @@ impl<T: InterpElem> DistributionFunction<T> {
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
     )
   )]
-  pub fn resample_range_dx(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn resample_range_dx(&self, x_range: (f64, f64), dx: f64, max_points: MaxGridPoints) -> Result<Self, Report> {
     let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
     self.resample(&grid)
   }
 
   fn resample_range_dx_clamped(
     &self,
-    x_range: (T, T),
-    dx: T,
+    x_range: (f64, f64),
+    dx: f64,
     anchor: Side,
     max_points: MaxGridPoints,
-  ) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  ) -> Result<Self, Report> {
     let grid_fn = self
       .grid_fn
       .resample_range_dx_clamped(x_range, dx, anchor, max_points)?;
@@ -303,12 +235,9 @@ impl<T: InterpElem> DistributionFunction<T> {
     ))
   }
 
-  pub(crate) fn resample_dx(&self, dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub(crate) fn resample_dx(&self, dx: f64, max_points: MaxGridPoints) -> Result<Self, Report> {
     let y = self.y();
-    let anchor = resample_anchor(self.left_extrap, self.right_extrap, y[0].into(), y[y.len() - 1].into());
+    let anchor = resample_anchor(self.left_extrap, self.right_extrap, y[0], y[y.len() - 1]);
     self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, anchor, max_points)
   }
 
@@ -320,10 +249,7 @@ impl<T: InterpElem> DistributionFunction<T> {
     self.grid_fn.is_empty()
   }
 
-  pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report>
-  where
-    T: Float,
-  {
+  pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report> {
     self.grid_fn.negate_arg_inplace()?;
     self.left_extrap = negate_tail_law(self.left_extrap);
     self.right_extrap = negate_tail_law(self.right_extrap);
@@ -331,10 +257,7 @@ impl<T: InterpElem> DistributionFunction<T> {
     Ok(())
   }
 
-  pub(crate) fn likely_time(&self) -> Result<Option<T>, Report>
-  where
-    T: Float,
-  {
+  pub(crate) fn likely_time(&self) -> Result<Option<f64>, Report> {
     match self.y().argmin() {
       Ok(idx) => Ok(Some(self.t()[idx])),
       Err(MinMaxError::EmptyInput) => Ok(None),
@@ -345,10 +268,7 @@ impl<T: InterpElem> DistributionFunction<T> {
   }
 
   #[must_use]
-  pub(crate) fn shift_y(&self, delta: T) -> Self
-  where
-    T: Float,
-  {
+  pub(crate) fn shift_y(&self, delta: f64) -> Self {
     Self::from_grid_fn_with_extrap(
       self.grid_fn.shift_y(delta),
       self.ampl,
@@ -356,9 +276,7 @@ impl<T: InterpElem> DistributionFunction<T> {
       self.right_extrap,
     )
   }
-}
 
-impl DistributionFunction<f64> {
   pub fn scale_time(&self, factor: f64) -> Result<Self, Report> {
     Ok(Self::from_grid_fn_with_extrap(
       self.grid_fn.scale_x(factor)?,
@@ -407,6 +325,15 @@ impl DistributionFunction<f64> {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
     }
+  }
+}
+
+impl PartialEq for DistributionFunction {
+  fn eq(&self, other: &Self) -> bool {
+    let with_level = |f: &Self| f.grid_fn.map_y(|v| f.ampl + v);
+    self.left_extrap == other.left_extrap
+      && self.right_extrap == other.right_extrap
+      && with_level(self) == with_level(other)
   }
 }
 

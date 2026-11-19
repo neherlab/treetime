@@ -125,7 +125,7 @@ enum Posterior {
   Empty,
   Point(f64),
   Range(f64, f64),
-  Function(DistributionFunction<f64>),
+  Function(DistributionFunction),
 }
 
 impl Posterior {
@@ -155,10 +155,7 @@ fn posterior_fractions(profile: &MassProfile) -> Result<MassFractions<'_>, Repor
   }
 }
 
-fn function_survival(
-  function: &DistributionFunction<f64>,
-  levels: &[SurvivalLevel],
-) -> Result<PosteriorSurvival, Report> {
+fn function_survival(function: &DistributionFunction, levels: &[SurvivalLevel]) -> Result<PosteriorSurvival, Report> {
   let profile = MassProfile::new(function)?;
   let fractions = posterior_fractions(&profile)?;
   let time_at = |level: SurvivalLevel| match level {
@@ -202,10 +199,7 @@ fn function_survival(
   Ok(survival.with_unit_ends())
 }
 
-fn function_max_posterior_region(
-  function: &DistributionFunction<f64>,
-  fraction: f64,
-) -> Result<PosteriorRegion, Report> {
+fn function_max_posterior_region(function: &DistributionFunction, fraction: f64) -> Result<PosteriorRegion, Report> {
   let peak = latest_peak_index(function.y().view());
   let origin = function.x_at(peak);
   let local = function.shift_time(-origin)?;
@@ -228,7 +222,7 @@ fn function_max_posterior_region(
 }
 
 fn local_max_posterior_region(
-  function: &DistributionFunction<f64>,
+  function: &DistributionFunction,
   fractions: &MassFractions<'_>,
   peak: usize,
   fraction: f64,
@@ -287,7 +281,7 @@ struct EdgeCells {
 }
 
 impl EdgeCells {
-  fn of(function: &DistributionFunction<f64>) -> Result<Self, Report> {
+  fn of(function: &DistributionFunction) -> Result<Self, Report> {
     let last_cell = function.y().len() - 2;
     let left = function.edge_cell(0)?.filter(|cell| cell.edge.t <= cell.anchor.t);
     let right = function
@@ -306,7 +300,7 @@ impl EdgeCells {
 }
 
 fn grid_peak_sides(
-  function: &DistributionFunction<f64>,
+  function: &DistributionFunction,
   peak: usize,
   carries_mass: BoundaryMass,
   cells: EdgeCells,
@@ -344,7 +338,7 @@ fn grid_peak_sides(
 }
 
 fn cell_peak_sides(
-  function: &DistributionFunction<f64>,
+  function: &DistributionFunction,
   side: Side,
   cell: EdgeCell,
   mode: GridEdge,
@@ -401,7 +395,7 @@ fn cell_peak_sides(
 }
 
 fn first_hard_cell(
-  function: &DistributionFunction<f64>,
+  function: &DistributionFunction,
   cells: impl Iterator<Item = usize>,
   outer_point: impl Fn(usize) -> usize,
 ) -> Result<Option<HardCell>, Report> {

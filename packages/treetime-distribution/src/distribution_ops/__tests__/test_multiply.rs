@@ -558,7 +558,7 @@ mod tests {
 
     fn soft_message(range: (f64, f64), n: usize, peak_at: f64, sigma: f64) -> Result<Distribution, Report> {
       let y = Array1::linspace(range.0, range.1, n).mapv(|x| 0.5 * ((x - peak_at) / sigma).powi(2));
-      let f = DistributionFunction::<f64>::from_range_values(range, y)?
+      let f = DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(SOFT)?
         .with_right_extrap(BoundaryBehavior::Hard)?;
       Ok(Distribution::Function(f))
@@ -572,23 +572,17 @@ mod tests {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - mu) / sigma).powi(2)
       });
-      let f = DistributionFunction::<f64>::from_start_dx_values(x_min, dx, y).unwrap();
+      let f = DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
       Distribution::Function(f)
     }
 
-    pub(super) fn make_function(
-      x_min: f64,
-      x_max: f64,
-      n: usize,
-      peak_at: f64,
-      sigma: f64,
-    ) -> DistributionFunction<f64> {
+    pub(super) fn make_function(x_min: f64, x_max: f64, n: usize, peak_at: f64, sigma: f64) -> DistributionFunction {
       let dx = (x_max - x_min) / (n - 1).to_f64_exact();
       let y = Array1::from_shape_fn(n, |i| {
         let x = x_min + dx * i.to_f64_exact();
         0.5 * ((x - peak_at) / sigma).powi(2)
       });
-      DistributionFunction::<f64>::from_start_dx_values(x_min, dx, y).unwrap()
+      DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap()
     }
   }
 }

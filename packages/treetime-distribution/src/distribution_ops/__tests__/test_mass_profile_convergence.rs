@@ -97,7 +97,7 @@ pub(super) mod tests {
       range: (f64, f64),
       cells: usize,
       y: impl Fn(f64) -> f64,
-    ) -> Result<DistributionFunction<f64>, Report> {
+    ) -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(range.0, range.1, cells + 1);
       let f = DistributionFunction::from_range_values(range, t.mapv(y))?;
       let left = if range.0 == 0.0 {

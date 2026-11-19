@@ -381,7 +381,7 @@ mod tests {
         }
       }
 
-      pub(super) fn function(&self) -> Result<DistributionFunction<f64>, Report> {
+      pub(super) fn function(&self) -> Result<DistributionFunction, Report> {
         let x_max = self.h * CELLS.to_f64_exact();
         let y = Array1::linspace(0.0, x_max, CELLS + 1).mapv(|x| self.cost(x));
         DistributionFunction::from_range_values((0.0, x_max), y)?
@@ -423,7 +423,7 @@ mod tests {
       }
     }
 
-    pub(super) fn line(poisson: &Poisson, left: BoundaryBehavior) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn line(poisson: &Poisson, left: BoundaryBehavior) -> Result<DistributionFunction, Report> {
       let f = poisson.function()?;
       let line = f.t().mapv(|t| 2.0 + 5.0 * t);
       DistributionFunction::from_range_values((f.x_min(), f.x_max()), line)?

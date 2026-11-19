@@ -152,15 +152,15 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::shift(          |f: &GridFn<f64>| f.shift_x(DATE),                         (BRANCH.0 + DATE,     BRANCH.1 + DATE))]
-  #[case::negate(         |f: &GridFn<f64>| negated(f),                              (-BRANCH.1,           -BRANCH.0))]
-  #[case::negate_zero_end(|f: &GridFn<f64>| negated(&f.shift_x(-BRANCH.0)?),         (BRANCH.0 - BRANCH.1, 0.0))]
-  #[case::scale(          |f: &GridFn<f64>| f.scale_x(3.0),                          (BRANCH.0 * 3.0,      BRANCH.1 * 3.0))]
+  #[case::shift(          |f: &GridFn| f.shift_x(DATE),                         (BRANCH.0 + DATE,     BRANCH.1 + DATE))]
+  #[case::negate(         |f: &GridFn| negated(f),                              (-BRANCH.1,           -BRANCH.0))]
+  #[case::negate_zero_end(|f: &GridFn| negated(&f.shift_x(-BRANCH.0)?),         (BRANCH.0 - BRANCH.1, 0.0))]
+  #[case::scale(          |f: &GridFn| f.scale_x(3.0),                          (BRANCH.0 * 3.0,      BRANCH.1 * 3.0))]
   #[trace]
   fn test_gridfn_end_maps_take_each_end_with_one_rounding(
     #[case]
     #[notrace]
-    map: fn(&GridFn<f64>) -> Result<GridFn<f64>, Report>,
+    map: fn(&GridFn) -> Result<GridFn, Report>,
     #[case] expected: (f64, f64),
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(BRANCH, array![4.0, 3.0, 2.0, 1.0, 0.0])?;
@@ -172,13 +172,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::slice(         |f: &GridFn<f64>| f.slice(2..=4))]
-  #[case::anchored_right(|f: &GridFn<f64>| f.resample_range_dx_clamped(BRANCH, 0.3, Side::Right, MaxGridPoints::default()))]
+  #[case::slice(         |f: &GridFn| f.slice(2..=4))]
+  #[case::anchored_right(|f: &GridFn| f.resample_range_dx_clamped(BRANCH, 0.3, Side::Right, MaxGridPoints::default()))]
   #[trace]
   fn test_gridfn_grids_that_keep_the_right_end_end_at_it(
     #[case]
     #[notrace]
-    derive: fn(&GridFn<f64>) -> Result<GridFn<f64>, Report>,
+    derive: fn(&GridFn) -> Result<GridFn, Report>,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(BRANCH, array![4.0, 3.0, 2.0, 1.0, 0.0])?;
     let actual = derive(&grid_fn)?;
@@ -398,7 +398,7 @@ mod tests {
 
     use eyre::Report;
 
-    pub(super) fn negated(grid_fn: &GridFn<f64>) -> Result<GridFn<f64>, Report> {
+    pub(super) fn negated(grid_fn: &GridFn) -> Result<GridFn, Report> {
       let mut negated = grid_fn.clone();
       negated.negate_arg_inplace()?;
       Ok(negated)

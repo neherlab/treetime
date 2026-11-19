@@ -792,7 +792,7 @@ mod tests {
       range: (f64, f64),
       n_points: usize,
       y: impl Fn(f64) -> f64,
-    ) -> Result<DistributionFunction<f64>, Report> {
+    ) -> Result<DistributionFunction, Report> {
       DistributionFunction::from_range_values(range, Array1::linspace(range.0, range.1, n_points).mapv(y))
     }
 
@@ -829,7 +829,7 @@ mod tests {
     }
 
     impl PiecewiseLinear {
-      pub(super) fn of(f: &DistributionFunction<f64>, right_rate: f64) -> Self {
+      pub(super) fn of(f: &DistributionFunction, right_rate: f64) -> Self {
         Self {
           x: f.t(),
           p: f.y().mapv(|y| (-y).exp()),

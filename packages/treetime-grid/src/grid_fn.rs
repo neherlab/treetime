@@ -1,4 +1,3 @@
-use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::boundary_behavior::DEFAULT_TAIL_FIT_POINTS;
 use crate::edge_cell::EdgeCell;
@@ -9,19 +8,18 @@ use crate::hard_cell::HardCell;
 use crate::max_grid_points::MaxGridPoints;
 use eyre::Report;
 use ndarray::{Array1, s};
-use num::Float;
 use std::fmt::Debug;
 use std::ops::RangeInclusive;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GridFn<T: InterpElem> {
-  grid: Grid<T>,
-  y: Array1<T>,
+#[derive(Debug, Clone, PartialEq)]
+pub struct GridFn {
+  grid: Grid,
+  y: Array1<f64>,
 }
 
-impl<T: InterpElem> GridFn<T> {
-  pub fn from_grid_values(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
+impl GridFn {
+  pub fn from_grid_values(grid: Grid, y: Array1<f64>) -> Result<Self, Report> {
     if grid.n_points() != y.len() {
       return make_error!(
         "Grid has {} points but y array has {} elements",
@@ -32,10 +30,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Self { grid, y })
   }
 
-  pub fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn from_arrays(x: &Array1<f64>, y: Array1<f64>) -> Result<Self, Report> {
     if x.len() != y.len() {
       return make_error!(
         "x and y arrays must have the same length, got {} and {}",
@@ -47,58 +42,43 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_values(grid, y)
   }
 
-  pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn from_start_dx_values(x_min: f64, dx: f64, y: Array1<f64>) -> Result<Self, Report> {
     let grid = Grid::from_start_dx(x_min, dx, y.len())?;
     Self::from_grid_values(grid, y)
   }
 
-  pub fn from_range_values((x_min, x_max): (T, T), y: Array1<T>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn from_range_values((x_min, x_max): (f64, f64), y: Array1<f64>) -> Result<Self, Report> {
     let grid = Grid::from_range_n_points(x_min, x_max, y.len())?;
     Self::from_grid_values(grid, y)
   }
 
   // TODO: inefficient. Try to remove this method
-  pub fn x(&self) -> Array1<T>
-  where
-    T: Float,
-  {
+  pub fn x(&self) -> Array1<f64> {
     self.grid.to_array()
   }
 
-  pub fn y(&self) -> &Array1<T> {
+  pub fn y(&self) -> &Array1<f64> {
     &self.y
   }
 
-  pub fn grid(&self) -> &Grid<T> {
+  pub fn grid(&self) -> &Grid {
     &self.grid
   }
 
-  pub fn with_values(&self, y: Array1<T>) -> Result<Self, Report> {
+  pub fn with_values(&self, y: Array1<f64>) -> Result<Self, Report> {
     Self::from_grid_values(self.grid, y)
   }
 
-  pub fn slice(&self, points: RangeInclusive<usize>) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn slice(&self, points: RangeInclusive<usize>) -> Result<Self, Report> {
     let grid = self.grid.slice(points.clone())?;
     Self::from_grid_values(grid, self.y.slice(s![points]).to_owned())
   }
 
-  pub fn x_min(&self) -> T {
+  pub fn x_min(&self) -> f64 {
     self.grid.x_min()
   }
 
-  pub fn x_max(&self) -> T
-  where
-    T: Float,
-  {
+  pub fn x_max(&self) -> f64 {
     self.grid.x_max()
   }
 
@@ -114,25 +94,19 @@ impl<T: InterpElem> GridFn<T> {
     self.len() == 0
   }
 
-  pub fn dx(&self) -> T {
+  pub fn dx(&self) -> f64 {
     self.grid.dx()
   }
 
-  pub fn x_at(&self, idx: usize) -> T
-  where
-    T: Float,
-  {
+  pub fn x_at(&self, idx: usize) -> f64 {
     self.grid.x_at(idx)
   }
 
-  pub fn coincides(&self, a: f64, b: f64) -> bool
-  where
-    T: Float,
-  {
+  pub fn coincides(&self, a: f64, b: f64) -> bool {
     self.grid.coincides(a, b)
   }
 
-  pub fn y_min(&self) -> T {
+  pub fn y_min(&self) -> f64 {
     self
       .y
       .iter()
@@ -141,27 +115,21 @@ impl<T: InterpElem> GridFn<T> {
       .fold(self.y[0], |a, b| if a < b { a } else { b })
   }
 
-  pub fn interp(&self, xi: T) -> Result<T, Report>
-  where
-    T: Float,
-  {
+  pub fn interp(&self, xi: f64) -> Result<f64, Report> {
     self.interp_with_extrap(xi, BoundaryBehavior::Error, BoundaryBehavior::Error)
   }
 
   pub fn interp_with_extrap(
     &self,
-    xi: T,
+    xi: f64,
     left_extrap: BoundaryBehavior,
     right_extrap: BoundaryBehavior,
-  ) -> Result<T, Report>
-  where
-    T: Float,
-  {
+  ) -> Result<f64, Report> {
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
 
     if xi < x_min {
-      if self.grid.coincides(xi.into(), x_min.into()) {
+      if self.grid.coincides(xi, x_min) {
         return Ok(self.y[0]);
       }
       return self.extrapolate(left_extrap, xi, Side::Left);
@@ -169,7 +137,7 @@ impl<T: InterpElem> GridFn<T> {
 
     if xi > x_max {
       let n = self.grid.n_points();
-      if self.grid.coincides(xi.into(), x_max.into()) {
+      if self.grid.coincides(xi, x_max) {
         return Ok(self.y[n - 1]);
       }
       return self.extrapolate(right_extrap, xi, Side::Right);
@@ -184,10 +152,7 @@ impl<T: InterpElem> GridFn<T> {
     cell: usize,
     left: BoundaryBehavior,
     right: BoundaryBehavior,
-  ) -> Result<Option<HardCell>, Report>
-  where
-    T: Float,
-  {
+  ) -> Result<Option<HardCell>, Report> {
     let n = self.grid.n_points();
     let Some(HardCellEnds { boundary, anchor, side }) = self.hard_cell_ends(cell)? else {
       return Ok(None);
@@ -196,7 +161,7 @@ impl<T: InterpElem> GridFn<T> {
       Side::Left => (cell == 0).then_some(left),
       Side::Right => (cell + 1 == n - 1).then_some(right),
     };
-    let t_boundary: f64 = self.grid.x_at(boundary).into();
+    let t_boundary = self.grid.x_at(boundary);
     let law = match stored {
       Some(BoundaryBehavior::HardApproach(law)) if self.grid.coincides(law.t_hard, t_boundary) => Ok(law),
       _ => self.fit_hard_cell_law(t_boundary, side, anchor),
@@ -210,10 +175,7 @@ impl<T: InterpElem> GridFn<T> {
     cell: usize,
     left: BoundaryBehavior,
     right: BoundaryBehavior,
-  ) -> Result<Option<EdgeCell>, Report>
-  where
-    T: Float,
-  {
+  ) -> Result<Option<EdgeCell>, Report> {
     let n = self.grid.n_points();
     if cell + 1 >= n {
       return make_error!("Cell {cell} is outside the grid of {n} points");
@@ -230,10 +192,7 @@ impl<T: InterpElem> GridFn<T> {
     EdgeCell::new(law, edge, anchor).map(Some)
   }
 
-  pub fn hard_cell_fit_range(&self, cell: usize) -> Result<Option<RangeInclusive<usize>>, Report>
-  where
-    T: Float,
-  {
+  pub fn hard_cell_fit_range(&self, cell: usize) -> Result<Option<RangeInclusive<usize>>, Report> {
     Ok(
       self
         .hard_cell_ends(cell)?
@@ -241,10 +200,7 @@ impl<T: InterpElem> GridFn<T> {
     )
   }
 
-  fn hard_cell_ends(&self, cell: usize) -> Result<Option<HardCellEnds>, Report>
-  where
-    T: Float,
-  {
+  fn hard_cell_ends(&self, cell: usize) -> Result<Option<HardCellEnds>, Report> {
     let n = self.grid.n_points();
     if cell + 1 >= n {
       return make_error!("Cell {cell} is outside the grid of {n} points");
@@ -264,10 +220,7 @@ impl<T: InterpElem> GridFn<T> {
     })
   }
 
-  fn fit_range(&self, anchor: usize, side: Side) -> RangeInclusive<usize>
-  where
-    T: Float,
-  {
+  fn fit_range(&self, anchor: usize, side: Side) -> RangeInclusive<usize> {
     let reach = DEFAULT_TAIL_FIT_POINTS - 1;
     let finite = |i: &usize| self.y[*i].is_finite();
     match side {
@@ -289,47 +242,34 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  fn neg_log_edge(&self, side: Side) -> GridEdge
-  where
-    T: Float,
-  {
+  fn neg_log_edge(&self, side: Side) -> GridEdge {
     self.neg_log_point(match side {
       Side::Left => 0,
       Side::Right => self.grid.n_points() - 1,
     })
   }
 
-  fn neg_log_point(&self, idx: usize) -> GridEdge
-  where
-    T: Float,
-  {
+  fn neg_log_point(&self, idx: usize) -> GridEdge {
     GridEdge {
-      t: self.grid.x_at(idx).into(),
-      y: self.y[idx].into(),
+      t: self.grid.x_at(idx),
+      y: self.y[idx],
     }
   }
 
-  fn is_hard_end(&self, idx: usize) -> bool
-  where
-    T: Float,
-  {
+  fn is_hard_end(&self, idx: usize) -> bool {
     self.y[idx].is_infinite()
   }
 
-  fn extrapolate(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
-  where
-    T: Float,
-  {
+  fn extrapolate(&self, behavior: BoundaryBehavior, xi: f64, side: Side) -> Result<f64, Report> {
     match behavior {
-      BoundaryBehavior::Linear(law) => Ok(law.eval(self.neg_log_edge(side), xi.into()).into()),
+      BoundaryBehavior::Linear(law) => Ok(law.eval(self.neg_log_edge(side), xi)),
       BoundaryBehavior::HardApproach(law) => {
-        let xi_f64: f64 = xi.into();
-        if (side == Side::Left && xi_f64 < law.t_hard) || (side == Side::Right && xi_f64 > law.t_hard) {
-          return Ok(T::zero());
+        if (side == Side::Left && xi < law.t_hard) || (side == Side::Right && xi > law.t_hard) {
+          return Ok(0.0);
         }
-        Ok(law.eval(self.neg_log_edge(side), xi_f64).into())
+        Ok(law.eval(self.neg_log_edge(side), xi))
       },
-      BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => Ok(T::zero()),
+      BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => Ok(0.0),
       BoundaryBehavior::Error => {
         let (side_word, bound) = match side {
           Side::Left => ("below", self.grid.x_min()),
@@ -342,10 +282,7 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  fn interpolate_at(&self, q: T, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> Result<T, Report>
-  where
-    T: Float,
-  {
+  fn interpolate_at(&self, q: f64, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> Result<f64, Report> {
     const NODE_ROUNDING: f64 = 1e-9;
     let n = self.grid.n_points();
     if idx >= n - 1 {
@@ -355,33 +292,29 @@ impl<T: InterpElem> GridFn<T> {
     let y0 = self.y[idx];
     let y1 = self.y[idx + 1];
     let t = (q - x0) / (self.grid.x_at(idx + 1) - x0);
-    let t_f64: f64 = t.into();
-    if t_f64 <= 0.0 {
+    if t <= 0.0 {
       return Ok(y0);
     }
-    if t_f64 >= 1.0 {
+    if t >= 1.0 {
       return Ok(y1);
     }
     if let Some(cell) = self.edge_cell(idx, left, right)? {
-      return Ok(<T as From<f64>>::from(cell.eval(q.into())));
+      return Ok(cell.eval(q));
     }
-    if t_f64 <= NODE_ROUNDING {
+    if t <= NODE_ROUNDING {
       return Ok(y0);
     }
-    if t_f64 >= 1.0 - NODE_ROUNDING {
+    if t >= 1.0 - NODE_ROUNDING {
       return Ok(y1);
     }
     match self.hard_cell(idx, left, right)? {
-      Some(cell) => Ok(<T as From<f64>>::from(cell.eval(q.into()))),
+      Some(cell) => Ok(cell.eval(q)),
       None if self.is_hard_end(idx) || self.is_hard_end(idx + 1) => Ok(y0.max(y1)),
       None => Ok(y0 + t * (y1 - y0)),
     }
   }
 
-  fn fit_hard_cell_law(&self, t_boundary: f64, side: Side, anchor: usize) -> Result<HardApproachLaw, Report>
-  where
-    T: Float,
-  {
+  fn fit_hard_cell_law(&self, t_boundary: f64, side: Side, anchor: usize) -> Result<HardApproachLaw, Report> {
     let range = self.fit_range(anchor, side);
     let indices: Vec<usize> = match side {
       Side::Right => range.rev().collect(),
@@ -401,10 +334,7 @@ impl<T: InterpElem> GridFn<T> {
   }
 
   #[must_use]
-  pub fn shift_y(&self, delta: T) -> Self
-  where
-    T: Float,
-  {
+  pub fn shift_y(&self, delta: f64) -> Self {
     Self {
       grid: self.grid,
       y: self.y.mapv(|v| v + delta),
@@ -412,18 +342,15 @@ impl<T: InterpElem> GridFn<T> {
   }
 
   #[must_use]
-  pub fn map_y(&self, f: impl Fn(T) -> T) -> Self {
+  pub fn map_y(&self, f: impl Fn(f64) -> f64) -> Self {
     Self {
       grid: self.grid,
       y: self.y.mapv(f),
     }
   }
 
-  pub fn scale_x(&self, factor: T) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    if factor.is_nan() || factor <= T::zero() {
+  pub fn scale_x(&self, factor: f64) -> Result<Self, Report> {
+    if factor.is_nan() || factor <= 0.0 {
       return make_error!("Argument scale factor must be positive, got {factor:?}");
     }
     Ok(Self {
@@ -432,10 +359,7 @@ impl<T: InterpElem> GridFn<T> {
     })
   }
 
-  pub fn shift_x(&self, delta: T) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  pub fn shift_x(&self, delta: f64) -> Result<Self, Report> {
     Ok(Self {
       grid: self.grid.shifted(delta)?,
       y: self.y.clone(),
@@ -443,10 +367,7 @@ impl<T: InterpElem> GridFn<T> {
   }
 
   #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
-  pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
-  where
-    T: Float,
-  {
+  pub fn negate_arg_inplace(&mut self) -> Result<(), Report> {
     self.grid = self.grid.negated()?;
     let n = self.y.len();
     for i in 0..n / 2 {
@@ -457,36 +378,30 @@ impl<T: InterpElem> GridFn<T> {
 
   pub fn resample_with_extrap(
     &self,
-    grid: &Grid<T>,
+    grid: &Grid,
     left_extrap: BoundaryBehavior,
     right_extrap: BoundaryBehavior,
-  ) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  ) -> Result<Self, Report> {
     let n_points = grid.n_points();
     let y_new = (0..n_points)
       .map(|i| self.interp_with_extrap(grid.x_at(i), left_extrap, right_extrap))
-      .collect::<Result<Vec<T>, Report>>()?;
+      .collect::<Result<Vec<f64>, Report>>()?;
     Self::from_grid_values(*grid, Array1::from_vec(y_new))
   }
 
   pub fn resample_range_dx_clamped(
     &self,
-    x_range: (T, T),
-    dx: T,
+    x_range: (f64, f64),
+    dx: f64,
     anchor: Side,
     max_points: MaxGridPoints,
-  ) -> Result<Self, Report>
-  where
-    T: Float,
-  {
+  ) -> Result<Self, Report> {
     let grid = Grid::from_range_dx_anchored(x_range.0, x_range.1, dx, anchor, max_points)?;
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
     let y_new = (0..grid.n_points())
       .map(|i| self.interp(grid.x_at(i).max(x_min).min(x_max)))
-      .collect::<Result<Vec<T>, Report>>()?;
+      .collect::<Result<Vec<f64>, Report>>()?;
     Self::from_grid_values(grid, Array1::from_vec(y_new))
   }
 }

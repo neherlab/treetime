@@ -26,7 +26,7 @@ mod tests {
 
   #[test]
   fn test_amplitude_normalize_drops_the_level() -> Result<(), Report> {
-    let f = DistributionFunction::<f64>::from_start_dx_values(0.0, 1.0, array![1.0, 0.0, 2.0])?.with_amplitude(5.0);
+    let f = DistributionFunction::from_start_dx_values(0.0, 1.0, array![1.0, 0.0, 2.0])?.with_amplitude(5.0);
     let normalized = Distribution::Function(f).normalize()?;
     pretty_assert_abs_diff_eq!(array![1.0, 0.0, 2.0], normalized.y()?, epsilon = 1e-15);
     Ok(())
@@ -90,7 +90,7 @@ mod tests {
 
     const GAUSSIAN_DX: f64 = 0.01;
 
-    pub(super) fn gaussian(mean: f64, sd: f64) -> Result<DistributionFunction<f64>, Report> {
+    pub(super) fn gaussian(mean: f64, sd: f64) -> Result<DistributionFunction, Report> {
       let n = f64_to_usize_saturating((20.0 * sd / GAUSSIAN_DX).round()) + 1;
       let start = mean - 10.0 * sd;
       let y = Array1::from_shape_fn(n, |i| {

@@ -36,7 +36,7 @@ pub fn distribution_multiplication(
   }
 }
 
-fn multiply_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Result<Distribution, Report> {
+fn multiply_point_point(a: &DistributionPoint, b: &DistributionPoint) -> Result<Distribution, Report> {
   const EPS: f64 = 1e-9;
   if (a.t() - b.t()).abs() > EPS {
     let a_domain = Some(point_hard_domain(a));
@@ -47,10 +47,7 @@ fn multiply_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) 
   Ok(Distribution::point(a.t(), amplitude))
 }
 
-fn multiply_point_range(
-  point: &DistributionPoint<f64>,
-  range: &DistributionRange<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_point_range(point: &DistributionPoint, range: &DistributionRange) -> Result<Distribution, Report> {
   const EPS: f64 = 1e-9;
   let t = point.t();
   if t < range.start() - EPS || t > range.end() + EPS {
@@ -62,10 +59,7 @@ fn multiply_point_range(
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_point_function(
-  point: &DistributionPoint<f64>,
-  func: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_point_function(point: &DistributionPoint, func: &DistributionFunction) -> Result<Distribution, Report> {
   let t = point.t();
   let tail = if t < func.x_min() {
     Some(func.left_extrap())
@@ -91,7 +85,7 @@ fn multiply_point_function(
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64>) -> Result<Distribution, Report> {
+fn multiply_range_range(a: &DistributionRange, b: &DistributionRange) -> Result<Distribution, Report> {
   let overlap_start = a.start().max(b.start());
   let overlap_end = a.end().min(b.end());
 
@@ -106,8 +100,8 @@ fn multiply_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64>) 
 }
 
 fn multiply_range_function(
-  range: &DistributionRange<f64>,
-  func: &DistributionFunction<f64>,
+  range: &DistributionRange,
+  func: &DistributionFunction,
   max_points: MaxGridPoints,
 ) -> Result<Distribution, Report> {
   let a_bounds = (range.start(), range.end());
@@ -139,7 +133,7 @@ fn multiply_range_function(
 }
 
 pub(crate) fn multiply_functions(
-  functions: &[&DistributionFunction<f64>],
+  functions: &[&DistributionFunction],
   max_points: MaxGridPoints,
 ) -> Result<Distribution, Report> {
   let ordered = canonical_operand_order(functions);
@@ -181,7 +175,7 @@ pub(crate) fn multiply_functions(
   }
 }
 
-fn canonical_operand_order<'a>(functions: &[&'a DistributionFunction<f64>]) -> Vec<&'a DistributionFunction<f64>> {
+fn canonical_operand_order<'a>(functions: &[&'a DistributionFunction]) -> Vec<&'a DistributionFunction> {
   let mut ordered = functions.to_vec();
   ordered.sort_by_key(|f| (OrderedFloat(f.x_min()), OrderedFloat(f.x_max()), OrderedFloat(f.dx())));
   ordered
@@ -244,20 +238,20 @@ fn side_bounds(domains: &[HardDomain], side: Side) -> (Option<f64>, Option<f64>)
 }
 
 fn with_composed_tails(
-  function: DistributionFunction<f64>,
+  function: DistributionFunction,
   a_tails: (BoundaryBehavior, BoundaryBehavior),
   b_tails: (BoundaryBehavior, BoundaryBehavior),
-) -> Result<DistributionFunction<f64>, Report> {
+) -> Result<DistributionFunction, Report> {
   let left = compose_multiplication_tail(Side::Left, a_tails.0, b_tails.0)?;
   let right = compose_multiplication_tail(Side::Right, a_tails.1, b_tails.1)?;
   with_settled_tails(function, left, right)
 }
 
 pub(super) fn with_settled_tails(
-  function: DistributionFunction<f64>,
+  function: DistributionFunction,
   left: BoundaryBehavior,
   right: BoundaryBehavior,
-) -> Result<DistributionFunction<f64>, Report> {
+) -> Result<DistributionFunction, Report> {
   let settled = |tail: BoundaryBehavior, edge: f64| match tail {
     BoundaryBehavior::HardEdgeCell(law) if !function.grid_fn().coincides(law.t_edge, edge) => BoundaryBehavior::Hard,
     other => other,
@@ -327,15 +321,15 @@ pub(crate) fn distribution_hard_domain(d: &Distribution) -> Option<HardDomain> {
   }
 }
 
-pub(crate) fn point_hard_domain(p: &DistributionPoint<f64>) -> HardDomain {
+pub(crate) fn point_hard_domain(p: &DistributionPoint) -> HardDomain {
   ((p.t(), p.t()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
-pub(crate) fn range_hard_domain(r: &DistributionRange<f64>) -> HardDomain {
+pub(crate) fn range_hard_domain(r: &DistributionRange) -> HardDomain {
   ((r.start(), r.end()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
-pub(crate) fn function_hard_domain(f: &DistributionFunction<f64>) -> HardDomain {
+pub(crate) fn function_hard_domain(f: &DistributionFunction) -> HardDomain {
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
 }
 

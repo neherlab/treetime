@@ -13,15 +13,15 @@ pub(crate) fn distribution_negation(dist: &Distribution) -> Result<Distribution,
   }
 }
 
-fn negate_point(point: &DistributionPoint<f64>) -> Distribution {
+fn negate_point(point: &DistributionPoint) -> Distribution {
   Distribution::point(-point.t(), point.amplitude())
 }
 
-fn negate_range(range: &DistributionRange<f64>) -> Distribution {
+fn negate_range(range: &DistributionRange) -> Distribution {
   Distribution::range((-range.end(), -range.start()), range.amplitude())
 }
 
-fn negate_function(func: &DistributionFunction<f64>) -> Result<Distribution, Report> {
+fn negate_function(func: &DistributionFunction) -> Result<Distribution, Report> {
   let mut result = func.clone();
   result.negate_arg_inplace()?;
   Ok(Distribution::Function(result))

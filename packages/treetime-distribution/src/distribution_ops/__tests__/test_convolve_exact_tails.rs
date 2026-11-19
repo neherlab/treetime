@@ -207,7 +207,7 @@ mod tests {
       dx: f64,
       n: usize,
       neg_log: impl Fn(usize, f64) -> f64,
-    ) -> Result<DistributionFunction<f64>, Report> {
+    ) -> Result<DistributionFunction, Report> {
       let y: Array1<f64> = (0..n).map(|i| neg_log(i, x_min + i.to_f64_exact() * dx)).collect();
       DistributionFunction::from_start_dx_values(x_min, dx, y)?
         .with_left_extrap(BoundaryBehavior::Hard)?
@@ -215,8 +215,8 @@ mod tests {
     }
 
     pub(super) fn traced_convolution(
-      a: &DistributionFunction<f64>,
-      b: &DistributionFunction<f64>,
+      a: &DistributionFunction,
+      b: &DistributionFunction,
     ) -> Result<TracedConvolution, Report> {
       let mut sources = SourceRecorder::default();
       let result =
@@ -257,7 +257,7 @@ mod tests {
       peaks: f64,
       dx: f64,
       x_start: f64,
-      result: DistributionFunction<f64>,
+      result: DistributionFunction,
       sources: BTreeMap<usize, SampleSource>,
       quadrature_terms: usize,
       round_offs: BTreeMap<u64, FftRoundOff>,

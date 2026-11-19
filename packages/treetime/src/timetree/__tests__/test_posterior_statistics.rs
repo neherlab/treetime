@@ -103,7 +103,7 @@ mod tests {
   fn test_posterior_survival_follows_a_steep_later_tail() -> Result<(), Report> {
     let rate = 100.0;
     let distribution = Distribution::Function(
-      DistributionFunction::<f64>::from_range_values((0.0, 1.0), Array1::zeros(11))?
+      DistributionFunction::from_range_values((0.0, 1.0), Array1::zeros(11))?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?,
     );
@@ -157,7 +157,7 @@ mod tests {
   fn test_posterior_survival_follows_the_power_law_of_a_hard_cell_end() -> Result<(), Report> {
     let (anchor_y, b) = (0.4, 2.5);
     let distribution = Distribution::Function(
-      DistributionFunction::<f64>::from_range_values((0.0, 3.0), array![anchor_y, anchor_y, anchor_y, f64::INFINITY])?
+      DistributionFunction::from_range_values((0.0, 3.0), array![anchor_y, anchor_y, anchor_y, f64::INFINITY])?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b }))?,
     );
@@ -187,12 +187,9 @@ mod tests {
   #[test]
   fn test_posterior_survival_is_flat_across_an_interior_gap_only_up_to_the_level_spacing() -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64>::from_range_values(
-        (0.0, 5.0),
-        array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0],
-      )?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?,
+      DistributionFunction::from_range_values((0.0, 5.0), array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0])?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Hard)?,
     );
 
     let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
@@ -206,7 +203,7 @@ mod tests {
   #[test]
   fn test_posterior_survival_follows_a_long_soft_tail_of_a_narrow_posterior() -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64>::from_range_values((0.0, 0.01), Array1::zeros(11))?
+      DistributionFunction::from_range_values((0.0, 0.01), Array1::zeros(11))?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?,
     );
@@ -241,7 +238,7 @@ mod tests {
     #[case] right: BoundaryBehavior,
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64>::from_start_dx_values(start, STEP, y)?
+      DistributionFunction::from_start_dx_values(start, STEP, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)?,
     );
@@ -265,7 +262,7 @@ mod tests {
     #[case] y: Array1<f64>,
     #[case] max_interpolation_error: f64,
   ) -> Result<(), Report> {
-    let function = DistributionFunction::<f64>::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
+    let function = DistributionFunction::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
     let profile = MassProfile::new(&function)?;
@@ -291,7 +288,7 @@ mod tests {
     #[case] message: &str,
   ) -> Result<(), Report> {
     let distribution = Distribution::Function(
-      DistributionFunction::<f64>::from_range_values(range, y)?
+      DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)?,
     );

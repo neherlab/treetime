@@ -1,23 +1,18 @@
-use crate::InterpElem;
 use crate::grid::Grid;
-use num_traits::Float;
 
-pub struct GridIter<T: InterpElem> {
-  grid: Grid<T>,
+pub struct GridIter {
+  grid: Grid,
   index: usize,
 }
 
-impl<T: InterpElem> GridIter<T> {
-  pub(crate) fn new(grid: Grid<T>) -> Self {
+impl GridIter {
+  pub(crate) fn new(grid: Grid) -> Self {
     Self { grid, index: 0 }
   }
 }
 
-impl<T: InterpElem> Iterator for GridIter<T>
-where
-  T: Float,
-{
-  type Item = T;
+impl Iterator for GridIter {
+  type Item = f64;
 
   fn next(&mut self) -> Option<Self::Item> {
     (self.index < self.grid.len()).then(|| {
@@ -33,10 +28,7 @@ where
   }
 }
 
-impl<T: InterpElem> ExactSizeIterator for GridIter<T>
-where
-  T: Float,
-{
+impl ExactSizeIterator for GridIter {
   fn len(&self) -> usize {
     self.grid.len() - self.index
   }

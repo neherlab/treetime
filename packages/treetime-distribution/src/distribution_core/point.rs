@@ -1,21 +1,19 @@
-use std::fmt::Debug;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DistributionPoint<T: Clone + Copy + Debug> {
-  t: T,
-  ampl: T,
+#[derive(Clone, Debug, PartialEq)]
+pub struct DistributionPoint {
+  t: f64,
+  ampl: f64,
 }
 
-impl<T: Clone + Copy + Debug> DistributionPoint<T> {
-  pub(crate) fn new(t: T, ampl: T) -> Self {
+impl DistributionPoint {
+  pub(crate) fn new(t: f64, ampl: f64) -> Self {
     DistributionPoint { t, ampl }
   }
 
-  pub(crate) fn t(&self) -> T {
+  pub(crate) fn t(&self) -> f64 {
     self.t
   }
 
-  pub(crate) fn amplitude(&self) -> T {
+  pub(crate) fn amplitude(&self) -> f64 {
     self.ampl
   }
 }

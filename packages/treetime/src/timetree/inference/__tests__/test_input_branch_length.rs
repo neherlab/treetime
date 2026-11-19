@@ -295,7 +295,7 @@ mod tests {
       InputBranchModel::new(sequence_length, JC69_NUCLEOTIDE_SATURATED_DIFFERENCE)
     }
 
-    pub(super) fn function(distribution: &Distribution) -> &DistributionFunction<f64> {
+    pub(super) fn function(distribution: &Distribution) -> &DistributionFunction {
       let Distribution::Function(function) = distribution else {
         panic!("an input branch-length distribution must be a Function, got {distribution:?}");
       };
