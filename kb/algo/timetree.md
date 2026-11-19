@@ -54,7 +54,7 @@ Computes per-edge time distributions from partition contributions, clock rate, a
 
 v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs).
 
-- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L17-L65](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L17-L65): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `optimize_edge_lengths()`), then converts the branch-length grid to a time grid using the argument `branch_rate` (the clock rate times `gamma`), where `gamma > 1` means faster evolution (shorter time for same substitutions)
+- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L16-L64](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L16-L64): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `optimize_edge_lengths()`), then converts the branch-length grid to a time grid using the argument `branch_rate` (the clock rate times `gamma`), where `gamma > 1` means faster evolution (shorter time for same substitutions)
 
 ### Input branch lengths
 
@@ -93,7 +93,7 @@ Detailed ownership and objective identities are documented in [kb/algo/coalescen
 
 Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
-`coalescent_timescale()` (`#coalescent_timescale`) [packages/treetime/src/timetree/coalescent_timescale.rs#L27](../../packages/treetime/src/timetree/coalescent_timescale.rs#L27) estimates a constant $T_c$ as the one-segment skyline: it calls `optimize_skyline()` with `n_points = 1`, whose optimum is the closed form $T_c^{*}=I/M$ from the expected pair-rate integral $I$ and expected merger count $M$ of the posteriors (`LineageExpectation::segment_statistics`).
+`coalescent_timescale()` (`#coalescent_timescale`) [packages/treetime/src/timetree/coalescent_timescale.rs#L26](../../packages/treetime/src/timetree/coalescent_timescale.rs#L26) estimates a constant $T_c$ as the one-segment skyline: it calls `optimize_skyline()` with `n_points = 1`, whose optimum is the closed form $T_c^{*}=I/M$ from the expected pair-rate integral $I$ and expected merger count $M$ of the posteriors (`LineageExpectation::segment_statistics`).
 
 Tc is re-optimized each iteration (from iteration 2 onward) using constant Tc. In skyline mode, constant Tc is used during loop iterations; full skyline fit is deferred to post-convergence.
 
@@ -109,7 +109,7 @@ The Bayesian skyline plot (<a id="cite-6"></a>[Drummond et al. 2005](https://doi
 
 TreeTime's skyline implementation uses a smoothness penalty similar to the GMRF but finds the optimum by Newton steps rather than MCMC:
 
-`optimize_skyline()` (`#optimize_skyline`) [packages/treetime/src/coalescent/skyline.rs#L15](../../packages/treetime/src/coalescent/skyline.rs#L15) minimizes, over $z_i=\ln T_{c,i}$ on equal segments of the span of the expected lineage counts,
+`optimize_skyline()` (`#optimize_skyline`) [packages/treetime/src/coalescent/skyline.rs#L14](../../packages/treetime/src/coalescent/skyline.rs#L14) minimizes, over $z_i=\ln T_{c,i}$ on equal segments of the span of the expected lineage counts,
 
 ```
 cost = sum_i (I_i exp(-z_i) + M_i z_i) + stiffness / 2 * sum_i (z_{i+1} - z_i)^2
@@ -117,7 +117,7 @@ cost = sum_i (I_i exp(-z_i) + M_i z_i) + stiffness / 2 * sum_i (z_{i+1} - z_i)^2
 
 with $I_i$, $M_i$ the expected pair-rate integral and merger count of segment $i$ (`LineageExpectation::segment_statistics`). The data term is the negative expected complete-data log-likelihood; the stiffness term penalizes rapid changes in log(Tc) between adjacent segments (analogous to the GMRF precision).
 
-`build_tc_distribution()` (`#build_tc_distribution`) [packages/treetime/src/coalescent/skyline.rs](../../packages/treetime/src/coalescent/skyline.rs) creates a piecewise-constant `Distribution::Formula` for coalescent scoring. `SkylineResult::tc_schedule` preserves the same step boundaries for consumers that integrate hazards.
+`SkylineResult::tc_schedule` holds $T_c(t)$ as a `PiecewiseConstantFn` with the interior segment boundaries as breakpoints; the coalescent prior and the merger rates evaluate it, and each end segment extends its value to all times beyond the span.
 
 v1: [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs).
 v0: [`packages/legacy/treetime/treetime/merger_models.py#L281`](../../packages/legacy/treetime/treetime/merger_models.py#L281).
@@ -212,7 +212,7 @@ Components use `LogLh`, while distribution grids and probability arrays remain n
 
 - `compute_sequence_log_lh()` (`#compute_sequence_log_lh`) [packages/treetime/src/timetree/convergence/likelihood.rs#L6-L17](../../packages/treetime/src/timetree/convergence/likelihood.rs#L6-L17): sum of per-partition root log-likelihoods from marginal reconstruction
 - `log_lh_time`: `log_marginal_likelihood()` (`#log_marginal_likelihood`) [packages/treetime/src/timetree/inference/result.rs#L20](../../packages/treetime/src/timetree/inference/result.rs#L20), stored in `TimeInference` by `run_timetree` [packages/treetime/src/timetree/inference/runner.rs#L106](../../packages/treetime/src/timetree/inference/runner.rs#L106): log mass of the root's subtree distribution, whose amplitude carries the levels of all messages and factors (see [distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md#amplitude-re-peaking-and-normalization)). Branch-length likelihoods enter normalized to their peaks, so the value is the log marginal likelihood relative to each branch's sequence optimum, coalescent prior included. Under a coalescent prior it adds the normalization $P+R$ of the mean-field prior (`CoalescentPrior::log_normalization`), so values from runs whose lineage counts were frozen at different rates are comparable; see [coalescent-contribution-refactor.md](coalescent-contribution-refactor.md#normalization).
-- `log_lh_coal`: `CoalescentTimescale::expected_log_likelihood()` (`#expected_log_likelihood`) [packages/treetime/src/timetree/coalescent_timescale.rs#L129](../../packages/treetime/src/timetree/coalescent_timescale.rs#L129): expected complete-data coalescent log-likelihood $-\sum_i I_i/T_{c,i}-\sum_i M_i\ln T_{c,i}$ of the round's posteriors under the round's $T_c$, the objective the $T_c$ fit maximizes
+- `log_lh_coal`: `CoalescentTimescale::expected_log_likelihood()` (`#expected_log_likelihood`) [packages/treetime/src/timetree/coalescent_timescale.rs#L126](../../packages/treetime/src/timetree/coalescent_timescale.rs#L126): expected complete-data coalescent log-likelihood $-\sum_i I_i/T_{c,i}-\sum_i M_i\ln T_{c,i}$ of the round's posteriors under the round's $T_c$, the objective the $T_c$ fit maximizes
 
 ---
 

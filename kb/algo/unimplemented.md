@@ -239,7 +239,7 @@ v1: not implemented.
 
 Build per-edge time likelihood distributions from partition likelihood contributions and branch-length grids, then convert their coordinates to time using the effective clock rate.
 
-v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58) and called from [`packages/treetime/src/timetree/inference/runner.rs#L283-L291`](../../packages/treetime/src/timetree/inference/runner.rs#L283-L291). Input-branch mode remains a separate gap described above.
+v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L22-L57`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L22-L57) and called from [`packages/treetime/src/timetree/inference/runner.rs#L283-L291`](../../packages/treetime/src/timetree/inference/runner.rs#L283-L291). Input-branch mode remains a separate gap described above.
 
 ---
 

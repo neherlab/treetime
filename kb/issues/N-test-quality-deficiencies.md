@@ -47,7 +47,7 @@ Cross-mode validation: v0 has no sparse mode, so dense oracle is the only availa
 
 ### Maximum grid point tests compare error text through `unwrap_err()`
 
-- [`packages/treetime-grid/src/__tests__/max_grid_points.rs#L41-L42`](../../packages/treetime-grid/src/__tests__/max_grid_points.rs#L41-L42): `test_max_grid_points_from_str_rejects` compares `MaxGridPoints::from_str(text).unwrap_err().to_string()` with the expected message
+- [`packages/treetime-grid/src/__tests__/max_grid_points.rs#L40-L41`](../../packages/treetime-grid/src/__tests__/max_grid_points.rs#L40-L41): `test_max_grid_points_from_str_rejects` compares `MaxGridPoints::from_str(text).unwrap_err().to_string()` with the expected message
 - [packages/app-server/src/bin/treetime-server.rs#L190-L192](../../packages/app-server/src/bin/treetime-server.rs#L190-L192): `test_treetime_server_max_grid_points_out_of_range_fails` compares `ServerArgs::try_parse_from(..).unwrap_err().to_string()` with the expected message
 
 Both tests panic without a message when the call succeeds. `assert_error!` of `packages/treetime-utils/src/testing/assert.rs` checks the `Err` and the exact message in one assertion and reports an unexpected `Ok`.

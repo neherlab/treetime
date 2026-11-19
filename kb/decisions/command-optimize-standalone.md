@@ -51,7 +51,7 @@ The writer `fn write_augur_node_data_refine()` and its types (`AugurNodeDataJson
 
 The per-branch optimization uses the GTR eigensystem decomposition to precompute branch-length-independent coefficients `k_c = (msg_child . V)_c * (msg_parent . V_inv^T)_c` for each alignment position. These coefficients allow computing log-likelihood, first derivative, and second derivative from the same cached exponentials. Dense partitions contribute per-position coefficients; sparse partitions group invariant positions by state pair with multiplicity counts (`fn get_coefficients()` [packages/treetime/src/partition/optimize/sparse.rs#L11-L84](../../packages/treetime/src/partition/optimize/sparse.rs#L11-L84)).
 
-The same optimization machinery is reused by the timetree command to compute branch length likelihood distributions on a grid ([packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L31-L63](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L31-L63)).
+The same optimization machinery is reused by the timetree command to compute branch length likelihood distributions on a grid ([packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L30-L62](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L30-L62)).
 
 ## Scientific background
 

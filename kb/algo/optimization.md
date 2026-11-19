@@ -81,7 +81,7 @@ This is a v1-only feature. See the indel models report ([kb/reports/indel-models
 
 O(1) interval lookup via `floor((x - x_min) / dx)` for uniformly spaced grids. Used throughout the distribution system for evaluating discretized probability distributions and branch length likelihoods on fixed grids.
 
-v1: `fn Grid.find_interval_index()` [`packages/treetime-grid/src/grid.rs#L266-L279`](../../packages/treetime-grid/src/grid.rs#L266-L279) finds the interval, and `fn GridFn.interp_with_extrap()` [`packages/treetime-grid/src/grid_fn.rs#L151`](../../packages/treetime-grid/src/grid_fn.rs#L151) interpolates in it.
+v1: `fn Grid.find_interval_index()` [`packages/treetime-grid/src/grid.rs#L222-L232`](../../packages/treetime-grid/src/grid.rs#L222-L232) finds the interval, and `fn GridFn.interp_with_extrap()` [`packages/treetime-grid/src/grid_fn.rs#L121`](../../packages/treetime-grid/src/grid_fn.rs#L121) interpolates in it.
 
 Standard treatment in <a id="cite-7"></a>[Burden and Faires 2010](https://doi.org/10.1007/978-3-319-07671-3) [[7](#ref-7)], Chapter 3.
 

@@ -130,28 +130,28 @@ Use an immutable topology index between topology changes. A topology change prod
 The inference passes share a dependency order, but their numerical operations and forward passes differ. The backward operations are:
 
 - **Marginal**: log-space profile product; matrix propagation across the branch
-- **Dating**: distribution product [packages/treetime/src/timetree/inference/backward_pass.rs#L118](../../packages/treetime/src/timetree/inference/backward_pass.rs#L118); convolution across the branch
+- **Dating**: distribution product [packages/treetime/src/timetree/inference/backward_pass.rs#L117](../../packages/treetime/src/timetree/inference/backward_pass.rs#L117); convolution across the branch
 - **Fitch**: state-set intersection with union fallback [packages/treetime/src/ancestral/fitch_sub.rs#L81](../../packages/treetime/src/partition/fitch/sub.rs#L81); identity
 - **Clock regression**: moment sum [packages/treetime/src/clock/clock_regression.rs#L234](../../packages/treetime/src/clock/clock_regression.rs#L234); affine map
 
 These operations suggest a possible shared traversal driver. Its interface must also account for:
 
 - **Leaf initializer**: the observation a leaf contributes
-- **Child-inclusion predicate**: dating skips bad branches [packages/treetime/src/timetree/inference/backward_pass.rs#L182](../../packages/treetime/src/timetree/inference/backward_pass.rs#L182)
-- **Node-finalize step**: dating multiplies a role-specific coalescent prior and the input date constraint [packages/treetime/src/timetree/inference/backward_pass.rs#L148](../../packages/treetime/src/timetree/inference/backward_pass.rs#L148); marginal multiplies the root by the equilibrium frequencies; regression does neither
-- **Point-estimate commit**: dating projects onto the parent time [packages/treetime/src/timetree/inference/forward_pass.rs#L249](../../packages/treetime/src/timetree/inference/forward_pass.rs#L249)
-- **Pass-level reduction**: dating counts contradicted dates [packages/treetime/src/timetree/inference/forward_pass.rs#L53](../../packages/treetime/src/timetree/inference/forward_pass.rs#L53)
+- **Child-inclusion predicate**: dating skips bad branches [packages/treetime/src/timetree/inference/backward_pass.rs#L181](../../packages/treetime/src/timetree/inference/backward_pass.rs#L181)
+- **Node-finalize step**: dating multiplies a role-specific coalescent prior and the input date constraint [packages/treetime/src/timetree/inference/backward_pass.rs#L147](../../packages/treetime/src/timetree/inference/backward_pass.rs#L147); marginal multiplies the root by the equilibrium frequencies; regression does neither
+- **Point-estimate commit**: dating projects onto the parent time [packages/treetime/src/timetree/inference/forward_pass.rs#L248](../../packages/treetime/src/timetree/inference/forward_pass.rs#L248)
+- **Pass-level reduction**: dating counts contradicted dates [packages/treetime/src/timetree/inference/forward_pass.rs#L52](../../packages/treetime/src/timetree/inference/forward_pass.rs#L52)
 
 Message type and normalization also vary:
 
 - **Marginal**: an explicit `(profile, log-likelihood)` pair [packages/treetime/src/partition/storage/dense.rs#L54](../../packages/treetime/src/partition/storage/dense.rs#L54)
-- **Dating**: peak-normalized, the offset discarded by shift-invariance [packages/treetime/src/timetree/inference/backward_pass.rs#L80](../../packages/treetime/src/timetree/inference/backward_pass.rs#L80)
+- **Dating**: peak-normalized, the offset discarded by shift-invariance [packages/treetime/src/timetree/inference/backward_pass.rs#L79](../../packages/treetime/src/timetree/inference/backward_pass.rs#L79)
 - **Regression and Fitch**: no normalizer
 
 The forward contribution-removal diverges most:
 
 - **Regression**: subtraction [packages/treetime/src/clock/clock_regression.rs#L265](../../packages/treetime/src/clock/clock_regression.rs#L265). Numerical error requires separate validation
-- **Marginal and dating**: division, the <a id="gloss-use-4"></a>cavity distribution <sup>[4](#gloss-4)</sup> clamped away from zero [packages/treetime/src/partition/marginal/shared/pass.rs#L320](../../packages/treetime/src/partition/marginal/shared/pass.rs#L320) and guarded against disjoint support [packages/treetime/src/timetree/inference/forward_pass.rs#L212](../../packages/treetime/src/timetree/inference/forward_pass.rs#L212)
+- **Marginal and dating**: division, the <a id="gloss-use-4"></a>cavity distribution <sup>[4](#gloss-4)</sup> clamped away from zero [packages/treetime/src/partition/marginal/shared/pass.rs#L320](../../packages/treetime/src/partition/marginal/shared/pass.rs#L320) and guarded against disjoint support [packages/treetime/src/timetree/inference/forward_pass.rs#L211](../../packages/treetime/src/timetree/inference/forward_pass.rs#L211)
 - **Fitch**: a top-down resolution that removes nothing [packages/treetime/src/ancestral/fitch_sub.rs#L177](../../packages/treetime/src/partition/fitch/sub.rs#L177)
 
 Compare the callback requirements of clock regression and marginal inference before extracting a shared numerical driver. Keep separate callbacks if a common interface requires pass-specific conditionals. Scheduling is already separate: `fn GraphSchedule::scan_up` and `fn GraphSchedule::scan_down` accept a per-node step closure [packages/treetime-graph/src/schedule_scan.rs#L18-L68](../../packages/treetime-graph/src/schedule_scan.rs#L18-L68). Any replacement schedule must preserve dependencies and be measured on balanced and unbalanced trees.

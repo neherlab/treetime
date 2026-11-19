@@ -4,7 +4,7 @@ The coalescent log-weighting operation allocates intermediate arrays on every ca
 
 ## Log-weighting intermediate buffers
 
-`fn distribution_multiply_by_fn()` [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L9-L51`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L9-L51) materializes the time grid with `distribution.t()` (an owned `Array1`, L25), clones the ordinates of a `Distribution::Function` (L27), and collects a separate `weights` array (L33) before it adds the weights to the cloned ordinates (L34; the owned addition reuses the clone's buffer). The weights could be added to the ordinates in place while walking the grid, without the time and weight arrays. The callers are in `packages/treetime/src/timetree/inference/coalescent_factor.rs`; the function runs once per internal node per backward pass and once per leaf with an active coalescent model.
+`fn distribution_multiply_by_fn()` [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L8-L45`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L8-L45) materializes the time grid with `distribution.t()` (an owned `Array1`, L25), clones the ordinates of a `Distribution::Function` (L27), and collects a separate `weights` array (L33) before it adds the weights to the cloned ordinates (L34; the owned addition reuses the clone's buffer). The weights could be added to the ordinates in place while walking the grid, without the time and weight arrays. The callers are in `packages/treetime/src/timetree/inference/coalescent_factor.rs`; the function runs once per internal node per backward pass and once per leaf with an active coalescent model.
 
 ## Required behavior
 

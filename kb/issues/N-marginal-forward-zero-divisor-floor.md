@@ -39,4 +39,3 @@ No correction is ready until the reachable zero patterns and the intended cavity
 
 - [M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md](M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md)
 - [M-sparse-marginal-zero-multiplicity-nan.md](M-sparse-marginal-zero-multiplicity-nan.md)
-- [N-distribution-plain-division-fixed-floor.md](N-distribution-plain-division-fixed-floor.md)

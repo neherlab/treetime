@@ -13,7 +13,7 @@ v1 uses the parent node's child count for the per-edge multiplicity parameter in
 
 **v0 location**: `MergerModel.total_LH()` at `packages/legacy/treetime/treetime/merger_models.py#L252-L257`. Calls `self.cost(node.time_before_present, node.branch_length)` without passing `multiplicity`, getting the default `multiplicity=2.0`.
 
-**v1 location**: `LineageExpectation::from_survivals()` at `packages/treetime/src/coalescent/mean_field.rs#L347-L363` gives each node the weight $1 - m_v$ from its child count `node.outbound().len()` (L354), so a node with $m_v$ children counts $m_v - 1$ mergers. `LineageExpectation::segment_statistics()` at `packages/treetime/src/coalescent/mean_field.rs#L494-L528` sums these merger counts per skyline segment.
+**v1 location**: `LineageExpectation::from_survivals()` at `packages/treetime/src/coalescent/mean_field.rs#L341-L357` gives each node the weight $1 - m_v$ from its child count `node.outbound().len()` (L354), so a node with $m_v$ children counts $m_v - 1$ mergers. `LineageExpectation::segment_statistics()` at `packages/treetime/src/coalescent/mean_field.rs#L486-L520` sums these merger counts per skyline segment.
 
 **v0 erratum**: `../v0-errata/coalescent-total-lh-fixed-multiplicity.md`.
 
@@ -35,7 +35,7 @@ where m is the number of children at the parent (merger) node. For binary trees 
 
 ## Affected code paths
 
-- `CoalescentTimescale::expected_log_likelihood()` at `packages/treetime/src/timetree/coalescent_timescale.rs#L118` - convergence metric and reported coalescent likelihood
-- `optimize_skyline()` at `packages/treetime/src/coalescent/skyline.rs#L15` - Tc optimization objective
-- Both use the merger counts of `LineageExpectation::segment_statistics()` in `expected_log_likelihood()` at `packages/treetime/src/coalescent/skyline.rs#L96`
-- `CoalescentPrior::node_contribution()` at `packages/treetime/src/coalescent/mean_field.rs#L116` takes the child count `n_children` for the per-node factor of the backward pass
+- `CoalescentTimescale::expected_log_likelihood()` at `packages/treetime/src/timetree/coalescent_timescale.rs#L115` - convergence metric and reported coalescent likelihood
+- `optimize_skyline()` at `packages/treetime/src/coalescent/skyline.rs#L14` - Tc optimization objective
+- Both use the merger counts of `LineageExpectation::segment_statistics()` in `expected_log_likelihood()` at `packages/treetime/src/coalescent/skyline.rs#L93`
+- `CoalescentPrior::node_contribution()` at `packages/treetime/src/coalescent/mean_field.rs#L114` takes the child count `n_children` for the per-node factor of the backward pass

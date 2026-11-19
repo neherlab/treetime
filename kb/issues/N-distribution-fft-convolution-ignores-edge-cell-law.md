@@ -7,7 +7,7 @@ A distribution with a `BoundaryBehavior::HardEdgeCell` side follows `EdgeCellLaw
 
 Function-function convolution ignores this law:
 
-- `fn convolution_function_function_fine()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L261-L337](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L261-L337) resamples both operands to the finer spacing with `fn DistributionFunction::resample_dx()`, which interpolates through `fn GridFn::resample_range_dx_clamped()` [packages/treetime-grid/src/grid_fn.rs#L469](../../packages/treetime-grid/src/grid_fn.rs#L469) and `fn GridFn::interp()` without boundary laws, so the cell is linear between its grid values
+- `fn convolution_function_function_fine()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L245-L321](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L245-L321) resamples both operands to the finer spacing with `fn DistributionFunction::resample_dx()`, which interpolates through `fn GridFn::resample_range_dx_clamped()` [packages/treetime-grid/src/grid_fn.rs#L373](../../packages/treetime-grid/src/grid_fn.rs#L373) and `fn GridFn::interp()` without boundary laws, so the cell is linear between its grid values
 - `FftConvolver::convolve()` then sums the grid samples, so the first cell of a branch contributes the quadrature of its two grid values instead of the mass of its law
 
 In the time inference, every backward and forward convolution of a branch with a node distribution that is a function takes this path. The mass profile, the convolution window, and the convolutions with points and ranges read the law; the shift by the exact date of a leaf keeps it, so the products and posteriors at the parents of such leaves carry it.

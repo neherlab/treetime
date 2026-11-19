@@ -1,6 +1,6 @@
 # Timetree branch-length grid is evaluated one branch length at a time
 
-For every edge in every timetree iteration, `fn evaluate_log_lh_on_grid()` evaluates the branch-length log-likelihood at 300 grid points, one call per point [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L86-L96](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L86-L96). Each call walks all site coefficients of the edge again, so every coefficient row is read 300 times per edge.
+For every edge in every timetree iteration, `fn evaluate_log_lh_on_grid()` evaluates the branch-length log-likelihood at 300 grid points, one call per point [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L85-L95](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L85-L95). Each call walks all site coefficients of the edge again, so every coefficient row is read 300 times per edge.
 
 ## Cost
 
@@ -11,9 +11,9 @@ Measured 2026-10-19 with the forward pass trimmed (prototype commit `6d06d211a`;
 ## Locations
 
 > [!WARNING]
-> **Needs review.** The line anchors below are stale: `fn create_edge_contribution()` is at `packages/treetime/src/partition/marginal/dense/partition.rs#L136` and `packages/treetime/src/partition/marginal/sparse/partition.rs#L100`, and `packages/treetime/src/timetree/inference/runner.rs#L283` no longer points at the branch-distribution step. `fn evaluate_log_lh_on_grid()` is at `packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L293`, `fn evaluate_with_indels_log_lh_only()` at `packages/treetime/src/optimize/likelihood.rs#L25`.
+> **Needs review.** The line anchors below are stale: `fn create_edge_contribution()` is at `packages/treetime/src/partition/marginal/dense/partition.rs#L136` and `packages/treetime/src/partition/marginal/sparse/partition.rs#L100`, and `packages/treetime/src/timetree/inference/runner.rs#L283` no longer points at the branch-distribution step. `fn evaluate_log_lh_on_grid()` is at `packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L292`, `fn evaluate_with_indels_log_lh_only()` at `packages/treetime/src/optimize/likelihood.rs#L25`.
 
-- `fn evaluate_log_lh_on_grid()` maps each grid point through `fn evaluate_with_indels_log_lh_only()` [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L94](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L94); its caller is [packages/treetime/src/timetree/inference/runner.rs#L283](../../packages/treetime/src/timetree/inference/runner.rs#L283)
+- `fn evaluate_log_lh_on_grid()` maps each grid point through `fn evaluate_with_indels_log_lh_only()` [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L93](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L93); its caller is [packages/treetime/src/timetree/inference/runner.rs#L283](../../packages/treetime/src/timetree/inference/runner.rs#L283)
 - `fn evaluate_site_contributions()` computes the exponentials of one branch length and loops over all sites [packages/treetime/src/optimize/eval.rs](../../packages/treetime/src/optimize/eval.rs)
 - `fn create_edge_contribution()` builds the per-edge contributions of the dense and sparse partitions [packages/treetime/src/partition/marginal/dense/partition.rs#L147](../../packages/treetime/src/partition/marginal/dense/partition.rs#L147) [packages/treetime/src/partition/marginal/sparse/partition.rs#L88](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L88)
 

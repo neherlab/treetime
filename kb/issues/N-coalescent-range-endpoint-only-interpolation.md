@@ -6,12 +6,12 @@ For any nonlinear weight function -- the coalescent prior's `node_contribution` 
 
 ## Affected code
 
-- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L25-L33`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L25-L33): the Range/Point branch extracts the 2-element grid via `distribution.t()` and `distribution.y()` and evaluates the weight on it
+- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L21-L27`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L21-L27): the Range/Point branch extracts the 2-element grid via `distribution.t()` and `distribution.y()` and evaluates the weight on it
 - [`packages/treetime/src/coalescent/mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs): `CoalescentPrior::node_contribution` is nonlinear in the time through the integrals of $\bar k/T_c$ and $\ln T_c$
 
 ## Impact
 
-No production path reaches the endpoint-only evaluation. The only caller that can pass a Range is the coalescent factor of tips, and `fn apply_leaf_coalescent_factor()` [packages/treetime/src/timetree/inference/coalescent_factor.rs#L30-L55](../../packages/treetime/src/timetree/inference/coalescent_factor.rs#L30-L55) first converts a Range date into a `Distribution::Function` with hard edges on a grid at the time resolution of the coalescent prior (`time_resolution()`, at least 2 and at most `GRID_POINTS` points). The coalescent factor of internal nodes, `fn apply_coalescent_prior()` [packages/treetime/src/timetree/inference/coalescent_factor.rs#L11-L28](../../packages/treetime/src/timetree/inference/coalescent_factor.rs#L11-L28), receives the product of the child messages.
+No production path reaches the endpoint-only evaluation. The only caller that can pass a Range is the coalescent factor of tips, and `fn apply_leaf_coalescent_factor()` [packages/treetime/src/timetree/inference/coalescent_factor.rs#L29-L54](../../packages/treetime/src/timetree/inference/coalescent_factor.rs#L29-L54) first converts a Range date into a `Distribution::Function` with hard edges on a grid at the time resolution of the coalescent prior (`time_resolution()`, at least 2 and at most `GRID_POINTS` points). The coalescent factor of internal nodes, `fn apply_coalescent_prior()` [packages/treetime/src/timetree/inference/coalescent_factor.rs#L10-L27](../../packages/treetime/src/timetree/inference/coalescent_factor.rs#L10-L27), receives the product of the child messages.
 
 The defect remains in the API of `distribution_multiply_by_fn()`: a direct call with a Range gives a result whose interior values are wrong by more than the project numerical contract ($> 1\mathrm{e}{-6}$) for a nonlinear weight. The remaining work is to reject Range input in `distribution_multiply_by_fn()` with an error, or to grid it there as `apply_leaf_coalescent_factor()` does, so the gridding has one owner.
 
@@ -25,9 +25,9 @@ A fix must define a concrete interior grid for nonlinear range weighting without
 
 ## Proposed implementation plan
 
-The locations are current: the Range branch of `fn distribution_multiply_by_fn()` is at `multiply_by_fn.rs` L25-L33, and `fn apply_leaf_coalescent_factor()` grids a Range at `coalescent_factor.rs` L38-L50 before the call.
+The locations are current: the Range branch of `fn distribution_multiply_by_fn()` is at `multiply_by_fn.rs` L22-L25, and `fn apply_leaf_coalescent_factor()` grids a Range at `coalescent_factor.rs` L38-L50 before the call.
 
-1. Make `fn distribution_multiply_by_fn()` reject `Distribution::Range` with `make_error!`, as it already rejects `Distribution::Formula`, because only the caller knows the grid resolution (`time_resolution()` of the coalescent prior). `Distribution::Point` stays accepted: a point has one abscissa, so the evaluation there is exact
+1. Make `fn distribution_multiply_by_fn()` reject `Distribution::Range` with `make_error!`, because only the caller knows the grid resolution (`time_resolution()` of the coalescent prior). `Distribution::Point` stays accepted: a point has one abscissa, so the evaluation there is exact
 2. Keep the gridding in `fn apply_leaf_coalescent_factor()` as the one owner; no other caller passes a Range (`fn apply_coalescent_prior()` receives the product of child messages)
 3. Tests in `packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply_by_fn.rs`: a Range input returns the exact error message (`assert_err!`); a Point input returns the weight at the point (oracle: direct evaluation of the weight function). In `packages/treetime/src/timetree/inference/__tests__/`: a leaf with a Range date and the example $k = 2$, $T_c = 2$, $H(t) = 2.5 - 0.25t$ on $[0, 10]$ gives a normalized midpoint of about $0.2865$ within the interpolation bound of the grid step (oracle: the analytical density above)
 4. Validation: `just check`, `just test-rs`

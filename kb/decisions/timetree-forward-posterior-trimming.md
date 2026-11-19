@@ -12,7 +12,7 @@ Before the trim, every forward posterior kept a hard lower edge inherited from t
 
 ### What is trimmed
 
-`fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L170-L221](../../packages/treetime/src/timetree/inference/forward_pass.rs#L170-L221) forms the refined posterior of a node, the normalized product of the forward message and the node's subtree distribution, and trims it with `fn ResolvedForward::trim_posterior_to_mass()` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L151-L168](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L151-L168).
+`fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L169-L220](../../packages/treetime/src/timetree/inference/forward_pass.rs#L169-L220) forms the refined posterior of a node, the normalized product of the forward message and the node's subtree distribution, and trims it with `fn ResolvedForward::trim_posterior_to_mass()` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L150-L167](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L150-L167).
 
 - **Trimmed**: the refined posterior of each internal node and of each leaf without an exact date
 - **Not trimmed**: the root posterior, exactly dated nodes, a node without a subtree distribution (its posterior is the forward message), every backward message, and every forward convolution output
@@ -20,13 +20,13 @@ Before the trim, every forward posterior kept a hard lower edge inherited from t
 
 ### Where the cuts lie
 
-`fn trim_with_profile()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L54-L91](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L54-L91) computes the quantiles on the mass model of the untrimmed posterior ([timetree-posterior-statistics-count-tail-mass.md](timetree-posterior-statistics-count-tail-mass.md)):
+`fn trim_with_profile()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L51-L81](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L51-L81) computes the quantiles on the mass model of the untrimmed posterior ([timetree-posterior-statistics-count-tail-mass.md](timetree-posterior-statistics-count-tail-mass.md)):
 
 - **Grid**: the lower cut snaps down to the largest grid point at or below the lower $\epsilon_\text{trim}$ quantile, the upper cut up to the smallest grid point at or above the upper one, and the grid arrays are sliced between them. The trim keeps the grid points and values of the input and does not resample, so the trapezoid quadrature of the samples stays unchanged. At most $\epsilon_\text{trim}$ of the mass is removed on each side
 - **Hard cells**: a cut never splits the fit points of a retained hard cell (`fn GridFn::hard_cell_fit_range()`), so the power law of that cell evaluates as before
 - **Cut hard side**: a `Hard` or `HardApproach` side that is cut becomes `Hard` at the cut
 - **Quantile inside a `HardApproach` law**: when the quantile lies beyond the stored grid, inside the law between the grid edge and the hard bound, that side is not cut and keeps its law. A slice cannot end inside a tail law, and a cut at the grid edge would drop the law's mass (for density 1 on $[1, 2]$ with a flat law down to 0, half the mass)
-- **Cut soft side**: a `Linear` side keeps a `Linear` law that holds exactly the mass the cut removed. With $p(t_c)$ the density at the cut point $t_c$ and $m_\text{beyond}$ the model mass beyond it, both relative to the peak, the new neg-log slope has the magnitude $p(t_c) / m_\text{beyond}$ (`fn tail_with_mass_beyond()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L252-L267](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L252-L267))
+- **Cut soft side**: a `Linear` side keeps a `Linear` law that holds exactly the mass the cut removed. With $p(t_c)$ the density at the cut point $t_c$ and $m_\text{beyond}$ the model mass beyond it, both relative to the peak, the new neg-log slope has the magnitude $p(t_c) / m_\text{beyond}$ (`fn tail_with_mass_beyond()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L246-L261](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L246-L261))
 
 ### Spacing cap of forward convolutions
 
@@ -42,7 +42,7 @@ where:
 
 The backward convolution keeps the finer of the window spacing and the FFT spacing. Without the cap, a trimmed posterior with 300 points over its mass window passes its fine spacing into the next convolution with a wide branch distribution, and the forward grids grow (sc2: median forward convolution output 9 989 to 13 349 points, largest 240 050; mpox: a grid of 1.5 million points).
 
-A capped message can be too coarse for the posterior it forms when the subtree distribution is much narrower than the message. `fn ForwardConvolution::resolve_posterior()` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L51-L141](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L51-L141) therefore checks each posterior: when it has fewer than $N - 1$ cells across its $\epsilon_\text{trim}$ mass window and a finer spacing exists, the message is resampled once at $\max(\Delta t_\text{fine}, w_p / (N - 1))$, where $\Delta t_\text{fine}$ is the FFT spacing and $w_p$ the width of the posterior's mass window; when that posterior is still under-resolved, the message takes the FFT spacing. The trim reuses the mass model of this check.
+A capped message can be too coarse for the posterior it forms when the subtree distribution is much narrower than the message. `fn ForwardConvolution::resolve_posterior()` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L50-L140](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L50-L140) therefore checks each posterior: when it has fewer than $N - 1$ cells across its $\epsilon_\text{trim}$ mass window and a finer spacing exists, the message is resampled once at $\max(\Delta t_\text{fine}, w_p / (N - 1))$, where $\Delta t_\text{fine}$ is the FFT spacing and $w_p$ the width of the posterior's mass window; when that posterior is still under-resolved, the message takes the FFT spacing. The trim reuses the mass model of this check.
 
 ### Confidence intervals are clipped at physical bounds
 
@@ -133,7 +133,7 @@ Calibration (12 sets, `keep-opt-est` with `--time-marginal only-final`, mean of 
 ## Code references
 
 - `const TRIM_EPS` [packages/treetime/src/timetree/inference/runner.rs#L40](../../packages/treetime/src/timetree/inference/runner.rs#L40)
-- `fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L170-L221](../../packages/treetime/src/timetree/inference/forward_pass.rs#L170-L221)
+- `fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L169-L220](../../packages/treetime/src/timetree/inference/forward_pass.rs#L169-L220)
 - `fn convolve_forward_across_edge()`, `struct ForwardConvolution`, `fn ResolvedForward::trim_posterior_to_mass()` and `fn ResolvedForward::into_untrimmed()`, both returning `struct ForwardPosterior` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs)
 - `fn trim_to_mass()`, `fn trim_with_profile()`, `enum SpacingLimit` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs)
 - `NodePosterior.subtree_support` [packages/treetime/src/timetree/inference/result.rs#L103](../../packages/treetime/src/timetree/inference/result.rs#L103)

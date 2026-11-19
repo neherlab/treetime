@@ -5,7 +5,7 @@
 
 The coalescent statistics are integrals over the expected lineage counts: the pair-rate integral
 $I_i = \int_i \tfrac12(\bar k^2 - \bar k + V)\,dt$ and, through the prior, $\int \bar k(t)/T_c(t)\,dt$
-(`LineageExpectation::segment_statistics` [packages/treetime/src/coalescent/mean_field.rs#L494](../../packages/treetime/src/coalescent/mean_field.rs#L494)
+(`LineageExpectation::segment_statistics` [packages/treetime/src/coalescent/mean_field.rs#L486](../../packages/treetime/src/coalescent/mean_field.rs#L486)
 and `CoalescentPrior::new` [packages/treetime/src/coalescent/mean_field.rs#L42](../../packages/treetime/src/coalescent/mean_field.rs#L42)). Both use the
 trapezoid rule on a uniform grid of 4001 points (`EXPECTATION_GRID_POINTS` [packages/treetime/src/coalescent/mean_field.rs#L22](../../packages/treetime/src/coalescent/mean_field.rs#L22)) over the span of the node distributions, with $T_c$ evaluated at cell
 midpoints. The steps of $\bar k$ at point node times are exact: each step time enters the grid as a zero-width pair
