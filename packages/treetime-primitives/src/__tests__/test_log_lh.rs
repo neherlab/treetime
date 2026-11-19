@@ -3,7 +3,7 @@ mod tests {
   use crate::LogLh;
   use std::mem::{align_of, size_of};
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
-  use treetime_utils::pretty_assert_ulps_eq;
+  use treetime_utils::{pretty_assert_neg_inf, pretty_assert_ulps_eq};
 
   #[test]
   fn test_log_lh_construction_and_extraction() {
@@ -15,8 +15,7 @@ mod tests {
   #[test]
   fn test_log_lh_constants() {
     pretty_assert_ulps_eq!(0.0, LogLh::ZERO.value(), max_ulps = 1);
-    assert!(LogLh::IMPOSSIBLE.value().is_infinite());
-    assert!(LogLh::IMPOSSIBLE.value().is_sign_negative());
+    pretty_assert_neg_inf!(LogLh::IMPOSSIBLE.value());
   }
 
   #[test]
@@ -53,7 +52,7 @@ mod tests {
   }
 
   #[test]
-  fn test_log_lh_comparison() {
+  fn test_log_lh_ranks_higher_likelihood_above_lower() {
     assert!(LogLh::new(-2.0) > LogLh::new(-3.0));
   }
 

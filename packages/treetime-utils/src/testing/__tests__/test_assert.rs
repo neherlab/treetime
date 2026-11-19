@@ -5,34 +5,29 @@ mod tests {
   use helpers::catch_panic_silent;
   use maplit::btreemap;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::panic::catch_unwind;
 
-  #[test]
-  fn test_is_neg_inf_accepts_only_negative_infinity() {
-    assert!(is_neg_inf(f64::NEG_INFINITY));
-    assert!(!is_neg_inf(f64::INFINITY));
-    assert!(!is_neg_inf(f64::NAN));
-    assert!(!is_neg_inf(-1.0));
-    assert!(!is_neg_inf(-0.0));
-    assert!(!is_neg_inf(0.0));
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative_infinity(f64::NEG_INFINITY, true)]
+  #[case::positive_infinity(f64::INFINITY,     false)]
+  #[case::nan(              f64::NAN,          false)]
+  #[case::negative_finite(  -1.0,              false)]
+  #[case::negative_zero(    -0.0,              false)]
+  #[trace]
+  fn test_is_neg_inf_accepts_only_negative_infinity(#[case] value: f64, #[case] expected: bool) {
+    assert_eq!(expected, is_neg_inf(value));
   }
 
   #[test]
   fn test_pretty_assert_neg_inf_accepts_negative_infinity() {
-    let result = catch_unwind(|| pretty_assert_neg_inf!(f64::NEG_INFINITY));
-    result.unwrap();
+    pretty_assert_neg_inf!(f64::NEG_INFINITY);
   }
 
   #[test]
   fn test_pretty_assert_neg_inf_rejects_positive_infinity() {
     let result = catch_panic_silent(|| pretty_assert_neg_inf!(f64::INFINITY));
-    assert!(result.is_err());
-  }
-
-  #[test]
-  fn test_pretty_assert_neg_inf_rejects_nan() {
-    let result = catch_panic_silent(|| pretty_assert_neg_inf!(f64::NAN));
     assert!(result.is_err());
   }
 

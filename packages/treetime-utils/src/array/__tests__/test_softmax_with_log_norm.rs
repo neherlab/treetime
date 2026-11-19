@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::array::softmax_with_log_norm::*;
+  use crate::array::softmax_with_log_norm::softmax_with_log_norm_inplace;
   use crate::cast::ToF64Exact;
   use crate::pretty_assert_neg_inf;
   use crate::pretty_assert_ulps_eq;
@@ -135,7 +135,9 @@ mod tests {
   }
 
   mod stress {
-    use super::*;
+    use super::helpers;
+    use crate::array::softmax_with_log_norm::softmax_with_log_norm_inplace;
+    use ndarray::{Array1, array};
 
     #[test]
     fn test_softmax_with_log_norm_near_exp_overflow_boundary() {
@@ -179,7 +181,7 @@ mod tests {
       let mut normalized = input;
       let _log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
-      assert_eq!(normalized, array![1.0, 0.0, 0.0, 0.0]);
+      assert_eq!(array![1.0, 0.0, 0.0, 0.0], normalized);
     }
 
     #[test]
@@ -189,7 +191,7 @@ mod tests {
       let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite());
-      assert_eq!(normalized, array![0.5, 0.0, 0.5, 0.0]);
+      assert_eq!(array![0.5, 0.0, 0.5, 0.0], normalized);
     }
 
     #[test]
@@ -250,7 +252,7 @@ mod tests {
       let mut normalized = input;
       let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
-      assert_eq!(normalized, array![0.0, 1.0, 0.0, 0.0]);
+      assert_eq!(array![0.0, 1.0, 0.0, 0.0], normalized);
       assert!(log_norm.is_infinite() && log_norm.is_sign_positive());
     }
   }
@@ -268,7 +270,7 @@ mod tests {
         normalized.iter().all(|&v| v.is_finite()),
         "all probabilities must be finite: {normalized}"
       );
-      pretty_assert_abs_diff_eq!(normalized.sum(), 1.0, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(1.0, normalized.sum(), epsilon = 1e-15);
     }
   }
 }

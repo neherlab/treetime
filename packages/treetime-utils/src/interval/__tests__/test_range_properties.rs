@@ -32,7 +32,7 @@ mod tests {
 
     let actual = range_intersection(&[set_a.clone(), range_union(&[set_a.clone(), set_b.clone()])]);
 
-    assert_eq!(actual, set_a);
+    assert_eq!(set_a, actual);
   }
 
   #[rstest]
@@ -42,21 +42,21 @@ mod tests {
 
     let actual = range_union(&[set_a.clone(), range_intersection(&[set_a.clone(), set_b.clone()])]);
 
-    assert_eq!(actual, set_a);
+    assert_eq!(set_a, actual);
   }
 
   #[rstest]
-  fn test_range_union_with_complement() {
+  fn test_range_properties_union_with_complement_covers_universe() {
     let set_a = vec![(1, 5), (10, 15)];
     let universe = vec![(0, 20)];
 
     let actual = range_union(&[set_a.clone(), range_complement(&universe, from_ref(&set_a))]);
 
-    assert_eq!(actual, universe);
+    assert_eq!(universe, actual);
   }
 
   #[rstest]
-  fn test_range_union_with_complement_multiple_sets() {
+  fn test_range_properties_union_with_complement_of_several_sets_covers_universe() {
     let set_a = vec![(1, 5), (10, 15)];
     let set_b = vec![(3, 8), (12, 18)];
     let universe = vec![(0, 20)];
@@ -67,16 +67,16 @@ mod tests {
       range_complement(&universe, &[set_a.clone(), set_b.clone()]),
     ]);
 
-    assert_eq!(actual, universe);
+    assert_eq!(universe, actual);
   }
 
   #[rstest]
-  fn test_range_union_complement_empty_set() {
+  fn test_range_properties_complement_of_empty_set_is_universe() {
     let universe = vec![(0, 20)];
     let empty_set: Vec<(usize, usize)> = vec![];
 
     let actual = range_union(&[empty_set.clone(), range_complement(&universe, &[empty_set])]);
 
-    assert_eq!(actual, universe);
+    assert_eq!(universe, actual);
   }
 }

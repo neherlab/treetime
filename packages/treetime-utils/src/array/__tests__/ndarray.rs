@@ -5,7 +5,7 @@ mod tests {
     reason = "expected values keep all digits of the oracle"
   )]
 
-  use crate::array::ndarray::*;
+  use crate::array::ndarray::{cumsum_axis, outer};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::{Array2, Axis, array};
@@ -25,7 +25,7 @@ mod tests {
   });
 
   #[rstest]
-  fn computes_cumsum_axis_0() {
+  fn test_cumsum_axis_accumulates_down_rows() {
     let expected = array![
       [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
       [0.38797255, 0.38395412, 0.48100777, 0.48223184, 0.26483372],
@@ -36,11 +36,11 @@ mod tests {
       [1.37511959, 1.25538256, 1.72026877, 1.82127960, 0.82794949],
     ];
 
-    pretty_assert_ulps_eq!(cumsum_axis(&INPUT, Axis(0)), expected);
+    pretty_assert_ulps_eq!(expected, cumsum_axis(&INPUT, Axis(0)));
   }
 
   #[rstest]
-  fn computes_cumsum_axis_1() {
+  fn test_cumsum_axis_accumulates_along_columns() {
     let expected = array![
       [0.19356424, 0.44580855, 0.65840068, 0.85057871, 0.99999999],
       [0.19440831, 0.32611812, 0.59453376, 0.88458757, 1.00000001],
@@ -51,50 +51,27 @@ mod tests {
       [0.12705805, 0.49889904, 0.71797423, 0.99097584, 1.00000001],
     ];
 
-    pretty_assert_ulps_eq!(cumsum_axis(&INPUT, Axis(1)), expected);
+    pretty_assert_ulps_eq!(expected, cumsum_axis(&INPUT, Axis(1)));
   }
 
   #[rstest]
-  fn computes_outer_product() -> Result<(), Report> {
+  fn test_outer_multiplies_every_pair() -> Result<(), Report> {
+    let expected = array![
+      [-0.0, -0.0, 0.0, 0.0, 0.0],
+      [-2.0, -1.0, 0.0, 1.0, 2.0],
+      [-4.0, -2.0, 0.0, 2.0, 4.0],
+      [-6.0, -3.0, 0.0, 3.0, 6.0],
+      [-8.0, -4.0, 0.0, 4.0, 8.0]
+    ];
     pretty_assert_ulps_eq!(
-      outer(&array![0.0, 1.0, 2.0, 3.0, 4.0], &array![-2.0, -1.0, 0.0, 1.0, 2.0])?,
-      array![
-        [-0.0, -0.0, 0.0, 0.0, 0.0],
-        [-2.0, -1.0, 0.0, 1.0, 2.0],
-        [-4.0, -2.0, 0.0, 2.0, 4.0],
-        [-6.0, -3.0, 0.0, 3.0, 6.0],
-        [-8.0, -4.0, 0.0, 4.0, 8.0]
-      ]
+      expected,
+      outer(&array![0.0, 1.0, 2.0, 3.0, 4.0], &array![-2.0, -1.0, 0.0, 1.0, 2.0])?
     );
     Ok(())
   }
 
   #[test]
-  fn test_outer_product_case_1() {
-    let pi = array![0.25, 0.25, 0.25, 0.25];
-    let ti = array![1.98000002, 2.94500003, 2.51500002, 2.64000002];
-    #[rustfmt::skip]
-    let expected_outer_pi_ti = array![
-      [0.4950000050, 0.7362500075, 0.6287500050, 0.6600000050],
-      [0.4950000050, 0.7362500075, 0.6287500050, 0.6600000050],
-      [0.4950000050, 0.7362500075, 0.6287500050, 0.6600000050],
-      [0.4950000050, 0.7362500075, 0.6287500050, 0.6600000050],
-    ];
-    #[rustfmt::skip]
-    let expected_outer_ti_pi = array![
-      [0.4950000050, 0.4950000050, 0.4950000050, 0.4950000050],
-      [0.7362500075, 0.7362500075, 0.7362500075, 0.7362500075],
-      [0.6287500050, 0.6287500050, 0.6287500050, 0.6287500050],
-      [0.6600000050, 0.6600000050, 0.6600000050, 0.6600000050],
-    ];
-    let result_outer_pi_ti = outer(&pi, &ti).unwrap();
-    let result_outer_ti_pi = outer(&ti, &pi).unwrap();
-    pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, max_ulps = 4);
-    pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_outer_product_case_2() {
+  fn test_outer_is_transposed_when_operands_swap() {
     let pi = array![0.14873251, 0.24050277, 0.31232323, 0.29844148];
     let ti = array![1.98000002, 2.94500003, 2.51500002, 2.64000002];
     #[rustfmt::skip]

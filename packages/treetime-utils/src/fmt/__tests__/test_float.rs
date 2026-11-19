@@ -14,7 +14,7 @@ mod tests {
   #[case::round_thousand((1000.0,  3), "1000")]
   #[trace]
   fn test_float_to_significant_digits(#[case] (input, digits): (f64, u8), #[case] expected: &str) {
-    assert_eq!(float_to_significant_digits(input, digits), expected);
+    assert_eq!(expected, float_to_significant_digits(input, digits));
   }
 
   #[rustfmt::skip]
@@ -27,7 +27,7 @@ mod tests {
   #[case::one(               (1.0,        0), "1e+00")]
   #[trace]
   fn test_float_to_exponential(#[case] (input, decimals): (f64, usize), #[case] expected: &str) {
-    assert_eq!(float_to_exponential(input, decimals), expected);
+    assert_eq!(expected, float_to_exponential(input, decimals));
   }
 
   #[rstest]
@@ -41,7 +41,7 @@ mod tests {
     #[case] (input, sig_digits, dec_digits): (f64, Option<u8>, Option<i8>),
     #[case] expected: &str,
   ) {
-    assert_eq!(float_to_digits(input, sig_digits, dec_digits), expected);
+    assert_eq!(expected, float_to_digits(input, sig_digits, dec_digits));
   }
 
   #[rstest]
@@ -50,7 +50,7 @@ mod tests {
   #[case::f64_small((0.00123_f64, 3), "0.00123")]
   #[trace]
   fn test_trait_to_significant_digits(#[case] (input, digits): (impl FloatFormatExt, u8), #[case] expected: &str) {
-    assert_eq!(input.to_significant_digits(digits), expected);
+    assert_eq!(expected, input.to_significant_digits(digits));
   }
 
   #[rstest]
@@ -59,7 +59,7 @@ mod tests {
   #[case::f64_trailing_zeros((1.0_f64,     2), "1")]
   #[trace]
   fn test_trait_to_decimal_digits(#[case] (input, digits): (impl FloatFormatExt, i8), #[case] expected: &str) {
-    assert_eq!(input.to_decimal_digits(digits), expected);
+    assert_eq!(expected, input.to_decimal_digits(digits));
   }
 
   #[rstest]
@@ -73,7 +73,7 @@ mod tests {
     #[case] (input, sig_digits, dec_digits): (impl FloatFormatExt, Option<u8>, Option<i8>),
     #[case] expected: &str,
   ) {
-    assert_eq!(input.to_digits(sig_digits, dec_digits), expected);
+    assert_eq!(expected, input.to_digits(sig_digits, dec_digits));
   }
 
   #[rstest]
@@ -87,7 +87,7 @@ mod tests {
   #[case::sci_no_trim(("1.000e-10", "1.000e-10"))]
   #[trace]
   fn test_trim_trailing_zeros(#[case] (input, expected): (&str, &str)) {
-    assert_eq!(trim_trailing_zeros(input), expected);
+    assert_eq!(expected, trim_trailing_zeros(input));
   }
 
   #[rstest]
@@ -96,8 +96,8 @@ mod tests {
   #[case::positive_infinity((f64::INFINITY,     3), "inf")]
   #[case::negative_infinity((f64::NEG_INFINITY, 3), "-inf")]
   #[trace]
-  fn test_edge_cases(#[case] (input, digits): (f64, u8), #[case] expected: &str) {
-    assert_eq!(input.to_significant_digits(digits), expected);
+  fn test_significant_digits_keeps_sign_and_infinity(#[case] (input, digits): (f64, u8), #[case] expected: &str) {
+    assert_eq!(expected, input.to_significant_digits(digits));
   }
 
   #[rustfmt::skip]

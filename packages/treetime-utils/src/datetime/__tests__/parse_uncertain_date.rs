@@ -3,12 +3,9 @@ mod tests {
   use crate::datetime::date_range::DateRange;
   use crate::datetime::options::DateParserOptions;
   use crate::datetime::parse_uncertain_date::parse_date_uncertain;
+  use helpers::r;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-
-  fn r(begin: &str, end: &str) -> DateRange {
-    DateRange::from_iso(begin, end)
-  }
 
   #[rustfmt::skip]
   #[rstest]
@@ -56,7 +53,7 @@ mod tests {
   #[case::my_dot_month_xx("XX.2024",    r("2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999999999Z"))]
   #[case::year_only("2024",       r("2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999999999Z"))]
   #[trace]
-  fn test_date_parse_uncertain(#[case] input: &str, #[case] expected: DateRange) {
+  fn test_date_parse_uncertain_spans_unknown_parts(#[case] input: &str, #[case] expected: DateRange) {
     let options = DateParserOptions::default();
     let actual = parse_date_uncertain(input, &options).unwrap();
     assert_eq!(expected, actual);
@@ -80,9 +77,17 @@ mod tests {
   #[case::empty("")]
   #[case::whitespace("  ")]
   #[trace]
-  fn test_date_parse_uncertain_error(#[case] input: &str) {
+  fn test_date_parse_uncertain_rejects_input_without_year(#[case] input: &str) {
     let options = DateParserOptions::default();
     let actual = parse_date_uncertain(input, &options).ok();
     assert_eq!(None, actual);
+  }
+
+  mod helpers {
+    use crate::datetime::date_range::DateRange;
+
+    pub(super) fn r(begin: &str, end: &str) -> DateRange {
+      DateRange::from_iso(begin, end)
+    }
   }
 }

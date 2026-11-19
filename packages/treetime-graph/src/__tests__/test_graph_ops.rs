@@ -9,22 +9,21 @@ mod tests {
   #[test]
   fn test_reparent_edge_moves_the_edge_and_keeps_key() -> Result<(), Report> {
     let (mut graph, [root, a, b, c], a_to_c) = fixture()?;
+    let root_outbound = outbound(&graph, root);
 
     graph.reparent_edge(a_to_c, b)?;
 
-    let edge = graph.get_edge(a_to_c).expect("edge survives reparenting");
-    assert_eq!(edge.key(), a_to_c, "the edge keeps its key (not rebuilt)");
-    assert_eq!(edge.source(), b);
-    assert_eq!(edge.target(), c);
-
-    assert!(!outbound(&graph, a).contains(&a_to_c), "old source must drop the edge");
-    assert!(outbound(&graph, b).contains(&a_to_c), "new source must gain the edge");
+    let edge = graph.get_edge(a_to_c).expect("the edge keeps its key");
     assert_eq!(
-      inbound(&graph, c),
-      vec![a_to_c],
-      "the target's inbound list is untouched"
+      ((b, c), vec![], vec![a_to_c], vec![a_to_c], root_outbound),
+      (
+        (edge.source(), edge.target()),
+        outbound(&graph, a),
+        outbound(&graph, b),
+        inbound(&graph, c),
+        outbound(&graph, root),
+      )
     );
-    assert_eq!(outbound(&graph, root).len(), 2, "unrelated nodes are untouched");
     Ok(())
   }
 
@@ -35,7 +34,7 @@ mod tests {
 
     graph.reparent_edge(a_to_c, a)?;
 
-    assert_eq!(outbound(&graph, a), before, "a no-op must not duplicate the edge key");
+    assert_eq!(before, outbound(&graph, a), "a no-op must not duplicate the edge key");
     Ok(())
   }
 
@@ -62,7 +61,7 @@ mod tests {
     let edge = graph
       .get_edge(a_to_c)
       .expect("a rejected reparent must leave the edge in place");
-    assert_eq!(edge.source(), a, "the edge must not have moved");
+    assert_eq!(a, edge.source(), "the edge must not have moved");
     Ok(())
   }
 

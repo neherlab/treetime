@@ -4,12 +4,13 @@ mod tests {
     RelativeErrorStats, compute_relative_error_statistics,
   };
   use crate::testing::metrics::config::MetricsConfig;
-  use crate::testing::metrics::metrics::*;
+  use crate::testing::metrics::metrics::ValidationMetrics;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
-  fn test_comprehensive_metrics_creation() {
+  fn test_metrics_reports_agreement_of_offset_values() {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let expected = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let actual = &expected + 0.1;
@@ -21,21 +22,21 @@ mod tests {
 
     let expected_r_squared = 1.0 - 0.05 / 2.8;
     pretty_assert_ulps_eq!(
-      metrics.aggregate.domain_agreement.quality_metrics.r_squared,
       expected_r_squared,
+      metrics.aggregate.domain_agreement.quality_metrics.r_squared,
       max_ulps = 4
     );
 
     let rounded_offset = (1.0 + 0.1) - 1.0;
     pretty_assert_ulps_eq!(
-      metrics.distribution.statistics.abs_error_stats.mean,
       rounded_offset,
+      metrics.distribution.statistics.abs_error_stats.mean,
       max_ulps = 4
     );
   }
 
   #[test]
-  fn test_metrics_with_custom_config() {
+  fn test_metrics_applies_custom_histogram_and_window_config() {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let expected = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let actual = array![1.0, 2.0, 3.0, 2.0, 1.5];
@@ -47,7 +48,7 @@ mod tests {
     let metrics = ValidationMetrics::new_with_config(&x, &actual, &expected, 50.0, &config).unwrap();
 
     assert_eq!(20, metrics.distribution.histograms.abs_error_histogram.bin_counts.len());
-    pretty_assert_ulps_eq!(metrics.aggregate.execution_time_ms, 50.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(50.0, metrics.aggregate.execution_time_ms, max_ulps = 4);
     let expected_sliding_max = array![0.0, 0.0, 0.5, 0.5, 0.5];
     pretty_assert_ulps_eq!(expected_sliding_max, metrics.spatial.windowed.sliding_max, max_ulps = 0);
   }

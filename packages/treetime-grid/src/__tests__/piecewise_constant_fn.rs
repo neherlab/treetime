@@ -2,33 +2,26 @@
 mod tests {
   use crate::piecewise_constant_fn::PiecewiseConstantFn;
   use ndarray::array;
+  use rstest::rstest;
   use treetime_utils::pretty_assert_ulps_eq;
 
-  #[test]
-  fn test_piecewise_constant_eval() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_first_breakpoint(  -1.0, 0.0, 0.0)]
+  #[case::at_first_breakpoint(      1.0, 1.0, 0.0)]
+  #[case::inside_an_interval(       3.0, 1.0, 1.0)]
+  #[case::at_last_breakpoint(      10.0, 3.0, 2.0)]
+  #[case::above_last_breakpoint(  100.0, 3.0, 3.0)]
+  #[trace]
+  fn test_piecewise_constant_eval_is_right_continuous_and_eval_left_is_left_continuous(
+    #[case] t: f64,
+    #[case] expected_eval: f64,
+    #[case] expected_eval_left: f64,
+  ) {
     let pc = PiecewiseConstantFn::new(array![1.0, 5.0, 10.0], array![0.0, 1.0, 2.0, 3.0]);
 
-    pretty_assert_ulps_eq!(pc.eval(-1.0), 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(0.5), 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(1.0), 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(3.0), 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(5.0), 2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(7.5), 2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(10.0), 3.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval(100.0), 3.0, max_ulps = 4);
-  }
+    let actual = array![pc.eval(t), pc.eval_left(t)];
 
-  #[test]
-  fn test_piecewise_constant_eval_left() {
-    let pc = PiecewiseConstantFn::new(array![1.0, 5.0, 10.0], array![0.0, 1.0, 2.0, 3.0]);
-
-    pretty_assert_ulps_eq!(pc.eval_left(-1.0), 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(0.5), 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(1.0), 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(3.0), 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(5.0), 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(7.5), 2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(10.0), 2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(pc.eval_left(100.0), 3.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(array![expected_eval, expected_eval_left], actual, max_ulps = 4);
   }
 }
