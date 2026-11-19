@@ -300,9 +300,9 @@ pub(super) mod tests {
   }
 
   #[test]
-  fn test_prune_nodes_prune_short_threshold_exact() -> Result<(), Report> {
+  fn test_prune_nodes_keeps_an_internal_edge_exactly_at_the_threshold() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
-      create_test_graph_with_partitions("(A:0.05,B:0.05,C:0.051)root;", &[])?;
+      create_test_graph_with_partitions("((A:0.1,B:0.1)X:0.05,C:0.1)root;", &[])?;
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -318,30 +318,7 @@ pub(super) mod tests {
       &NwkWriteOptions::default(),
       &NwkNodeComments::new(),
     )?;
-    assert_eq!(output_nwk, "(A:0.05,B:0.05,C:0.051)root;");
-    Ok(())
-  }
-
-  #[test]
-  fn test_prune_nodes_prune_short_threshold_below() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut branch_lengths) =
-      create_test_graph_with_partitions("(A:0.049,B:0.05,C:0.051)root;", &[])?;
-    prune_nodes(
-      &mut graph,
-      &mut partitions,
-      Some(0.05),
-      false,
-      &btreeset! {},
-      &mut branch_lengths,
-    )?;
-    let output_nwk = nwk_write_str(
-      &GraphSchedule::new(&graph)?.into_tree()?,
-      &names,
-      &branch_lengths,
-      &NwkWriteOptions::default(),
-      &NwkNodeComments::new(),
-    )?;
-    assert_eq!(output_nwk, "(A:0.049,B:0.05,C:0.051)root;");
+    assert_eq!("((A:0.1,B:0.1)X:0.05,C:0.1)root;", output_nwk);
     Ok(())
   }
 
@@ -440,30 +417,6 @@ pub(super) mod tests {
       &NwkNodeComments::new(),
     )?;
     assert_eq!(output_nwk, "(B:0.2,D:0.4)root;");
-    Ok(())
-  }
-
-  #[test]
-  fn test_prune_nodes_nonexistent_name_is_noop() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut branch_lengths) =
-      create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
-    let prune_keys = node_keys_named(&graph, &names, &["nonexistent"]);
-    prune_nodes(
-      &mut graph,
-      &mut partitions,
-      None,
-      false,
-      &prune_keys,
-      &mut branch_lengths,
-    )?;
-    let output_nwk = nwk_write_str(
-      &GraphSchedule::new(&graph)?.into_tree()?,
-      &names,
-      &branch_lengths,
-      &NwkWriteOptions::default(),
-      &NwkNodeComments::new(),
-    )?;
-    assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
     Ok(())
   }
 

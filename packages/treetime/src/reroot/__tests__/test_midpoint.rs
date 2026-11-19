@@ -6,6 +6,7 @@ pub(crate) mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_utils::{pretty_assert_map_abs_diff_eq, pretty_assert_map_ulps_eq};
 
   #[test]
@@ -19,11 +20,18 @@ pub(crate) mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_midpoint_cherry_roots_at_equal_distances() -> Result<(), Report> {
-    let actual = midpoint("(A:1,B:3)R;", 1)?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::cherry(              "(A:1,B:3)R;",           btreemap! { o!("A") => 2.0, o!("B") => 2.0 })]
+  #[case::undated_stem_removed("((A:1,B:3)V:100)R;",    btreemap! { o!("A") => 2.0, o!("B") => 2.0 })]
+  #[case::zero_length_branches("((A:0,B:2)X:0,C:2)R;",  btreemap! { o!("A") => 0.0, o!("B") => 2.0, o!("C") => 2.0 })]
+  #[trace]
+  fn test_midpoint_roots_at_equal_distances_to_the_farthest_tips(
+    #[case] newick: &str,
+    #[case] expected: BTreeMap<String, f64>,
+  ) -> Result<(), Report> {
+    let actual = midpoint(newick, 1)?;
 
-    let expected = btreemap! { o!("A") => 2.0, o!("B") => 2.0 };
     pretty_assert_map_ulps_eq!(expected, actual.root_to_tip, max_ulps = 4);
     Ok(())
   }
@@ -69,15 +77,6 @@ pub(crate) mod tests {
   }
 
   #[test]
-  fn test_midpoint_removes_an_undated_stem_root() -> Result<(), Report> {
-    let actual = midpoint("((A:1,B:3)V:100)R;", 1)?;
-
-    let expected = btreemap! { o!("A") => 2.0, o!("B") => 2.0 };
-    pretty_assert_map_ulps_eq!(expected, actual.root_to_tip, max_ulps = 4);
-    Ok(())
-  }
-
-  #[test]
   fn test_midpoint_keeps_a_dated_stem_root_as_a_tip() -> Result<(), Report> {
     let actual = midpoint_with_dated("((A:1,B:3)V:100)R;", &["R"], 1)?;
 
@@ -94,15 +93,6 @@ pub(crate) mod tests {
 
     assert_eq!("X", actual.root_name, "X closes a longest path before R in postorder");
     let expected = btreemap! { o!("A") => 2.0, o!("B") => 2.0, o!("C") => 2.0 };
-    pretty_assert_map_ulps_eq!(expected, actual.root_to_tip, max_ulps = 4);
-    Ok(())
-  }
-
-  #[test]
-  fn test_midpoint_works_with_zero_length_branches() -> Result<(), Report> {
-    let actual = midpoint("((A:0,B:2)X:0,C:2)R;", 1)?;
-
-    let expected = btreemap! { o!("A") => 0.0, o!("B") => 2.0, o!("C") => 2.0 };
     pretty_assert_map_ulps_eq!(expected, actual.root_to_tip, max_ulps = 4);
     Ok(())
   }

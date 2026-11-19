@@ -6,75 +6,28 @@ mod tests {
   use helpers::{Target, reroot_repeatedly};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_utils::pretty_assert_map_ulps_eq;
 
-  #[test]
-  fn test_named_node_second_reroot_on_an_outgroup_keeps_the_root() -> Result<(), Report> {
-    let newick = "((M:0.4,N:0.1)X:0.2,(C:0.3,D:0.5)Y:0.1)R;";
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::outgroup_of_a_two_child_root(  "((M:0.4,N:0.1)X:0.2,(C:0.3,D:0.5)Y:0.1)R;", Target::Outgroup(&["M"]), btreemap! { o!("M") => 0.2,      o!("X") => 0.2 })]
+  #[case::middle_of_the_unrooted_branch( "(M:1,(A:1,B:1)S:3)R;",                       Target::Outgroup(&["M"]), btreemap! { o!("M") => 2.0,      o!("S") => 2.0 })]
+  #[case::middle_inside_the_edge_band(   "(M:1.000002,(A:1,B:1)S:1)R;",                Target::Outgroup(&["M"]), btreemap! { o!("M") => 1.000001, o!("S") => 1.000001 })]
+  #[case::below_a_three_child_root(      "(M:1,(A:1,B:1)S:2,C:3)R;",                   Target::Outgroup(&["M"]), btreemap! { o!("M") => 0.5,      o!("R") => 0.5 })]
+  #[case::oldest_tip(                    "(M:1,(A:1,B:1)S:3)R;",                       Target::Spec(RerootSpec::Method(RerootMethod::Oldest)), btreemap! { o!("M") => 2.0, o!("S") => 2.0 })]
+  #[trace]
+  fn test_named_node_roots_at_the_middle_of_the_unrooted_branch_and_keeps_the_root_on_repeat(
+    #[case] newick: &str,
+    #[case] target: Target<'static>,
+    #[case] expected: BTreeMap<String, f64>,
+  ) -> Result<(), Report> {
+    let once = reroot_repeatedly(newick, target.clone(), 1)?;
+    let twice = reroot_repeatedly(newick, target, 2)?;
 
-    let once = reroot_repeatedly(newick, Target::Outgroup(&["M"]), 1)?;
-    let twice = reroot_repeatedly(newick, Target::Outgroup(&["M"]), 2)?;
-
-    let expected = btreemap! { o!("M") => 0.2, o!("X") => 0.2 };
     pretty_assert_map_ulps_eq!(expected, once.root_children, max_ulps = 4);
-    assert_eq!(
-      once.newick, twice.newick,
-      "a second reroot on the same outgroup keeps the root"
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_named_node_child_of_a_two_child_root_roots_at_the_middle_of_its_unrooted_branch() -> Result<(), Report> {
-    let newick = "(M:1,(A:1,B:1)S:3)R;";
-
-    let actual = reroot_repeatedly(newick, Target::Outgroup(&["M"]), 1)?;
-
-    let expected = btreemap! { o!("M") => 2.0, o!("S") => 2.0 };
-    pretty_assert_map_ulps_eq!(expected, actual.root_children, max_ulps = 4);
-    Ok(())
-  }
-
-  #[test]
-  fn test_named_node_middle_inside_the_edge_end_band_is_placed_exactly() -> Result<(), Report> {
-    let newick = "(M:1.000002,(A:1,B:1)S:1)R;";
-
-    let actual = reroot_repeatedly(newick, Target::Outgroup(&["M"]), 1)?;
-
-    let expected = btreemap! { o!("M") => 1.000001, o!("S") => 1.000001 };
-    pretty_assert_map_ulps_eq!(expected, actual.root_children, max_ulps = 4);
-    Ok(())
-  }
-
-  #[test]
-  fn test_named_node_second_reroot_below_a_three_child_root_keeps_the_root() -> Result<(), Report> {
-    let newick = "(M:1,(A:1,B:1)S:2,C:3)R;";
-
-    let once = reroot_repeatedly(newick, Target::Outgroup(&["M"]), 1)?;
-    let twice = reroot_repeatedly(newick, Target::Outgroup(&["M"]), 2)?;
-
-    let expected = btreemap! { o!("M") => 0.5, o!("R") => 0.5 };
-    pretty_assert_map_ulps_eq!(expected, once.root_children, max_ulps = 4);
-    assert_eq!(
-      once.newick, twice.newick,
-      "a second reroot on the same outgroup keeps the root"
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_named_node_oldest_tip_roots_at_the_middle_of_its_unrooted_branch() -> Result<(), Report> {
-    let newick = "(M:1,(A:1,B:1)S:3)R;";
-
-    let once = reroot_repeatedly(newick, Target::Spec(RerootSpec::Method(RerootMethod::Oldest)), 1)?;
-    let twice = reroot_repeatedly(newick, Target::Spec(RerootSpec::Method(RerootMethod::Oldest)), 2)?;
-
-    let expected = btreemap! { o!("M") => 2.0, o!("S") => 2.0 };
-    pretty_assert_map_ulps_eq!(expected, once.root_children, max_ulps = 4);
-    assert_eq!(
-      once.newick, twice.newick,
-      "a second reroot on the oldest tip keeps the root"
-    );
+    assert_eq!(once.newick, twice.newick, "a second reroot on the same target keeps the root");
     Ok(())
   }
 
@@ -91,6 +44,7 @@ mod tests {
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
+    #[derive(Clone, Debug)]
     pub(super) enum Target<'a> {
       Outgroup(&'a [&'a str]),
       Spec(RerootSpec),
