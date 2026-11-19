@@ -130,7 +130,8 @@ selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,sequences,clock-mo
 #   tier        "quick" or "full"; replaces the tier of the size class
 #   timeout     seconds; replaces the timeout of the size class
 #   fail        the case is expected to exit with an error: a reason for every dataset of the row, or a table of
-#               reasons keyed by dataset. A reason names the kb entry that explains the failure
+#               reasons keyed by dataset. A reason names the kb entry that explains the failure; for an input that
+#               TreeTime rejects by design, it starts with `rejected:` and names the rule that rejects the input
 #   hang        the case is expected to exceed its timeout, in the same form as `fail`
 #   skip        datasets of the row that do not run, as a table of reasons keyed by dataset, for a case whose result
 #               depends on the host, such as a memory need above the budget of smaller hosts
@@ -322,6 +323,13 @@ variant = "translations-jtt92-ambiguity"
 datasets = ["rsv/a/20"]
 args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --annotation={dataset}/annotation.gff3 --aa-model=jtt92 --ambiguity-threshold=0.025 --ambiguity-outputs=translations"
 
+# A tree with tips that the alignment lacks, without --allow-missing-sequences
+[[ancestral]]
+variant = "reject-tips-missing-from-alignment"
+datasets = ["zika/20"]
+args = "--tree={data}/zika/86/tree.nwk"
+fail = "rejected: more than one third of the tips have no sequence without --allow-missing-sequences"
+
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
 [[ancestral]]
 variant = "input-nexus-tree"
@@ -440,6 +448,18 @@ args = "--tree={data}/smoke/zika-20-tree-without-internal-branch-lengths.nwk"
 variant = "prune-tips"
 datasets = ["ebola/100"]
 args = "--metadata={data}/smoke/ebola-100-metadata-undated.tsv --prune-filtered-tips --prune-undated-tips --keep-tips=NZG_0358"
+
+[[clock]]
+variant = "reject-prune-filtered-tips-without-filter"
+datasets = ["ebola/20"]
+args = "--clock-filter=0 --prune-filtered-tips"
+fail = "rejected: --prune-filtered-tips requires --clock-filter above 0"
+
+[[clock]]
+variant = "reject-unknown-outgroup"
+datasets = ["ebola/20"]
+args = "--outgroup=EM_000000"
+fail = "rejected: every --outgroup name must be a tip of the tree"
 
 
 [[homoplasy]]
@@ -655,6 +675,25 @@ datasets = ["rsv/a/20"]
 args = "--gamma-categories=4 --partition-by=codon-positions --annotation={dataset}/annotation.gff3 --shared-params=gamma-shape"
 
 [[optimize]]
+variant = "reject-gamma-categories-1"
+datasets = ["flu/h3n2/20"]
+args = "--gamma-categories=1"
+fail = "rejected: --gamma-categories needs 2 or more categories"
+
+[[optimize]]
+variant = "reject-partition-by-without-annotation"
+datasets = ["rsv/a/20"]
+args = "--partition-by=codon-positions"
+fail = "rejected: --partition-by codon-positions needs one --annotation file per --alignment file"
+
+# The annotation of another reference: its sequence region does not span the alignment
+[[optimize]]
+variant = "reject-annotation-of-other-reference"
+datasets = ["flu/h3n2/20"]
+args = "--partition-by=codon-positions --annotation={data}/rsv/a/20/annotation.gff3"
+fail = "rejected: the sequence region of an annotation must run from 1 to the length of its alignment"
+
+[[optimize]]
 variant = "tolerance-0.01"
 datasets = ["flu/h3n2/20"]
 args = "--representation=sparse --tolerance=0.01"
@@ -804,6 +843,12 @@ variant = "partition-entries-srd06-l"
 datasets = ["rsv/a/20"]
 args = '''--partition='{name: L-cp12, sites: [8532-15029\3, 8533-15029\3], model: hky85}' --partition='{name: L-cp3, sites: [8534-15029\3], model: hky85}' --partition='{name: other}' '''
 
+[[timetree]]
+variant = "reject-model-with-partition"
+datasets = ["flu/h3n2/20"]
+args = "--model=hky85 --partition='{name: all}'"
+fail = "rejected: --model conflicts with --partition, whose entries carry their own models"
+
 # Tips without a usable date (empty and `XXXX-XX-XX`) stay in the tree and are dated from it
 [[timetree]]
 variant = "undated-tips"
@@ -821,6 +866,12 @@ args = "--metadata={data}/smoke/ebola-100-metadata-undated.tsv --prune-filtered-
 variant = "date-format"
 datasets = ["zika/20"]
 args = "--metadata={data}/smoke/zika-20-metadata-day-month-year.tsv --date-format=%d/%m/%Y"
+
+[[timetree]]
+variant = "reject-unknown-date-column"
+datasets = ["zika/20"]
+args = "--date-column=collection_date"
+fail = "rejected: --date-column must name a column of the metadata"
 
 # The settings of the Nextstrain seasonal-flu H3N2 NA build (nextstrain/seasonal-flu@2668477, see
 # data/flu/h3n2/500/pipeline-nextstrain.yaml): fixed clock rate with its standard deviation, optimized constant
