@@ -6,7 +6,7 @@ Per-edge branch length optimization using Newton's method with analytical first 
 
 The search keeps a bracket $[s_{lo}, s_{hi}]$ in $s$-space that the sign of the slope narrows after each evaluation. A Newton step is taken when the curvature is negative and the step stays inside the bracket; otherwise the iteration bisects the bracket away from the current point. The iteration reports convergence only at a concave maximum within tolerance or when the bracket is narrower than the tolerance, and returns the best evaluated point. After 50 iterations it returns the best point with the status iteration limit, which raises the `branch-lengths-not-converged` run warning.
 
-Newton's method converges only from a start inside its basin of attraction. Input branch lengths usually satisfy this. Edges with missing or invalid lengths, or all edges with `--initial-branch-lengths=always`, start from the observed substitution count divided by the edge's effective (non-gap) length, or from the indel count over the indel rate on an edge with indels only. v1: `fn guess_initial_branch_lengths()` in [`packages/treetime/src/optimize/dispatch.rs#L167`](../../packages/treetime/src/optimize/dispatch.rs#L167).
+Newton's method converges only from a start inside its basin of attraction. Input branch lengths usually satisfy this. Edges with missing or invalid lengths, or all edges with `--initial-branch-lengths=always`, start from the observed substitution count divided by the edge's effective (non-gap) length, or from the indel count over the indel rate on an edge with indels only. v1: `fn guess_initial_branch_lengths()` in [`packages/treetime/src/optimize/dispatch.rs#L207`](../../packages/treetime/src/optimize/dispatch.rs#L207).
 
 v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs).
 
@@ -81,7 +81,7 @@ This is a v1-only feature. See the indel models report ([kb/reports/indel-models
 
 O(1) interval lookup via `floor((x - x_min) / dx)` for uniformly spaced grids. Used throughout the distribution system for evaluating discretized probability distributions and branch length likelihoods on fixed grids.
 
-v1: `fn Grid.find_interval_index()` [`packages/treetime-grid/src/grid.rs#L222-L232`](../../packages/treetime-grid/src/grid.rs#L222-L232) finds the interval, and `fn GridFn.interp_with_extrap()` [`packages/treetime-grid/src/grid_fn.rs#L121`](../../packages/treetime-grid/src/grid_fn.rs#L121) interpolates in it.
+v1: `fn Grid.find_interval_index()` [`packages/treetime-grid/src/grid.rs#L210-L220`](../../packages/treetime-grid/src/grid.rs#L210-L220) finds the interval, and `fn GridFn.interp_with_extrap()` [`packages/treetime-grid/src/grid_fn.rs#L113`](../../packages/treetime-grid/src/grid_fn.rs#L113) interpolates in it.
 
 Standard treatment in <a id="cite-7"></a>[Burden and Faires 2010](https://doi.org/10.1007/978-3-319-07671-3) [[7](#ref-7)], Chapter 3.
 
@@ -91,7 +91,7 @@ Standard treatment in <a id="cite-7"></a>[Burden and Faires 2010](https://doi.or
 
 Blends optimized branch lengths with previous values using iteration-dependent weights: `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`. Early iterations take conservative steps; later iterations approach the full update. This is intended to moderate oscillation in the alternating marginal-reconstruction and branch-length-update cycle.
 
-v1: `fn apply_damping()` in [`packages/treetime/src/optimize/iteration.rs#L7`](../../packages/treetime/src/optimize/iteration.rs#L7).
+v1: `fn apply_damping()` in [`packages/treetime/src/optimize/iteration.rs#L6`](../../packages/treetime/src/optimize/iteration.rs#L6).
 
 v0: `optimize_tree_marginal()` at [`packages/legacy/treetime/treetime/treeanc.py#L1297-L1360`](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1360) with `damping=0.75` default.
 
@@ -137,7 +137,7 @@ v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/tr
 
 The sparse and dense forward-pass marginal divisions floor zero divisors at `f64::MIN_POSITIVE`. This prevents NaN propagation, but also turns a structural zero into a finite contribution and therefore changes impossible-state semantics. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows. The scientific policy for these degenerate cases remains unresolved.
 
-v1: `fn divide_out_value()` in [`packages/treetime/src/partition/marginal/shared/normalize.rs#L51-L53`](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L51-L53), applied by the dense forward pass through `fn divide_out()` ([`packages/treetime/src/partition/marginal/shared/pass.rs`](../../packages/treetime/src/partition/marginal/shared/pass.rs)) and by the sparse forward pass through `fn divide_out_site()` ([`packages/treetime/src/partition/marginal/sparse/forward.rs`](../../packages/treetime/src/partition/marginal/sparse/forward.rs)).
+v1: `fn divide_out_value()` in [`packages/treetime/src/partition/marginal/shared/normalize.rs#L55-L57`](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L55-L57), applied by the dense forward pass through `fn divide_out()` ([`packages/treetime/src/partition/marginal/shared/pass.rs`](../../packages/treetime/src/partition/marginal/shared/pass.rs)) and by the sparse forward pass through `fn divide_out_site()` ([`packages/treetime/src/partition/marginal/sparse/forward.rs`](../../packages/treetime/src/partition/marginal/sparse/forward.rs)).
 
 v0: no explicit guard; relies on NumPy's inf/nan propagation behavior.
 

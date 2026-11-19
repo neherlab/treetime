@@ -4,9 +4,9 @@
 
 O(n log n) convolution via the convolution theorem (<a id="cite-1"></a>[Cooley and Tukey 1965](https://doi.org/10.2307/2003354) [[1](#ref-1)]): `IFFT(FFT(f) * FFT(g))`. The discrete Fourier transform converts convolution (an O(n^2) operation in the time domain) into pointwise multiplication in the frequency domain, then transforms back.
 
-v1: `FftConvolver::convolve()` (`#FftConvolver`) in [`packages/treetime-ops/src/convolution.rs#L74-L158`](../../packages/treetime-ops/src/convolution.rs#L74-L158), on `realfft` with the plans of `FftPlans` [`packages/treetime-ops/src/convolution.rs#L160-L180`](../../packages/treetime-ops/src/convolution.rs#L160-L180).
+v1: `FftConvolver::convolve()` (`#FftConvolver`) in [`packages/treetime-ops/src/convolution.rs#L114-L117`](../../packages/treetime-ops/src/convolution.rs#L114-L117), on `realfft` with the plans of `FftPlans` [`packages/treetime-ops/src/convolution.rs#L197-L217`](../../packages/treetime-ops/src/convolution.rs#L197-L217).
 
-Transform length and padding: for operands of n and k samples, the convolver copies f to the start of one buffer and g to the start of the other, and fills the rest of both with zeros. The transform length L is the smallest even 5-smooth number (prime factors 2, 3 and 5 only) at or above n+k-1, from `smooth_even_len()` in [`packages/treetime-ops/src/convolution.rs#L248-L258`](../../packages/treetime-ops/src/convolution.rs#L248-L258). Because L >= n+k-1, the circular convolution of length L equals the linear convolution, and the overlap sums are the first n+k-1 values of the inverse transform divided by L. An even L lets `realfft` compute a complex transform of half the length, and a 5-smooth L runs on the fast kernels of `rustfft`. The error of the overlap sums stays at a few ulps of their peak; `test_convolution_fft.rs` compares them with the direct sum of `DirectConvolve`.
+Transform length and padding: for operands of n and k samples, the convolver copies f to the start of one buffer and g to the start of the other, and fills the rest of both with zeros. The transform length L is the smallest power of two at or above n+k-1, from `fn power_of_two_len()` in [`packages/treetime-ops/src/convolution.rs#L343-L350`](../../packages/treetime-ops/src/convolution.rs#L343-L350). Because L >= n+k-1, the circular convolution of length L equals the linear convolution, and the overlap sums are the first n+k-1 values of the inverse transform divided by L. An even L lets `realfft` compute a complex transform of half the length, and a power-of-two L runs on the fast radix kernels of `rustfft`. The error of the overlap sums stays at a few ulps of their peak; `test_convolution_fft.rs` compares them with the direct sum of `DirectConvolve`.
 
 ---
 
@@ -31,7 +31,7 @@ v1: `gaussian_convolution_pdf_grid()` (`#gaussian_convolution_pdf_grid`) in [`pa
 
 Closed-form convolution of two exponential distributions (<a id="cite-3"></a>[Ross 2014](https://doi.org/10.1016/C2012-0-03564-8) [[3](#ref-3)]). When rates differ, the result is a hypoexponential distribution involving two exponential terms. When the rates differ by less than $10^{-15}$, the implementation evaluates the equal-rate Erlang-2 limit $f(x)=a^2x\exp(-ax)$.
 
-v1: `exponential_convolution()` (`#exponential_convolution`) in [`packages/treetime-analytical/src/exponential.rs#L28-L37`](../../packages/treetime-analytical/src/exponential.rs#L28-L37).
+v1: `exponential_convolution()` (`#exponential_convolution`) in [`packages/treetime-analytical/src/exponential.rs#L16-L25`](../../packages/treetime-analytical/src/exponential.rs#L16-L25).
 
 ---
 
@@ -43,7 +43,7 @@ $$h(x)=\frac{a}{2}\exp\left(-ax+\frac{a^2}{2}\right)\operatorname{erfc}\left(\fr
 
 This operation is relevant to Gaussian and exponential message combinations in timetree theory (<a id="cite-4"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Supplementary Section S2), but current v1 timetree inference does not call this standalone analytical function directly.
 
-v1: `gaussian_exponential_convolution()` (`#gaussian_exponential_convolution`) in [`packages/treetime-analytical/src/gaussian_exponential.rs#L12-L14`](../../packages/treetime-analytical/src/gaussian_exponential.rs#L12-L14).
+v1: `gaussian_exponential_convolution()` (`#gaussian_exponential_convolution`) in [`packages/treetime-analytical/src/gaussian_exponential.rs#L8-L10`](../../packages/treetime-analytical/src/gaussian_exponential.rs#L8-L10).
 
 ---
 
@@ -65,7 +65,7 @@ v1: `gaussian_product_params()` (`#gaussian_product_params`), `gaussian_product(
 
 Pointwise multiplication of discretized distributions with deferred normalization. It rescales when the running maximum drops below $10^{-100}$, reducing the number of normalization operations. Improved numerical accuracy has not been established. A non-finite or non-positive maximum currently produces an empty distribution, erasing the underlying numerical failure; the desired error policy is unresolved.
 
-v1: `multiply_many_lazy_normalize()` (`#multiply_many_lazy_normalize`) in [`packages/treetime-ops/src/multiplication.rs#L39-L82`](../../packages/treetime-ops/src/multiplication.rs#L39-L82).
+v1: `multiply_many_lazy_normalize()` (`#multiply_many_lazy_normalize`) in [`packages/treetime-ops/src/multiplication.rs#L66-L106`](../../packages/treetime-ops/src/multiplication.rs#L66-L106).
 
 ---
 
@@ -100,9 +100,9 @@ v1: `struct EdgeCell` (`#EdgeCell`) in [`packages/treetime-grid/src/edge_cell.rs
 
 ## Additional Algorithms
 
-- Direct Convolution: `DirectConvolve`, `convolve_direct()` (`#convolve_direct`) in [`packages/treetime-ops/src/convolution.rs#L15-L36`](../../packages/treetime-ops/src/convolution.rs#L15-L36) - Explicit $O(nm)$ summation of the overlap sums, used by `treetime-validation` as an independent check of the FFT.
-- Library Convolution: `NdarrayConvolve`, `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L39-L55`](../../packages/treetime-ops/src/convolution.rs#L39-L55) - Overlap sums from the ndarray-conv crate.
-- Trapezoid rule: `trapezoid_from_overlap_sums()` (`#trapezoid_from_overlap_sums`) in [`packages/treetime-ops/src/convolution.rs#L227-L246`](../../packages/treetime-ops/src/convolution.rs#L227-L246) - Turns the overlap sums of every algorithm (direct, ndarray-conv, FFT) into trapezoid sums over each overlap; the two extreme outputs hold a quarter of the end products. Operands with fewer than 2 samples are rejected.
+- Direct Convolution: `DirectConvolve`, `convolve_direct()` (`#convolve_direct`) in [`packages/treetime-ops/src/convolution.rs#L23-L44`](../../packages/treetime-ops/src/convolution.rs#L23-L44) - Explicit $O(nm)$ summation of the overlap sums, used by `treetime-validation` as an independent check of the FFT.
+- Library Convolution: `NdarrayConvolve`, `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L47-L63`](../../packages/treetime-ops/src/convolution.rs#L47-L63) - Overlap sums from the ndarray-conv crate.
+- Trapezoid rule: `trapezoid_from_overlap_sums()` (`#trapezoid_from_overlap_sums`) in [`packages/treetime-ops/src/convolution.rs#L322-L341`](../../packages/treetime-ops/src/convolution.rs#L322-L341) - Turns the overlap sums of every algorithm (direct, ndarray-conv, FFT) into trapezoid sums over each overlap; the two extreme outputs hold a quarter of the end products. Operands with fewer than 2 samples are rejected.
 - Distribution Division: `distribution_division()` (`#distribution_division`) in [`packages/treetime-distribution/src/distribution_ops/divide.rs#L18`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L18) - Cavity computation via pointwise division (subtraction of costs). Division reuses multiplication's support rule (`fn multiplication_support_intersection()`): per side the innermost hard bound when any operand is hard there, else the outermost soft bound. A soft divisor tail therefore extends the quotient -- sampled as bulk -- instead of truncating it, because the cavity dividend is a product containing the divisor as a factor so the quotient decays rather than spiking. Soft result sides are refit from the combined grid; a hard dividend edge bounds the quotient to zero (`Hard`), a divisor hard or `Error` edge yields `Error` beyond it. Exact endpoint contact is a Point distribution. [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines the tails. The result at a divisor with zero density is open ([kb/issues/N-distribution-division-by-zero-density-gives-non-finite-values.md](../issues/N-distribution-division-by-zero-density-gives-non-finite-values.md)).
 - Distribution Negation: `distribution_negation()` (`#distribution_negation`) in [`packages/treetime-distribution/src/distribution_ops/negate.rs#L7-L14`](../../packages/treetime-distribution/src/distribution_ops/negate.rs#L7-L14) - Time reversal via `f(x) -> f(-x)`.
 

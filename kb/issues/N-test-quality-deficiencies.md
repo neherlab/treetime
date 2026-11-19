@@ -2,21 +2,9 @@
 
 ## Summary
 
-Remaining test quality issues: unsourced and symmetric-model tests, and weak assertions.
+Remaining test quality issues: unsourced expected values and weak assertions.
 
 ## Instances
-
-### propagate_raw_per_site tests use a symmetric model and unsourced expected values
-
-[`packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17`](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17), [#L73](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L73)
-
-Both test functions use JC69 with per-site rates, whose transition matrix is symmetric ($P(t) = P(t)^T$). The forward (`transpose = false`) and backward (`transpose = true`) tests therefore produce identical expected values and cannot detect a defect in the `transpose` handling of `fn propagate_raw_per_site()` [packages/treetime/src/partition/marginal/sparse/message.rs#L137](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137). The expected values are hardcoded literals with no stated source ([#L39-L56](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L39-L56), [#L95-L112](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L95-L112)), so whether they were captured from the system under test is unknown.
-
-Fix:
-
-- Add an HKY85 (or other non-symmetric model) case where forward and backward produce different results, so the transpose code path is exercised. HKY85 with unequal base frequencies (e.g. $\pi = [0.4, 0.1, 0.1, 0.4]$) produces an asymmetric $P(t)$
-- Derive expected values from the HKY85 closed form or the v0 Python GTR, never from the v1 GTR matrix exponential, because that reintroduces a circular oracle
-- State the source of the expected values in the test
 
 ### Skyline optimizer tests check structure only
 
@@ -47,7 +35,7 @@ Cross-mode validation: v0 has no sparse mode, so dense oracle is the only availa
 
 ### Maximum grid point tests compare error text through `unwrap_err()`
 
-- [`packages/treetime-grid/src/__tests__/max_grid_points.rs#L40-L41`](../../packages/treetime-grid/src/__tests__/max_grid_points.rs#L40-L41): `test_max_grid_points_from_str_rejects` compares `MaxGridPoints::from_str(text).unwrap_err().to_string()` with the expected message
+- [`packages/treetime-grid/src/__tests__/max_grid_points.rs#L39-L40`](../../packages/treetime-grid/src/__tests__/max_grid_points.rs#L39-L40): `test_max_grid_points_from_str_rejects` compares `MaxGridPoints::from_str(text).unwrap_err().to_string()` with the expected message
 - [packages/app-server/src/bin/treetime-server.rs#L190-L192](../../packages/app-server/src/bin/treetime-server.rs#L190-L192): `test_treetime_server_max_grid_points_out_of_range_fails` compares `ServerArgs::try_parse_from(..).unwrap_err().to_string()` with the expected message
 
 Both tests panic without a message when the call succeeds. `assert_error!` of `packages/treetime-utils/src/testing/assert.rs` checks the `Err` and the exact message in one assertion and reports an unexpected `Ok`.

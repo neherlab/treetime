@@ -78,7 +78,7 @@ Maximum after trimming on the finer spacing: 52 732 (mpox), 26 636 (simulated).
 
 ### Operand tails in the convolution
 
-The FFT in `fn convolution_function_function()` convolves grid values only; operand tails beyond the grid are dropped and the result's soft tail is refitted. For a branch-length distribution windowed at $\epsilon = 5 \cdot 10^{-4}$ the dropped exponential tail carries about 3% of the variance of a zero-mutation branch (0.4% of its mean).
+The FFT in `fn convolution_function_function_traced()` convolves grid values only; operand tails beyond the grid are dropped and the result's soft tail is refitted. For a branch-length distribution windowed at $\epsilon = 5 \cdot 10^{-4}$ the dropped exponential tail carries about 3% of the variance of a zero-mutation branch (0.4% of its mean).
 
 - **Extend soft tails onto the grid** for a fixed number of decay lengths before the FFT.
 - **Exponential-kernel recursion:** convolution with $p_e e^{-k t}$ against a piecewise-linear function is a first-order recursion, exact for the interpolant and $O(n)$ at any $k \cdot dx$.

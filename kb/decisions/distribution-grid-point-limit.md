@@ -6,7 +6,7 @@ v1 limits the number of points of every probability grid that time inference cre
 
 Time inference represents node-time and branch-time distributions on uniform grids. Some operations choose the grid spacing from their inputs, so the point count follows the ratio of a distribution's width to the finest input spacing, not the size of the tree:
 
-- `convolution_function_function()` in `packages/treetime-distribution/src/distribution_ops/convolve.rs` resamples both operands to the smaller of their two spacings before the FFT convolution
+- `convolution_function_function_traced()` in `packages/treetime-distribution/src/distribution_ops/convolve.rs` resamples both operands to the smaller of their two spacings before the FFT convolution
 - `resample_to_mass_window()` in `packages/treetime-distribution/src/distribution_ops/mass_domain.rs` keeps the input spacing of a backward message when it is finer than the window width divided by the 300 inference grid points; a forward convolution output takes at most the coarser operand spacing unless its posterior needs a finer one ([timetree-forward-posterior-trimming.md](timetree-forward-posterior-trimming.md#spacing-cap-of-forward-convolutions))
 - multiplication and division in `multiply.rs` and `divide.rs` sample the support intersection at the finer operand spacing
 

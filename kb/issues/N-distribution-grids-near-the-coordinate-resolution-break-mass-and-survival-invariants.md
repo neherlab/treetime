@@ -1,6 +1,6 @@
 # Grids near the coordinate resolution break mass and survival invariants
 
-Time distributions live on calendar coordinates, where the unit in the last place (ulp) of a date near 2000 is $u = 2^{-42} \approx 2.3 \cdot 10^{-13}$ years. When a grid spacing or a tail decay scale comes close to this resolution, the mass model (`struct MassProfile` in `packages/treetime-distribution/src/distribution_ops/mass_profile.rs`) and the survival functions of the coalescent prior lose three invariants. Each cell of the mass model has the width between its end coordinates as the grid stores them after rounding ([packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L145](../../packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L145)). This rule causes two of the three defects below.
+Time distributions live on calendar coordinates, where the unit in the last place (ulp) of a date near 2000 is $u = 2^{-42} \approx 2.3 \cdot 10^{-13}$ years. When a grid spacing or a tail decay scale comes close to this resolution, the mass model (`struct MassProfile` in `packages/treetime-distribution/src/distribution_ops/mass_profile.rs`) and the survival functions of the coalescent prior lose three invariants. Each cell of the mass model has the width between its end coordinates as the grid stores them after rounding ([packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L136](../../packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L136)). This rule causes two of the three defects below.
 
 ## Zero-width cells
 
@@ -8,7 +8,7 @@ When the grid spacing is below half an ulp, neighboring grid points round to the
 
 ## Survival cutoff rounded to the grid edge
 
-`fn function_survival()` takes the $10^{-9}$ quantiles as the ends of the survival interpolant and does not check the mass that remains beyond them after rounding ([packages/treetime/src/timetree/max_posterior_region.rs#L158](../../packages/treetime/src/timetree/max_posterior_region.rs#L158)); `fn NodeSurvival::at()` returns 0 at and after the last knot ([packages/treetime/src/coalescent/mean_field.rs#L602](../../packages/treetime/src/coalescent/mean_field.rs#L602)). For a tail whose decay scale is below the coordinate resolution, the quantile rounds to the grid edge. Case: start 2000, spacing $10^{-10}$, neg-logs $[0, 0]$, a `Hard` left side and a `Linear` right side of slope $10^{15}$:
+`fn function_survival()` takes the $10^{-9}$ quantiles as the ends of the survival interpolant and does not check the mass that remains beyond them after rounding ([packages/treetime/src/timetree/max_posterior_region.rs#L158](../../packages/treetime/src/timetree/max_posterior_region.rs#L158)); `fn NodeSurvival::at()` returns 0 at and after the last knot ([packages/treetime/src/coalescent/mean_field.rs#L600](../../packages/treetime/src/coalescent/mean_field.rs#L600)). For a tail whose decay scale is below the coordinate resolution, the quantile rounds to the grid edge. Case: start 2000, spacing $10^{-10}$, neg-logs $[0, 0]$, a `Hard` left side and a `Linear` right side of slope $10^{15}$:
 
 - the stored end point lies $H = 1.000444 \cdot 10^{-10}$ after the start
 - the exact survival there is $1 / (1 + 10^{15} H) = 9.995 \cdot 10^{-6}$
@@ -18,7 +18,7 @@ The error is about $10^{-5}$. Since 2026-10-21 the survival functions interpolat
 
 ## Mass changes under negation and translation
 
-`fn GridFn::negate_arg_inplace()` rebuilds a grid from its negated end point and its stored spacing ([packages/treetime-grid/src/grid_fn.rs#L354](../../packages/treetime-grid/src/grid_fn.rs#L354)), and the rounded coordinates of the new grid can differ from the reflected old ones. Case: start 2000, spacing $1.5\,u$, neg-logs $[0, 0, \ln 4, \ln 4]$, both sides `Hard`:
+`fn GridFn::negate_arg_inplace()` rebuilds a grid from its negated end point and its stored spacing ([packages/treetime-grid/src/grid_fn.rs#L345](../../packages/treetime-grid/src/grid_fn.rs#L345)), and the rounded coordinates of the new grid can differ from the reflected old ones. Case: start 2000, spacing $1.5\,u$, neg-logs $[0, 0, \ln 4, \ln 4]$, both sides `Hard`:
 
 | Quantity | Original | After negation |
 | --- | --- | --- |

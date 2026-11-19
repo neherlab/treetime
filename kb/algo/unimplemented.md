@@ -215,7 +215,7 @@ v1: functionality exists in the optimize command but not as a GTR method.
 Enhancement to the coalescent model that uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
 
 v0: `--n-branches-posterior` flag uses posterior distributions for branch counting in merger rate computation.
-v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L405`](../../packages/app-commands/src/commands/timetree/args.rs#L405), returns error at [`packages/treetime/src/timetree/pipeline.rs#L219-L223`](../../packages/treetime/src/timetree/pipeline.rs#L219-L223).
+v1: the CLI rejects the TreeTime 0.x flag `--n-branches-posterior` as not available in TreeTime 1 ([`packages/app-cli/src/cli/v0_args.rs#L121`](../../packages/app-cli/src/cli/v0_args.rs#L121)).
 
 ---
 
@@ -223,7 +223,7 @@ v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L4
 
 When no input tree is provided, infer a phylogenetic tree from the alignment. v0 has no tree builder of its own: `fn tree_inference()` calls the external programs IQ-TREE, FastTree, and RAxML as subprocesses, in that order ([`packages/legacy/treetime/treetime/utils.py#L410-L452`](../../packages/legacy/treetime/treetime/utils.py#L410-L452)).
 
-v1: the `timetree` and `clock` commands declare `--tree` as optional and stop with the required-arguments error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L177-L179`](../../packages/app-commands/src/commands/timetree/args.rs#L177-L179), [`packages/app-commands/src/commands/clock/args.rs#L101-L108`](../../packages/app-commands/src/commands/clock/args.rs#L101-L108)). Methods and open design decisions: [kb/reports/feat-tree-infer.md](../reports/feat-tree-infer.md).
+v1: the `timetree` and `clock` commands declare `--tree` as optional and stop with the required-arguments error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L285-L295`](../../packages/app-commands/src/commands/timetree/args.rs#L285-L295), [`packages/app-commands/src/commands/clock/args.rs#L85-L94`](../../packages/app-commands/src/commands/clock/args.rs#L85-L94)). Methods and open design decisions: [kb/reports/feat-tree-infer.md](../reports/feat-tree-infer.md).
 
 ---
 
@@ -239,7 +239,7 @@ v1: not implemented.
 
 Build per-edge time likelihood distributions from partition likelihood contributions and branch-length grids, then convert their coordinates to time using the effective clock rate.
 
-v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L22-L57`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L22-L57) and called from [`packages/treetime/src/timetree/inference/runner.rs#L283-L291`](../../packages/treetime/src/timetree/inference/runner.rs#L283-L291). Input-branch mode remains a separate gap described above.
+v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L18-L81`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L18-L81) and called from [`packages/treetime/src/timetree/inference/runner.rs#L436`](../../packages/treetime/src/timetree/inference/runner.rs#L436). Input-branch mode remains a separate gap described above.
 
 ---
 
@@ -248,7 +248,7 @@ v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime
 Iterative parameter estimation for discrete-trait GTR models following the expectation-maximization framework (<a id="cite-3"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[3](#ref-3)]). The E-step computes posterior joint parent-child state distributions through Felsenstein's pruning algorithm (<a id="cite-4"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[4](#ref-4)]), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix $W$, equilibrium frequencies $\pi$, and scalar rate $\mu$ from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
 
 v0: `reconstruct_discrete_traits()` in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` in [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632).
-v1: `refine_gtr()` in [`packages/treetime/src/gtr/refinement.rs#L17-L83`](../../packages/treetime/src/gtr/refinement.rs#L17-L83), in the v0 order: a full marginal update under the first fitted model, then fits and rate steps that count with its forward messages. The golden masters match v0 within 1e-7 ([kb/algo/mugration.md](mugration.md#golden-master-tolerance)). Full forward-backward per iteration proposed in [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md).
+v1: `refine_gtr()` in [`packages/treetime/src/gtr/refinement.rs#L16-L82`](../../packages/treetime/src/gtr/refinement.rs#L16-L82), in the v0 order: a full marginal update under the first fitted model, then fits and rate steps that count with its forward messages. The golden masters match v0 within 1e-7 ([kb/algo/mugration.md](mugration.md#golden-master-tolerance)). Full forward-backward per iteration proposed in [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md).
 
 ---
 

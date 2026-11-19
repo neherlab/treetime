@@ -43,7 +43,7 @@ Three treatments were measured: clamp each valley sample to the floor (the v0 be
 
 ## Limits
 
-- A valley sample whose plain sum is too small to keep its relative accuracy (below the number of its pairs times the smallest normal double) is computed again by log-space quadrature from the neg-log operands. An exact zero then stays $+\infty$, so a gap in the support of an operand stays impossible in the result, and a valley deeper than about 745 nats, where the plain operand values underflow, keeps its depth (`test_convolution_valley_quadrature_keeps_exact_zeros_and_depths_below_the_smallest_double` in `packages/treetime-distribution/src/distribution_ops/__tests__/test_convolve_exact_tails.rs`). No measured case reaches this depth
+- A valley sample whose plain sum is too small to keep its relative accuracy (below the number of its pairs times the smallest normal double) is computed again by log-space quadrature from the neg-log operands. An exact zero then stays $+\infty$, so a gap in the support of an operand stays impossible in the result, and a valley deeper than about 745 nats, where the plain operand values underflow, keeps its depth (`test_convolution_valley_quadrature_keeps_exact_zeros_and_depths_below_the_smallest_double` in `packages/treetime-distribution/src/distribution_ops/convolve/__tests__/test_convolve_exact_tails.rs`). No measured case reaches this depth
 - The trusted range ends at the outermost samples above the floor. Below-floor samples outside it belong to the tails, which exponential tilting computes
 
 ## Related

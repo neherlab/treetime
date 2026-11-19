@@ -1,6 +1,6 @@
 # The coalescent lineage grid extends past the latest sample with undated tips
 
-`fn LineageExpectation::span()` [packages/treetime/src/coalescent/mean_field.rs#L451-L461](../../packages/treetime/src/coalescent/mean_field.rs#L451-L461) ends at the last point of the expectation grid, which reaches the latest time at which any node's survival function is below one. An undated leaf enters the lineage counts by its posterior ([kb/decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md](../decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md)). Its posterior has no upper bound from a sampling window: past the latest sample $\bar k_{-v} \approx 0$, so its leaf factor is nearly flat there, and the right tail follows the branch likelihood.
+`fn LineageExpectation::span()` [packages/treetime/src/coalescent/mean_field.rs#L449-L459](../../packages/treetime/src/coalescent/mean_field.rs#L449-L459) ends at the last point of the expectation grid, which reaches the latest time at which any node's survival function is below one. An undated leaf enters the lineage counts by its posterior ([kb/decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md](../decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md)). Its posterior has no upper bound from a sampling window: past the latest sample $\bar k_{-v} \approx 0$, so its leaf factor is nearly flat there, and the right tail follows the branch likelihood.
 
 Clock-filter outliers extend the span the same way. A tip that the clock filter flags loses its date constraint, and the time inference dates it from the clock alone ([M-clock-filter-outlier-clade-dated-after-the-samples.md](M-clock-filter-outlier-clade-dated-after-the-samples.md)), so its posterior has no upper bound from the sampling window either.
 
@@ -12,7 +12,7 @@ Clock-filter outliers extend the span the same way. A tip that the clock filter 
 
 ## Impact
 
-- `fn optimize_skyline()` [packages/treetime/src/coalescent/skyline.rs#L39-L40](../../packages/treetime/src/coalescent/skyline.rs#L39-L40) places equal-width segments over the span, so segments after the latest sample hold no lineages and the segments that hold data are wider
+- `fn optimize_skyline()` [packages/treetime/src/coalescent/skyline.rs#L40-L41](../../packages/treetime/src/coalescent/skyline.rs#L40-L41) places equal-width segments over the span, so segments after the latest sample hold no lineages and the segments that hold data are wider
 - The coalescent outputs (`--output-coalescent`) report a segment end decades after the samples
 
 > [!IMPORTANT]
