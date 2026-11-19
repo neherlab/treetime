@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::Distribution;
+  use crate::DistributionFunction;
   use crate::distribution_ops::multiply::{HardDomain, distribution_multiplication, guarded_empty_result};
   use eyre::Report;
   use ndarray::{Array1, array};
@@ -421,6 +422,32 @@ mod tests {
       panic!("Expected Function")
     };
     assert_eq!(BoundaryBehavior::Hard, f.left_extrap());
+  }
+
+  #[test]
+  fn test_multiply_function_function_keeps_finite_cost_at_shared_hard_right_end() -> Result<(), Report> {
+    let peak_at_end = DistributionFunction::from_range_values((0.0, 3.1), array![3.0, 2.0, 1.0, 0.0])?
+      .with_right_extrap(BoundaryBehavior::Hard);
+    let rising = DistributionFunction::from_range_values((0.0, 3.1), array![0.5, 1.0, 1.5, 2.0])?
+      .with_right_extrap(BoundaryBehavior::Hard);
+
+    let actual = distribution_multiplication(
+      &Distribution::Function(peak_at_end),
+      &Distribution::Function(rising),
+      MaxGridPoints::default(),
+    )?;
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+
+    let expected = array![3.5, 3.0, 2.5, 2.0];
+    pretty_assert_abs_diff_eq!(
+      &expected,
+      actual.y(),
+      epsilon = 1e-15,
+      "sum of the factor costs at their shared grid points; the last product grid point, 3.1 / 3 * 3, lies 1 ULP above the hard end 3.1, where the costs are 0 + 2"
+    );
+    Ok(())
   }
 
   #[test]
