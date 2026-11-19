@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::Distribution;
-  use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::distribution_ops::product::distribution_product;
   use itertools::Itertools;
   use ndarray::array;
@@ -58,13 +57,22 @@ mod tests {
   }
 
   #[test]
-  fn test_product_two_factors_equals_pairwise_multiplication() {
+  fn test_product_two_factors_add_their_costs_on_the_overlap_at_the_finer_spacing() {
     let a = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
     let b = Distribution::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
 
-    let pairwise = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
-    let nary = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap();
-    assert_eq!(pairwise, nary);
+    let actual = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap();
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+
+    pretty_assert_ulps_eq!(array![1.2, 1.7, 2.2, 2.7], actual.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(
+      array![4.2, 5.7, 7.2, 8.7],
+      actual.y(),
+      max_ulps = 4,
+      "the cost 1 + t of the first factor plus the cost 2 + 2 (t - 1.2) of the second, which is 3 t + 0.6 on the overlap [1.2, 2.7]"
+    );
   }
 
   #[rustfmt::skip]

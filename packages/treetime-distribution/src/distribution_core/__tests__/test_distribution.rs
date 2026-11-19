@@ -44,6 +44,13 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_distribution_function_of_one_sample_is_a_point() -> Result<(), Report> {
+    let actual = Distribution::function(array![2.0], array![3.0])?;
+    assert_eq!(Distribution::point(2.0, 3.0), actual);
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::at_the_point(               2015.5,                  5.0)]

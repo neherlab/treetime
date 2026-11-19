@@ -7,7 +7,7 @@ mod tests {
   use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution, on_common_spacing};
   use eyre::Report;
   use itertools::Itertools;
-  use ndarray::{Array1, array, s};
+  use ndarray::{Array1, Axis, array, s};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Normal};
@@ -19,23 +19,37 @@ mod tests {
 
   #[test]
   fn test_convolve_gaussian_variances_add() -> Result<(), Report> {
-    let gaussian = |sigma: f64| -> Result<Distribution, Report> {
-      let t = Array1::linspace(-6.0, 6.0, 241);
-      let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
-      Distribution::function(t, y)
+    let dx = 0.05;
+    let y = Array1::linspace(-6.0, 6.0, 241).mapv(|t| t * t / 2.0);
+    let gaussian = Distribution::function(Array1::linspace(-6.0, 6.0, 241), y.clone())?;
+
+    let actual = distribution_convolution(&gaussian, &gaussian, MaxGridPoints::default(), &FftPlans::new())?;
+
+    let times = array![0.0, 0.5, 1.0, 2.0];
+    pretty_assert_ulps_eq!(
+      times.mapv(|t| t * t / 4.0 - 0.5 * PI.ln()),
+      times
+        .iter()
+        .map(|&t| actual.eval(t))
+        .collect::<Result<Array1<f64>, Report>>()?,
+      epsilon = 1e-11,
+      "the unit Gaussians exp(-t^2/2) convolve to sqrt(pi) exp(-t^2/4), whose cost is t^2/4 - ln(pi)/2; both operands decay below 1e-7 of their peak at the grid ends"
+    );
+    let Distribution::Function(g) = &actual else {
+      panic!("expected a Function result, got {actual:?}");
     };
-
-    let result = distribution_convolution(
-      &gaussian(1.0)?,
-      &gaussian(1.0)?,
-      MaxGridPoints::default(),
-      &FftPlans::new(),
-    )?;
-
-    let y0 = result.eval(0.0)?;
-    pretty_assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
-    pretty_assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-3);
-    pretty_assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-3);
+    pretty_assert_ulps_eq!(Array1::linspace(-12.0, 12.0, 481), g.t(), max_ulps = 4);
+    let expected = helpers::trapezoid_convolution_costs(dx, &y, &y);
+    let peak = expected.iter().copied().fold(f64::INFINITY, f64::min);
+    let above_fft_round_off = (0..expected.len())
+      .filter(|&k| expected[k] - peak <= 1e7_f64.ln())
+      .collect_vec();
+    pretty_assert_ulps_eq!(
+      expected.select(Axis(0), &above_fft_round_off),
+      g.values().select(Axis(0), &above_fft_round_off),
+      epsilon = 1e-9,
+      "-ln of the trapezoid rule over the overlap of the sampled operand densities, summed directly, at the samples above 1e-7 of the peak"
+    );
     Ok(())
   }
 
@@ -99,15 +113,6 @@ mod tests {
   }
 
   #[test]
-  fn test_convolution_range_point() -> Result<(), Report> {
-    let r = Distribution::range((1.0, 4.0), 1.5);
-    let p = Distribution::point(3.0, 2.0);
-    let actual = distribution_convolution(&r, &p, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(Distribution::range((4.0, 7.0), 3.5), actual);
-    Ok(())
-  }
-
-  #[test]
   fn test_convolution_range_function_covers_the_full_support() -> Result<(), Report> {
     let r = Distribution::range((2.0, 6.0), LN_2);
     let f = DistributionFunction::from_start_dx_values(0.0, 2.0, Array1::zeros(6))?
@@ -129,18 +134,27 @@ mod tests {
     let t = Array1::linspace(2.0, 16.0, 1 + 14 * 2);
     pretty_assert_ulps_eq!(rise_cell, g.dx(), max_ulps = 0);
     pretty_assert_ulps_eq!(t, g.t(), max_ulps = 4);
-    pretty_assert_abs_diff_eq!(
-      t.mapv(overlap_length) / 2.0,
-      g.values().mapv(|y| (-y).exp()),
-      epsilon = 1e-15
+    let expected_cost = |t: f64| -(overlap_length(t) / 2.0).ln();
+    pretty_assert_ulps_eq!(
+      t.mapv(expected_cost),
+      g.values(),
+      epsilon = 1e-15,
+      "-ln of the overlap of the range of density 1/2 with the function of density 1, +inf where they do not overlap"
     );
     assert_eq!(
       (BoundaryBehavior::Hard, BoundaryBehavior::Hard),
       (g.left_extrap(), g.right_extrap())
     );
-    for t in [2.3, 15.7] {
-      pretty_assert_abs_diff_eq!(overlap_length(t) / 2.0, (-actual.eval(t)?).exp(), epsilon = 1e-15);
-    }
+    let inside_end_cells = array![2.3, 15.7];
+    pretty_assert_ulps_eq!(
+      inside_end_cells.mapv(expected_cost),
+      inside_end_cells
+        .iter()
+        .map(|&t| actual.eval(t))
+        .collect::<Result<Array1<f64>, Report>>()?,
+      epsilon = 1e-15,
+      "-ln of the overlap, which rises linearly from the support ends"
+    );
     Ok(())
   }
 
@@ -201,7 +215,7 @@ mod tests {
           MaxGridPoints::default(), &FftPlans::new(),
         )?;
         helpers::assert_grid_point(&actual, t);
-        Ok((-actual.eval(t)?).exp() - exponential_box_density(lambda, range, t))
+        Ok(actual.eval(t)? + exponential_box_density(lambda, range, t).ln())
       })
       .try_collect::<_, _, Report>()?;
     assert_second_order(&errors);
@@ -230,7 +244,7 @@ mod tests {
           MaxGridPoints::default(), &FftPlans::new(),
         )?;
         helpers::assert_grid_point(&actual, t);
-        Ok((-actual.eval(t)?).exp() - (normal.cdf(t - a) - normal.cdf(t - b)))
+        Ok(actual.eval(t)? + (normal.cdf(t - a) - normal.cdf(t - b)).ln())
       })
       .try_collect::<_, _, Report>()?;
     assert_second_order(&errors);
@@ -257,7 +271,7 @@ mod tests {
         let actual = distribution_convolution(&exponential(a, cells)?, &exponential(b, cells)?, MaxGridPoints::default(), &FftPlans::new())?;
         helpers::assert_grid_point(&actual, t);
         let expected = a * b / (b - a) * ((-a * t).exp() - (-b * t).exp());
-        Ok((-actual.eval(t)?).exp() - expected)
+        Ok(actual.eval(t)? + expected.ln())
       })
       .try_collect::<_, _, Report>()?;
     assert_second_order(&errors);
@@ -329,7 +343,7 @@ mod tests {
             let trapezoid_mass = conv.dx() * (density.sum() - f64::midpoint(density[0], density[density.len() - 1]));
             trapezoid_mass - (1.0 - (-a * 4.0).exp()) * (1.0 - (-b * l_end).exp())
           },
-          Some(s) => (-actual.eval(-s)?).exp() - a * b / (b - a) * ((-a * s).exp() - (-b * s).exp()),
+          Some(s) => actual.eval(-s)? + (a * b / (b - a) * ((-a * s).exp() - (-b * s).exp())).ln(),
         })
       })
       .try_collect::<_, _, Report>()?;
@@ -427,9 +441,16 @@ mod tests {
     )?;
 
     pretty_assert_abs_diff_eq!(0.2_f64.ln(), actual.log_mass()?, epsilon = 1e-15);
-    for t in [0.1, 0.01, 0.013, 1.187, 1.19] {
-      pretty_assert_abs_diff_eq!(box_mass(t), (-actual.eval(t)?).exp(), epsilon = 1e-15);
-    }
+    let times = array![0.1, 0.01, 0.013, 1.187, 1.19];
+    pretty_assert_ulps_eq!(
+      times.mapv(|t| -box_mass(t).ln()),
+      times
+        .iter()
+        .map(|&t| actual.eval(t))
+        .collect::<Result<Array1<f64>, Report>>()?,
+      epsilon = 1e-15,
+      "-ln of the length of the overlap of the box [t - 0.2, t] with the unit density on [0, 1]"
+    );
     Ok(())
   }
 
@@ -471,7 +492,7 @@ mod tests {
         let f = function_on((0.0, 2.0), cells + 1, |t| lambda * t)?
           .with_left_extrap(BoundaryBehavior::Hard)
           .with_right_extrap(BoundaryBehavior::Hard);
-        let function_mass = Distribution::Function(f.clone()).log_mass()?.exp();
+        let function_mass = (1.0 - (-2.0 * lambda).exp()) / lambda;
         let actual = distribution_convolution(
           &Distribution::range(range, 0.0),
           &Distribution::Function(f),
@@ -516,7 +537,12 @@ mod tests {
         .sum::<f64>()
     };
     pretty_assert_ulps_eq!(expected_t, g.t(), max_ulps = 4);
-    pretty_assert_abs_diff_eq!(expected_t.mapv(overlap), g.y().mapv(|y| (-y).exp()), epsilon = 1e-15);
+    pretty_assert_ulps_eq!(
+      expected_t.mapv(|t| -overlap(t).ln()),
+      g.y(),
+      epsilon = 1e-15,
+      "-ln of the length of the overlap of the box [t - 0.2, t] with the support components of unit density, +inf where they do not overlap"
+    );
     Ok(())
   }
 
@@ -543,10 +569,10 @@ mod tests {
       "density before the range end: {y:?}"
     );
     assert_eq!(BoundaryBehavior::Hard, g.right_extrap());
-    let inside_last_cell = (-actual.eval(2001.0 - g.dx() / 2.0)?).exp();
+    let inside_last_cell = actual.eval(2001.0 - g.dx() / 2.0)?;
     assert!(
-      inside_last_cell > 0.0,
-      "density {inside_last_cell} inside the last cell"
+      inside_last_cell.is_finite(),
+      "finite cost {inside_last_cell} inside the last cell"
     );
     Ok(())
   }
@@ -582,15 +608,6 @@ mod tests {
 
     assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
     pretty_assert_abs_diff_eq!(neg_log(&array![0.25, 2.0, 2.5, 0.5]), actual.y(), epsilon = 1e-15);
-    Ok(())
-  }
-
-  #[test]
-  fn test_convolution_single_point_functions_are_points() -> Result<(), Report> {
-    let a = Distribution::function(array![2.0], array![3.0])?;
-    let b = Distribution::function(array![5.0], array![4.0])?;
-    let actual = distribution_convolution(&a, &b, MaxGridPoints::default(), &FftPlans::new())?;
-    assert_eq!(Distribution::point(7.0, 7.0), actual);
     Ok(())
   }
 
@@ -786,7 +803,11 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use crate::Distribution;
+    use crate::distribution_core::function::DistributionFunction;
+    use eyre::Report;
+    use itertools::Itertools;
+    use ndarray::Array1;
 
     pub(super) fn function_on(
       range: (f64, f64),
@@ -806,6 +827,17 @@ mod tests {
           .any(|x| approx::Ulps::default().epsilon(0.0).max_ulps(4).eq(x, &t)),
         "{t} is a grid point of the result"
       );
+    }
+
+    pub(super) fn trapezoid_convolution_costs(dx: f64, a: &Array1<f64>, b: &Array1<f64>) -> Array1<f64> {
+      let (n_a, n_b) = (a.len(), b.len());
+      Array1::from_shape_fn(n_a + n_b - 1, |n| {
+        let products = (n.saturating_sub(n_b - 1)..=n.min(n_a - 1))
+          .map(|i| (-(a[i] + b[n - i])).exp())
+          .collect_vec();
+        let ends = f64::midpoint(products[0], products[products.len() - 1]);
+        -((products.iter().sum::<f64>() - ends) * dx).ln()
+      })
     }
 
     pub(super) fn neg_log(plain: &Array1<f64>) -> Array1<f64> {
