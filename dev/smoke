@@ -109,7 +109,8 @@ when its holder exits, also on a crash, and an interrupted build leaves no binar
 Case statuses:
 
     ok                  exit code 0 and every declared output is present and non-empty
-    failed              non-zero exit code, or an expected failure that failed differently
+    failed              non-zero exit code, or an expected failure that failed differently: a `rejected:` case
+                        that panics or ends on a signal instead of exiting with an error
     missing-output      exit code 0, but a declared output is missing or empty
     timeout             the case exceeded its timeout
     xfail               the case failed or timed out as declared in the matrix
@@ -192,6 +193,8 @@ CASES_FILE = Path("dev/smoke.toml")
 WRAPPER = shlex.split(os.environ.get("SMOKE_WRAPPER", "./dev/docker/run"))
 ENV_FILE = PROJECT_ROOT / ".env"
 TREE_ID_LENGTH = 10
+PANIC_EXIT_CODE = 101
+REJECTED_PREFIX = "rejected:"
 OLD_SNAPSHOT_DAYS = 7
 GIB = 1024**3
 MIN_FREE_GIB = 20.0
@@ -1335,6 +1338,8 @@ def classify(case: Case, outcome: RunOutcome, missing: list[str]) -> tuple[Statu
     return Status.OK, ""
   expected = f"expected {case.expect.value} ({case.reason})"
   if case.expect is Expect.FAIL and outcome.exit_code not in (0, None):
+    if is_rejection(case) and not is_error_exit(outcome.exit_code):
+      return Status.FAILED, f"{exit_detail(outcome.exit_code)}, but {expected}: a rejection exits with an error"
     return Status.XFAIL, f"{exit_detail(outcome.exit_code)}, {expected}"
   if case.expect is Expect.TIMEOUT and outcome.timed_out:
     return Status.XFAIL, f"timed out, {expected}"
@@ -1347,7 +1352,17 @@ def classify(case: Case, outcome: RunOutcome, missing: list[str]) -> tuple[Statu
   return Status.XPASS, f"passed, but {expected}: remove the expectation"
 
 
+def is_rejection(case: Case) -> bool:
+  return case.reason is not None and case.reason.startswith(REJECTED_PREFIX)
+
+
+def is_error_exit(exit_code: int) -> bool:
+  return exit_code > 0 and exit_code != PANIC_EXIT_CODE
+
+
 def exit_detail(exit_code: int | None) -> str:
+  if exit_code == PANIC_EXIT_CODE:
+    return f"exit code {exit_code} (panic)"
   if exit_code == -signal.SIGXFSZ:
     return "stopped by signal SIGXFSZ: a file reached the size limit (--max-file-size)"
   if exit_code is not None and exit_code < 0:

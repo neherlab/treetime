@@ -131,7 +131,8 @@ selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,sequences,clock-mo
 #   timeout     seconds; replaces the timeout of the size class
 #   fail        the case is expected to exit with an error: a reason for every dataset of the row, or a table of
 #               reasons keyed by dataset. A reason names the kb entry that explains the failure; for an input that
-#               TreeTime rejects by design, it starts with `rejected:` and names the rule that rejects the input
+#               TreeTime rejects by design, it starts with `rejected:` and names the rule that rejects the input,
+#               and the case must exit with an error: a panic or a signal fails it
 #   hang        the case is expected to exceed its timeout, in the same form as `fail`
 #   skip        datasets of the row that do not run, as a table of reasons keyed by dataset, for a case whose result
 #               depends on the host, such as a memory need above the budget of smaller hosts
