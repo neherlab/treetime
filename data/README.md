@@ -186,7 +186,7 @@ The mugration step of `zika/86/pipeline-geography-map.yaml` reads two tables of 
 
 A genome of several segments, such as influenza, can have one tree per segment, because reassortment gives the segments different histories. `ancestral`, `optimize` and `timetree` merge such trees into one graph when their keys are `segment_trees` and `segment_alignments` (one tree and one alignment per segment, in the same order) instead of `tree` and `alignment`: an internal node with the same name in several trees is one node of the graph, with one date and one length per shared edge. Three datasets hold segment trees with named internal nodes:
 
-- [`flu/h3n2/segments/`](flu/h3n2/segments/README.md): HA, NA, PB1 and PB2 of 100, 500 and 1564 H3N2 viruses, named from the TreeKnit output in `flu/treeknit/`, dated at the Nextstrain seasonal-flu rates
+- [`flu/h3n2/segments/`](flu/h3n2/segments/README.md): HA, NA, PB1 and PB2 of 100, 500 and 1564 H3N2 viruses, named from the TreeKnit output in `flu/treeknit/`, dated at a clock rate calibrated from the Nextstrain seasonal-flu rates of the four segments
 - [`simulated/reassortment/80/`](simulated/reassortment/80/README.md): a simulated graph of four segments with the true date of every node, to check results against the truth
 - [`toy/reassortment/`](toy/reassortment/README.md): a hand-made graph of three segments with the true ancestral sequences
 
