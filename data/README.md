@@ -11,6 +11,7 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | File | Command | Demonstrates |
 | --- | --- | --- |
 | [`dengue/100/clock.yaml`](dengue/100/clock.yaml) | `clock` | Root-to-tip clock regression |
+| [`dengue/20/timetree-gene-partitions.yaml`](dengue/20/timetree-gene-partitions.yaml) | `timetree` | Dengue time tree with one partition per gene of the DENV2 reference |
 | [`dengue/2000/ancestral.yaml`](dengue/2000/ancestral.yaml) | `ancestral` | Ancestral sequences with the default settings |
 | [`dengue/2000/clock.yaml`](dengue/2000/clock.yaml) | `clock` | Root-to-tip regression with the default settings |
 | [`dengue/2000/homoplasy.yaml`](dengue/2000/homoplasy.yaml) | `homoplasy` | Homoplasies with the default settings |
@@ -20,7 +21,6 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | [`dengue/2000/optimize.yaml`](dengue/2000/optimize.yaml) | `optimize` | Branch-length optimization with the default settings |
 | [`dengue/2000/prune-collapse.yaml`](dengue/2000/prune-collapse.yaml) | `prune` | Tree cleanup: short, empty, and shared-mutation branches |
 | [`dengue/2000/timetree.yaml`](dengue/2000/timetree.yaml) | `timetree` | Time tree with the default settings |
-| [`dengue/2000/timetree-gene-partitions.yaml`](dengue/2000/timetree-gene-partitions.yaml) | `timetree` | Dengue time tree with one partition per gene of the DENV2 reference |
 | [`ebola/20/ancestral-parsimony.yaml`](ebola/20/ancestral-parsimony.yaml) | `ancestral` | Ancestral reconstruction by Fitch parsimony |
 | [`ebola/20/prune-remove.yaml`](ebola/20/prune-remove.yaml) | `prune` | Remove named tips from the tree |
 | [`ebola/362/ancestral.yaml`](ebola/362/ancestral.yaml) | `ancestral` | Ancestral sequences with the default settings |

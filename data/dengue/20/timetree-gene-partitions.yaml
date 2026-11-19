@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
 
-# Dengue time tree with one partition per gene (dengue/2000).
+# Dengue time tree with one partition per gene (dengue/20).
 #
 # Run from any folder; relative paths in this file resolve from its folder, and
 # `--output-all` chooses the output folder. From the repository root:
-#   treetime timetree --config data/dengue/2000/timetree-gene-partitions.yaml --output-all tmp/examples/dengue/2000/timetree-gene-partitions
+#   treetime timetree --config data/dengue/20/timetree-gene-partitions.yaml --output-all tmp/examples/dengue/20/timetree-gene-partitions
 #
 # The genes of the dengue genome evolve at different rates, and the untranslated
 # regions at both ends have constraints of their own. The setting
@@ -15,8 +15,12 @@
 # positions of that reference. The prM CDS `M` contains `pr`, so `pr` gets no
 # partition of its own. All partitions share the tree and the branch lengths;
 # each partition fits its own relative rate (`partition_rates: estimate`), and
-# the genes share one set of exchange rates and frequencies (the default of
+# the partitions share one set of exchange rates and frequencies (the default of
 # the genes scheme). The rates of the partitions are in the model output.
+# Fitting relative rates requires re-estimating branch lengths. This subset
+# has all input branches below the 0.1 substitutions-per-site cutoff for
+# marginal branch-length estimation.
+#
 # The clock rate is estimated from the data; the Nextstrain denv2 genome build
 # fixes it at 0.00078 (phylogenetic/defaults/config_dengue.yaml line 36).
 # `coalescent: opt` fits a constant coalescent time scale, as the build does, and
@@ -33,5 +37,6 @@ annotation:
 
 partition_by: "genes"
 partition_rates: "estimate"
+branch_length_mode: "marginal"
 coalescent: "opt"
 seed: 42
