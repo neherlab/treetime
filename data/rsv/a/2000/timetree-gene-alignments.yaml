@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Time tree from separate G and F gene alignments, one partition per file (rsv/a/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/rsv/a/2000/timetree-gene-alignments.yaml --output-all tmp/examples/rsv/a/2000/timetree-gene-alignments
+#
+# The glycoprotein genes G and F come as two alignment files, as gene builds and
+# gene sequencing studies produce them: `aln-G.fasta.xz` and `aln-F.fasta.xz` hold
+# the CDS columns of `aln.fasta.xz` (see `README.md`). The Nextstrain RSV workflow
+# builds G and F trees next to the genome tree (nextstrain/rsv@7d91d8f,
+# config/configfile.yaml lines 6-10). Each file is one partition with its own GTR
+# model and its own relative rate; the two partitions share the tree, the branch
+# lengths and the dates (kb/decisions/multi-alignment-partitions.md). Outputs with
+# sequence positions, such as the reconstructed sequences, are one file per
+# alignment in the coordinates of that file. The tree topology comes from the
+# genomes, because two genes alone resolve fewer clades. `seed` makes the random
+# order of the polytomy resolution reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "accession"
+alignment:
+  - "aln-G.fasta.xz"
+  - "aln-F.fasta.xz"
+
+seed: 42

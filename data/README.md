@@ -12,6 +12,7 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | --- | --- | --- |
 | [`dengue/100/clock.yaml`](dengue/100/clock.yaml) | `clock` | Root-to-tip clock regression |
 | [`dengue/20/timetree-gene-partitions.yaml`](dengue/20/timetree-gene-partitions.yaml) | `timetree` | Dengue time tree with one partition per gene of the DENV2 reference |
+| [`dengue/20/timetree-partition-models.yaml`](dengue/20/timetree-partition-models.yaml) | `timetree` | Dengue time tree with GTR for the coding region and JC69 for the UTRs |
 | [`dengue/2000/ancestral.yaml`](dengue/2000/ancestral.yaml) | `ancestral` | Ancestral sequences with the default settings |
 | [`dengue/2000/clock.yaml`](dengue/2000/clock.yaml) | `clock` | Root-to-tip regression with the default settings |
 | [`dengue/2000/homoplasy.yaml`](dengue/2000/homoplasy.yaml) | `homoplasy` | Homoplasies with the default settings |
@@ -73,11 +74,14 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | [`rsv/a/2000/optimize-gene-partitions.yaml`](rsv/a/2000/optimize-gene-partitions.yaml) | `optimize` | Shared branch lengths with a separate relative rate for each annotated gene |
 | [`rsv/a/2000/optimize.yaml`](rsv/a/2000/optimize.yaml) | `optimize` | Branch-length optimization with the default settings |
 | [`rsv/a/2000/prune-collapse.yaml`](rsv/a/2000/prune-collapse.yaml) | `prune` | Tree cleanup: short, empty, and shared-mutation branches |
+| [`rsv/a/2000/timetree-gene-alignments.yaml`](rsv/a/2000/timetree-gene-alignments.yaml) | `timetree` | Time tree from separate G and F gene alignments, one partition per file |
 | [`rsv/a/2000/timetree-skyline-confidence.yaml`](rsv/a/2000/timetree-skyline-confidence.yaml) | `timetree` | RSV-A time tree with a skyline coalescent and date intervals |
 | [`rsv/a/2000/timetree.yaml`](rsv/a/2000/timetree.yaml) | `timetree` | Time tree with the default settings |
 | [`sc2/2844/ancestral.yaml`](sc2/2844/ancestral.yaml) | `ancestral` | Marginal ancestral reconstruction on 2504 SARS-CoV-2 genomes |
 | [`sc2/2844/optimize-gamma.yaml`](sc2/2844/optimize-gamma.yaml) | `optimize` | Branch lengths with gamma rate variation across SARS-CoV-2 sites |
 | [`sc2/2844/optimize-gene-partitions.yaml`](sc2/2844/optimize-gene-partitions.yaml) | `optimize` | Branch lengths with one partition per SARS-CoV-2 gene |
+| [`sc2/2844/optimize-rate-categories.yaml`](sc2/2844/optimize-rate-categories.yaml) | `optimize` | Branch lengths with slow, medium and fast sites grouped by parsimony changes |
+| [`sc2/2844/optimize-shared-exchange-rates.yaml`](sc2/2844/optimize-shared-exchange-rates.yaml) | `optimize` | Gene partitions with shared exchange rates and their own base frequencies |
 | [`sc2/5100/ancestral.yaml`](sc2/5100/ancestral.yaml) | `ancestral` | Ancestral sequences with the default settings |
 | [`sc2/5100/clock-outgroup.yaml`](sc2/5100/clock-outgroup.yaml) | `clock` | Root-to-tip regression on the Wuhan-Hu-1 root |
 | [`sc2/5100/clock.yaml`](sc2/5100/clock.yaml) | `clock` | Root-to-tip regression with the default settings |

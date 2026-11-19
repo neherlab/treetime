@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Dengue time tree with a simpler substitution model for the UTRs than for the coding region (dengue/20).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/dengue/20/timetree-partition-models.yaml --output-all tmp/examples/dengue/20/timetree-partition-models
+#
+# Each `partition` entry names its sites and its own substitution model. The coding
+# region, sites 97-10269 of the DENV2 reference NC_001474 (the CDS of
+# `annotation.gff3`), fits GTR (`model` left out means `infer`). The entry `utr`
+# names no sites, so it takes the remaining sites, the 5' and 3' UTRs, and uses
+# JC69, which has no parameters besides the relative rate of the partition. On
+# this tree of 20 genomes the 550 UTR sites carry about 130 of about 4500 expected
+# substitutions, so JC69 spends none of them on the five exchange rates and three
+# base frequencies of GTR. Named models can also take parameters: `model: "hky85"`
+# with `model_params: ["kappa=4"]`. The clock rate is estimated from the data;
+# `coalescent: opt` fits a constant coalescent time scale, and `seed` makes the
+# random order of the polytomy resolution reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "genbank_accession"
+alignment:
+  - "aln.fasta.xz"
+
+partition:
+  - name: "coding"
+    sites: ["97-10269"]
+  - name: "utr"
+    model: "jc69"
+partition_rates: "estimate"
+coalescent: "opt"
+seed: 42

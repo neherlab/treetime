@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Gene partitions that share the exchange rates and fit their own base frequencies (sc2/2844).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/sc2/2844/optimize-shared-exchange-rates.yaml --output-all tmp/examples/sc2/2844/optimize-shared-exchange-rates
+#
+# `optimize-gene-partitions.yaml` gives every gene its own relative rate, and the
+# genes share the exchange rates and the base frequencies, the default of
+# `partition_by: genes`. Here `shared_params` keeps the shared exchange rates, the
+# mutation spectrum that all genes of the genome share, and lets every gene fit its
+# own base frequencies, because the composition differs between the genes. The
+# model output lists the frequencies of each gene
+# (kb/decisions/multi-alignment-partitions.md, section "Shared model parameters").
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+annotation:
+  - "annotation.gff3"
+
+partition_by: "genes"
+shared_params:
+  - "exchange-rates"

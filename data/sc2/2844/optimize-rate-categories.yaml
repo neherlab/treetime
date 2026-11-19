@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch lengths with the sites grouped by how often they change (sc2/2844).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/sc2/2844/optimize-rate-categories.yaml --output-all tmp/examples/sc2/2844/optimize-rate-categories
+#
+# `partition_by: rate-categories` counts, for each site, the branches of the input
+# tree with a Fitch parsimony change at that site, and puts the sites into three
+# partitions: `slow` (no change), `medium` (one change) and `fast` (two or more
+# changes). The partitions share the exchange rates and base frequencies and fit one
+# relative rate each (kb/decisions/multi-alignment-partitions.md). Like
+# `optimize-gamma.yaml`, this lets a few fast sites carry most substitutions, and
+# the run takes about a fifth of the time of the gamma example. The buckets come
+# from the same data and tree as the fit, so their rates are not independent
+# estimates: in a simulation with known site rates in that decision file, the
+# buckets made the tree 0.8 to 1.4 % too long. On this dataset the tree comes out
+# shorter than without partitions, while gamma makes it longer, so the two methods
+# are not interchangeable.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+
+partition_by: "rate-categories"
