@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "README.md",
-      "size": 23208
+      "size": 24538
     },
     {
       "path": "dengue/100/README.md",
@@ -45,8 +45,16 @@
       "size": 40256
     },
     {
+      "path": "dengue/20/annotation.gff3",
+      "size": 1459
+    },
+    {
       "path": "dengue/20/metadata.tsv",
       "size": 11383
+    },
+    {
+      "path": "dengue/20/timetree-gene-partitions.yaml",
+      "size": 2073
     },
     {
       "path": "dengue/20/tree.nwk",
@@ -94,7 +102,7 @@
     },
     {
       "path": "dengue/2000/pipeline-nextstrain.yaml",
-      "size": 2572
+      "size": 3499
     },
     {
       "path": "dengue/2000/prune-collapse.yaml",
@@ -202,7 +210,7 @@
     },
     {
       "path": "ebola/362/pipeline-nextstrain.yaml",
-      "size": 1907
+      "size": 2329
     },
     {
       "path": "ebola/362/prune-collapse.yaml",
@@ -310,7 +318,7 @@
     },
     {
       "path": "flu/h3n2/500/pipeline-nextstrain.yaml",
-      "size": 2381
+      "size": 3938
     },
     {
       "path": "flu/h3n2/500/prune-collapse.yaml",
@@ -323,6 +331,10 @@
     {
       "path": "flu/h3n2/500/timetree-skyline-confidence.yaml",
       "size": 1157
+    },
+    {
+      "path": "flu/h3n2/500/timetree-srd06.yaml",
+      "size": 1638
     },
     {
       "path": "flu/h3n2/500/timetree.yaml",
@@ -470,7 +482,7 @@
     },
     {
       "path": "lassa/L/500/pipeline-nextstrain.yaml",
-      "size": 2174
+      "size": 2471
     },
     {
       "path": "lassa/L/500/prune-collapse.yaml",
@@ -594,7 +606,7 @@
     },
     {
       "path": "mpox/clade-ii/2000/pipeline-nextstrain.yaml",
-      "size": 1980
+      "size": 2635
     },
     {
       "path": "mpox/clade-ii/2000/prune-collapse.yaml",
@@ -1501,12 +1513,16 @@
       "size": 632
     },
     {
+      "path": "rsv/a/2000/optimize-gene-partitions.yaml",
+      "size": 1074
+    },
+    {
       "path": "rsv/a/2000/optimize.yaml",
       "size": 655
     },
     {
       "path": "rsv/a/2000/pipeline-nextstrain.yaml",
-      "size": 2198
+      "size": 3145
     },
     {
       "path": "rsv/a/2000/prune-collapse.yaml",
@@ -1605,6 +1621,14 @@
       "size": 223464
     },
     {
+      "path": "sc2/2844/optimize-gamma.yaml",
+      "size": 1211
+    },
+    {
+      "path": "sc2/2844/optimize-gene-partitions.yaml",
+      "size": 1434
+    },
+    {
       "path": "sc2/2844/pipeline-undated.yaml",
       "size": 1465
     },
@@ -1654,7 +1678,7 @@
     },
     {
       "path": "sc2/5100/pipeline-nextstrain.yaml",
-      "size": 2047
+      "size": 3948
     },
     {
       "path": "sc2/5100/prune-collapse.yaml",
@@ -1678,7 +1702,15 @@
     },
     {
       "path": "smoke/README.md",
-      "size": 1672
+      "size": 3187
+    },
+    {
+      "path": "smoke/ebola-100-keep-tips.txt",
+      "size": 6
+    },
+    {
+      "path": "smoke/ebola-100-metadata-undated.tsv",
+      "size": 5095
     },
     {
       "path": "smoke/flu-h3n2-20-tree-single-child-polytomy.nwk",
@@ -1687,6 +1719,18 @@
     {
       "path": "smoke/mpox-clade-ii-1000-tree-optimized.nwk",
       "size": 30353
+    },
+    {
+      "path": "smoke/rsv-a-20-aln-F.fasta.xz",
+      "size": 1584
+    },
+    {
+      "path": "smoke/rsv-a-20-aln-G.fasta.xz",
+      "size": 1372
+    },
+    {
+      "path": "smoke/zika-20-metadata-day-month-year.tsv",
+      "size": 1529
     },
     {
       "path": "smoke/zika-20-tree-without-internal-branch-lengths.nwk",
@@ -1751,6 +1795,10 @@
     {
       "path": "tb/149/optimize.yaml",
       "size": 665
+    },
+    {
+      "path": "tb/149/pipeline-nextstrain.yaml",
+      "size": 2520
     },
     {
       "path": "tb/149/prune-collapse.yaml",
@@ -1933,12 +1981,16 @@
       "size": 649
     },
     {
+      "path": "zika/86/pipeline-clock-sensitivity.yaml",
+      "size": 2028
+    },
+    {
       "path": "zika/86/pipeline-geography-map.yaml",
       "size": 2282
     },
     {
       "path": "zika/86/pipeline-nextstrain.yaml",
-      "size": 2242
+      "size": 2805
     },
     {
       "path": "zika/86/prune-collapse.yaml",
@@ -2524,6 +2576,27 @@
       }
     },
     {
+      "path": "dengue/20/timetree-gene-partitions.yaml",
+      "command": "timetree",
+      "title": "Dengue time tree with one partition per gene (dengue/20).",
+      "folder": "dengue/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Dengue time tree with one partition per gene (dengue/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/dengue/20/timetree-gene-partitions.yaml --output-all tmp/examples/dengue/20/timetree-gene-partitions\n#\n# The genes of the dengue genome evolve at different rates, and the untranslated\n# regions at both ends have constraints of their own. The setting\n# `partition_by: genes` makes one partition per CDS of `annotation.gff3` and one\n# partition `noncoding` of the other sites. The CDS are those of the DENV2\n# reference NC_001474 in nextstrain/dengue@b31c2b5\n# (phylogenetic/defaults/denv2/reference.gb), and the alignment columns are the\n# positions of that reference. The prM CDS `M` contains `pr`, so `pr` gets no\n# partition of its own. All partitions share the tree and the branch lengths;\n# each partition fits its own relative rate (`partition_rates: estimate`), and\n# the partitions share one set of exchange rates and frequencies (the default of\n# the genes scheme). The rates of the partitions are in the model output.\n# Fitting relative rates requires re-estimating branch lengths. This subset\n# has all input branches below the 0.1 substitutions-per-site cutoff for\n# marginal branch-length estimation.\n#\n# The clock rate is estimated from the data; the Nextstrain denv2 genome build\n# fixes it at 0.00078 (phylogenetic/defaults/config_dengue.yaml line 36).\n# `coalescent: opt` fits a constant coalescent time scale, as the build does, and\n# `seed` makes the random order of the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\nalignment:\n  - \"aln.fasta.xz\"\nannotation:\n  - \"annotation.gff3\"\n\npartition_by: \"genes\"\npartition_rates: \"estimate\"\nbranch_length_mode: \"marginal\"\ncoalescent: \"opt\"\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "dengue/20/aln.fasta.xz"
+        ],
+        "annotation": [
+          "dengue/20/annotation.gff3"
+        ],
+        "metadata": [
+          "dengue/20/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/20/tree.nwk"
+        ]
+      }
+    },
+    {
       "path": "dengue/2000/ancestral.yaml",
       "command": "ancestral",
       "title": "Ancestral sequences with the default settings (dengue/2000).",
@@ -3040,6 +3113,24 @@
       }
     },
     {
+      "path": "flu/h3n2/500/timetree-srd06.yaml",
+      "command": "timetree",
+      "title": "Time tree with SRD06-style codon partitions and gamma rate variation (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with SRD06-style codon partitions and gamma rate variation (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/500/timetree-srd06.yaml --output-all tmp/examples/flu/h3n2/500/timetree-srd06\n#\n# The codon grouping follows Shapiro, Rambaut and Drummond (2006),\n# https://doi.org/10.1093/molbev/msj021. Positions 1 and 2 form one partition;\n# position 3 forms the other. Both partitions share the tree. Each has its own\n# relative rate and gamma shape. TreeTime fits GTR in place of the paper's HKY\n# because the TreeTime HKY model requires a fixed transition/transversion ratio.\n# The four-rate gamma approximation follows\n# `kb/decisions/discrete-gamma-rate-variation.md`.\n#\n# On these 476 NA sequences the first two positions have a gamma shape near 0.25\n# (strong rate variation between conserved and variable amino acids), position 3 a\n# shape near 3, and position 3 evolves about 3 times as fast. Gamma lengthens the\n# branches in this example. The exported model and dates show the fitted rate\n# variation and the resulting time tree.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\npartition:\n  - name: \"codon-12\"\n    sites: ['1-1407\\3', '2-1407\\3']\n  - name: \"codon-3\"\n    sites: ['3-1407\\3']\ngamma_categories: 4\nseed: 42\n\noutput_selection:\n  - \"nwk\"\n  - \"model\"\n  - \"clock-model\"\n  - \"dates\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "metadata": [
+          "flu/h3n2/500/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
       "path": "flu/h3n2/500/timetree.yaml",
       "command": "timetree",
       "title": "Time tree with the default settings (flu/h3n2/500).",
@@ -3415,6 +3506,24 @@
       }
     },
     {
+      "path": "rsv/a/2000/optimize-gene-partitions.yaml",
+      "command": "optimize",
+      "title": "Branch lengths with one relative rate per RSV-A gene (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with one relative rate per RSV-A gene (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/rsv/a/2000/optimize-gene-partitions.yaml --output-all tmp/examples/rsv/a/2000/optimize-gene-partitions\n#\n# Fit gene-specific rates on one genome tree. The bundled reference annotation\n# defines the partitions: the longer M2-1 CDS takes sites shared with M2-2, and\n# sites outside a CDS form a noncoding partition. The gene scheme shares nucleotide\n# frequencies and exchange rates across partitions and fits a relative rate per partition\n# (kb/decisions/multi-alignment-partitions.md). The Nextstrain RSV G and F builds\n# instead infer separate trees on gene alignments.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\nannotation:\n  - \"annotation.gff3\"\n\npartition_by: \"genes\"\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "annotation": [
+          "rsv/a/2000/annotation.gff3"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
       "path": "rsv/a/2000/optimize.yaml",
       "command": "optimize",
       "title": "Branch-length optimization with the default settings (rsv/a/2000).",
@@ -3489,6 +3598,39 @@
       "inputs": {
         "alignment": [
           "sc2/2844/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/2844/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/2844/optimize-gamma.yaml",
+      "command": "optimize",
+      "title": "Branch lengths with discrete gamma rate variation across sites (sc2/2844).",
+      "folder": "sc2/2844",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with discrete gamma rate variation across sites (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/sc2/2844/optimize-gamma.yaml --output-all tmp/examples/sc2/2844/optimize-gamma\n#\n# Most sites of a SARS-CoV-2 genome never change on a tree of a few years, while a\n# few sites change many times. `gamma_categories: 4` lets each site evolve in one of\n# four rate categories of equal probability, whose rates follow a gamma distribution\n# with a fitted shape (`gamma.shape` in the model output; a shape below 1 means that\n# most sites are slow and a few fast). Four categories are the default of the `+G`\n# model of IQ-TREE, whose GTR+G fit gave the branch lengths of `tree.nwk` (see\n# `README.md`). The run takes about ten minutes, many times longer than optimize\n# without rate variation (kb/decisions/discrete-gamma-rate-variation.md).\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ngamma_categories: 4\n",
+      "inputs": {
+        "alignment": [
+          "sc2/2844/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/2844/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/2844/optimize-gene-partitions.yaml",
+      "command": "optimize",
+      "title": "Branch lengths with one partition per SARS-CoV-2 gene (sc2/2844).",
+      "folder": "sc2/2844",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with one partition per SARS-CoV-2 gene (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/sc2/2844/optimize-gene-partitions.yaml --output-all tmp/examples/sc2/2844/optimize-gene-partitions\n#\n# The genes of SARS-CoV-2 evolve at different speeds: the spike gene S, for example,\n# is under selection by the immune response. `partition_by: genes` makes one partition\n# for each CDS of the Wuhan-Hu-1 annotation and one for the noncoding sites. The\n# partitions share the branch lengths and, by default for this scheme, one set of\n# exchange rates and equilibrium frequencies, because the genes of one genome share\n# the mutation process; each partition fits its own relative rate. The model output\n# lists the rate of each gene (`mu`): on this tree ORF1b, which codes for the\n# polymerase, evolves slowest, and the noncoding sites, which include the genome ends\n# that are hard to sequence, fastest. A site in two CDSs belongs to the longer CDS, so\n# ORF9b, which lies inside N, gets no partition, and the run warns about it.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\nannotation:\n  - \"annotation.gff3\"\n\npartition_by: \"genes\"\n",
+      "inputs": {
+        "alignment": [
+          "sc2/2844/aln.fasta.xz"
+        ],
+        "annotation": [
+          "sc2/2844/annotation.gff3"
         ],
         "tree": [
           "sc2/2844/tree.nwk"
@@ -4157,7 +4299,7 @@
     },
     {
       "path": "rsv/a/2000/pipeline-nextstrain.yaml",
-      "title": "Nextstrain rsv a genome build, TreeTime part (rsv/a/2000).",
+      "title": "Nextstrain RSV-A genome build, TreeTime part (rsv/a/2000).",
       "steps": [
         {
           "name": "timetree",
@@ -4210,6 +4352,20 @@
       ]
     },
     {
+      "path": "tb/149/pipeline-nextstrain.yaml",
+      "title": "Nextstrain tuberculosis build, TreeTime part (tb/149).",
+      "steps": [
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        }
+      ]
+    },
+    {
       "path": "zika/20/pipeline-dated-geography.yaml",
       "title": "Phylodynamics + phylogeography in one file: time tree, then ancestral geography (zika/20).",
       "steps": [
@@ -4220,6 +4376,20 @@
         {
           "name": "mugration",
           "command": "mugration"
+        }
+      ]
+    },
+    {
+      "path": "zika/86/pipeline-clock-sensitivity.yaml",
+      "title": "Compare a fitted clock with a published Zika outbreak clock (zika/86).",
+      "steps": [
+        {
+          "name": "fitted-clock",
+          "command": "timetree"
+        },
+        {
+          "name": "published-clock",
+          "command": "timetree"
         }
       ]
     },
