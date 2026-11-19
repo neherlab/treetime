@@ -348,7 +348,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{Array1, BoundaryBehavior, DistributionFunction, HARD, Report, Side, SoftTailLaw, array};
 
     pub(super) fn function(
       range: (f64, f64),

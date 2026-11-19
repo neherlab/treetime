@@ -91,7 +91,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Array1, BoundaryBehavior, CELL, CELLS, Distribution, DistributionFunction, EdgeCellLaw, MUTATIONS, OFFSET,
+      ONE_MUTATION, Report, ToF64Exact,
+    };
 
     pub(super) fn cost(x: f64) -> f64 {
       cost_with(MUTATIONS, x)

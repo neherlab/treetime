@@ -349,7 +349,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Deserialize, Distribution, INPUTS, InputBranchLikelihood, InputBranchModel, MaxGridPoints, OUTPUTS, Report,
+      ToF64Exact, izip,
+    };
     use std::sync::Arc;
     use treetime_distribution::DistributionFunction;
     use treetime_utils::cast::f64_to_usize_saturating;

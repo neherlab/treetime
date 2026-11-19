@@ -581,7 +581,11 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Arc, Array1, BRANCH_GRID_DX, BRANCH_PRECISION, BranchLikelihood, CoalescentPrior, DateConstraints, Distribution,
+      FftPlans, GraphNodeKey, MaxGridPoints, NodeBackward, Report, find_node_key_by_name, nwk_read, parent_edge_key,
+      propagate_distributions_backward, unknown_branches,
+    };
     use treetime_graph::key_map::{EdgeMap, NodeMap};
 
     use treetime_graph::graph::Graph;
@@ -700,5 +704,8 @@ mod tests {
     }
   }
 
-  use helpers::*;
+  use helpers::{
+    BackwardInputs, fold_laplace_children, gaussian_neglog, node_time_distribution, run_backward_pass,
+    set_date_constraint, set_edge_branch_dist, set_edge_branch_function, set_leaf_function, set_leaf_time,
+  };
 }

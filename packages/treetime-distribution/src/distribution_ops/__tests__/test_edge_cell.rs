@@ -333,7 +333,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{Array1, BoundaryBehavior, DistributionFunction, Report, ToF64Exact, array};
     use treetime_grid::EdgeCellLaw;
 
     pub(super) struct Poisson {

@@ -85,7 +85,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{Array1, BoundaryBehavior, DistributionFunction, Report};
     use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
     const GAUSSIAN_DX: f64 = 0.01;

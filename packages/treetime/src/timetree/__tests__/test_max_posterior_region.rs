@@ -8,7 +8,7 @@ mod tests {
   use itertools::chain;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
-  use proptest::prelude::*;
+  use proptest::prelude::{prop_assert_eq, prop_assume, proptest};
   use rstest::rstest;
   use statrs::distribution::{Continuous, ContinuousCDF, Gamma, Normal};
   use std::f64::consts::LN_10;

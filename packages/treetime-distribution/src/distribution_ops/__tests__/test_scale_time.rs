@@ -72,7 +72,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{Array1, BoundaryBehavior, DistributionFunction, HardApproachLaw, Report, SoftTailLaw};
 
     pub(super) fn branch_like() -> Result<DistributionFunction, Report> {
       let t = Array1::linspace(0.1, 4.0, 391);

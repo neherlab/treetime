@@ -768,7 +768,12 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Arc, Array1, BoundaryBehavior, BranchLikelihood, DateConstraints, Distribution, DistributionFunction, FftPlans,
+      ForwardPassInputs, FullPosterior, Graph, GraphNodeKey, GridOrigin, LogSink, MaxGridPoints, NodeBackward,
+      NodeNames, NodePosterior, NoopProgress, PosteriorSummaries, Report, SoftTailLaw, find_node_key_by_name,
+      full_posterior, nwk_read, parent_edge_key, propagate_distributions_forward, unknown_branches,
+    };
     use treetime_graph::key_map::{EdgeMap, NodeMap};
 
     pub(super) struct ForwardInputs {
@@ -948,5 +953,9 @@ mod tests {
     }
   }
 
-  use helpers::*;
+  use helpers::{
+    ForwardInputs, forward_inputs, hard_gaussian, leaf_time_distribution, node_time, quadratic_neglog, refine_child_of,
+    run_forward_pass, run_forward_pass_summaries, run_forward_pass_with_log, set_branch_distribution,
+    set_branch_length_distribution, set_date, set_time_distribution, soft_left_gaussian,
+  };
 }

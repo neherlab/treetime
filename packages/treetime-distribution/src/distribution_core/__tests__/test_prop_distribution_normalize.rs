@@ -2,7 +2,7 @@
 mod tests {
   use crate::Distribution;
   use ndarray::Array1;
-  use proptest::prelude::*;
+  use proptest::prelude::{Strategy, prop, prop_assert_eq, proptest};
   use treetime_utils::{prop_assert_array_abs_diff_eq, prop_assert_array_finite, prop_assert_array_nonneg};
 
   proptest! {
@@ -39,7 +39,7 @@ mod tests {
   }
 
   mod generators {
-    use super::*;
+    use super::{Array1, Strategy, prop};
 
     pub(super) fn neglog_values() -> impl Strategy<Value = Array1<f64>> {
       prop::collection::vec(-1e3_f64..1e3, 3..50).prop_map(Array1::from)
@@ -47,7 +47,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{Array1, Distribution};
 
     pub(super) fn normalized_values(y: &Array1<f64>) -> Array1<f64> {
       let x = Array1::linspace(0.0, 1.0, y.len());

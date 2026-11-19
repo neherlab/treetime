@@ -72,7 +72,10 @@ pub(super) mod tests {
   }
 
   pub(crate) mod helpers {
-    use super::*;
+    use super::{
+      Array1, BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, DistributionFunction, Itertools, MassProfile, Report, Side,
+      SoftTailLaw, TailMass,
+    };
     use crate::distribution_ops::mass_profile::MassFractions;
 
     pub(super) fn errors(

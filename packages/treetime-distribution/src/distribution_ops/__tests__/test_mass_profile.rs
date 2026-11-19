@@ -503,7 +503,9 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Array1, BoundaryBehavior, DistributionFunction, HardApproachLaw, Report, SoftTailLaw, ToF64Exact, array,
+    };
 
     pub(super) fn function(
       range: (f64, f64),

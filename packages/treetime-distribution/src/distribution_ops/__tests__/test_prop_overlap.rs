@@ -3,7 +3,7 @@ mod tests {
   use crate::Distribution;
   use crate::{distribution_division, distribution_multiplication};
   use ndarray::{Array1, array};
-  use proptest::prelude::*;
+  use proptest::prelude::{TestCaseError, prop_assert_eq, proptest};
   use treetime_grid::MaxGridPoints;
   use treetime_utils::{prop_assert_array_ulps_eq, prop_assert_ulps_eq};
 

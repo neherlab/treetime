@@ -293,7 +293,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Array1, BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Distribution, DistributionFunction, HardApproachLaw,
+      MassProfile, Report, Side, SoftTailLaw, TRIM_EPS, TailMass, array, trim_to_mass,
+    };
 
     pub(super) fn trim(input: DistributionFunction) -> Result<DistributionFunction, Report> {
       trim_at(input, TRIM_EPS)

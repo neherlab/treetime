@@ -192,7 +192,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{Distribution, Graph, GraphNodeKey, NodePosterior, Report, TimeInference, array, empty_time_inference};
 
     pub(super) fn nan_distribution() -> Result<Distribution, Report> {
       Distribution::function(array![0.0, 1.0, 2.0], array![1.0, f64::NAN, 2.0])

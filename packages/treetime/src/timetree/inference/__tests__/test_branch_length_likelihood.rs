@@ -450,7 +450,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Distribution, GRID_POINTS, IndelTerm, MaxGridPoints, OptimizationContribution, Report,
+      compute_branch_length_distribution,
+    };
     use itertools::izip;
     use std::sync::Arc;
     use treetime_utils::cast::ToF64Exact;

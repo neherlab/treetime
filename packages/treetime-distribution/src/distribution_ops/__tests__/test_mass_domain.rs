@@ -226,7 +226,10 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use super::{
+      Array1, BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Distribution, DistributionFunction, MassProfile, Side,
+      SoftTailLaw, TailMass,
+    };
 
     pub(super) fn total_mass(f: &DistributionFunction) -> f64 {
       MassProfile::new(f)

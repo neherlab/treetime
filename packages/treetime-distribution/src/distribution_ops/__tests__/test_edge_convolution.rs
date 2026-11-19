@@ -452,7 +452,10 @@ pub(crate) mod tests {
   }
 
   pub(crate) mod helpers {
-    use super::*;
+    use super::{
+      Array1, BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Distribution, DistributionFunction, Itertools, LN_10, PI,
+      Report, SQRT_2, Side, SoftTailLaw, erf, erfc, f64_to_usize_saturating, make_error,
+    };
 
     pub(super) fn gaussian_at(sigma: f64, dx: f64) -> Result<Distribution, Report> {
       let n_points = f64_to_usize_saturating((12.0 * sigma / dx).round()) + 1;
@@ -574,5 +577,8 @@ pub(crate) mod tests {
     }
   }
 
-  use helpers::*;
+  use helpers::{
+    CONV_TRUST_DEPTH, branch, deep_valley_exact_neg_log, deep_valley_exact_neg_log_total, gaussian, gaussian_at,
+    gaussian_grid, log_space_trapezoid_convolution, two_gaussians,
+  };
 }
