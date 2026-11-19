@@ -1217,6 +1217,7 @@ pattern = "*.yaml"
 "dengue/2000/mugration-serotype" = "a trait with one state: kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md"
 "lassa/L/20/timetree" = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
 "tb/149/ancestral-vcf" = "kb/issues/M-io-vcf-input-output-unimplemented.md"
+"tb/149/pipeline-nextstrain" = "VCF input is unsupported: kb/issues/M-io-vcf-input-output-unimplemented.md"
 "zika/86/ancestral-phylip" = "kb/issues/M-io-phylip-alignment-input-unsupported.md"
 
 
