@@ -304,6 +304,24 @@ variant = "partition-by-codon-positions"
 datasets = ["rsv/a/20"]
 args = "--method-anc=marginal --partition-by=codon-positions --annotation={dataset}/annotation.gff3"
 
+# Discrete gamma rate variation in the marginal reconstruction, where the states are weighted by the rate posterior
+[[ancestral]]
+variant = "gamma-4"
+datasets = ["rsv/a/20"]
+args = "--method-anc=marginal --gamma-categories=4"
+
+# Ambiguity report at the RAxML-NG threshold of 0.5 per number of states (0.125 for nucleotides), with imputed tips
+[[ancestral]]
+variant = "ambiguity-threshold"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --ambiguity-threshold=0.125 --impute-missing-data"
+
+# The empirical JTT model for the amino acids, and an ambiguity report at 0.5 per 20 states in the translations only
+[[ancestral]]
+variant = "translations-jtt92-ambiguity"
+datasets = ["rsv/a/20"]
+args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --annotation={dataset}/annotation.gff3 --aa-model=jtt92 --ambiguity-threshold=0.025 --ambiguity-outputs=translations"
+
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
 [[ancestral]]
 variant = "input-nexus-tree"
@@ -416,6 +434,13 @@ variant = "tree-without-internal-branch-lengths"
 datasets = ["zika/20"]
 args = "--tree={data}/smoke/zika-20-tree-without-internal-branch-lengths.nwk"
 
+# The tip removal of augur refine --clock-filter-iqd: the 3 tips that the clock filter flags and the 4 tips without a
+# usable date leave the tree, except the flagged tip that --keep-tips names
+[[clock]]
+variant = "prune-tips"
+datasets = ["ebola/100"]
+args = "--metadata={data}/smoke/ebola-100-metadata-undated.tsv --prune-filtered-tips --prune-undated-tips --keep-tips=NZG_0358"
+
 
 [[homoplasy]]
 variant = "default"
@@ -424,6 +449,12 @@ variant = "default"
 variant = "detailed-const-rescale"
 datasets = ["zika/20"]
 args = "--detailed --const=100 --rescale=2 -n 20 --zero-based"
+
+# Homoplasies of the Fitch parsimony reconstruction, on a SNP alignment
+[[homoplasy]]
+variant = "parsimony"
+datasets = ["tb/20"]
+args = "--method-anc=parsimony"
 
 
 [[mugration]]
@@ -489,6 +520,12 @@ args = "--pc=1.0 --missing-data=unknown"
 variant = "missing-weights-threshold"
 datasets = ["zika/20"]
 args = "--pc=1.0 --weights={data}/zika/country_weights.csv --missing-weights-threshold=0.9"
+
+# Ambiguity report at the RAxML-NG threshold of 0.5 per number of states, 0.05 for the 10 countries
+[[mugration]]
+variant = "country-ambiguity-threshold"
+datasets = ["zika/20"]
+args = "--pc=1.0 --ambiguity-threshold=0.05"
 
 
 [[optimize]]
@@ -578,11 +615,44 @@ variant = "shared-frequencies"
 datasets = ["rsv/a/20"]
 args = "--partition-by=codon-positions --annotation={dataset}/annotation.gff3 --shared-params=frequencies"
 
-# Discrete gamma rate variation with 4 categories
+[[optimize]]
+variant = "partition-by-rate-categories-median-split"
+datasets = ["rsv/a/20"]
+args = "--partition-by=rate-categories --rate-category-rule=median-split"
+
+# One set of exchange rates for the codon positions, each with its own frequencies
+[[optimize]]
+variant = "shared-exchange-rates"
+datasets = ["rsv/a/20"]
+args = "--partition-by=codon-positions --annotation={dataset}/annotation.gff3 --shared-params=exchange-rates"
+
+# One partition per `--alignment` file: the G and F genes, each with its own model and relative rate
+[[optimize]]
+variant = "alignments-g-f"
+datasets = ["rsv/a/20"]
+args = "--alignment={data}/smoke/rsv-a-20-aln-G.fasta.xz --alignment={data}/smoke/rsv-a-20-aln-F.fasta.xz"
+
+[[optimize]]
+variant = "alignments-g-f-equal-rates"
+datasets = ["rsv/a/20"]
+args = "--alignment={data}/smoke/rsv-a-20-aln-G.fasta.xz --alignment={data}/smoke/rsv-a-20-aln-F.fasta.xz --partition-rates=equal"
+
+# Discrete gamma rate variation with 4 categories, in the sparse and the dense representation, and with codon-position
+# partitions that share one gamma shape
 [[optimize]]
 variant = "gamma-4"
 datasets = ["rsv/a/20"]
 args = "--gamma-categories=4"
+
+[[optimize]]
+variant = "gamma-4-dense"
+datasets = ["flu/h3n2/20"]
+args = "--gamma-categories=4 --representation=dense"
+
+[[optimize]]
+variant = "gamma-4-codon-positions-shared-shape"
+datasets = ["rsv/a/20"]
+args = "--gamma-categories=4 --partition-by=codon-positions --annotation={dataset}/annotation.gff3 --shared-params=gamma-shape"
 
 [[optimize]]
 variant = "tolerance-0.01"
@@ -720,6 +790,50 @@ args = "--partition-by=genes --annotation={dataset}/annotation.gff3"
 variant = "gamma-4"
 datasets = ["rsv/a/20"]
 args = "--gamma-categories=4"
+
+# One partition per `--alignment` file: the G and F genes, each with its own model, relative rate and sequence output
+[[timetree]]
+variant = "alignments-g-f"
+datasets = ["rsv/a/20"]
+args = "--alignment={data}/smoke/rsv-a-20-aln-G.fasta.xz --alignment={data}/smoke/rsv-a-20-aln-F.fasta.xz"
+
+# `--partition` entries on the command line: the codon positions 1+2 and 3 of the L gene with HKY85 each, as in the
+# SRD06 setup (Shapiro et al. 2006, doi:10.1093/molbev/msj021), and the other sites with an inferred model
+[[timetree]]
+variant = "partition-entries-srd06-l"
+datasets = ["rsv/a/20"]
+args = '''--partition='{name: L-cp12, sites: [8532-15029\3, 8533-15029\3], model: hky85}' --partition='{name: L-cp3, sites: [8534-15029\3], model: hky85}' --partition='{name: other}' '''
+
+# Tips without a usable date (empty and `XXXX-XX-XX`) stay in the tree and are dated from it
+[[timetree]]
+variant = "undated-tips"
+datasets = ["ebola/100"]
+args = "--metadata={data}/smoke/ebola-100-metadata-undated.tsv"
+
+# The tip removal of augur refine --clock-filter-iqd, with one undated tip kept by --keep-tips-file
+[[timetree]]
+variant = "prune-tips"
+datasets = ["ebola/100"]
+args = "--metadata={data}/smoke/ebola-100-metadata-undated.tsv --prune-filtered-tips --prune-undated-tips --keep-tips-file={data}/smoke/ebola-100-keep-tips.txt"
+
+# Dates written as day/month/year; the dates equal those of `timetree/zika/20/basic`
+[[timetree]]
+variant = "date-format"
+datasets = ["zika/20"]
+args = "--metadata={data}/smoke/zika-20-metadata-day-month-year.tsv --date-format=%d/%m/%Y"
+
+# The settings of the Nextstrain seasonal-flu H3N2 NA build (nextstrain/seasonal-flu@2668477, see
+# data/flu/h3n2/500/pipeline-nextstrain.yaml): fixed clock rate with its standard deviation, optimized constant
+# coalescent, date confidence, clock filter at 4 interquartile ranges, no indels in the branch lengths
+[[timetree]]
+variant = "nextstrain-fixed-clock-std-dev"
+datasets = ["flu/h3n2/20"]
+args = "--clock-rate=0.00267 --clock-std-dev=0.000534 --coalescent=opt --confidence --clock-filter=4 --no-indels"
+
+[[timetree]]
+variant = "outgroup"
+datasets = ["ebola/20"]
+args = "--outgroup=EM_079497"
 
 [[timetree]]
 variant = "fixed-clock"
@@ -917,6 +1031,12 @@ variant = "skyline-confidence"
 datasets = ["flu/h3n2/20"]
 args = "--coalescent=skyline --confidence"
 
+# The skyline settings that change the coalescent outputs: smoothing stiffness, band width and generations per year
+[[timetree]]
+variant = "skyline-stiffness-bands"
+datasets = ["flu/h3n2/20"]
+args = "--coalescent=skyline --n-skyline=5 --skyline-stiffness=10 --coalescent-confidence=1 --gen-per-year=100"
+
 [[timetree]]
 variant = "no-filter-keeproot"
 datasets = ["ebola/362"]
@@ -941,6 +1061,11 @@ args = "--relax 1.0 0.5 --max-iter=3"
 variant = "relaxed-uncorr"
 datasets = ["flu/h3n2/200"]
 args = "--relax 1.0 0.0 --max-iter=3"
+
+[[timetree]]
+variant = "relaxed-corr"
+datasets = ["flu/h3n2/20"]
+args = "--relax 1.0 0.5"
 
 [[timetree]]
 variant = "conf-stddev"
@@ -1094,4 +1219,26 @@ sandbox = true
 [[cli]]
 variant = "v0-ancestral"
 args = "ancestral --tree={data}/zika/20/tree.nwk --aln={data}/zika/20/aln.fasta.xz --gtr=JC69 --marginal --outdir={out} --rng-seed=42"
+sandbox = true
+
+# A graph of three segment trees with reassortments, merged by node name (data/toy/reassortment): one reconstruction
+# per segment, branch lengths shared across the segments, and dates at the clock rate of the toy graph
+[[cli]]
+variant = "segment-trees-ancestral"
+args = "ancestral --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --include-leaves --output-all={out}"
+sandbox = true
+
+[[cli]]
+variant = "segment-trees-optimize"
+args = "optimize --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --output-all={out}"
+sandbox = true
+
+[[cli]]
+variant = "segment-trees-timetree"
+args = "timetree --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --metadata={data}/toy/reassortment/metadata.tsv --clock-rate=0.005 --seed=42 --output-all={out}"
+sandbox = true
+
+[[cli]]
+variant = "segment-trees-timetree-cross-parent-messages"
+args = "timetree --segment-trees={data}/toy/reassortment/tree_seg1.nwk --segment-trees={data}/toy/reassortment/tree_seg2.nwk --segment-trees={data}/toy/reassortment/tree_seg3.nwk --segment-alignments={data}/toy/reassortment/aln_seg1.fasta --segment-alignments={data}/toy/reassortment/aln_seg2.fasta --segment-alignments={data}/toy/reassortment/aln_seg3.fasta --metadata={data}/toy/reassortment/metadata.tsv --clock-rate=0.005 --cross-parent-messages --seed=42 --output-all={out}"
 sandbox = true
