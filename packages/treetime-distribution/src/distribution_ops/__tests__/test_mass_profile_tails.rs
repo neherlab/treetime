@@ -115,7 +115,7 @@ mod tests {
     let neg_log_expected =
       neg_log_grid.min(neg_log_tail) - (-(neg_log_grid - neg_log_tail).abs()).exp().ln_1p();
     pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-13);
-    pretty_assert_abs_diff_eq!(neg_log_expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-13);
+    pretty_assert_abs_diff_eq!(neg_log_expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-15);
     if (a, b) == (0.0, f64::INFINITY) {
       let total = profile.fractions(TailMass::Required).unwrap().total();
       pretty_assert_relative_eq!(expected, total, max_relative = 1e-13);

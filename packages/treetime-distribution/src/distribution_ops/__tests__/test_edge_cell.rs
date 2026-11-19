@@ -28,7 +28,7 @@ mod tests {
     let (a, b) = (a * poisson.h, b * poisson.h);
 
     let expected = -(poisson.mass_by_quadrature(a, b.min(poisson.h)) + poisson.second_cell_mass_to(b)).ln();
-    pretty_assert_abs_diff_eq!(expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(expected, profile.neg_log_mass_between(a, b)?, epsilon = 1e-13);
     Ok(())
   }
 
@@ -55,7 +55,7 @@ mod tests {
     pretty_assert_abs_diff_eq!(
       poisson.cost(x),
       -(fractions.density(x, Side::Left) * fractions.total()).ln(),
-      epsilon = 1e-12
+      epsilon = 1e-15
     );
     Ok(())
   }
