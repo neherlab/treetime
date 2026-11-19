@@ -16,53 +16,43 @@ mod tests {
 
   const CDS_TEMPLATE: &str = "out/{cds}.fasta";
 
-  #[test]
-  fn test_validate_aa_args_requires_cds_placeholder() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_aa_settings(        (None,                    vec![],             None))]
+  #[case::gene_placeholder(      (Some("out/%GENE.fasta"), vec_of_owned!["S"], None))]
+  #[case::cds_placeholder(       (Some(CDS_TEMPLATE),      vec_of_owned!["S"], None))]
+  #[case::cdses_from_annotation( (Some(CDS_TEMPLATE),      vec![],             Some(Path::new("genes.gff"))))]
+  #[trace]
+  fn test_validate_aa_args_accepts(
+    #[case] (translations, cdses, annotation): (Option<&str>, Vec<String>, Option<&Path>),
+  ) -> Result<(), Report> {
+    validate_aa_args(translations, &cdses, annotation, None, 1, None)
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::cdses_without_translations(       (None,                       vec_of_owned!["S"],      1), "--translations is required when using --cds-selection, --annotation, or --aa-root-sequence")]
+  #[case::two_alignments(                   (Some(CDS_TEMPLATE),         vec_of_owned!["S"],      2), "--translations and --annotation need exactly one --alignment file, but 2 were given: CDS coordinates refer to the positions of one nucleotide alignment")]
+  #[case::no_placeholder(                   (Some("translations.fasta"), vec_of_owned!["S"],      1), "--translations must contain a CDS placeholder ('{cds}' or '%GENE')")]
+  #[case::empty_selection_without_annotation((Some(CDS_TEMPLATE),        vec![],                  1), "--cds-selection must list at least one CDS, or pass --annotation to derive the CDS set")]
+  #[case::empty_cds_name(                   (Some(CDS_TEMPLATE),         vec_of_owned!["S", ""],  1), "--cds-selection must not contain an empty CDS name")]
+  #[case::duplicate_cds(                    (Some(CDS_TEMPLATE),         vec_of_owned!["S", "S"], 1), "--cds-selection contains duplicate CDS 'S'")]
+  #[trace]
+  fn test_validate_aa_args_rejects(
+    #[case] (translations, cdses, n_alignments): (Option<&str>, Vec<String>, usize),
+    #[case] expected: &str,
+  ) {
     assert_error!(
-      validate_aa_args(Some("translations.fasta"), &[o!("S")], None, None, 1, None),
-      "--translations must contain a CDS placeholder ('{cds}' or '%GENE')"
+      validate_aa_args(translations, &cdses, None, None, n_alignments, None),
+      expected
     );
   }
 
   #[test]
-  fn test_validate_aa_args_accepts_percent_gene_placeholder() {
-    let result = validate_aa_args(Some("out/%GENE.fasta"), &["S".to_owned()], None, None, 1, None);
-    result.unwrap();
-  }
-
-  #[test]
-  fn test_validate_aa_args_accepts_cds_placeholder() {
-    let result = validate_aa_args(Some(CDS_TEMPLATE), &["S".to_owned()], None, None, 1, None);
-    result.unwrap();
-  }
-
-  #[test]
-  fn test_validate_aa_args_empty_cdses_with_annotation_ok() {
-    let result = validate_aa_args(
-      Some(CDS_TEMPLATE),
-      &[],
-      Some(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))),
-      None,
-      1,
-      None,
-    );
-    result.unwrap();
-  }
-
-  #[test]
-  fn test_validate_aa_args_empty_cdses_no_annotation_errors() {
+  fn test_validate_aa_args_rejects_output_translations_without_translations() {
     assert_error!(
-      validate_aa_args(Some(CDS_TEMPLATE), &[], None, None, 1, None),
-      "--cds-selection must list at least one CDS, or pass --annotation to derive the CDS set"
-    );
-  }
-
-  #[test]
-  fn test_validate_aa_args_rejects_translations_with_two_alignments() {
-    assert_error!(
-      validate_aa_args(Some(CDS_TEMPLATE), &[o!("S")], None, None, 2, None),
-      "--translations and --annotation need exactly one --alignment file, but 2 were given: \
-       CDS coordinates refer to the positions of one nucleotide alignment"
+      validate_aa_args(None, &[], None, None, 1, Some(Path::new("aa.fasta"))),
+      "--output-translations requires --translations, which names the amino-acid alignments to reconstruct"
     );
   }
 

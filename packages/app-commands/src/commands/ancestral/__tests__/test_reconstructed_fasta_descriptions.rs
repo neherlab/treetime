@@ -1,45 +1,31 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-  use crate::commands::ancestral::run::run_ancestral_reconstruction;
-  use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::method_anc::MethodAncestralCli;
   use crate::commands::shared::model::GtrModelNameCli;
-  use crate::commands::shared::model::ModelArgs;
   use crate::commands::shared::representation::RepresentationCli;
-  use eyre::{Report, WrapErr};
+  use eyre::Report;
   use helpers::reconstructed_descriptions;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use tempfile::tempdir;
-  use treetime::alphabet::alphabet::Alphabet;
-  use treetime::cancel::NoopCancel;
-  use treetime::progress::NoopProgress;
-  use treetime_io::fasta::fasta_read_file;
   use treetime_utils::o;
 
-  #[test]
-  fn test_reconstructed_fasta_descriptions_parsimony() -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(MethodAncestralCli::Parsimony, None, None, true)?;
-    assert_eq!(Some(&Some("sample description".to_owned())), descriptions.get("A"));
-    assert_eq!(Some(&None), descriptions.get("B"));
-    assert_eq!(Some(&None), descriptions.get("root"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_reconstructed_fasta_descriptions_marginal() -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(
-      MethodAncestralCli::Marginal,
-      Some(RepresentationCli::Sparse),
-      Some(GtrModelNameCli::JC69),
-      true,
-    )?;
-    assert_eq!(Some(&Some("sample description".to_owned())), descriptions.get("A"));
-    assert_eq!(Some(&None), descriptions.get("B"));
-    assert_eq!(Some(&None), descriptions.get("root"));
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::parsimony(      (MethodAncestralCli::Parsimony, None,                            None))]
+  #[case::marginal_sparse((MethodAncestralCli::Marginal,  Some(RepresentationCli::Sparse), Some(GtrModelNameCli::JC69)))]
+  #[case::marginal_dense( (MethodAncestralCli::Marginal,  Some(RepresentationCli::Dense),  Some(GtrModelNameCli::JC69)))]
+  #[trace]
+  fn test_reconstructed_fasta_keeps_the_input_descriptions_of_the_leaves(
+    #[case] (method, representation, model): (MethodAncestralCli, Option<RepresentationCli>, Option<GtrModelNameCli>),
+  ) -> Result<(), Report> {
+    let descriptions = reconstructed_descriptions(method, representation, model, true)?;
+    let expected = btreemap! {
+      o!("A") => Some(o!("sample description")),
+      o!("B") => None,
+      o!("root") => None,
+    };
+    assert_eq!(expected, descriptions);
     Ok(())
   }
 
@@ -59,12 +45,22 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
-    use crate::commands::shared::method_anc::MethodAncArgs;
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::method_anc::{MethodAncArgs, MethodAncestralCli};
+    use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
     use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
-    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
     use crate::commands::shared::tip_sequences::TipSequenceArgs;
     use crate::commands::shared::tree_input::TreeArgs;
+    use eyre::{Report, WrapErr};
+    use std::collections::BTreeMap;
+    use tempfile::tempdir;
+    use treetime::alphabet::alphabet::Alphabet;
+    use treetime::cancel::NoopCancel;
+    use treetime::progress::NoopProgress;
+    use treetime_io::fasta::fasta_read_file;
 
     pub(super) fn reconstructed_descriptions(
       method: MethodAncestralCli,

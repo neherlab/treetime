@@ -1,21 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::{NUC_ALPHABET, project_root, write_column_blocks};
-  use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-  use crate::commands::ancestral::run::run_ancestral_reconstruction;
-  use clap::Parser;
+  use crate::__tests__::test_support::tests::{project_root, write_column_blocks};
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::fs;
-  use std::path::{Path, PathBuf};
   use tempfile::tempdir;
-  use treetime::cancel::NoopCancel;
-  use treetime::progress::NoopProgress;
-  use treetime_io::fasta::fasta_read_file;
-  use treetime_utils::io::json::json_value_read_file;
 
   const ZIKA_COLUMNS: usize = 10807;
   const CUT: usize = 5000;
@@ -116,7 +108,17 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use crate::__tests__::test_support::tests::{NUC_ALPHABET, project_root};
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use clap::Parser;
+    use eyre::Report;
+    use std::collections::BTreeMap;
+    use std::path::{Path, PathBuf};
+    use treetime::cancel::NoopCancel;
+    use treetime::progress::NoopProgress;
+    use treetime_io::fasta::fasta_read_file;
+    use treetime_utils::io::json::json_value_read_file;
 
     pub(super) fn run_ancestral(alignments: &[PathBuf], outputs: &[String]) -> Result<(), Report> {
       let tree = project_root().join("data/zika/20/tree.nwk");
@@ -142,12 +144,21 @@ mod tests {
       let node_data = json_value_read_file(out.join(format!("ancestral.{alignment}.node-data.json")))?;
       let auspice = json_value_read_file(out.join(format!("ancestral.{alignment}.auspice.json")))?;
       let fasta = read_sequences(&out.join(format!("ancestral.{alignment}.sequences.fasta")))?;
-      let annotated_end = node_data["annotations"]["nuc"]["end"].as_u64().unwrap_or_default();
-      let auspice_root = auspice["root_sequence"]["nuc"].as_str().map_or(0, str::len);
+      let annotated_end = node_data["annotations"]["nuc"]["end"]
+        .as_u64()
+        .expect("the node data names the end of the nucleotide annotation");
+      let auspice_root = auspice["root_sequence"]["nuc"]
+        .as_str()
+        .expect("the auspice JSON holds the nucleotide root sequence")
+        .len();
       Ok([
         usize::try_from(annotated_end)?,
         auspice_root,
-        fasta.values().map(String::len).max().unwrap_or_default(),
+        fasta
+          .values()
+          .map(String::len)
+          .max()
+          .expect("the FASTA output holds sequences"),
       ])
     }
   }

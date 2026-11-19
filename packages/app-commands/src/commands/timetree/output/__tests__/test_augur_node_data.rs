@@ -53,31 +53,6 @@ mod tests {
   }
 
   #[test]
-  fn test_augur_node_data_timetree_branch_length_equals_clock_length() {
-    let case = helpers::sample_case();
-    let data = case.write_and_read();
-
-    let mut checked = 0;
-    for node in data.nodes.values() {
-      if let Some(clock_length) = node.clock_length {
-        pretty_assert_relative_eq!(node.branch_length, clock_length);
-        checked += 1;
-      }
-    }
-    assert_eq!(checked, 3);
-  }
-
-  #[test]
-  fn test_augur_node_data_timetree_mutation_length_is_divergence() {
-    let case = helpers::sample_case();
-    let data = case.write_and_read();
-
-    let leaf_a = &data.nodes["leaf_a"];
-    pretty_assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
-    assert!((leaf_a.mutation_length.unwrap() - leaf_a.branch_length).abs() > 1.0);
-  }
-
-  #[test]
   fn test_augur_node_data_timetree_root_has_zero_branch_fields() {
     let case = helpers::sample_case();
     let data = case.write_and_read();

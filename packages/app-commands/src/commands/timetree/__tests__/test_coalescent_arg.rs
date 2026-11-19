@@ -34,8 +34,13 @@ mod tests {
     let from_flag = TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--coalescent", text])?;
     let from_config: TreetimeTimetreeArgsRaw = yaml_read_str(&format!("coalescent: {text}\n"))?;
 
-    assert_eq!(Some(expected), from_flag.coalescent.map(CoalescentArg::mode));
-    assert_eq!(Some(expected), from_config.coalescent.map(CoalescentArg::mode));
+    assert_eq!(
+      (Some(expected), Some(expected)),
+      (
+        from_flag.coalescent.map(CoalescentArg::mode),
+        from_config.coalescent.map(CoalescentArg::mode)
+      )
+    );
     Ok(())
   }
 

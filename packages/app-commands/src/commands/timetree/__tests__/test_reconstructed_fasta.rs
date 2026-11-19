@@ -18,7 +18,7 @@ mod tests {
 
   #[test]
   fn test_timetree_reconstructed_fasta_requires_ancestral_reconstruction() {
-    let result = helpers::run_reconstructed_fasta("test-tt-recon-input-mode", |args| {
+    let result = helpers::run_reconstructed_fasta(|args| {
       args.branch_length_mode = BranchLengthModeCli::Input;
     });
     assert_error!(
@@ -30,23 +30,18 @@ mod tests {
 
   #[test]
   fn test_timetree_reconstructed_fasta_internal_only_and_named() -> Result<(), Report> {
-    let records = helpers::run_reconstructed_fasta("test-tt-recon-internal", |_| {})?;
-    let leaves = helpers::input_leaves()?;
+    let records = helpers::run_reconstructed_fasta(|_| {})?;
+    let leaf_names: BTreeSet<String> = helpers::input_leaves()?.into_keys().collect();
 
-    assert!(!records.is_empty(), "reconstruction must emit internal-node sequences");
-    for record in &records {
-      assert!(
-        !record.seq_name.is_empty(),
-        "every reconstructed record must have a non-empty name (the rerooted root included)"
-      );
-      assert!(
-        !leaves.contains_key(&record.seq_name),
-        "without --include-leaves the FASTA must not contain leaf {}",
-        record.seq_name
-      );
-    }
+    let names: BTreeSet<String> = records.iter().map(|record| record.seq_name.clone()).collect();
+    let emitted_leaves: BTreeSet<String> = names.intersection(&leaf_names).cloned().collect();
+    assert_eq!(
+      (records.len(), BTreeSet::new(), false),
+      (names.len(), emitted_leaves, names.contains("")),
+      "without --include-leaves the FASTA holds uniquely named internal nodes only, the rerooted root included"
+    );
     assert!(
-      records.iter().any(|record| record.seq_name.starts_with("NODE_")),
+      names.iter().any(|name| name.starts_with("NODE_")),
       "internal nodes carry NODE_<n> names, matching the ancestral command and v0"
     );
     Ok(())
@@ -54,37 +49,26 @@ mod tests {
 
   #[test]
   fn test_timetree_reconstructed_fasta_include_leaves_echoes_observed() -> Result<(), Report> {
-    let records = helpers::run_reconstructed_fasta("test-tt-recon-leaves", |args| {
+    let records = helpers::run_reconstructed_fasta(|args| {
       args.tip_sequences.include_leaves = true;
     })?;
     let leaves = helpers::input_leaves()?;
 
-    let emitted_leaf_names: BTreeSet<String> = records
-      .iter()
+    let emitted_leaves: BTreeMap<_, _> = records
+      .into_iter()
       .filter(|record| leaves.contains_key(&record.seq_name))
-      .map(|record| record.seq_name.clone())
+      .map(|record| (record.seq_name, record.seq))
       .collect();
-    let expected_leaf_names: BTreeSet<String> = leaves.keys().cloned().collect();
     assert_eq!(
-      expected_leaf_names, emitted_leaf_names,
-      "--include-leaves must emit exactly the observed leaves"
+      leaves, emitted_leaves,
+      "--include-leaves emits every observed leaf with its observed sequence when imputation is off"
     );
-
-    for record in &records {
-      if let Some(observed) = leaves.get(&record.seq_name) {
-        assert_eq!(
-          *observed, record.seq,
-          "leaf {} must echo its observed sequence when imputation is off",
-          record.seq_name
-        );
-      }
-    }
     Ok(())
   }
 
   #[test]
   fn test_timetree_reconstructed_fasta_imputes_ambiguous_tips() -> Result<(), Report> {
-    let records = helpers::run_reconstructed_fasta("test-tt-recon-impute", |args| {
+    let records = helpers::run_reconstructed_fasta(|args| {
       args.tip_sequences.include_leaves = true;
       args.impute_missing_data.impute_missing_data = true;
     })?;
@@ -181,6 +165,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
+    use tempfile::tempdir;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
@@ -199,13 +184,11 @@ mod tests {
     }
 
     pub(super) fn run_reconstructed_fasta(
-      subdir: &str,
       configure: impl FnOnce(&mut TreetimeTimetreeArgsRaw),
     ) -> Result<Vec<FastaRecord>, Report> {
       let root = project_root();
-      let outdir = root.join("tmp").join(subdir);
-      std::fs::create_dir_all(&outdir).wrap_err("When creating the output directory")?;
-      let fasta = outdir.join("ancestral_sequences.fasta");
+      let outdir = tempdir().wrap_err("When creating a temporary directory")?;
+      let fasta = outdir.path().join("ancestral_sequences.fasta");
 
       let mut raw = TreetimeTimetreeArgsRaw {
         alignment: AlignmentArgs {

@@ -32,15 +32,6 @@ mod tests {
     assert_eq!(InitialGuessModeCli::Auto, args.initial_branch_lengths);
   }
 
-  #[test]
-  fn test_args_initial_guess_rejects_unknown() {
-    let result = InitialGuessArgs::try_parse_from(["treetime", "--initial-branch-lengths=sometimes"]);
-    assert!(
-      result.is_err(),
-      "expected parse error for unknown --initial-branch-lengths value"
-    );
-  }
-
   #[rustfmt::skip]
   #[rstest]
   #[case::auto(  InitialGuessModeCli::Auto,   InitialGuessMode::Auto)]

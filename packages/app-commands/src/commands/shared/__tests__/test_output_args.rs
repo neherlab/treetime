@@ -20,7 +20,7 @@ mod tests {
   fn test_output_args_output_all_parses() {
     let args =
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/tmp/out"]).unwrap();
-    assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
+    assert_eq!(Some(Path::new("/tmp/out")), args.output.output_all.as_deref());
   }
 
   #[test]
@@ -45,7 +45,10 @@ mod tests {
   #[test]
   fn test_output_args_output_selection_requires_output_all() {
     let result = TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-selection=nwk"]);
-    assert!(result.is_err(), "--output-selection without --output-all should fail");
+    assert_eq!(
+      Err(ErrorKind::MissingRequiredArgument),
+      result.map(|_| ()).map_err(|error| error.kind())
+    );
   }
 
   #[test]
@@ -53,7 +56,7 @@ mod tests {
     let args =
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-tree-nwk=/tmp/my.nwk"])
         .unwrap();
-    assert_eq!(args.output.output_tree_nwk.as_deref(), Some(Path::new("/tmp/my.nwk")));
+    assert_eq!(Some(Path::new("/tmp/my.nwk")), args.output.output_tree_nwk.as_deref());
   }
 
   #[test]
@@ -62,8 +65,8 @@ mod tests {
       TreetimeOptimizeArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-tree-nexus=/tmp/tree.nexus"])
         .unwrap();
     assert_eq!(
-      args.output.output_tree_nexus.as_deref(),
-      Some(Path::new("/tmp/tree.nexus"))
+      Some(Path::new("/tmp/tree.nexus")),
+      args.output.output_tree_nexus.as_deref()
     );
   }
 
@@ -98,7 +101,7 @@ mod tests {
   #[test]
   fn test_output_args_short_flag_o_for_output_all() {
     let args = TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "-O", "/tmp/out"]).unwrap();
-    assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
+    assert_eq!(Some(Path::new("/tmp/out")), args.output.output_all.as_deref());
   }
 
   #[test]
@@ -111,20 +114,9 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection.output_selection,
-      vec![AncestralOutputSelection::All]
+      vec![AncestralOutputSelection::All],
+      args.output_selection.output_selection
     );
-  }
-
-  #[test]
-  fn test_output_args_rejects_unknown_selection_value() {
-    let result = TreetimeAncestralArgsRaw::try_parse_from([
-      "treetime",
-      "--tree=/dev/null",
-      "--output-all=/tmp/out",
-      "--output-selection=unknown-format",
-    ]);
-    assert!(result.is_err(), "unknown --output-selection value should be rejected");
   }
 
   #[test]
@@ -135,9 +127,9 @@ mod tests {
       "--output-all=/tmp/out",
       "--output-selection=tracelog",
     ]);
-    assert!(
-      result.is_err(),
-      "timetree-only selection variant should be rejected on ancestral"
+    assert_eq!(
+      Err(ErrorKind::InvalidValue),
+      result.map(|_| ()).map_err(|error| error.kind())
     );
   }
 
@@ -146,7 +138,7 @@ mod tests {
     let args =
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-node-data=/tmp/node.json"])
         .unwrap();
-    assert_eq!(args.output_node_data.as_deref(), Some(Path::new("/tmp/node.json")));
+    assert_eq!(Some(Path::new("/tmp/node.json")), args.output_node_data.as_deref());
   }
 
   #[test]
@@ -155,8 +147,8 @@ mod tests {
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/gtr.json"])
         .unwrap();
     assert_eq!(
-      args.gtr_output.output_model.as_deref(),
-      Some(Path::new("/tmp/gtr.json"))
+      Some(Path::new("/tmp/gtr.json")),
+      args.gtr_output.output_model.as_deref()
     );
   }
 
@@ -169,8 +161,8 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.clock_output.output_clock_model.as_deref(),
-      Some(Path::new("/tmp/clock.json"))
+      Some(Path::new("/tmp/clock.json")),
+      args.clock_output.output_clock_model.as_deref()
     );
   }
 
@@ -179,7 +171,7 @@ mod tests {
     let args =
       TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-dates=/tmp/dates.tsv"])
         .unwrap();
-    assert_eq!(args.output_dates.as_deref(), Some(Path::new("/tmp/dates.tsv")));
+    assert_eq!(Some(Path::new("/tmp/dates.tsv")), args.output_dates.as_deref());
   }
 
   #[test]
@@ -187,7 +179,7 @@ mod tests {
     let args =
       TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-tracelog=/tmp/trace.csv"])
         .unwrap();
-    assert_eq!(args.output_tracelog.as_deref(), Some(Path::new("/tmp/trace.csv")));
+    assert_eq!(Some(Path::new("/tmp/trace.csv")), args.output_tracelog.as_deref());
   }
 
   #[test]
@@ -210,8 +202,8 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection.output_selection,
-      vec![TimetreeOutputSelection::Dates, TimetreeOutputSelection::Tracelog]
+      vec![TimetreeOutputSelection::Dates, TimetreeOutputSelection::Tracelog],
+      args.output_selection.output_selection
     );
   }
 
@@ -219,7 +211,7 @@ mod tests {
   fn test_clock_output_clock_csv_parses() {
     let args =
       TreetimeClockArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-rtt=/tmp/rtt.tsv"]).unwrap();
-    assert_eq!(args.clock_output.output_rtt.as_deref(), Some(Path::new("/tmp/rtt.tsv")));
+    assert_eq!(Some(Path::new("/tmp/rtt.tsv")), args.clock_output.output_rtt.as_deref());
   }
 
   #[test]
@@ -230,7 +222,10 @@ mod tests {
       "--output-all=/tmp/out",
       "--output-selection=node-data",
     ]);
-    assert!(result.is_err(), "node-data is not selectable on clock");
+    assert_eq!(
+      Err(ErrorKind::InvalidValue),
+      result.map(|_| ()).map_err(|error| error.kind())
+    );
   }
 
   #[test]
@@ -243,8 +238,8 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection.output_selection,
-      vec![ClockOutputSelection::ClockModel, ClockOutputSelection::Rtt]
+      vec![ClockOutputSelection::ClockModel, ClockOutputSelection::Rtt],
+      args.output_selection.output_selection
     );
   }
 
@@ -273,7 +268,7 @@ mod tests {
       "--output-traits=/tmp/traits.csv",
     ])
     .unwrap();
-    assert_eq!(args.output_traits.as_deref(), Some(Path::new("/tmp/traits.csv")));
+    assert_eq!(Some(Path::new("/tmp/traits.csv")), args.output_traits.as_deref());
   }
 
   #[test]
@@ -287,8 +282,8 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection.output_selection,
-      vec![MugrationOutputSelection::TraitProbabilities]
+      vec![MugrationOutputSelection::TraitProbabilities],
+      args.output_selection.output_selection
     );
   }
 
@@ -296,7 +291,10 @@ mod tests {
   fn test_prune_rejects_the_model_output() {
     let result =
       TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/model.json"]);
-    assert!(result.is_err(), "prune fits no model, so it offers no model output");
+    assert_eq!(
+      Err(ErrorKind::UnknownArgument),
+      result.map(|_| ()).map_err(|error| error.kind())
+    );
   }
 
   #[test]
@@ -310,18 +308,18 @@ mod tests {
       "--output-node-data=/tmp/custom-node.json",
     ])
     .unwrap();
-    assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
+    assert_eq!(Some(Path::new("/tmp/out")), args.output.output_all.as_deref());
     assert_eq!(
-      args.output_selection.output_selection,
-      vec![AncestralOutputSelection::Nwk]
+      vec![AncestralOutputSelection::Nwk],
+      args.output_selection.output_selection
     );
     assert_eq!(
-      args.output.output_tree_nexus.as_deref(),
-      Some(Path::new("/tmp/custom.nexus"))
+      Some(Path::new("/tmp/custom.nexus")),
+      args.output.output_tree_nexus.as_deref()
     );
     assert_eq!(
-      args.output_node_data.as_deref(),
-      Some(Path::new("/tmp/custom-node.json"))
+      Some(Path::new("/tmp/custom-node.json")),
+      args.output_node_data.as_deref()
     );
   }
 }

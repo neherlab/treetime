@@ -46,8 +46,8 @@ mod tests {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
 
     assert!(data.metadata.clock.is_none());
-    assert_eq!(data.metadata.alignment.as_deref(), Some("aln.fasta"));
-    assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
+    assert_eq!(Some("aln.fasta"), data.metadata.alignment.as_deref());
+    assert_eq!(Some("tree.nwk"), data.metadata.input_tree.as_deref());
   }
 
   #[test]
@@ -71,8 +71,10 @@ mod tests {
   fn test_augur_node_data_optimize_generated_by() {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
     let generated_by = data.generated_by.unwrap();
-    assert_eq!(generated_by.program, "treetime");
-    assert_eq!(generated_by.version, env!("CARGO_PKG_VERSION"));
+    assert_eq!(
+      ("treetime", env!("CARGO_PKG_VERSION")),
+      (generated_by.program.as_str(), generated_by.version.as_str())
+    );
   }
 
   #[test]

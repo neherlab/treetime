@@ -1,19 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+  use crate::commands::ancestral::args::TreetimeAncestralArgs;
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
-  use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
-  use clap::Parser;
   use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
-  use std::fs;
-  use std::path::{Path, PathBuf};
   use tempfile::tempdir;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
-  use treetime_utils::{assert_error, vec_of_owned};
+  use treetime_utils::assert_error;
 
   const TREE: &str = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root;";
   const ALIGNMENT: &str = ">A\nATGACG\n>B\nACGACG\n>C\nACGACG\n>D\nACGACG\n";
@@ -77,24 +71,35 @@ mod tests {
     )?;
 
     let whole_files = helpers::output_files(&whole)?;
-    assert_eq!(
-      (true, whole_files.keys().collect::<Vec<_>>()),
-      (
-        whole_files.contains_key("translations.S.fasta"),
-        helpers::output_files(&split)?.keys().collect::<Vec<_>>()
-      )
-    );
     let split_files = helpers::output_files(&split)?;
-    for (name, content) in whole_files.iter().filter(|(name, _)| !name.ends_with(".model.json")) {
-      assert_eq!(content, &split_files[name], "output file {name}");
-    }
+    assert!(whole_files.contains_key("translations.S.fasta"));
+    assert_eq!(
+      whole_files.keys().collect::<Vec<_>>(),
+      split_files.keys().collect::<Vec<_>>()
+    );
+    assert_eq!(
+      helpers::without_models(&whole_files),
+      helpers::without_models(&split_files)
+    );
     Ok(())
   }
 
   mod helpers {
-    use super::*;
+    use super::{ALIGNMENT, TRANSLATION, TREE};
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::gtr_output::GtrOutputArgs;
+    use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
     use crate::commands::shared::tree_input::TreeArgs;
+    use clap::Parser;
+    use eyre::{Report, WrapErr};
+    use std::collections::BTreeMap;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use treetime::cancel::NoopCancel;
+    use treetime::progress::NoopProgress;
+    use treetime_utils::vec_of_owned;
 
     pub(super) fn write_fixtures(dir: &Path) -> Result<(), Report> {
       fs::write(dir.join("tree.nwk"), TREE).wrap_err("When writing the tree fixture")?;
@@ -143,11 +148,20 @@ mod tests {
           let path = entry?.path();
           let name = path
             .file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default();
+            .expect("a directory entry has a file name")
+            .to_string_lossy()
+            .into_owned();
           let content = fs::read_to_string(&path).wrap_err_with(|| format!("When reading '{}'", path.display()))?;
           Ok((name, content))
         })
+        .collect()
+    }
+
+    pub(super) fn without_models(files: &BTreeMap<String, String>) -> BTreeMap<&str, &str> {
+      files
+        .iter()
+        .filter(|(name, _)| !name.ends_with(".model.json"))
+        .map(|(name, content)| (name.as_str(), content.as_str()))
         .collect()
     }
 
@@ -158,9 +172,7 @@ mod tests {
     pub(super) fn raw(dir: &Path, aa_fasta: PathBuf, gtr: Option<PathBuf>) -> Result<TreetimeAncestralArgsRaw, Report> {
       let tree_path = dir.join("tree.nwk");
       let fasta_path = dir.join("aln.fasta");
-      fs::write(&tree_path, TREE).wrap_err("When writing the tree fixture")?;
-      fs::write(&fasta_path, ALIGNMENT).wrap_err("When writing the alignment fixture")?;
-      fs::write(dir.join("S.fasta"), TRANSLATION).wrap_err("When writing the translation fixture")?;
+      write_fixtures(dir)?;
       Ok(TreetimeAncestralArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],

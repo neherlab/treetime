@@ -5,48 +5,24 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-  use treetime::o;
+  use rstest::rstest;
   use treetime_io::csv::{TableFormat, csv_read};
   use treetime_utils::assert_error;
 
-  #[test]
-  fn test_drms_annotate_listed_alt_base() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::listed_alt_base(               2, "T", (Some(helpers::rt_nrti(Some("M41L"))), true))]
+  #[case::second_alt_base_of_a_position( 2, "C", (Some(helpers::rt_nrti(Some("M41I"))), true))]
+  #[case::unlisted_alt_base(             2, "G", (Some(helpers::rt_nrti(None)),         true))]
+  #[case::position_outside_the_table(    3, "T", (None,                                 false))]
+  #[trace]
+  fn test_drms_annotate(
+    #[case] position: usize,
+    #[case] base: &str,
+    #[case] expected: (Option<DrmAnnotation>, bool),
+  ) -> Result<(), Report> {
     let table = helpers::table()?;
-    let expected = DrmAnnotation {
-      gene: o!("RT"),
-      drug: o!("NRTI"),
-      substitution: Some(o!("M41L")),
-    };
-    assert_eq!(Some(expected), table.annotate(2, "T"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_drms_annotate_second_alt_base_of_a_position() -> Result<(), Report> {
-    let table = helpers::table()?;
-    assert_eq!(
-      Some(o!("M41I")),
-      table.annotate(2, "C").and_then(|drm| drm.substitution)
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_drms_annotate_unlisted_alt_base_without_substitution() -> Result<(), Report> {
-    let table = helpers::table()?;
-    let expected = DrmAnnotation {
-      gene: o!("RT"),
-      drug: o!("NRTI"),
-      substitution: None,
-    };
-    assert_eq!(Some(expected), table.annotate(2, "G"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_drms_annotate_position_outside_the_table() -> Result<(), Report> {
-    let table = helpers::table()?;
-    assert_eq!((None, false), (table.annotate(3, "T"), table.contains(3)));
+    assert_eq!(expected, (table.annotate(position, base), table.contains(position)));
     Ok(())
   }
 
@@ -69,9 +45,19 @@ mod tests {
 
   mod helpers {
     use crate::commands::homoplasy::drms::{DrmRow, DrmTable};
+    use crate::commands::homoplasy::result::DrmAnnotation;
     use eyre::Report;
     use indoc::indoc;
+    use treetime::o;
     use treetime_io::csv::{TableFormat, csv_read};
+
+    pub(super) fn rt_nrti(substitution: Option<&str>) -> DrmAnnotation {
+      DrmAnnotation {
+        gene: o!("RT"),
+        drug: o!("NRTI"),
+        substitution: substitution.map(str::to_owned),
+      }
+    }
 
     pub(super) fn table() -> Result<DrmTable, Report> {
       let rows: Vec<DrmRow> = csv_read(

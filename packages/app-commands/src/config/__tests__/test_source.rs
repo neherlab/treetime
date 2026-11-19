@@ -4,30 +4,17 @@ mod tests {
   use eyre::Report;
   use helpers::{parse, parse_error_headline};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde_json::{Value, json};
 
-  #[test]
-  fn test_source_parse_rejects_duplicate_mapping_key() {
-    assert_eq!(
-      "invalid configuration: could not parse config: Unexpected: duplicate map key \"a\" at line 2 column 1 (path: a)",
-      parse_error_headline("a: 1\na: 2\n")
-    );
-  }
-
-  #[test]
-  fn test_source_parse_rejects_infinity() {
-    assert_eq!(
-      "invalid configuration: could not parse config: the number inf has no JSON representation at line 1 column 4",
-      parse_error_headline("x: .inf\n")
-    );
-  }
-
-  #[test]
-  fn test_source_parse_rejects_nan() {
-    assert_eq!(
-      "invalid configuration: could not parse config: the number NaN has no JSON representation at line 1 column 4",
-      parse_error_headline("x: .nan\n")
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::duplicate_mapping_key("a: 1\na: 2\n", "invalid configuration: could not parse config: Unexpected: duplicate map key \"a\" at line 2 column 1 (path: a)")]
+  #[case::infinity(             "x: .inf\n",    "invalid configuration: could not parse config: the number inf has no JSON representation at line 1 column 4")]
+  #[case::nan(                  "x: .nan\n",    "invalid configuration: could not parse config: the number NaN has no JSON representation at line 1 column 4")]
+  #[trace]
+  fn test_source_parse_rejects_documents_without_a_json_value(#[case] text: &str, #[case] expected: &str) {
+    assert_eq!(expected, parse_error_headline(text));
   }
 
   #[test]
@@ -45,8 +32,10 @@ mod tests {
   #[test]
   fn test_source_parse_applies_merge_key() {
     let value = parse("base: &anchor\n  shared: 1\nchild:\n  <<: *anchor\n  own: 2\n").unwrap();
-    assert_eq!(json!({ "shared": 1 }), value["base"]);
-    assert_eq!(json!({ "shared": 1, "own": 2 }), value["child"]);
+    assert_eq!(
+      json!({ "base": { "shared": 1 }, "child": { "shared": 1, "own": 2 } }),
+      value
+    );
   }
 
   #[test]

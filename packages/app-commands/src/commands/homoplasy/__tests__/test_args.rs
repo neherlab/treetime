@@ -8,48 +8,25 @@ mod tests {
   use treetime::seq::mutation::PositionBase;
   use treetime_utils::assert_error;
 
-  #[test]
-  fn test_args_homoplasy_reads_homoplasy_flags() -> Result<(), Report> {
-    let raw = TreetimeHomoplasyArgsRaw::try_parse_from([
-      "homoplasy",
-      "--tree=tree.nwk",
-      "--alignment=a.fasta",
-      "--const=100",
-      "--rescale=0.5",
-      "--detailed",
-      "--drms=drms.tsv",
-      "-n",
-      "3",
-      "--zero-based",
-    ])?;
-    let args = TreetimeHomoplasyArgs::try_from(raw)?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::defaults(&[],                                                                                      (0,   1.0, false, None,             10, false))]
+  #[case::flags(   &["--const=100", "--rescale=0.5", "--detailed", "--drms=drms.tsv", "-n", "3", "--zero-based"], (100, 0.5, true,  Some("drms.tsv"), 3,  true))]
+  #[trace]
+  fn test_args_homoplasy_reads_homoplasy_flags(
+    #[case] flags: &[&str],
+    #[case] expected: (usize, f64, bool, Option<&str>, usize, bool),
+  ) -> Result<(), Report> {
+    let argv = [&"homoplasy", &"--tree=tree.nwk", &"--alignment=a.fasta"].into_iter().chain(flags);
+    let args = TreetimeHomoplasyArgs::try_from(TreetimeHomoplasyArgsRaw::try_parse_from(argv)?)?;
 
     assert_eq!(
-      (100, 0.5, true, Some("drms.tsv"), 3, true),
+      expected,
       (
         args.constant_sites,
         args.rescale,
         args.detailed,
         args.drms.as_deref().and_then(|path| path.to_str()),
-        args.num_mut,
-        args.positions == PositionBase::Zero
-      )
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_args_homoplasy_defaults() -> Result<(), Report> {
-    let raw = TreetimeHomoplasyArgsRaw::try_parse_from(["homoplasy", "--tree=tree.nwk", "--alignment=a.fasta"])?;
-    let args = TreetimeHomoplasyArgs::try_from(raw)?;
-
-    assert_eq!(
-      (0, 1.0, false, None, 10, false),
-      (
-        args.constant_sites,
-        args.rescale,
-        args.detailed,
-        args.drms.clone(),
         args.num_mut,
         args.positions == PositionBase::Zero
       )

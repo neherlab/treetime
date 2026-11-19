@@ -4,6 +4,7 @@ mod tests {
   use clap::Parser;
   use helpers::effective;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime::seq::gap_fill::GapFill;
 
   #[derive(Debug, Parser)]
@@ -12,19 +13,14 @@ mod tests {
     gap_fill_args: GapFillArgs,
   }
 
-  #[test]
-  fn test_gap_fill_args_default_is_only_terminal() {
-    assert_eq!(GapFill::OnlyTerminal, effective(&[]));
-  }
-
-  #[test]
-  fn test_gap_fill_args_explicit_none() {
-    assert_eq!(GapFill::None, effective(&["--gap-fill=none"]));
-  }
-
-  #[test]
-  fn test_gap_fill_args_explicit_all() {
-    assert_eq!(GapFill::All, effective(&["--gap-fill=all"]));
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_is_only_terminal(&[],                  GapFill::OnlyTerminal)]
+  #[case::explicit_all(            &["--gap-fill=all"],  GapFill::All)]
+  #[case::explicit_none(           &["--gap-fill=none"], GapFill::None)]
+  #[trace]
+  fn test_gap_fill_args_command_line_selects_the_policy(#[case] extra: &[&str], #[case] expected: GapFill) {
+    assert_eq!(expected, effective(extra));
   }
 
   mod helpers {

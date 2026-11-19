@@ -36,21 +36,18 @@ mod tests {
     let output = tempfile::tempdir()?;
     let dir = project_root().join("data/flu/h3n2/20");
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
-alignment: AlignmentArgs {
-        alignment: vec![dir.join("aln.fasta.xz")],
+      alignment: AlignmentArgs { alignment: vec![dir.join("aln.fasta.xz")] },
+      tree: TreeArgs { tree: Some(dir.join("tree.nwk")) },
+      metadata: MetadataArgs { metadata: Some(dir.join("metadata.tsv")) },
+      representation: RepresentationArgs { representation: Some(helpers::representation(dense)) },
+      max_iter: 1,
+      output: OutputCoreArgs { output_all: Some(output.path().to_path_buf()), ..OutputCoreArgs::default() },
+      output_selection: TimetreeOutputSelectionArgs {
+        output_selection: vec![TimetreeOutputSelection::Model, TimetreeOutputSelection::ClockModel],
       },
-tree: TreeArgs { tree: Some(dir.join("tree.nwk")) },
-metadata: MetadataArgs { metadata: Some(dir.join("metadata.tsv")) },
-representation: RepresentationArgs { representation: Some(helpers::representation(dense)) },
-max_iter: 1,
-output: OutputCoreArgs {
-        output_all: Some(output.path().to_path_buf()),
-        ..OutputCoreArgs::default()
-      },
-output_selection: TimetreeOutputSelectionArgs { output_selection: vec![TimetreeOutputSelection::Model, TimetreeOutputSelection::ClockModel] },
-seed_args: SeedArgs { seed: Some(7) },
-..TreetimeTimetreeArgsRaw::default()
-})?;
+      seed_args: SeedArgs { seed: Some(7) },
+      ..TreetimeTimetreeArgsRaw::default()
+    })?;
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
@@ -90,11 +87,8 @@ seed_args: SeedArgs { seed: Some(7) },
 
   mod helpers {
     use super::*;
-    use crate::commands::shared::metadata::MetadataArgs;
-    use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
-    use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
+    use crate::commands::shared::representation::RepresentationCli;
     use crate::commands::shared::reroot::RootingArgs;
-    use crate::commands::shared::tree_input::TreeArgs;
     use std::iter::repeat_n;
     use treetime::clock::rtt::ClockRegressionResult;
 

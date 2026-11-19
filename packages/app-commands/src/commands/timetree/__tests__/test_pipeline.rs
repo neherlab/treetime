@@ -13,20 +13,22 @@ mod tests {
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::{Report, WrapErr};
   use helpers::{coalescent_node_dates, count_leaves};
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::fs::read_to_string;
+  use tempfile::tempdir;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
+  use treetime_io::nwk::nwk_read_file;
   use treetime_utils::io::json::{json_read_file, json_value_read_file};
   use treetime_utils::{make_report, pretty_assert_map_ulps_eq};
 
   #[test]
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
     let root = project_root();
-    let outdir = root.join("tmp/test-convergence-pipeline");
-    std::fs::create_dir_all(&outdir).wrap_err("When creating the output directory")?;
-    let tracelog_path = outdir.join("tracelog.csv");
+    let output = tempdir().wrap_err("When creating a temporary directory")?;
+    let tracelog_path = output.path().join("tracelog.csv");
 
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
@@ -40,14 +42,13 @@ mod tests {
       },
       max_iter: 3,
       output: OutputCoreArgs {
-        output_all: Some(outdir.clone()),
-        ..Default::default()
+        output_all: Some(output.path().to_path_buf()),
+        ..OutputCoreArgs::default()
       },
       output_tracelog: Some(tracelog_path.clone()),
       seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
-    })
-    .unwrap();
+    })?;
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
@@ -59,10 +60,9 @@ mod tests {
     let expected_header = "n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_time,log_lh_coal";
     assert_eq!(expected_header, header);
 
-    let data_row = lines[1];
-    let fields: Vec<&str> = data_row.split(',').collect();
+    let fields: Vec<&str> = lines[1].split(',').collect();
     let columns: Vec<&str> = header.split(',').collect();
-    assert!(fields.len() >= 6, "Data row must have at least 6 columns");
+    assert_eq!(columns.len(), fields.len());
 
     let col = |name: &str| {
       columns
@@ -85,16 +85,16 @@ mod tests {
       "Node-time log-likelihood must be finite, got {log_lh_time}"
     );
 
-    let nwk_path = outdir.join("timetree.nwk");
-    let nex_path = outdir.join("timetree.nexus");
-    assert!(nwk_path.exists(), "Output newick file must exist");
-    assert!(nex_path.exists(), "Output nexus file must exist");
+    let input_tree = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk"))?;
+    let time_tree = nwk_read_file(output.path().join("timetree.nwk"))?;
+    assert_eq!(
+      input_tree.graph.get_leaves().count(),
+      time_tree.graph.get_leaves().count(),
+      "the time tree keeps every sample of the input tree"
+    );
     assert!(
-      std::fs::metadata(&nwk_path)
-        .wrap_err("When reading the Newick output metadata")?
-        .len()
-        > 0,
-      "Output newick file must be non-empty"
+      output.path().join("timetree.nexus").exists(),
+      "Output nexus file must exist"
     );
 
     Ok(())
@@ -103,7 +103,7 @@ mod tests {
   #[test]
   fn test_pipeline_timetree_topology_order_applies_to_auspice() -> Result<(), Report> {
     let root = project_root();
-    let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
+    let output = tempdir().wrap_err("When creating a temporary directory")?;
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
@@ -128,8 +128,7 @@ mod tests {
       },
       seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
-    })
-    .unwrap();
+    })?;
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
@@ -145,7 +144,7 @@ mod tests {
   #[test]
   fn test_pipeline_timetree_writes_coalescent_outputs() -> Result<(), Report> {
     let root = project_root();
-    let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
+    let output = tempdir().wrap_err("When creating a temporary directory")?;
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
@@ -160,13 +159,12 @@ mod tests {
       coalescent: Some(CoalescentArg::Skyline),
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
-        ..Default::default()
+        ..OutputCoreArgs::default()
       },
       output_coalescent_json: Some(output.path().join("timetree.coalescent.json")),
       seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
-    })
-    .unwrap();
+    })?;
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
@@ -228,7 +226,7 @@ mod tests {
       clock_rate: Option<f64>,
     ) -> Result<BTreeMap<String, f64>, Report> {
       let root = project_root();
-      let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
+      let output = tempdir().wrap_err("When creating a temporary directory")?;
       let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
@@ -244,7 +242,7 @@ mod tests {
         coalescent: Some(parse_coalescent(coalescent)?),
         output: OutputCoreArgs {
           output_all: Some(output.path().to_path_buf()),
-          ..Default::default()
+          ..OutputCoreArgs::default()
         },
         seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()

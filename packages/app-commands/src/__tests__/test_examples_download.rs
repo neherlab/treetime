@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::examples_download::{DownloadProgress, download_examples};
-  use helpers::{archive, files_in, serve};
+  use helpers::{archive, files_in, files_in_top, serve};
   use pretty_assertions::assert_eq;
   use std::fs;
   #[cfg(unix)]
@@ -120,11 +120,16 @@ mod tests {
     let server = serve(archive(&[("zika/tree.nwk", "(A:1);\n"), ("../escaped.txt", "outside")]));
     let root = tempdir().unwrap();
     let target = root.path().join("nested").join("examples");
-    let result = download_examples(&server.url("examples.zip"), &target, |_| {});
+    let url = server.url("examples.zip");
+    assert_error!(
+      download_examples(&url, &target, |_| {}),
+      format!(
+        "When unpacking the example datasets from '{url}': the example archive is invalid: entry '../escaped.txt' has a path outside the folder"
+      )
+    );
     assert_eq!(
-      (true, false, Vec::<String>::new()),
+      (false, Vec::<String>::new()),
       (
-        result.is_err(),
         root.path().join("nested").join("escaped.txt").exists(),
         files_in_top(&root.path().join("nested"))
       )
@@ -194,15 +199,6 @@ mod tests {
     );
   }
 
-  fn files_in_top(folder: &std::path::Path) -> Vec<String> {
-    let mut names = fs::read_dir(folder)
-      .unwrap()
-      .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-      .collect::<Vec<_>>();
-    names.sort();
-    names
-  }
-
   mod helpers {
     use axum::Router;
     use axum::routing::get;
@@ -217,6 +213,15 @@ mod tests {
 
     pub(super) struct Server {
       address: SocketAddr,
+    }
+
+    pub(super) fn files_in_top(folder: &Path) -> Vec<String> {
+      let mut names = fs::read_dir(folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+      names.sort();
+      names
     }
 
     impl Server {

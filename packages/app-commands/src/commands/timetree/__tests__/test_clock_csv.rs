@@ -23,7 +23,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_file;
   use treetime_utils::datetime::options::DateParserOptions;
   use treetime_utils::io::json::json_read_file;
-  use treetime_utils::{pretty_assert_relative_eq, pretty_assert_ulps_eq};
+  use treetime_utils::{pretty_assert_map_ulps_eq, pretty_assert_relative_eq};
 
   const UNDATED_TIP: &str = "GZ01|KU820898|2016-02-14|china";
 
@@ -71,7 +71,7 @@ mod tests {
       .get_leaves()
       .map(|leaf| tree.names[leaf.key()].to_owned())
       .collect();
-    let dates = metadata_read_file(
+    let expected_dates: BTreeMap<String, f64> = metadata_read_file(
       &metadata,
       &default_metadata_delimiters(),
       &default_name_candidates(),
@@ -80,18 +80,21 @@ mod tests {
     )
     .and_then(|table| table.dates(&DateParserOptions::default()))?
     .into_iter()
-    .collect::<BTreeMap<_, _>>();
+    .map(|(name, date)| (name, date.expect("zika/20 dates every sample").mean()))
+    .collect();
 
     let listed: BTreeSet<String> = rows.iter().map(|row| row.name.clone()).collect();
-    assert_eq!(20, rows.len());
-    assert_eq!(tips, listed);
-    assert_eq!(tips, dates.keys().cloned().collect::<BTreeSet<_>>());
-    for row in &rows {
-      let name = row.name.as_str();
-      let expected = dates[name].as_ref().expect("zika/20 dates every sample").mean();
-      assert_eq!(Some(ClockDateSource::Input), row.date_source, "{name}");
-      pretty_assert_ulps_eq!(expected, row.date.expect("an input date"), max_ulps = 4);
-    }
+    let sources = rows.iter().map(|row| row.date_source).all_equal_value();
+    let actual_dates: BTreeMap<String, f64> = rows
+      .iter()
+      .map(|row| (row.name.clone(), row.date.expect("an input date")))
+      .collect();
+    assert_eq!(
+      (20, tips.clone(), Ok(Some(ClockDateSource::Input))),
+      (rows.len(), listed, sources)
+    );
+    assert_eq!(tips, expected_dates.keys().cloned().collect::<BTreeSet<_>>());
+    pretty_assert_map_ulps_eq!(expected_dates, actual_dates, max_ulps = 4);
     Ok(())
   }
 

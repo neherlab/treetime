@@ -18,8 +18,10 @@ mod tests {
   ) -> Result<(), Report> {
     let MugrationRun { traits_csv, root_ambiguous } = run(outputs)?;
 
-    assert_eq!(expected_csv, traits_csv);
-    assert_eq!(expected_root_field.map(str::to_owned), root_ambiguous);
+    assert_eq!(
+      (expected_csv.to_owned(), expected_root_field.map(str::to_owned)),
+      (traits_csv, root_ambiguous)
+    );
     Ok(())
   }
 

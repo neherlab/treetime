@@ -11,7 +11,7 @@ mod tests {
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::num::NonZeroUsize;
   use std::path::{Path, PathBuf};
   use tempfile::TempDir;
@@ -64,8 +64,10 @@ mod tests {
     )
     .unwrap();
 
-    assert_eq!(helpers::tree_paths(&resolved).len(), 1);
-    assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nwk(NwkStyle::Plain)));
+    assert_eq!(
+      btreeset! { TreeWriteKind::Nwk(NwkStyle::Plain) },
+      helpers::tree_paths(&resolved).into_keys().collect::<BTreeSet<_>>()
+    );
   }
 
   #[test]

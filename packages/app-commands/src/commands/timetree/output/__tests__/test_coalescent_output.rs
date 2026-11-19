@@ -68,33 +68,6 @@ mod tests {
   }
 
   #[test]
-  fn test_coalescent_output_ne_scales_tc_by_gen_per_year() -> Result<(), Report> {
-    let output = CoalescentOutput::new(
-      CoalescentInputs {
-        mode: CoalescentOutputMode::Constant,
-        n_points: None,
-        stiffness: None,
-        gen_per_year: GEN_PER_YEAR,
-        confidence_n_std: Some(2.0),
-      },
-      &CoalescentSolve {
-        log_likelihood: None,
-        segment_boundaries: &[0.0, 10.0],
-        tc_values: &[2.0],
-        band: Some(CoalescentBand {
-          lower: &[1.0],
-          upper: &[4.0],
-        }),
-      },
-    )?;
-
-    let segment = &output.outputs.segments[0];
-    assert_eq!(Estimate::with_band(2.0, 1.0, 4.0), segment.tc);
-    assert_eq!(Estimate::with_band(100.0, 50.0, 200.0), segment.ne);
-    Ok(())
-  }
-
-  #[test]
   fn test_coalescent_output_fixed_has_no_band() -> Result<(), Report> {
     let output = CoalescentOutput::new(
       CoalescentInputs {

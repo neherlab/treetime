@@ -1,25 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-  use crate::commands::ancestral::run::run_ancestral_reconstruction;
-  use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
-  use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs};
   use crate::commands::shared::representation::RepresentationCli;
-  use eyre::{Report, WrapErr};
+  use eyre::Report;
   use helpers::written_mutations;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use tempfile::tempdir;
-  use treetime::cancel::NoopCancel;
-  use treetime::progress::NoopProgress;
-  use treetime_io::usher_mat::UsherTree;
-  use treetime_utils::io::fs::read_file_to_string;
-  use treetime_utils::io::json::json_read_file;
   use treetime_utils::{o, vec_of_owned};
-  use util_augur_node_data_json::AugurNodeDataJsonAncestral;
 
   const STAR_TREE: &str = "(A:0.1,B:0.1,C:0.1)root;";
   const STAR_ALIGNMENT: &str = ">A\nACGT\n>B\nACGT\n>C\nANGK\n";
@@ -105,11 +93,23 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
-    use crate::commands::shared::representation::RepresentationArgs;
-    use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
-    use crate::commands::shared::tip_sequences::TipSequenceArgs;
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
+    use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs};
+    use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
+    use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
     use crate::commands::shared::tree_input::TreeArgs;
+    use eyre::{Report, WrapErr};
+    use std::collections::BTreeMap;
+    use tempfile::tempdir;
+    use treetime::cancel::NoopCancel;
+    use treetime::progress::NoopProgress;
+    use treetime_io::usher_mat::UsherTree;
+    use treetime_utils::io::fs::read_file_to_string;
+    use treetime_utils::io::json::json_read_file;
+    use util_augur_node_data_json::AugurNodeDataJsonAncestral;
 
     pub(super) struct WrittenMutations {
       pub(super) augur_muts: BTreeMap<String, Vec<String>>,

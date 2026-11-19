@@ -8,61 +8,21 @@ mod tests {
   use crate::commands::prune::args::TreetimePruneArgsRaw;
   use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use serde_json::Value;
 
-  #[test]
-  fn test_defaults_ancestral_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimeAncestralArgsRaw>(),
-      helpers::clap_defaults::<TreetimeAncestralArgsRaw>()
-    );
-  }
-
-  #[test]
-  fn test_defaults_clock_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimeClockArgsRaw>(),
-      helpers::clap_defaults::<TreetimeClockArgsRaw>()
-    );
-  }
-
-  #[test]
-  fn test_defaults_homoplasy_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimeHomoplasyArgsRaw>(),
-      helpers::clap_defaults::<TreetimeHomoplasyArgsRaw>()
-    );
-  }
-
-  #[test]
-  fn test_defaults_mugration_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimeMugrationArgsRaw>(),
-      helpers::clap_defaults::<TreetimeMugrationArgsRaw>()
-    );
-  }
-
-  #[test]
-  fn test_defaults_optimize_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimeOptimizeArgsRaw>(),
-      helpers::clap_defaults::<TreetimeOptimizeArgsRaw>()
-    );
-  }
-
-  #[test]
-  fn test_defaults_prune_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimePruneArgsRaw>(),
-      helpers::clap_defaults::<TreetimePruneArgsRaw>()
-    );
-  }
-
-  #[test]
-  fn test_defaults_timetree_clap_matches_config() {
-    assert_eq!(
-      helpers::config_defaults::<TreetimeTimetreeArgsRaw>(),
-      helpers::clap_defaults::<TreetimeTimetreeArgsRaw>()
-    );
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ancestral( helpers::config_and_clap_defaults::<TreetimeAncestralArgsRaw>())]
+  #[case::clock(     helpers::config_and_clap_defaults::<TreetimeClockArgsRaw>())]
+  #[case::homoplasy( helpers::config_and_clap_defaults::<TreetimeHomoplasyArgsRaw>())]
+  #[case::mugration( helpers::config_and_clap_defaults::<TreetimeMugrationArgsRaw>())]
+  #[case::optimize(  helpers::config_and_clap_defaults::<TreetimeOptimizeArgsRaw>())]
+  #[case::prune(     helpers::config_and_clap_defaults::<TreetimePruneArgsRaw>())]
+  #[case::timetree(  helpers::config_and_clap_defaults::<TreetimeTimetreeArgsRaw>())]
+  #[trace]
+  fn test_defaults_clap_matches_config(#[case] (config, clap): (Value, Value)) {
+    assert_eq!(config, clap);
   }
 
   mod helpers {
@@ -71,12 +31,10 @@ mod tests {
     use serde_json::Value;
     use treetime_utils::io::json::to_json_value;
 
-    pub(super) fn config_defaults<T: Default + Serialize>() -> Value {
-      to_json_value(&T::default()).unwrap()
-    }
-
-    pub(super) fn clap_defaults<T: Parser + Serialize>() -> Value {
-      to_json_value(&T::try_parse_from(["treetime"]).unwrap()).unwrap()
+    pub(super) fn config_and_clap_defaults<T: Default + Parser + Serialize>() -> (Value, Value) {
+      let config = to_json_value(&T::default()).unwrap();
+      let clap = to_json_value(&T::try_parse_from(["treetime"]).unwrap()).unwrap();
+      (config, clap)
     }
   }
 }

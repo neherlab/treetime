@@ -12,35 +12,22 @@ mod tests {
 
   const TREE: &str = "(A:0.1,B:0.1,C:0.1)root;";
 
-  #[test]
-  fn test_optimize_args_reroot_spec_default_keeps_root() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_keeps_root(         None,                                 false, None)]
+  #[case::keep_root_flag_keeps_root(  None,                                 true,  None)]
+  #[case::keep_root_overrides_method( Some(OptimizeRerootMethod::MinDev),   true,  None)]
+  #[case::min_dev(                    Some(OptimizeRerootMethod::MinDev),   false, Some(RerootSpec::Method(RerootMethod::MinDev)))]
+  #[case::midpoint(                   Some(OptimizeRerootMethod::Midpoint), false, Some(RerootSpec::Method(RerootMethod::Midpoint)))]
+  #[trace]
+  fn test_optimize_args_reroot_spec_of_method(
+    #[case] reroot: Option<OptimizeRerootMethod>,
+    #[case] keep_root: bool,
+    #[case] expected: Option<RerootSpec>,
+  ) {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = args_with(None, vec![], false);
-    assert_eq!(None, helpers::reroot_spec(&args, &tree));
-  }
-
-  #[test]
-  fn test_optimize_args_reroot_spec_keep_root_flag_keeps_root() {
-    let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = args_with(None, vec![], true);
-    assert_eq!(None, helpers::reroot_spec(&args, &tree));
-  }
-
-  #[test]
-  fn test_optimize_args_reroot_spec_keep_root_overrides_method() {
-    let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = args_with(Some(OptimizeRerootMethod::MinDev), vec![], true);
-    assert_eq!(None, helpers::reroot_spec(&args, &tree));
-  }
-
-  #[test]
-  fn test_optimize_args_reroot_spec_min_dev() {
-    let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = args_with(Some(OptimizeRerootMethod::MinDev), vec![], false);
-    assert_eq!(
-      Some(RerootSpec::Method(RerootMethod::MinDev)),
-      helpers::reroot_spec(&args, &tree)
-    );
+    let args = args_with(reroot, vec![], keep_root);
+    assert_eq!(expected, helpers::reroot_spec(&args, &tree));
   }
 
   #[test]
@@ -53,12 +40,6 @@ mod tests {
       )),
       helpers::reroot_spec(&args, &tree)
     );
-  }
-
-  #[test]
-  fn test_optimize_reroot_method_converts_to_reroot_method() {
-    let method: RerootMethod = OptimizeRerootMethod::MinDev.into();
-    assert_eq!(RerootMethod::MinDev, method);
   }
 
   #[rustfmt::skip]

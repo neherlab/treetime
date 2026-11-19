@@ -81,17 +81,12 @@ mod tests {
     let path = write_tree(dir.path(), COALRE);
     let log = RecordingLog::default();
 
-    let actual = format!(
-      "{:#}",
-      read_input_tree(&path, NewickDialect::ENEWICK_BEAST, &log).unwrap_err()
-    );
-
-    assert_eq!(
+    assert_error!(
+      read_input_tree(&path, NewickDialect::ENEWICK_BEAST, &log),
       format!(
         "When reading file '{}': When reading Newick: The tree contains the network node '#H0' with 2 parents; TreeTime reads trees only",
         path.display()
-      ),
-      actual
+      )
     );
   }
 
