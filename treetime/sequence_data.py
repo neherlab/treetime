@@ -1,6 +1,7 @@
+import os
 import sys
 from os.path import isfile
-from collections import defaultdict
+from collections import Counter, defaultdict
 import numpy as np
 from Bio import AlignIO, SeqIO
 from . import config as ttconf
@@ -10,6 +11,52 @@ from .seq_utils import seq2array, guess_alphabet, alphabets
 
 def simple_logger(*args, **kwargs):
     print(args)
+
+
+def _diagnose_alignment_load_failure(in_aln):
+    """Return a specific diagnostic reason when loading an alignment file fails."""
+    if not isfile(in_aln):
+        return f"Alignment file {in_aln!r} does not exist."
+    try:
+        if os.path.getsize(in_aln) == 0:
+            return f"Alignment file {in_aln!r} is empty."
+    except OSError as exc:
+        return f"Could not stat alignment file {in_aln!r}: {exc}"
+
+    try:
+        records = list(SeqIO.parse(in_aln, 'fasta'))
+    except Exception as exc:
+        return f"Could not parse alignment file {in_aln!r}: {exc}"
+
+    if not records:
+        return f"File {in_aln!r} could not be parsed as a valid FASTA, PHYLIP, or NEXUS alignment."
+
+    lengths = [len(rec.seq) for rec in records]
+    length_counts = Counter(lengths)
+    if len(length_counts) > 1:
+        expected_len, expected_count = length_counts.most_common(1)[0]
+        mismatched = [(rec.id, len(rec.seq)) for rec in records if len(rec.seq) != expected_len]
+        max_listed = 10
+        lines = [
+            f"Sequences in {in_aln!r} have inconsistent lengths:",
+            f"  - Expected: {expected_len} characters ({expected_count} of {len(records)} sequences)",
+        ]
+        for seq_id, seq_len in mismatched[:max_listed]:
+            lines.append(f"  - {seq_id}: {seq_len} characters")
+        if len(mismatched) > max_listed:
+            lines.append(f"  - ... and {len(mismatched) - max_listed} more mismatched sequences")
+        dup_ids = [sid for sid, cnt in Counter(rec.id for rec in records).items() if cnt > 1]
+        if dup_ids:
+            shown = ", ".join(dup_ids[:5])
+            suffix = f" (+{len(dup_ids) - 5} more)" if len(dup_ids) > 5 else ""
+            lines.append(f"Duplicate sequence IDs were also found: {shown}{suffix}.")
+        lines.append("All sequences in an alignment must have the same length.")
+        return "\n".join(lines)
+
+    if lengths[0] == 0:
+        return f"Sequences in {in_aln!r} have length 0."
+
+    return f"Alignment in {in_aln!r} could not be loaded as a multiple sequence alignment."
 
 
 class SequenceData(object):
@@ -172,7 +219,8 @@ class SequenceData(object):
                 for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
                     try:
                         in_aln = AlignIO.read(in_aln, fmt)
-                    except:
+                        break
+                    except Exception:
                         continue
 
         if isinstance(in_aln, MultipleSeqAlignment):
@@ -203,7 +251,10 @@ class SequenceData(object):
             self.is_sparse = True
             self._aln = in_aln
         else:
-            raise MissingDataError('SequenceData: loading alignment failed... ' + str(in_aln))
+            msg = 'SequenceData: loading alignment failed... ' + str(in_aln)
+            if isinstance(in_aln, str):
+                msg += '\n' + _diagnose_alignment_load_failure(in_aln)
+            raise MissingDataError(msg)
 
         if self.full_length:
             if self.is_sparse:
