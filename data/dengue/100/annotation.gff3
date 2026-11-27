@@ -1,0 +1,27 @@
+##gff-version 3
+##sequence-region NC_001474 1 10723
+# CDS of the DENV2 reference NC_001474 in nextstrain/dengue@b31c2b5 phylogenetic/defaults/denv2/reference.gb, which the denv2 builds translate with. The columns of aln.fasta.xz are the positions of NC_001474.
+NC_001474	.	gene	97	438	.	+	.	gene_name=C
+NC_001474	.	CDS	97	438	.	+	0	Name=C;gene_name=C
+NC_001474	.	gene	439	936	.	+	.	gene_name=M
+NC_001474	.	CDS	439	936	.	+	0	Name=M;gene_name=M
+NC_001474	.	gene	439	711	.	+	.	gene_name=pr
+NC_001474	.	CDS	439	711	.	+	0	Name=pr;gene_name=pr
+NC_001474	.	gene	937	2421	.	+	.	gene_name=E
+NC_001474	.	CDS	937	2421	.	+	0	Name=E;gene_name=E
+NC_001474	.	gene	2422	3477	.	+	.	gene_name=NS1
+NC_001474	.	CDS	2422	3477	.	+	0	Name=NS1;gene_name=NS1
+NC_001474	.	gene	3478	4131	.	+	.	gene_name=NS2A
+NC_001474	.	CDS	3478	4131	.	+	0	Name=NS2A;gene_name=NS2A
+NC_001474	.	gene	4132	4521	.	+	.	gene_name=NS2B
+NC_001474	.	CDS	4132	4521	.	+	0	Name=NS2B;gene_name=NS2B
+NC_001474	.	gene	4522	6375	.	+	.	gene_name=NS3
+NC_001474	.	CDS	4522	6375	.	+	0	Name=NS3;gene_name=NS3
+NC_001474	.	gene	6376	6756	.	+	.	gene_name=NS4A
+NC_001474	.	CDS	6376	6756	.	+	0	Name=NS4A;gene_name=NS4A
+NC_001474	.	gene	6757	6825	.	+	.	gene_name=2K
+NC_001474	.	CDS	6757	6825	.	+	0	Name=2K;gene_name=2K
+NC_001474	.	gene	6826	7569	.	+	.	gene_name=NS4B
+NC_001474	.	CDS	6826	7569	.	+	0	Name=NS4B;gene_name=NS4B
+NC_001474	.	gene	7570	10269	.	+	.	gene_name=NS5
+NC_001474	.	CDS	7570	10269	.	+	0	Name=NS5;gene_name=NS5

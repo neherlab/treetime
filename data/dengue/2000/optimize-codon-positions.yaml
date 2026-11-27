@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch lengths with one partition per codon position (dengue/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/dengue/2000/optimize-codon-positions.yaml --output-all tmp/examples/dengue/2000/optimize-codon-positions
+#
+# `partition_by: codon-positions` puts codon positions 1, 2 and 3 of every CDS of
+# `annotation.gff3` into the partitions `cp1`, `cp2` and `cp3`, and the 5' and 3'
+# UTRs into `noncoding`. The codon position of a site comes from the phase of its
+# CDS segment, so the scheme also works for genomes whose genes sit in several
+# reading frames or on the reverse strand; the DENV2 polyprotein is one forward
+# frame from site 97 to 10269.
+#
+# This is the largest effect on a coding genome, and the partition comes from the
+# annotation rather than from the alignment, so no quantity is used twice. On this
+# tree the model output gives `cp3` a relative rate (`mu`) about 13 times that of
+# `cp2`, with `cp1` in between: most changes at third positions are synonymous,
+# and none at second positions are.
+#
+# The partitions share the tree and the branch lengths and fit their own model,
+# which is the default of this scheme (`shared_params`): codon positions differ
+# in their pattern of change, not only in speed. The exchange rates show it. The
+# ratio of the C-T to the A-G rate is about 7 at first positions, where C-T is
+# synonymous in leucine (CUA/CUG against UUA/UUG) and A-G never is; about 0.7 at
+# second positions, where neither is synonymous and the value reflects which amino
+# acid changes are tolerated; and about 3.4 at third positions, where both are
+# nearly always synonymous, which is the closest this model comes to the
+# mutational spectrum. `partition_by: genes` instead shares one set of exchange
+# rates and frequencies, because each gene mixes all three codon positions
+# (kb/decisions/multi-alignment-partitions.md, section "Shared model parameters").
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+annotation:
+  - "annotation.gff3"
+
+partition_by: "codon-positions"
