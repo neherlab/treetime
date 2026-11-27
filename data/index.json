@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "README.md",
-      "size": 48721
+      "size": 48975
     },
     {
       "path": "dengue/100/README.md",
@@ -11,6 +11,10 @@
     {
       "path": "dengue/100/aln.fasta.xz",
       "size": 178524
+    },
+    {
+      "path": "dengue/100/annotation.gff3",
+      "size": 1459
     },
     {
       "path": "dengue/100/clock.yaml",
@@ -27,6 +31,10 @@
     {
       "path": "dengue/1000/aln.fasta.xz",
       "size": 292308
+    },
+    {
+      "path": "dengue/1000/annotation.gff3",
+      "size": 1459
     },
     {
       "path": "dengue/1000/metadata.tsv",
@@ -73,6 +81,10 @@
       "size": 773
     },
     {
+      "path": "dengue/2000/annotation.gff3",
+      "size": 1459
+    },
+    {
       "path": "dengue/2000/clock.yaml",
       "size": 750
     },
@@ -91,6 +103,10 @@
     {
       "path": "dengue/2000/mugration-serotype.yaml",
       "size": 888
+    },
+    {
+      "path": "dengue/2000/optimize-codon-positions.yaml",
+      "size": 2298
     },
     {
       "path": "dengue/2000/optimize-dense.yaml",
@@ -123,6 +139,10 @@
     {
       "path": "dengue/500/aln.fasta.xz",
       "size": 167436
+    },
+    {
+      "path": "dengue/500/annotation.gff3",
+      "size": 1459
     },
     {
       "path": "dengue/500/metadata.tsv",
@@ -2975,6 +2995,24 @@
       "inputs": {
         "metadata": [
           "dengue/2000/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/optimize-codon-positions.yaml",
+      "command": "optimize",
+      "title": "Branch lengths with one partition per codon position (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with one partition per codon position (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/dengue/2000/optimize-codon-positions.yaml --output-all tmp/examples/dengue/2000/optimize-codon-positions\n#\n# `partition_by: codon-positions` puts codon positions 1, 2 and 3 of every CDS of\n# `annotation.gff3` into the partitions `cp1`, `cp2` and `cp3`, and the 5' and 3'\n# UTRs into `noncoding`. The codon position of a site comes from the phase of its\n# CDS segment, so the scheme also works for genomes whose genes sit in several\n# reading frames or on the reverse strand; the DENV2 polyprotein is one forward\n# frame from site 97 to 10269.\n#\n# This is the largest effect on a coding genome, and the partition comes from the\n# annotation rather than from the alignment, so no quantity is used twice. On this\n# tree the model output gives `cp3` a relative rate (`mu`) about 13 times that of\n# `cp2`, with `cp1` in between: most changes at third positions are synonymous,\n# and none at second positions are.\n#\n# The partitions share the tree and the branch lengths and fit their own model,\n# which is the default of this scheme (`shared_params`): codon positions differ\n# in their pattern of change, not only in speed. The exchange rates show it. The\n# ratio of the C-T to the A-G rate is about 7 at first positions, where C-T is\n# synonymous in leucine (CUA/CUG against UUA/UUG) and A-G never is; about 0.7 at\n# second positions, where neither is synonymous and the value reflects which amino\n# acid changes are tolerated; and about 3.4 at third positions, where both are\n# nearly always synonymous, which is the closest this model comes to the\n# mutational spectrum. `partition_by: genes` instead shares one set of exchange\n# rates and frequencies, because each gene mixes all three codon positions\n# (kb/decisions/multi-alignment-partitions.md, section \"Shared model parameters\").\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\nannotation:\n  - \"annotation.gff3\"\n\npartition_by: \"codon-positions\"\n",
+      "inputs": {
+        "alignment": [
+          "dengue/2000/aln.fasta.xz"
+        ],
+        "annotation": [
+          "dengue/2000/annotation.gff3"
         ],
         "tree": [
           "dengue/2000/tree.nwk"

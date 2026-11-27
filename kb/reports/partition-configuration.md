@@ -30,13 +30,15 @@ Each `--alignment` file is numbered by its position in the list. Without `--part
 
 **Sources:** [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md), `packages/app-commands/src/commands/shared/partition.rs`
 
-### 2.4 `--segment` flag (multi-segment genomes)
+### 2.4 Segmented genomes
 
-For segmented viruses (influenza: 8 segments, same alphabet, independent evolution), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Segments that share one tree run as one `--alignment` file per segment, or as `--partition` entries of one file (S2.3); segments with different trees remain open.
+For segmented viruses (influenza: 8 segments, same alphabet, independent evolution), segments that share one tree run as one `--alignment` file per segment, or as `--partition` entries of one file (S2.3).
+
+Segments with different trees use `--segment-trees <tree>... --segment-alignments <fasta>...` of `ancestral`, `optimize` and `timetree`: one tree and one alignment per segment, merged by node name into one graph whose edges record which segments they carry. The bundled `data/flu/h3n2/segments/*/pipeline-nextstrain.yaml` run on such a graph. Open gaps are in [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md) and [kb/issues/M-partition-passes-crossover-scopes-and-discrete-traits.md](../issues/M-partition-passes-crossover-scopes-and-discrete-traits.md).
 
 v0 handles segments via concatenation.
 
-**Sources:** `kb/issues/N-io-multi-segment-genome-input.md`
+**Sources:** `kb/issues/N-io-multi-segment-genome-input.md`, `kb/proposals/edge-scoped-inheritance.md`
 
 ### 2.5 Config file (YAML/JSON)
 
@@ -67,27 +69,53 @@ Auspice JSON and UShER MAT files contain embedded sequence data. Loading these f
 
 **Sources:** `kb/proposals/unified-input-format-support.md`
 
-## 3. Automatic partitioning (heuristic derivation)
+## 3. Automatic partitioning (`--partition-by`)
 
-Beyond user specification, partitions can be derived automatically from alignment properties. These methods take one alignment and produce a `position -> partition_index` map.
+Partitions are derived from an annotation or from the alignment itself with `--partition-by` (`enum PartitionScheme`, [packages/app-commands/src/commands/shared/partition_by.rs#L28](../../packages/app-commands/src/commands/shared/partition_by.rs#L28)). A scheme produces ordinary partition entries with explicit site ranges, which the resolver of the entries then checks with its own rules and messages, so a scheme is a generator of entries and not a separate code path. `--partition-by` and `--partition` conflict. [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) holds the full rules, including the annotation contract and the overlap ordering.
 
-### 3.1 Rate-based partitioning (mutation count quantiles)
+### 3.1 Rate-based partitioning (`rate-categories`)
 
-Run Fitch parsimony on the full alignment. Count mutations per site. Sort sites by mutation count. Split into $q$ quantile bins. Sites in each bin form one partition. Related to k-means site-rate clustering (Frandsen et al. 2015).
+A Fitch reconstruction on the input tree counts, for each site, the edges with a substitution at that site (`fn fitch_site_change_counts()`, [packages/treetime/src/partition/fitch/site_changes.rs#L11](../../packages/treetime/src/partition/fitch/site_changes.rs#L11)), and `--rate-category-rule` sorts the sites into `slow`, `medium` and `fast`: `change-counts` (default; 0, 1, 2 or more changes), `median-split`, or `k-means` (an exact one-dimensional k-means over the counts). The scheme needs no annotation.
 
-This creates partitions where within-partition rate variation is minimized, improving GTR model fit per partition.
+The number of buckets is fixed at three. `rate_category_buckets()` maps the thresholds onto the name array `["slow", "medium", "fast"]` and `k_means_thresholds()` returns at most two split points ([packages/app-commands/src/commands/shared/partition_by.rs#L257-L292](../../packages/app-commands/src/commands/shared/partition_by.rs#L257-L292)), so there is no setting for the number of categories. A bucket that stays empty is left out. Among-site rate variation with a chosen number of categories is `--gamma-categories K`, a different model: it averages each site over K rates instead of assigning it to one bucket ([kb/decisions/discrete-gamma-rate-variation.md](../decisions/discrete-gamma-rate-variation.md)).
 
-**Sources:** `kb/reports/auto-partitioning.md` S7.1
+The buckets are recorded as biased in [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md), with a simulation measurement, and PartitionFinder 2 withdrew k-means splits of sites for DNA and protein data for the same reason. S3.3 measures the circularity.
 
-### 3.2 Codon-position partitioning (from GFF annotation)
+### 3.2 Annotation-based partitioning (`codon-positions` and `genes`)
 
-Parse GFF annotations to identify CDS regions. Split protein-coding positions by codon position (1st, 2nd, 3rd). Non-coding positions form a 4th partition. Can further isolate specific genes (e.g., Spike protein) into their own 1st/2nd/3rd codon-position partitions.
+`codon-positions` puts codon positions 1, 2 and 3 of every CDS of `--annotation` into `cp1`, `cp2` and `cp3`, and the remaining sites into `noncoding`. `genes` makes one partition per CDS, named by the CDS, plus `noncoding`. Both read GFF3 through `fn gff3_cds_read()` ([packages/treetime-io/src/gff.rs](../../packages/treetime-io/src/gff.rs), on `noodles-gff`), take one annotation file per `--alignment` file, give an overlapped site to the longest CDS that covers it, and take the codon position of a site from the phase of its own segment, on both strands.
 
-Biologically motivated: 3rd codon positions evolve faster (wobble), 1st/2nd positions are more constrained. Mixing them in one GTR model distorts both rate and frequency estimates.
+Both are implemented (`kb/features/representation.md` lists the schemes `[x]`). The annotation contract is strict: the CDS coordinates must be alignment columns, so each file needs a `##sequence-region` line that runs from 1 to the length of its alignment.
 
-Feature inventory status: `[ ]` not implemented.
+### 3.3 Measured behavior and recommended defaults
 
-**Sources:** `kb/reports/auto-partitioning.md` S7.1, `kb/features/representation.md`
+Measured with `treetime optimize` on `data/dengue/2000` (1954 genomes, 10723 sites, DENV2 reference coordinates), using the annotation of `data/dengue/20`. Baseline without partition settings: tree length 5.364.
+
+| Scheme | Partitions | Relative rates mu | Tree length |
+| --- | --- | --- | --- |
+| `codon-positions` (default sharing: none) | cp1, cp2, cp3, noncoding | 0.421, 0.184, 2.382, 1.075 | 5.522 |
+| `genes` (default sharing: W and pi) | 11 CDS plus noncoding | 0.843 to 1.128 | 5.374 |
+| `rate-categories` `change-counts` | slow, medium, fast | 4.2e-25, 0.190, 2.137 | 5.552 |
+| `rate-categories` `median-split` | slow, medium, fast | 4.4e-25, 0.513, 2.974 | 5.455 |
+| `rate-categories` `k-means` | slow, medium, fast | 0.195, 2.356, 4.783 | 5.477 |
+
+Three findings:
+
+- **Codon position carries the rate signal; genes do not.** The codon positions span a factor of 13, the genes a factor of 1.3. Crossing the two (structural genes C, M and E against the non-structural NS1 to NS5, each split by codon position, as seven `--partition` entries) leaves the two gene groups within 10 % of each other at every codon position, so the gene split adds nothing on this genome. This is dengue, whose coding region is one polyprotein; a genome with a gene under episodic selection may differ, and `data/sc2/2844` is the test for that
+- **Unsharing is right for codon positions and wrong for rate buckets.** With `--shared-params none` the codon positions fit exchangeabilities that differ by mechanism, and the differences follow the genetic code. The ratio of the C-T to the A-G exchange rate is 7.4 at first positions, where C-T is synonymous in leucine (CUA/CUG against UUA/UUG, 2 of 13 sense codons) and A-G never is (0 of 16); 0.72 at second positions, where neither is synonymous (0 of 16 and 0 of 14) and the value reflects amino-acid constraint, with A-G including the charge-preserving Lys-Arg and His-Arg swaps; and 3.42 at third positions, where both are nearly always synonymous (16 of 16 and 13 of 14) and the value is the closest estimate of the mutational spectrum. Forcing one shared W collapses all three to 3.12. The rate buckets with `--shared-params none` instead fit frequencies that are artifacts: the `fast` bucket of the `k-means` rule gives pi = [0.172, 0.395, 0.133, 0.301] against a genome composition of [0.315, 0.204, 0.261, 0.220], because conditioning on "this site changed at least 19 times" selects for states. This is evidence for the implemented defaults of `fn default_shared_params()`, which share nothing for `codon-positions` and share W and pi for `genes` and `rate-categories`
+- **The rate buckets are circular, and two of the three rules are degenerate.** `change-counts` and `median-split` both define `slow` as exactly the sites with zero Fitch changes (4508 sites here, matching the 4508 constant sites that IQ-TREE reports for this alignment). A bucket of constant sites has no substitutions to explain, so its fitted rate runs to the floor: 4e-25, zero for practical purposes, and 42 % of the alignment then carries no substitution signal. Only `k-means` avoids this, because it takes its thresholds from the count distribution instead of hardcoding zero as a boundary, and pools the constant sites with enough changed sites (7662 of 10723, counts 0 to 6) to keep the rate finite at 0.195. The rates are fitted from the same change counts that defined the buckets, so the zero bucket is guaranteed by construction rather than inferred
+
+**Recommended default for an annotated coding genome: `--partition-by codon-positions` with the default sharing (none).** The partition comes from information outside the alignment being fitted, so no quantity is used twice, unlike `rate-categories`, where the Fitch counts both define the buckets and set their rates and, when unshared, their composition. It captures the largest effect on this data, costs 24 free parameters over four partitions, and converged in 7 iterations and about 20 seconds on 1954 taxa. `rate-categories` remains the option where no annotation exists, and `k-means` is the rule to prefer there.
+
+Two limits of the recommendation: a nucleotide GTR per codon position absorbs selection into the exchangeabilities, so a fitted W is a mixture of mutation and selection and not a mutation model (the proper fix is a codon model, [kb/issues/M-ancestral-codon-substitution-models-unimplemented.md](../issues/M-ancestral-codon-substitution-models-unimplemented.md)); and none of the comparisons above is a fit comparison, because no command reports a log-likelihood ([kb/issues/N-optimize-reports-no-log-likelihood-or-trace-log.md](../issues/N-optimize-reports-no-log-likelihood-or-trace-log.md)). The tree lengths in the table rank nothing.
+
+### 3.4 Not implemented
+
+- **Combined schemes.** `--partition-by` takes one scheme, so gene by codon position, or gene-group by codon position, needs hand-written `--partition` entries. The pieces exist: `owned_sites()` gives each site its CDS and `codon_position()` its codon position, and `site_ranges_from_columns()` turns any column set into entries. A combined scheme also needs a CDS-to-group mapping, which no input carries
+- **Sharing by group.** `--shared-params` applies to every `infer` partition of the run. The separate W, pi and mu groups of `kb/reports/auto-partitioning.md` S7.2 are not implemented, so "share W everywhere, share pi within each codon position" cannot be expressed. `fn infer_gtr_group()` already fits one group from summed counts
+- **Scheme selection.** No information criterion chooses among the schemes; see S3.3 and `kb/reports/auto-partitioning.md` S6
+
+**Sources:** `kb/decisions/multi-alignment-partitions.md`, `packages/app-commands/src/commands/shared/partition_by.rs`, `kb/reports/auto-partitioning.md` S7.1
 
 ## 4. Model configuration (how models relate to partitions)
 
@@ -179,6 +207,9 @@ The fix is not "extract shared init helper" but "implement partition configurati
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub](../issues/N-representation-infer-dense-stub.md)
 - [kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)
+- [N-optimize-reports-no-log-likelihood-or-trace-log](../issues/N-optimize-reports-no-log-likelihood-or-trace-log.md) - blocks every fit comparison between schemes in S3.3
+- [H-ancestral-on-a-time-tree-reads-years-as-substitutions](../issues/H-ancestral-on-a-time-tree-reads-years-as-substitutions.md) - a fitted model cannot be carried to a downstream command with its rate
+- [M-optimize-loop-stops-on-decreased-likelihood-with-long-branches](../issues/M-optimize-loop-stops-on-decreased-likelihood-with-long-branches.md) - triggered by `rate-categories` in the measurements of S3.3
 
 ### Proposals
 
