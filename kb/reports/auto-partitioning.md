@@ -1,6 +1,6 @@
 # Site-Specific Models and Automatic Partitioning for TreeTime v1
 
-> **Status:** Research report with unapproved design options. Current commands do not construct site-specific GTR models, and automatic partitioning, parameter linkage, branch-length sharing, model-selection criteria, and serialization remain open decisions.
+> **Status:** Research report with unapproved design options for the site-specific model. Automatic partitioning and branch-length sharing have since been implemented and approved, and this report is no longer current on them: `--partition-by codon-positions`, `genes` and `rate-categories` build the partitions, `--shared-params` links W, pi and the gamma shape across partitions, and all partitions share the branch lengths with one relative rate each. [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) is the rule, and [kb/reports/partition-configuration.md](partition-configuration.md) S3 describes the implemented schemes with measurements. What remains open here: site-specific GTR models, which no command constructs ([kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)); model-selection criteria, which need a reported log-likelihood ([kb/issues/N-optimize-reports-no-log-likelihood-or-trace-log.md](../issues/N-optimize-reports-no-log-likelihood-or-trace-log.md)); per-group parameter linkage; and serialization.
 
 ## 1. Problem and motivation
 
@@ -181,10 +181,10 @@ No default criterion has been approved. AIC, AICc, BIC, cross-validation, and bo
 
 ### 7.1 Partitioning strategies
 
-Two complementary methods for assigning positions to partitions:
+Two complementary methods for assigning positions to partitions. Both were implemented as `--partition-by`, with the details below superseded by [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md):
 
-- Rate-based: run <a id="gloss-use-10"></a>Fitch <sup>[10](#gloss-10)</sup> parsimony reconstruction on the full alignment, count mutations per site, sort by mutation count, and split the sites into $b$ quantile bins. This is a new heuristic inspired by rate-based partitioning; it is distinct from the iterative k-means method of <a id="cite-15b"></a>[Frandsen et al. 2015](https://doi.org/10.1186/s12862-015-0283-7) [[15](#ref-15)].
-- Codon-position: parse GFF annotations to identify CDS regions, split protein-coding positions by 1st, 2nd, 3rd codon position, non-coding as 4th partition
+- Rate-based: run <a id="gloss-use-10"></a>Fitch <sup>[10](#gloss-10)</sup> parsimony reconstruction on the full alignment and count mutations per site. This report proposed splitting the sites into $b$ quantile bins. The implemented scheme instead fixes three buckets (`slow`, `medium`, `fast`) and offers three rules for the thresholds: `change-counts`, `median-split` and `k-means` (exact one-dimensional k-means over the counts, not the iterative method of <a id="cite-15b"></a>[Frandsen et al. 2015](https://doi.org/10.1186/s12862-015-0283-7) [[15](#ref-15)]). Measurements in [kb/reports/partition-configuration.md](partition-configuration.md) S3.3 show the first two rules give the zero-change bucket a fitted rate at the numerical floor, because the rates are fitted from the counts that defined the buckets.
+- Codon-position: parse GFF annotations to identify CDS regions, split protein-coding positions by 1st, 2nd, 3rd codon position, non-coding as 4th partition. Implemented as `codon-positions`, with `genes` as a second annotation scheme (one partition per CDS).
 
 <a id="gtr-family-inference"></a>
 
@@ -259,7 +259,7 @@ Informed by the software comparison and Puller et al. 2020 findings:
 | `fn compress_sequences()`: Fitch compression | [packages/treetime/src/partition/fitch/passes.rs#L42](../../packages/treetime/src/partition/fitch/passes.rs#L42) |
 | `struct Sub` with `pos()` for per-site mutation position | [packages/treetime/src/seq/mutation.rs#L359](../../packages/treetime/src/seq/mutation.rs#L359) |
 
-v1 has no site-specific GTR code ([kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)). Partitions given as site sets are the input that the automatic strategies of section 7.1 would produce: a strategy computes the sites of each partition, and the partition system builds, fits and assembles them ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)).
+v1 has no site-specific GTR code ([kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)). Partitions given as site sets are the input that the automatic strategies of section 7.1 produce: a strategy computes the sites of each partition, and the partition system builds, fits and assembles them ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). `--partition-by` generates exactly such entries, so the strategies of section 7.1 reach the partition system through the same path as hand-written `--partition` entries.
 
 ### 9.2 New code needed
 
@@ -268,14 +268,21 @@ v1 has no site-specific GTR code ([kb/issues/M-gtr-site-specific-model-not-imple
 | Site-specific model type                    | Partitions and reconstructions store the scalar `GTR` type                              |
 | `get_mutation_counts_site_specific_dense()` | Per-site $n_{ij}^a$ and $\tau_j^a$ from tree traversal (port v0 `treeanc.py:1558-1589`) |
 | Iterative refinement loop                   | Alternate model inference + ancestral reconstruction (port v0 `treeanc.py:1634-1677`)   |
-| Per-site mutation counting from Fitch subs  | Iterate edges' `fitch_subs()`, count per `sub.pos()`                                    |
-| Rate-based bin assignment                   | Sort positions by count, quantile split                                                 |
-| GTR family inference (pooled groups)        | Wrap existing solver, decompose $W$/$\pi$/$\mu$ updates                                 |
-| Partition grouping specification            | Data structure for $W$/$\pi$/$\mu$ group membership                                     |
-| GFF/annotation parsing                      | No annotation infrastructure exists                                                     |
-| Model serialization output                  | Export $\pi^a$, $\mu^a$, $W$ for reuse                                                  |
+| Model serialization output                  | Export $\pi^a$, $\mu^a$, $W$ for reuse; no command reads a model document today         |
 | Convergence diagnostics                     | Likelihood improvement, $\delta\pi$, rate statistics                                    |
-| CLI integration                             | New flags/config for site-specific and partition strategy                               |
+| CLI integration                             | New flags/config for the site-specific model                                            |
+
+Built since this report was written, and no longer needed:
+
+| Component                                  | Where                                                                                                                       |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Per-site mutation counting from Fitch subs | `fn fitch_site_change_counts()`, [packages/treetime/src/partition/fitch/site_changes.rs#L11](../../packages/treetime/src/partition/fitch/site_changes.rs#L11) |
+| Rate-based bin assignment                  | `fn rate_category_buckets()`, three rules, three fixed buckets                                                               |
+| GTR family inference (pooled groups)       | `fn infer_gtr_group()`, [packages/treetime/src/gtr/infer_gtr/common.rs#L26](../../packages/treetime/src/gtr/infer_gtr/common.rs#L26) |
+| GFF/annotation parsing                     | `fn gff3_cds_read()`, [packages/treetime-io/src/gff.rs](../../packages/treetime-io/src/gff.rs), on `noodles-gff`            |
+| CLI integration for partition strategy     | `--partition-by`, `--rate-category-rule`, `--shared-params`, `--partition-rates`                                            |
+
+Partially built: the **partition grouping specification** is one flat set of shared parameters for the whole run (`--shared-params exchange-rates,frequencies,gamma-shape|none`), not the independent $W$, $\pi$ and $\mu$ groups of S7.2. Every `infer` partition shares the same listed parameters, so "share $W$ across all partitions, share $\pi$ within each codon position" cannot be expressed.
 
 ### 9.3 Related entries
 
